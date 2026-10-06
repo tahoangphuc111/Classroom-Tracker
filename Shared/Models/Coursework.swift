@@ -42,7 +42,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     }
 
     public var isCompleted: Bool {
-        status == .turnedIn || status == .returned || isDueToday || isPast
+        status == .turnedIn || status == .returned
     }
 
     public var isUrgent: Bool {

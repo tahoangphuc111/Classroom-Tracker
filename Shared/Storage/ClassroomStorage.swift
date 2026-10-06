@@ -19,6 +19,18 @@ public final class ClassroomStorage: @unchecked Sendable {
     private var cachedCourseworkTimestamp: Double = 0
     private let lock = NSLock()
 
+    private var sharedContainerURL: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: ClassroomStorage.appGroupId)
+    }
+
+    private var coursesFileURL: URL? {
+        sharedContainerURL?.appendingPathComponent("cached_classroom_courses.json")
+    }
+
+    private var courseworkFileURL: URL? {
+        sharedContainerURL?.appendingPathComponent("cached_classroom_coursework.json")
+    }
+
     private init() {
         if let sharedDefaults = UserDefaults(suiteName: ClassroomStorage.appGroupId) {
             self.userDefaults = sharedDefaults
@@ -37,6 +49,9 @@ public final class ClassroomStorage: @unchecked Sendable {
         lock.unlock()
 
         if let encoded = try? JSONEncoder().encode(courses) {
+            if let fileURL = coursesFileURL {
+                try? encoded.write(to: fileURL, options: .atomic)
+            }
             userDefaults.set(encoded, forKey: coursesKey)
             userDefaults.set(timestamp, forKey: coursesTimestampKey)
             UserDefaults.standard.set(encoded, forKey: coursesKey)
@@ -55,9 +70,12 @@ public final class ClassroomStorage: @unchecked Sendable {
         lock.unlock()
 
         var loaded: [Course]?
-        if let data = userDefaults.data(forKey: coursesKey) {
+        if let fileURL = coursesFileURL, let data = try? Data(contentsOf: fileURL) {
             loaded = try? JSONDecoder().decode([Course].self, from: data)
-        } else if let data = UserDefaults.standard.data(forKey: coursesKey) {
+        }
+        if loaded == nil, let data = userDefaults.data(forKey: coursesKey) {
+            loaded = try? JSONDecoder().decode([Course].self, from: data)
+        } else if loaded == nil, let data = UserDefaults.standard.data(forKey: coursesKey) {
             loaded = try? JSONDecoder().decode([Course].self, from: data)
         }
 
@@ -77,6 +95,9 @@ public final class ClassroomStorage: @unchecked Sendable {
         lock.unlock()
 
         if let encoded = try? JSONEncoder().encode(items) {
+            if let fileURL = courseworkFileURL {
+                try? encoded.write(to: fileURL, options: .atomic)
+            }
             userDefaults.set(encoded, forKey: courseworkKey)
             userDefaults.set(timestamp, forKey: courseworkTimestampKey)
             UserDefaults.standard.set(encoded, forKey: courseworkKey)
@@ -96,9 +117,12 @@ public final class ClassroomStorage: @unchecked Sendable {
         lock.unlock()
 
         var loaded: [Coursework]?
-        if let data = userDefaults.data(forKey: courseworkKey) {
+        if let fileURL = courseworkFileURL, let data = try? Data(contentsOf: fileURL) {
             loaded = try? JSONDecoder().decode([Coursework].self, from: data)
-        } else if let data = UserDefaults.standard.data(forKey: courseworkKey) {
+        }
+        if loaded == nil, let data = userDefaults.data(forKey: courseworkKey) {
+            loaded = try? JSONDecoder().decode([Coursework].self, from: data)
+        } else if loaded == nil, let data = UserDefaults.standard.data(forKey: courseworkKey) {
             loaded = try? JSONDecoder().decode([Coursework].self, from: data)
         }
 
@@ -209,7 +233,22 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     private func ensureInitialData() {
-        if userDefaults.data(forKey: courseworkKey) == nil {
+        var hasData = false
+        if let fileURL = courseworkFileURL, FileManager.default.fileExists(atPath: fileURL.path) {
+            hasData = true
+        } else if userDefaults.data(forKey: courseworkKey) != nil {
+            hasData = true
+            if let coursesData = userDefaults.data(forKey: coursesKey),
+               let fileURL = coursesFileURL {
+                try? coursesData.write(to: fileURL, options: .atomic)
+            }
+            if let courseworkData = userDefaults.data(forKey: courseworkKey),
+               let fileURL = courseworkFileURL {
+                try? courseworkData.write(to: fileURL, options: .atomic)
+            }
+        }
+
+        if !hasData {
             saveCourses(ClassroomStorage.mockCourses)
             saveCoursework(ClassroomStorage.mockCoursework)
         }
