@@ -1,5 +1,8 @@
 import Foundation
+#if canImport(AppKit)
 import AppKit
+#endif
+
 
 public struct ActiveLoopbackServer {
     public let serverFd: Int32
@@ -58,12 +61,19 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                 let serverFd = server.serverFd
                 let port = server.port
 
-                var timeout = timeval(tv_sec: timeoutSeconds, tv_usec: 0)
-                setsockopt(serverFd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
-
                 let startTime = Date()
 
                 while Date().timeIntervalSince(startTime) < Double(timeoutSeconds) {
+                    var pfd = pollfd(fd: serverFd, events: Int16(POLLIN), revents: 0)
+                    let pollRes = poll(&pfd, 1, 1000)
+                    if pollRes < 0 {
+                        if errno == EINTR { continue }
+                        break
+                    }
+                    if pollRes == 0 {
+                        continue
+                    }
+
                     var clientAddress = sockaddr_in()
                     var clientLen = socklen_t(MemoryLayout<sockaddr_in>.size)
                     let clientFd = withUnsafeMutablePointer(to: &clientAddress) {
@@ -73,9 +83,7 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                     }
 
                     guard clientFd >= 0 else {
-                        close(serverFd)
-                        continuation.resume(throwing: NSError(domain: "LoopbackOAuthServer", code: -4, userInfo: [NSLocalizedDescriptionKey: "Hết thời gian chờ đăng nhập (Timeout). Vui lòng thử lại."]))
-                        return
+                        continue
                     }
 
                     var buffer = [CChar](repeating: 0, count: 4096)
@@ -176,6 +184,14 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                             <h1>Kết nối thành công!</h1>
                             <p>Tài khoản Google Classroom của bạn đã kết nối thành công với Classroom Tracker.</p>
                             <div class="badge">Bạn có thể đóng tab này</div>
+                            <script>
+                              setTimeout(function() {
+                                window.location.href = "classroomwidget://auth-complete";
+                              }, 400);
+                            </script>
+                            <div style="margin-top: 18px;">
+                              <a href="classroomwidget://auth-complete" style="color: #38bdf8; font-size: 13px; text-decoration: underline;">Mở ứng dụng Classroom Tracker</a>
+                            </div>
                           </div>
                         </body>
                         </html>

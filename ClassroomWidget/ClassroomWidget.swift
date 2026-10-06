@@ -4,6 +4,7 @@ import SwiftUI
 struct ClassroomWidgetEntryView: View {
     var entry: ClassroomTimelineProvider.Entry
     @Environment(\.widgetFamily) var family
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         Group {
@@ -18,8 +19,9 @@ struct ClassroomWidgetEntryView: View {
                 SmallWidgetView(courseworkList: entry.courseworkList)
             }
         }
+        .environment(\.colorScheme, .light)
         .containerBackground(for: .widget) {
-            Color.clear
+            ChunkyTheme.skyGradient
         }
     }
 }
@@ -33,8 +35,8 @@ public struct ClassroomWidget: Widget {
         StaticConfiguration(kind: kind, provider: ClassroomTimelineProvider()) { entry in
             ClassroomWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("Classroom Hôm nay & Ngày mai")
-        .description("Theo dõi bài tập Google Classroom đến hạn hôm nay và ngày mai.")
+        .configurationDisplayName("Báo bài Ngày mai")
+        .description("Theo dõi danh sách môn học và bài tập cần chuẩn bị cho ngày mai.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }

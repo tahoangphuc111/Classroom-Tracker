@@ -2,6 +2,8 @@ import SwiftUI
 import WidgetKit
 #if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
 #endif
 
 public struct ContentView: View {
@@ -11,7 +13,9 @@ public struct ContentView: View {
 
     @State private var courses: [Course] = []
     @State private var allCoursework: [Coursework] = []
+    @State private var buckets = CourseworkBuckets()
     @State private var selectedFilter: AppFilterCategory = .tomorrow
+    @State private var selectedCourseworkIds: Set<String> = []
     @State private var selectedCoursework: Coursework? = nil
     @State private var selectedPreviewFamily: WidgetPreviewFamily = .medium
     @State private var useSampleDataForPreview: Bool = false
@@ -27,8 +31,12 @@ public struct ContentView: View {
     @State private var toastDismissTask: Task<Void, Never>? = nil
     @State private var syncRotationAngle: Double = 0
     @Environment(\.colorScheme) private var colorScheme
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var showMobileDetailSheet: Bool = false
+    #endif
 
-    enum AppFilterCategory: String, CaseIterable, Identifiable {
+    public enum AppFilterCategory: String, CaseIterable, Identifiable {
         case tomorrow = "Báo bài Ngày mai"
         case todayAndTomorrow = "Hôm nay & Ngày mai"
         case allUpcoming = "Tất cả sắp tới"
@@ -36,9 +44,9 @@ public struct ContentView: View {
         case completed = "Đã hoàn thành"
         case widgetPreview = "Xem trước Widget"
 
-        var id: String { rawValue }
+        public var id: String { rawValue }
 
-        var icon: String {
+        public var icon: String {
             switch self {
             case .tomorrow: return "calendar.badge.clock"
             case .todayAndTomorrow: return "clock"
@@ -50,108 +58,139 @@ public struct ContentView: View {
         }
     }
 
-    enum WidgetPreviewFamily: String, CaseIterable, Identifiable {
+    public enum WidgetPreviewFamily: String, CaseIterable, Identifiable {
         case small = "Nhỏ"
         case medium = "Vừa"
         case large = "Lớn"
-        var id: String { rawValue }
+        public var id: String { rawValue }
+    }
+
+    public struct CourseworkBuckets {
+        public var tomorrow: [Coursework] = []
+        public var today: [Coursework] = []
+        public var laterUpcoming: [Coursework] = []
+        public var past: [Coursework] = []
+        public var noDueDate: [Coursework] = []
+        public var completed: [Coursework] = []
+
+        public var todayAndTomorrow: [Coursework] { today + tomorrow }
+        public var allUpcoming: [Coursework] { tomorrow + laterUpcoming + noDueDate }
+        public var widgetItems: [Coursework] { tomorrow }
     }
 
     public init() {}
 
-    private var todayItems: [Coursework] {
+    private func recomputeBuckets() {
         let activeCourseIds = Set(courses.filter(\.isSelectedForWidget).map(\.id))
-        return allCoursework
-            .filter { activeCourseIds.contains($0.courseId) }
-            .filter { $0.status != .turnedIn && $0.status != .returned }
-            .filter { $0.isDueToday }
-            .sorted { ($0.dueDate ?? Date()) < ($1.dueDate ?? Date()) }
-    }
+        var tomorrows: [Coursework] = []
+        var todays: [Coursework] = []
+        var laters: [Coursework] = []
+        var pasts: [Coursework] = []
+        var noDates: [Coursework] = []
+        var comp: [Coursework] = []
 
-    private var tomorrowItems: [Coursework] {
-        let activeCourseIds = Set(courses.filter(\.isSelectedForWidget).map(\.id))
-        return allCoursework
-            .filter { activeCourseIds.contains($0.courseId) }
-            .filter { $0.status != .turnedIn && $0.status != .returned }
-            .filter { $0.isDueTomorrow }
-            .sorted { ($0.dueDate ?? Date()) < ($1.dueDate ?? Date()) }
-    }
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfToday = calendar.startOfDay(for: now)
+        guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
+              let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday) else {
+            return
+        }
 
-    private var laterUpcomingItems: [Coursework] {
-        let activeCourseIds = Set(courses.filter(\.isSelectedForWidget).map(\.id))
-        return allCoursework
-            .filter { activeCourseIds.contains($0.courseId) }
-            .filter { $0.status != .turnedIn && $0.status != .returned }
-            .filter { $0.isDueLater }
-            .sorted { ($0.dueDate ?? Date.distantFuture) < ($1.dueDate ?? Date.distantFuture) }
-    }
+        for item in allCoursework {
+            if item.isCompleted {
+                comp.append(item)
+                continue
+            }
+            guard activeCourseIds.contains(item.courseId) else { continue }
 
-    private var pastItems: [Coursework] {
-        let activeCourseIds = Set(courses.filter(\.isSelectedForWidget).map(\.id))
-        return allCoursework
-            .filter { activeCourseIds.contains($0.courseId) }
-            .filter { $0.status != .turnedIn && $0.status != .returned }
-            .filter { $0.isPast || $0.isOverdue }
-            .sorted { ($0.dueDate ?? Date.distantPast) > ($1.dueDate ?? Date.distantPast) }
-    }
+            guard let dueDate = item.dueDate else {
+                noDates.append(item)
+                continue
+            }
 
-    private var noDueDateItems: [Coursework] {
-        let activeCourseIds = Set(courses.filter(\.isSelectedForWidget).map(\.id))
-        return allCoursework
-            .filter { activeCourseIds.contains($0.courseId) }
-            .filter { $0.status != .turnedIn && $0.status != .returned }
-            .filter { $0.hasNoDueDate }
-            .sorted { $0.title < $1.title }
-    }
+            if dueDate < startOfDayAfter {
+                tomorrows.append(item)
+            } else {
+                laters.append(item)
+            }
+        }
 
-    private var completedItems: [Coursework] {
-        allCoursework.filter { $0.status == .turnedIn || $0.status == .returned }
-    }
+        tomorrows.sort { ($0.dueDate ?? Date.distantFuture) < ($1.dueDate ?? Date.distantFuture) }
+        todays.sort { ($0.dueDate ?? Date.distantFuture) < ($1.dueDate ?? Date.distantFuture) }
+        laters.sort { ($0.dueDate ?? Date.distantFuture) < ($1.dueDate ?? Date.distantFuture) }
+        pasts.sort { ($0.dueDate ?? Date.distantPast) > ($1.dueDate ?? Date.distantPast) }
+        noDates.sort { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        comp.sort { ($0.dueDate ?? Date.distantPast) > ($1.dueDate ?? Date.distantPast) }
 
-    private var widgetItems: [Coursework] {
-        todayItems + tomorrowItems
-    }
-
-    private var resolvedPreviewColorScheme: ColorScheme {
-        .light
+        self.buckets = CourseworkBuckets(
+            tomorrow: tomorrows,
+            today: todays,
+            laterUpcoming: laters,
+            past: pasts,
+            noDueDate: noDates,
+            completed: comp
+        )
     }
 
     private var itemsForPreview: [Coursework] {
-        if useSampleDataForPreview || widgetItems.isEmpty {
-            return ClassroomStorage.mockCoursework
-                .filter { $0.isDueTodayOrTomorrow }
-                .sorted { ($0.dueDate ?? Date()) < ($1.dueDate ?? Date()) }
+        if useSampleDataForPreview || buckets.widgetItems.isEmpty {
+            return RisoMockData.fourTasks
         }
-        return widgetItems
+        return buckets.widgetItems
+    }
+
+    private var baseFilteredList: [Coursework] {
+        switch selectedFilter {
+        case .tomorrow:
+            return buckets.tomorrow
+        case .todayAndTomorrow:
+            return buckets.todayAndTomorrow
+        case .allUpcoming:
+            return buckets.allUpcoming
+        case .past:
+            return buckets.past
+        case .completed:
+            return buckets.completed
+        case .widgetPreview:
+            return []
+        }
     }
 
     private var currentFilteredList: [Coursework] {
-        let baseList: [Coursework]
-        switch selectedFilter {
-        case .tomorrow:
-            baseList = tomorrowItems
-        case .todayAndTomorrow:
-            baseList = todayItems + tomorrowItems
-        case .allUpcoming:
-            baseList = todayItems + tomorrowItems + laterUpcomingItems + noDueDateItems
-        case .past:
-            baseList = pastItems
-        case .completed:
-            baseList = completedItems
-        case .widgetPreview:
-            baseList = []
-        }
+        let baseList = baseFilteredList
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return baseList }
 
+        let cleanQuery = query.normalizedForVietnameseSearch()
+        return baseList.filter { item in
+            let titleMatch = item.title.normalizedForVietnameseSearch().contains(cleanQuery)
+            let courseMatch = item.courseName.normalizedForVietnameseSearch().contains(cleanQuery)
+            let descMatch = item.description?.normalizedForVietnameseSearch().contains(cleanQuery) ?? false
+            return titleMatch || courseMatch || descMatch
+        }
+    }
+
+    private func categorizedSections(for list: [Coursework]) -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
         if searchText.trimmingCharacters(in: .whitespaces).isEmpty {
-            return baseList
+            return (
+                todays: buckets.today,
+                tomorrows: buckets.tomorrow,
+                laters: selectedFilter == .allUpcoming ? buckets.laterUpcoming : [],
+                noDueDates: selectedFilter == .allUpcoming ? buckets.noDueDate : []
+            )
         } else {
-            let cleanQuery = searchText.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "vi_VN"))
-            return baseList.filter { item in
-                let titleMatch = item.title.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "vi_VN")).contains(cleanQuery)
-                let courseMatch = item.courseName.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "vi_VN")).contains(cleanQuery)
-                let descMatch = item.description?.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "vi_VN")).contains(cleanQuery) ?? false
-                return titleMatch || courseMatch || descMatch
-            }
+            let todayIds = Set(buckets.today.map(\.id))
+            let tomorrowIds = Set(buckets.tomorrow.map(\.id))
+            let laterIds = Set(buckets.laterUpcoming.map(\.id))
+            let noDateIds = Set(buckets.noDueDate.map(\.id))
+
+            return (
+                todays: list.filter { todayIds.contains($0.id) },
+                tomorrows: list.filter { tomorrowIds.contains($0.id) },
+                laters: selectedFilter == .allUpcoming ? list.filter { laterIds.contains($0.id) } : [],
+                noDueDates: selectedFilter == .allUpcoming ? list.filter { noDateIds.contains($0.id) } : []
+            )
         }
     }
 
@@ -186,186 +225,39 @@ public struct ContentView: View {
     }
 
     private var sidebarView: some View {
-        List(selection: $selectedFilter) {
+        List(selection: Binding<AppFilterCategory?>(
+            get: { selectedFilter },
+            set: { if let val = $0 { selectedFilter = val } }
+        )) {
             Section("Danh mục báo bài") {
-                Label {
-                    HStack {
-                        Text(AppFilterCategory.tomorrow.rawValue)
-                            .font(.system(size: 13, weight: .semibold))
-                        Spacer()
-                        let count = tomorrowItems.count
-                        if count > 0 {
-                            Text("\(count)")
-                                .font(.system(size: 10, weight: .bold))
-                                .contentTransition(.numericText())
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.blue.opacity(0.15))
-                                .foregroundStyle(.blue)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
-                    }
-                } icon: {
-                    Image(systemName: AppFilterCategory.tomorrow.icon)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.blue)
+                sidebarCategoryRow(for: .tomorrow, count: buckets.tomorrow.count)
+                sidebarCategoryRow(for: .allUpcoming, count: buckets.allUpcoming.count)
+                if buckets.past.count > 0 {
+                    sidebarCategoryRow(for: .past, count: buckets.past.count)
                 }
-                .tag(AppFilterCategory.tomorrow)
-
-                Label {
-                    HStack {
-                        Text(AppFilterCategory.todayAndTomorrow.rawValue)
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer()
-                        let count = widgetItems.count
-                        if count > 0 {
-                            Text("\(count)")
-                                .font(.system(size: 10, weight: .semibold))
-                                .contentTransition(.numericText())
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.orange.opacity(0.15))
-                                .foregroundStyle(.orange)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
-                    }
-                } icon: {
-                    Image(systemName: AppFilterCategory.todayAndTomorrow.icon)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.orange)
-                }
-                .tag(AppFilterCategory.todayAndTomorrow)
-
-                Label {
-                    HStack {
-                        Text(AppFilterCategory.allUpcoming.rawValue)
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer()
-                        let total = todayItems.count + tomorrowItems.count + laterUpcomingItems.count + noDueDateItems.count
-                        if total > 0 {
-                            Text("\(total)")
-                                .font(.system(size: 10, weight: .semibold))
-                                .contentTransition(.numericText())
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.primary.opacity(0.06))
-                                .foregroundStyle(.secondary)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
-                    }
-                } icon: {
-                    Image(systemName: AppFilterCategory.allUpcoming.icon)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.blue)
-                }
-                .tag(AppFilterCategory.allUpcoming)
-
-                Label {
-                    HStack {
-                        Text(AppFilterCategory.past.rawValue)
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer()
-                        let count = pastItems.count
-                        if count > 0 {
-                            Text("\(count)")
-                                .font(.system(size: 10, weight: .bold))
-                                .contentTransition(.numericText())
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.red.opacity(0.15))
-                                .foregroundStyle(.red)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
-                    }
-                } icon: {
-                    Image(systemName: AppFilterCategory.past.icon)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.red)
-                }
-                .tag(AppFilterCategory.past)
-
-                Label {
-                    HStack {
-                        Text(AppFilterCategory.completed.rawValue)
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer()
-                        let count = completedItems.count
-                        if count > 0 {
-                            Text("\(count)")
-                                .font(.system(size: 10, weight: .semibold))
-                                .contentTransition(.numericText())
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.green.opacity(0.12))
-                                .foregroundStyle(.green)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
-                    }
-                } icon: {
-                    Image(systemName: AppFilterCategory.completed.icon)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.green)
-                }
-                .tag(AppFilterCategory.completed)
+                sidebarCategoryRow(for: .completed, count: buckets.completed.count)
             }
 
             Section("Cấu hình Widget") {
-                Label {
-                    Text(AppFilterCategory.widgetPreview.rawValue)
-                        .font(.system(size: 13, weight: .medium))
-                } icon: {
-                    Image(systemName: AppFilterCategory.widgetPreview.icon)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.purple)
-                }
-                .tag(AppFilterCategory.widgetPreview)
+                sidebarCategoryRow(for: .widgetPreview, count: nil)
             }
 
             Section {
-                ForEach($courses) { $course in
-                    HStack(alignment: .center, spacing: 9) {
-                        Toggle("", isOn: $course.isSelectedForWidget)
-                            .labelsHidden()
-                            .toggleStyle(.checkbox)
-                            .controlSize(.small)
-
-                        SubjectArtBadgeView(courseName: course.name, size: 20)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(course.name)
-                                .font(.system(size: 12, weight: .semibold))
-                                .lineLimit(1)
-
-                            if let section = course.section, !section.isEmpty {
-                                Text(section)
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
+                ForEach(courses) { course in
+                    CourseSelectionRow(
+                        course: course,
+                        onToggle: {
+                            toggleCourse(courseId: course.id)
                         }
-
-                        Spacer()
-                    }
-                    .padding(.vertical, 2)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        course.isSelectedForWidget.toggle()
-                        ClassroomStorage.shared.saveCourses(courses)
-                        refreshData()
-                    }
-                    .onChange(of: course.isSelectedForWidget) {
-                        ClassroomStorage.shared.saveCourses(courses)
-                        refreshData()
-                    }
+                    )
                 }
             } header: {
                 HStack {
                     Text("Lớp hiển thị (\(courses.filter(\.isSelectedForWidget).count)/\(courses.count))")
                     Spacer()
-                    Button("Tất cả") {
-                        for i in courses.indices { courses[i].isSelectedForWidget = true }
-                        ClassroomStorage.shared.saveCourses(courses)
-                        refreshData()
+                    let allSelected = courses.allSatisfy(\.isSelectedForWidget)
+                    Button(allSelected ? "Bỏ chọn hết" : "Tất cả") {
+                        toggleAllCourses()
                     }
                     .buttonStyle(.plain)
                     .font(.caption2)
@@ -375,7 +267,57 @@ public struct ContentView: View {
         }
         .listStyle(.sidebar)
         .navigationTitle("Classroom")
+        #if os(macOS)
         .frame(minWidth: 230)
+        #endif
+    }
+
+    private func sidebarCategoryRow(for category: AppFilterCategory, count: Int?) -> some View {
+        let isSelected = (selectedFilter == category)
+        return Label {
+            HStack {
+                Text(category.rawValue)
+                    .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
+                    .foregroundStyle(isSelected ? Color.white : Color.primary)
+
+                Spacer()
+
+                if let count, count > 0 {
+                    Text("\(count)")
+                        .font(.system(size: 10, weight: .bold))
+                        .contentTransition(.numericText())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(isSelected ? Color.white.opacity(0.25) : categoryBadgeBg(category))
+                        .foregroundStyle(isSelected ? Color.white : categoryBadgeFg(category))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+            }
+        } icon: {
+            Image(systemName: category.icon)
+                .font(.system(size: 12, weight: isSelected ? .bold : .semibold))
+                .foregroundStyle(isSelected ? Color.white : categoryIconColor(category))
+        }
+        .tag(category)
+    }
+
+    private func categoryIconColor(_ category: AppFilterCategory) -> Color {
+        switch category {
+        case .tomorrow: return Color(red: 0.12, green: 0.55, blue: 0.95)
+        case .todayAndTomorrow: return Color(red: 0.95, green: 0.55, blue: 0.10)
+        case .allUpcoming: return Color(red: 0.40, green: 0.45, blue: 0.75)
+        case .past: return Color(red: 0.88, green: 0.25, blue: 0.28)
+        case .completed: return Color(red: 0.15, green: 0.70, blue: 0.40)
+        case .widgetPreview: return Color.purple
+        }
+    }
+
+    private func categoryBadgeBg(_ category: AppFilterCategory) -> Color {
+        categoryIconColor(category).opacity(0.14)
+    }
+
+    private func categoryBadgeFg(_ category: AppFilterCategory) -> Color {
+        categoryIconColor(category)
     }
 
     @ViewBuilder
@@ -395,6 +337,33 @@ public struct ContentView: View {
                         .padding(24)
                 }
             } else {
+                #if os(iOS)
+                if horizontalSizeClass == .compact {
+                    assignmentListPane
+                        .sheet(isPresented: $showMobileDetailSheet) {
+                            NavigationStack {
+                                homeworkReaderPane
+                                    .toolbar {
+                                        ToolbarItem(placement: .confirmationAction) {
+                                            Button("Xong") { showMobileDetailSheet = false }
+                                        }
+                                    }
+                            }
+                        }
+                } else {
+                    GeometryReader { geometry in
+                        HStack(spacing: 0) {
+                            assignmentListPane
+                                .frame(width: max(320, geometry.size.width * 0.42))
+
+                            Divider()
+
+                            homeworkReaderPane
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                    }
+                }
+                #else
                 GeometryReader { geometry in
                     HStack(spacing: 0) {
                         assignmentListPane
@@ -406,6 +375,7 @@ public struct ContentView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
+                #endif
             }
         }
         .overlay(alignment: .bottom) {
@@ -428,6 +398,8 @@ public struct ContentView: View {
                     .keyboardShortcut(.upArrow, modifiers: [])
                 Button("") { isSearchFocused = true }
                     .keyboardShortcut("f", modifiers: [.command])
+                Button("") { handleEscape() }
+                    .keyboardShortcut(.escape, modifiers: [])
             }
             .opacity(0)
             .frame(width: 0, height: 0)
@@ -532,7 +504,7 @@ public struct ContentView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(Color.platformWindowBackground)
     }
 
     private var updateBannerView: some View {
@@ -563,7 +535,7 @@ public struct ContentView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 8)
-        .background(Color.blue.opacity(0.10))
+        .background(Color.blue.opacity(0.08))
     }
 
     private var assignmentListPane: some View {
@@ -624,6 +596,42 @@ public struct ContentView: View {
                 .transition(.opacity)
             }
 
+            if selectedCourseworkIds.count > 1 {
+                HStack {
+                    Text("Đã chọn \(selectedCourseworkIds.count) bài tập")
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Button {
+                        batchToggleCompletion(for: selectedCourseworkIds)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("Đã nộp")
+                        }
+                        .font(.system(size: 11, weight: .medium))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                    .controlSize(.small)
+
+                    Button("Bỏ chọn") {
+                        handleDeselectAll()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Color.primary.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(.horizontal, 12)
+                .padding(.bottom, 6)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
             Divider()
 
             if list.isEmpty {
@@ -635,163 +643,73 @@ public struct ContentView: View {
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
                             searchText = ""
                         }
+                    },
+                    onSwitchToUpcoming: {
+                        selectedFilter = .allUpcoming
                     }
                 )
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 10) {
-                        if selectedFilter == .todayAndTomorrow || selectedFilter == .allUpcoming {
-                            let tomorrows = list.filter { $0.isDueTomorrow }
-                            let todays = list.filter { $0.isDueToday }
-                            let laters = list.filter { $0.isDueLater }
-                            let noDueDates = list.filter { $0.hasNoDueDate }
-                            let pasts = list.filter { $0.isPast }
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        if selectedFilter == .tomorrow {
+                            ForEach(list) { item in
+                                AssignmentListRow(
+                                    item: item,
+                                    isSelected: selectedCourseworkIds.contains(item.id),
+                                    onSelect: { cmdPressed in
+                                        handleItemTap(item, commandPressed: cmdPressed)
+                                    },
+                                    onToggleCompletion: {
+                                        toggleCompletion(for: item)
+                                    }
+                                )
+                            }
+                        } else if selectedFilter == .todayAndTomorrow || selectedFilter == .allUpcoming {
+                            let sections = categorizedSections(for: list)
 
-                            if !todays.isEmpty {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "clock.fill")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(Color(red: 1.0, green: 0.46, blue: 0.12))
-                                    Text("HÔM NAY")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(Color(red: 1.0, green: 0.46, blue: 0.12))
-                                    Spacer()
-                                    Text("\(todays.count) bài")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(Color(red: 1.0, green: 0.46, blue: 0.12))
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 1.5)
-                                        .background(Color(red: 1.0, green: 0.46, blue: 0.12).opacity(0.12))
-                                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                                }
-                                .padding(.horizontal, 4)
-                                .padding(.top, 2)
-
-                                ForEach(todays) { item in
+                            if !sections.todays.isEmpty {
+                                SectionHeaderPill(title: "HÔM NAY", count: sections.todays.count, icon: "clock.fill", color: Color(red: 0.95, green: 0.55, blue: 0.10))
+                                ForEach(sections.todays) { item in
                                     AssignmentListRow(
                                         item: item,
-                                        isSelected: selectedCoursework?.id == item.id,
-                                        onSelect: { selectItem(item) },
+                                        isSelected: selectedCourseworkIds.contains(item.id),
+                                        onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed) },
                                         onToggleCompletion: { toggleCompletion(for: item) }
                                     )
                                 }
                             }
 
-                            if !tomorrows.isEmpty {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "calendar")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(Color(red: 0.12, green: 0.54, blue: 1.0))
-                                    Text("NGÀY MAI")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(Color(red: 0.12, green: 0.54, blue: 1.0))
-                                    Spacer()
-                                    Text("\(tomorrows.count) bài")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(Color(red: 0.12, green: 0.54, blue: 1.0))
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 1.5)
-                                        .background(Color(red: 0.12, green: 0.54, blue: 1.0).opacity(0.12))
-                                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                                }
-                                .padding(.horizontal, 4)
-                                .padding(.top, todays.isEmpty ? 2 : 10)
-
-                                ForEach(tomorrows) { item in
+                            if !sections.tomorrows.isEmpty {
+                                SectionHeaderPill(title: "NGÀY MAI", count: sections.tomorrows.count, icon: "calendar", color: Color(red: 0.12, green: 0.55, blue: 0.95))
+                                ForEach(sections.tomorrows) { item in
                                     AssignmentListRow(
                                         item: item,
-                                        isSelected: selectedCoursework?.id == item.id,
-                                        onSelect: { selectItem(item) },
+                                        isSelected: selectedCourseworkIds.contains(item.id),
+                                        onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed) },
                                         onToggleCompletion: { toggleCompletion(for: item) }
                                     )
                                 }
                             }
 
-                            if !laters.isEmpty {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "tray")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(.secondary)
-                                    Text("SẮP TỚI")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text("\(laters.count) bài")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(.secondary)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 1.5)
-                                        .background(Color.primary.opacity(0.06))
-                                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                                }
-                                .padding(.horizontal, 4)
-                                .padding(.top, 10)
-
-                                ForEach(laters) { item in
+                            if !sections.laters.isEmpty {
+                                SectionHeaderPill(title: "SẮP TỚI", count: sections.laters.count, icon: "tray", color: .secondary)
+                                ForEach(sections.laters) { item in
                                     AssignmentListRow(
                                         item: item,
-                                        isSelected: selectedCoursework?.id == item.id,
-                                        onSelect: { selectItem(item) },
+                                        isSelected: selectedCourseworkIds.contains(item.id),
+                                        onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed) },
                                         onToggleCompletion: { toggleCompletion(for: item) }
                                     )
                                 }
                             }
 
-                            if !noDueDates.isEmpty {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "questionmark.circle")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(.secondary)
-                                    Text("KHÔNG CÓ HẠN")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text("\(noDueDates.count) bài")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(.secondary)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 1.5)
-                                        .background(Color.primary.opacity(0.06))
-                                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                                }
-                                .padding(.horizontal, 4)
-                                .padding(.top, 10)
-
-                                ForEach(noDueDates) { item in
+                            if !sections.noDueDates.isEmpty {
+                                SectionHeaderPill(title: "KHÔNG CÓ HẠN", count: sections.noDueDates.count, icon: "questionmark.circle", color: .secondary)
+                                ForEach(sections.noDueDates) { item in
                                     AssignmentListRow(
                                         item: item,
-                                        isSelected: selectedCoursework?.id == item.id,
-                                        onSelect: { selectItem(item) },
-                                        onToggleCompletion: { toggleCompletion(for: item) }
-                                    )
-                                }
-                            }
-
-                            if !pasts.isEmpty {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "clock.badge.exclamationmark")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(.red)
-                                    Text("QUÁ HẠN")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(.red)
-                                    Spacer()
-                                    Text("\(pasts.count) bài")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(.red)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 1.5)
-                                        .background(Color.red.opacity(0.12))
-                                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                                }
-                                .padding(.horizontal, 4)
-                                .padding(.top, 10)
-
-                                ForEach(pasts) { item in
-                                    AssignmentListRow(
-                                        item: item,
-                                        isSelected: selectedCoursework?.id == item.id,
-                                        onSelect: { selectItem(item) },
+                                        isSelected: selectedCourseworkIds.contains(item.id),
+                                        onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed) },
                                         onToggleCompletion: { toggleCompletion(for: item) }
                                     )
                                 }
@@ -800,9 +718,13 @@ public struct ContentView: View {
                             ForEach(list) { item in
                                 AssignmentListRow(
                                     item: item,
-                                    isSelected: selectedCoursework?.id == item.id,
-                                    onSelect: { selectItem(item) },
-                                    onToggleCompletion: { toggleCompletion(for: item) }
+                                    isSelected: selectedCourseworkIds.contains(item.id),
+                                    onSelect: { cmdPressed in
+                                        handleItemTap(item, commandPressed: cmdPressed)
+                                    },
+                                    onToggleCompletion: {
+                                        toggleCompletion(for: item)
+                                    }
                                 )
                             }
                         }
@@ -811,12 +733,23 @@ public struct ContentView: View {
                 }
             }
         }
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(Color.platformControlBackground)
     }
 
     private var homeworkReaderPane: some View {
         Group {
-            if let item = selectedCoursework {
+            if selectedCourseworkIds.count > 1 {
+                let selectedItems = currentFilteredList.filter { selectedCourseworkIds.contains($0.id) }
+                BatchSelectedSummaryView(
+                    selectedItems: selectedItems,
+                    onMarkAllDone: {
+                        batchToggleCompletion(for: selectedCourseworkIds)
+                    },
+                    onDeselectAll: {
+                        handleDeselectAll()
+                    }
+                )
+            } else if let item = selectedCoursework {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         ClassroomSubjectBanner(item: item)
@@ -826,8 +759,8 @@ public struct ContentView: View {
                                 .font(.system(size: 11, weight: .semibold))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
-                                .background(item.status == .turnedIn ? Color.green.opacity(0.12) : Color.orange.opacity(0.12))
-                                .foregroundStyle(item.status == .turnedIn ? Color.green : Color.orange)
+                                .background(item.isCompleted ? Color.green.opacity(0.12) : Color.orange.opacity(0.12))
+                                .foregroundStyle(item.isCompleted ? Color.green : Color.orange)
                                 .clipShape(RoundedRectangle(cornerRadius: 4))
                                 .animation(.spring(response: 0.3, dampingFraction: 0.8), value: item.status)
 
@@ -837,9 +770,9 @@ public struct ContentView: View {
                                 toggleCompletion(for: item)
                             } label: {
                                 HStack(spacing: 4) {
-                                    Image(systemName: item.status == .turnedIn ? "arrow.uturn.backward" : "checkmark")
+                                    Image(systemName: item.isCompleted ? "arrow.uturn.backward" : "checkmark")
                                         .font(.system(size: 10, weight: .bold))
-                                    Text(item.status == .turnedIn ? "Chưa nộp" : "Đã nộp")
+                                    Text(item.isCompleted ? "Chưa nộp" : "Đã nộp")
                                         .font(.system(size: 11, weight: .medium))
                                     Text("(Space)")
                                         .font(.system(size: 9.5))
@@ -936,7 +869,7 @@ public struct ContentView: View {
                                     .textSelection(.enabled)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(14)
-                                    .background(Color(NSColor.controlBackgroundColor))
+                                    .background(Color.platformControlBackground)
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 8)
@@ -958,9 +891,7 @@ public struct ContentView: View {
                         if let link = item.alternateLink, let url = URL(string: link) {
                             Button {
                                 triggerHapticFeedback()
-                                #if os(macOS)
-                                NSWorkspace.shared.open(url)
-                                #endif
+                                PlatformURLOpener.open(url)
                             } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "arrow.up.right")
@@ -981,7 +912,7 @@ public struct ContentView: View {
                     }
                     .padding(24)
                 }
-                .background(Color(NSColor.windowBackgroundColor))
+                .background(Color.platformWindowBackground)
                 .id(item.id)
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .offset(y: 6)),
@@ -1026,13 +957,17 @@ public struct ContentView: View {
                     Spacer(minLength: 12)
 
                     Toggle("Dữ liệu mẫu", isOn: $useSampleDataForPreview)
+                        #if os(macOS)
                         .toggleStyle(.checkbox)
+                        #else
+                        .toggleStyle(.switch)
+                        #endif
                         .font(.system(size: 12))
                         .lineLimit(1)
                         .fixedSize()
                 }
 
-                if widgetItems.isEmpty && !useSampleDataForPreview {
+                if buckets.widgetItems.isEmpty && !useSampleDataForPreview {
                     HStack(spacing: 4) {
                         Image(systemName: "info.circle")
                         Text("Chưa có bài tập đến hạn hôm nay & mai (đang tự động dùng dữ liệu mẫu)")
@@ -1073,21 +1008,13 @@ public struct ContentView: View {
                                 .frame(width: 325, height: 325)
                         }
                     }
-                    .background {
-                        WidgetCardBackground()
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.black.opacity(0.08), lineWidth: 1)
-                    )
-                    .shadow(color: .black.opacity(0.07), radius: 12, x: 0, y: 5)
-                    .environment(\.colorScheme, .light)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .shadow(color: .black.opacity(0.12), radius: 14, x: 0, y: 6)
                 }
                 .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedPreviewFamily)
             }
             .padding(18)
-            .background(Color(NSColor.windowBackgroundColor))
+            .background(Color.platformWindowBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
@@ -1242,14 +1169,14 @@ public struct ContentView: View {
                     .disabled(clientIdInput.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
+            #if os(macOS)
             .frame(minWidth: 460, minHeight: 340)
+            #endif
         }
     }
 
     private func triggerHapticFeedback() {
-        #if os(macOS)
-        NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
-        #endif
+        PlatformHaptics.trigger()
     }
 
     private func showToast(
@@ -1289,21 +1216,43 @@ public struct ContentView: View {
         }
     }
 
+    private func handleEscape() {
+        if !searchText.isEmpty {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                searchText = ""
+            }
+        } else if !selectedCourseworkIds.isEmpty {
+            handleDeselectAll()
+        }
+    }
+
+    private func handleDeselectAll() {
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+            selectedCourseworkIds.removeAll()
+            selectedCoursework = nil
+        }
+    }
+
     private func selectNextItem() {
         guard !isSearchFocused else { return }
         let list = currentFilteredList
         guard !list.isEmpty else { return }
         if let current = selectedCoursework, let idx = list.firstIndex(where: { $0.id == current.id }) {
             let nextIdx = min(list.count - 1, idx + 1)
+            let item = list[nextIdx]
             withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                selectedCoursework = list[nextIdx]
+                selectedCoursework = item
+                selectedCourseworkIds = [item.id]
             }
             triggerHapticFeedback()
         } else {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                selectedCoursework = list.first
+            if let first = list.first {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                    selectedCoursework = first
+                    selectedCourseworkIds = [first.id]
+                }
+                triggerHapticFeedback()
             }
-            triggerHapticFeedback()
         }
     }
 
@@ -1313,47 +1262,118 @@ public struct ContentView: View {
         guard !list.isEmpty else { return }
         if let current = selectedCoursework, let idx = list.firstIndex(where: { $0.id == current.id }) {
             let prevIdx = max(0, idx - 1)
+            let item = list[prevIdx]
             withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                selectedCoursework = list[prevIdx]
+                selectedCoursework = item
+                selectedCourseworkIds = [item.id]
             }
             triggerHapticFeedback()
         } else {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                selectedCoursework = list.last
+            if let last = list.last {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                    selectedCoursework = last
+                    selectedCourseworkIds = [last.id]
+                }
+                triggerHapticFeedback()
             }
-            triggerHapticFeedback()
         }
     }
 
     private func refreshData() {
         self.courses = ClassroomStorage.shared.loadCourses()
         self.allCoursework = ClassroomStorage.shared.loadCoursework()
-        if let current = selectedCoursework, !allCoursework.contains(where: { $0.id == current.id }) {
-            autoSelectFirstItem()
-        }
-    }
+        recomputeBuckets()
 
-    private func selectItem(_ item: Coursework) {
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-            self.selectedCoursework = item
+        if let current = selectedCoursework {
+            if let updated = allCoursework.first(where: { $0.id == current.id }) {
+                self.selectedCoursework = updated
+            } else {
+                autoSelectFirstItem()
+            }
         }
-        triggerHapticFeedback()
     }
 
     private func autoSelectFirstItem() {
         let list = currentFilteredList
         if let first = list.first {
             self.selectedCoursework = first
+            self.selectedCourseworkIds = [first.id]
         } else {
             self.selectedCoursework = nil
+            self.selectedCourseworkIds.removeAll()
         }
+    }
+
+    private func handleItemTap(_ item: Coursework, commandPressed: Bool = false) {
+        triggerHapticFeedback()
+        #if os(iOS)
+        if horizontalSizeClass == .compact {
+            showMobileDetailSheet = true
+        }
+        #endif
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+            if commandPressed {
+                if selectedCourseworkIds.contains(item.id) {
+                    selectedCourseworkIds.remove(item.id)
+                    if selectedCoursework?.id == item.id {
+                        selectedCoursework = currentFilteredList.first(where: { selectedCourseworkIds.contains($0.id) })
+                    }
+                } else {
+                    selectedCourseworkIds.insert(item.id)
+                    selectedCoursework = item
+                }
+            } else {
+                if selectedCourseworkIds.count == 1 && selectedCourseworkIds.contains(item.id) {
+                    selectedCourseworkIds.removeAll()
+                    selectedCoursework = nil
+                } else {
+                    selectedCourseworkIds = [item.id]
+                    selectedCoursework = item
+                }
+            }
+        }
+    }
+
+    private func toggleCourse(courseId: String) {
+        if let index = courses.firstIndex(where: { $0.id == courseId }) {
+            courses[index].isSelectedForWidget.toggle()
+            ClassroomStorage.shared.saveCourses(courses)
+            refreshData()
+            triggerHapticFeedback()
+        }
+    }
+
+    private func toggleAllCourses() {
+        let allSelected = courses.allSatisfy(\.isSelectedForWidget)
+        let newValue = !allSelected
+        for i in courses.indices {
+            courses[i].isSelectedForWidget = newValue
+        }
+        ClassroomStorage.shared.saveCourses(courses)
+        refreshData()
+        triggerHapticFeedback()
+    }
+
+    private func batchToggleCompletion(for ids: Set<String>) {
+        guard !ids.isEmpty else { return }
+        triggerHapticFeedback()
+        ClassroomStorage.shared.updateCourseworkStatuses(ids: ids, newStatus: .turnedIn)
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            refreshData()
+            selectedCourseworkIds.removeAll()
+        }
+        showToast(
+            title: "Đã hoàn thành \(ids.count) bài tập!",
+            icon: "checkmark.circle.fill",
+            tint: .green
+        )
     }
 
     private func toggleCompletion(for item: Coursework) {
         var all = ClassroomStorage.shared.loadCoursework()
         if let index = all.firstIndex(where: { $0.id == item.id }) {
-            let wasTurnedIn = (all[index].status == .turnedIn)
-            let newStatus: SubmissionStatus = wasTurnedIn ? .pending : .turnedIn
+            let wasCompleted = all[index].isCompleted
+            let newStatus: SubmissionStatus = wasCompleted ? .pending : .turnedIn
             all[index].status = newStatus
             ClassroomStorage.shared.saveCoursework(all)
 
@@ -1393,9 +1413,7 @@ public struct ContentView: View {
     }
 
     private func copyToClipboard(_ text: String, title: String? = nil) {
-        #if os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        PlatformClipboard.copy(text)
         triggerHapticFeedback()
         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
             copyFeedbackMessage = "Đã sao chép!"
@@ -1411,7 +1429,6 @@ public struct ContentView: View {
                 self.copyFeedbackMessage = nil
             }
         }
-        #endif
     }
 
     private func startGoogleLogin() {
@@ -1504,7 +1521,7 @@ private struct FloatingToastHUD: View {
         .padding(.vertical, 11)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(NSColor.windowBackgroundColor))
+                .fill(Color.platformWindowBackground)
                 .shadow(color: Color.black.opacity(0.24), radius: 20, x: 0, y: 8)
         )
         .overlay(
@@ -1514,24 +1531,186 @@ private struct FloatingToastHUD: View {
     }
 }
 
+private struct CourseSelectionRow: View {
+    let course: Course
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(alignment: .center, spacing: 9) {
+                Image(systemName: course.isSelectedForWidget ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(course.isSelectedForWidget ? Color.accentColor : Color.secondary.opacity(0.6))
+
+                SubjectArtBadgeView(courseName: course.name, size: 20)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(course.name)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+
+                    if let section = course.section, !section.isEmpty {
+                        Text(section)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(.vertical, 3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct SectionHeaderPill: View {
+    let title: String
+    let count: Int
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(color)
+
+            Text(title)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(color)
+
+            Spacer()
+
+            Text("\(count) bài")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(color)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 1.5)
+                .background(color.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 8)
+    }
+}
+
+private struct BatchSelectedSummaryView: View {
+    let selectedItems: [Coursework]
+    let onMarkAllDone: () -> Void
+    let onDeselectAll: () -> Void
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.12))
+                    .frame(width: 68, height: 68)
+
+                Image(systemName: "checklist.checked")
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(Color.blue)
+            }
+
+            VStack(spacing: 5) {
+                Text("Đã chọn \(selectedItems.count) bài tập")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.primary)
+
+                Text("Bạn có thể hoàn thành hàng loạt hoặc bỏ chọn các bài này.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(spacing: 7) {
+                ForEach(selectedItems.prefix(5)) { item in
+                    HStack(spacing: 8) {
+                        SubjectArtBadgeView(courseName: item.courseName, size: 16)
+
+                        Text(item.title)
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        Text(item.compactDueString)
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color.primary.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+
+                if selectedItems.count > 5 {
+                    Text("...và \(selectedItems.count - 5) bài tập khác")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: 360)
+
+            HStack(spacing: 12) {
+                Button {
+                    onMarkAllDone()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("Đánh dấu tất cả đã nộp")
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.green)
+
+                Button("Bỏ chọn") {
+                    onDeselectAll()
+                }
+                .buttonStyle(.bordered)
+            }
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.platformWindowBackground)
+    }
+}
+
 private struct AssignmentListRow: View {
     let item: Coursework
     let isSelected: Bool
-    let onSelect: () -> Void
+    let onSelect: (Bool) -> Void
     let onToggleCompletion: () -> Void
 
     @State private var isHovered: Bool = false
     @State private var checkmarkBounce: Bool = false
 
     var isTurnedIn: Bool {
-        item.status == .turnedIn || item.status == .returned
+        item.isCompleted
     }
 
     var body: some View {
         Button {
-            onSelect()
+            #if os(macOS)
+            let isCmd = NSEvent.modifierFlags.contains(.command)
+            #else
+            let isCmd = false
+            #endif
+            onSelect(isCmd)
         } label: {
-            HStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .center, spacing: 8) {
+                Capsule()
+                    .fill(isSelected ? Color.accentColor : Color.clear)
+                    .frame(width: 3.5, height: 32)
+                    .animation(.easeInOut(duration: 0.15), value: isSelected)
+
                 Button {
                     withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) {
                         checkmarkBounce = true
@@ -1547,7 +1726,7 @@ private struct AssignmentListRow: View {
                         if isTurnedIn {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(Color.green)
+                                .foregroundStyle(Color(red: 0.15, green: 0.75, blue: 0.42))
                                 .background(Circle().fill(Color.white).padding(1))
                                 .offset(x: 3, y: 3)
                                 .scaleEffect(checkmarkBounce ? 1.3 : 1.0)
@@ -1578,20 +1757,20 @@ private struct AssignmentListRow: View {
 
                 DueBadgeView(item: item, compact: true)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 7)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isSelected ? Color.blue.opacity(0.12) : (isHovered ? Color.primary.opacity(0.04) : Color.clear))
+                    .fill(isSelected ? Color.accentColor.opacity(0.09) : (isHovered ? Color.primary.opacity(0.04) : Color.primary.opacity(0.015)))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(isSelected ? Color.blue.opacity(0.35) : (isHovered ? Color.primary.opacity(0.08) : Color.clear), lineWidth: 1)
+                    .stroke(isSelected ? Color.accentColor.opacity(0.35) : (isHovered ? Color.primary.opacity(0.08) : Color.primary.opacity(0.03)), lineWidth: 1)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .scaleEffect(isHovered ? 1.008 : 1.0)
+        .scaleEffect(isHovered ? 1.005 : 1.0)
         .animation(.spring(response: 0.22, dampingFraction: 0.8), value: isHovered)
         .onHover { hovering in
             isHovered = hovering
@@ -1648,6 +1827,7 @@ private struct AssignmentListEmptyView: View {
     let isSearching: Bool
     let searchText: String
     let onClearSearch: () -> Void
+    var onSwitchToUpcoming: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 14) {
@@ -1657,34 +1837,49 @@ private struct AssignmentListEmptyView: View {
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [emptyTint.opacity(0.22), emptyTint.opacity(0.0)],
+                            colors: [emptyTint.opacity(0.20), emptyTint.opacity(0.0)],
                             center: .center,
                             startRadius: 10,
                             endRadius: 50
                         )
                     )
-                    .frame(width: 90, height: 90)
+                    .frame(width: 88, height: 88)
 
                 Image(systemName: emptyIcon)
                     .font(.system(size: 32, weight: .light))
                     .foregroundStyle(emptyTint)
             }
 
-            VStack(spacing: 4) {
+            VStack(spacing: 5) {
                 Text(emptyTitle)
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.primary)
 
                 Text(emptySubtitle)
-                    .font(.system(size: 11))
+                    .font(.system(size: 11.5))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 24)
+                    .lineSpacing(3)
             }
 
             if isSearching {
                 Button("Xóa tìm kiếm") {
                     onClearSearch()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .padding(.top, 4)
+            } else if filter == .tomorrow, let onSwitchToUpcoming {
+                Button {
+                    onSwitchToUpcoming()
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "tray")
+                            .font(.system(size: 11))
+                        Text("Xem tất cả bài tập sắp tới")
+                            .font(.system(size: 11.5, weight: .medium))
+                    }
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -1711,7 +1906,7 @@ private struct AssignmentListEmptyView: View {
     private var emptyTint: Color {
         if isSearching { return .blue }
         switch filter {
-        case .tomorrow: return .blue
+        case .tomorrow: return Color(red: 0.15, green: 0.65, blue: 0.45)
         case .todayAndTomorrow: return .orange
         case .allUpcoming: return .blue
         case .past: return .green
@@ -1723,7 +1918,7 @@ private struct AssignmentListEmptyView: View {
     private var emptyTitle: String {
         if isSearching { return "Không tìm thấy bài tập nào" }
         switch filter {
-        case .tomorrow: return "Không có bài tập cho ngày mai"
+        case .tomorrow: return "Ngày mai không có bài tập"
         case .todayAndTomorrow: return "Không có bài tập hôm nay & mai"
         case .allUpcoming: return "Không có bài tập sắp tới"
         case .past: return "Không có bài tập quá hạn!"
@@ -1738,7 +1933,7 @@ private struct AssignmentListEmptyView: View {
         }
         switch filter {
         case .tomorrow:
-            return "Tất cả bài tập ngày mai đã hoàn thành hoặc chưa có bài mới."
+            return "Tất cả bài tập ngày mai đã hoàn thành hoặc chưa có bài mới. Bạn có thể yên tâm nghỉ ngơi!"
         case .todayAndTomorrow:
             return "Bạn đã làm xong mọi việc cần nộp hôm nay và ngày mai. Hãy nghỉ ngơi nhé!"
         case .allUpcoming:
@@ -1760,16 +1955,16 @@ private struct HomeworkReaderEmptyStateView: View {
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [Color.blue.opacity(0.16), Color.blue.opacity(0.0)],
+                            colors: [Color.blue.opacity(0.14), Color.blue.opacity(0.0)],
                             center: .center,
                             startRadius: 10,
                             endRadius: 60
                         )
                     )
-                    .frame(width: 110, height: 110)
+                    .frame(width: 100, height: 100)
 
                 Image(systemName: "book.pages")
-                    .font(.system(size: 38, weight: .light))
+                    .font(.system(size: 36, weight: .light))
                     .foregroundStyle(Color.blue)
             }
 
@@ -1794,7 +1989,7 @@ private struct HomeworkReaderEmptyStateView: View {
             .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(Color.platformWindowBackground)
     }
 }
 
@@ -1841,5 +2036,14 @@ private struct GuideStepRow: View {
                 .font(.subheadline)
                 .foregroundStyle(.primary.opacity(0.9))
         }
+    }
+}
+
+fileprivate extension String {
+    func normalizedForVietnameseSearch() -> String {
+        self.replacingOccurrences(of: "đ", with: "d")
+            .replacingOccurrences(of: "Đ", with: "d")
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "vi_VN"))
+            .lowercased()
     }
 }

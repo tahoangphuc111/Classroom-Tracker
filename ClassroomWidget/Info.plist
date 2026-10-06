@@ -23,5 +23,15 @@
         <key>NSExtensionPointIdentifier</key>
         <string>com.apple.widgetkit-extension</string>
     </dict>
+    <key>ATSApplicationFontsPath</key>
+    <string>.</string>
+    <key>UIAppFonts</key>
+    <array>
+        <string>BeVietnamPro-Bold.ttf</string>
+        <string>BeVietnamPro-SemiBold.ttf</string>
+        <string>BeVietnamPro-ExtraBold.ttf</string>
+        <string>BeVietnamPro-Medium.ttf</string>
+        <string>PlusJakartaSans.ttf</string>
+    </array>
 </dict>
 </plist>

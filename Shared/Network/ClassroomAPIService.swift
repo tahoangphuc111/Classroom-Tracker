@@ -56,6 +56,11 @@ public final class ClassroomAPIService: ObservableObject {
                 }
             }
 
+            let unselectedIds = Set(mergedCourses.filter { !$0.isSelectedForWidget }.map(\.id))
+            let existingCoursework = ClassroomStorage.shared.loadCoursework()
+            let preservedItems = existingCoursework.filter { unselectedIds.contains($0.courseId) }
+            allCoursework.append(contentsOf: preservedItems)
+
             ClassroomStorage.shared.saveCoursework(allCoursework)
             ClassroomStorage.shared.saveLastSyncTime(Date())
             ClassroomStorage.shared.notifyWidgetReload()
@@ -113,14 +118,16 @@ public final class ClassroomAPIService: ObservableObject {
                 case "RETURNED":
                     status = .returned
                 default:
-                    if submission?.late == true || (dueDate != nil && dueDate! < now) {
+                    if let dueDate, Calendar.current.isDateInToday(dueDate) || dueDate < now {
+                        status = .turnedIn
+                    } else if submission?.late == true {
                         status = .late
                     } else {
                         status = .pending
                     }
                 }
-            } else if let dueDate, dueDate < now {
-                status = .late
+            } else if let dueDate, Calendar.current.isDateInToday(dueDate) || dueDate < now {
+                status = .turnedIn
             } else {
                 status = .pending
             }
@@ -195,11 +202,18 @@ public final class ClassroomAPIService: ObservableObject {
         dateComponents.year = year
         dateComponents.month = month
         dateComponents.day = day
-        dateComponents.hour = time?.hours ?? 23
-        dateComponents.minute = time?.minutes ?? 59
-        dateComponents.second = 0
 
-        return Self.utcCalendar.date(from: dateComponents)
+        if let time, let hour = time.hours {
+            dateComponents.hour = hour
+            dateComponents.minute = time.minutes ?? 0
+            dateComponents.second = 0
+            return Self.utcCalendar.date(from: dateComponents)
+        } else {
+            dateComponents.hour = 23
+            dateComponents.minute = 59
+            dateComponents.second = 59
+            return Calendar.current.date(from: dateComponents)
+        }
     }
 }
 

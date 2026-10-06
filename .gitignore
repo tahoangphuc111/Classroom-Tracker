@@ -2,5 +2,14 @@
 build/
 DerivedData/
 *.pkg
+*.ipa
+*.dmg
+*.app
+*.dSYM/
 *.xcuserstate
 xcuserdata/
+project.xcworkspace/xcuserdata/
+
+# Agent & Tooling
+.agents/
+skills-lock.json

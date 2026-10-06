@@ -1,7 +1,13 @@
 import Foundation
 import CryptoKit
 import Security
+#if canImport(AppKit)
 import AppKit
+#endif
+#if canImport(UIKit)
+import UIKit
+#endif
+
 
 public struct OAuthTokens: Codable, Sendable {
     public let accessToken: String
@@ -116,7 +122,33 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             throw NSError(domain: "GoogleOAuthService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Không thể tạo URL xác thực."])
         }
 
+        #if os(macOS)
         NSWorkspace.shared.open(authURL)
+        #elseif os(iOS)
+        await MainActor.run {
+            UIApplication.shared.open(authURL)
+        }
+        #endif
+
+        #if os(iOS)
+        var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
+        backgroundTaskId = await MainActor.run {
+            UIApplication.shared.beginBackgroundTask(withName: "GoogleOAuthLoopback") {
+                if backgroundTaskId != .invalid {
+                    UIApplication.shared.endBackgroundTask(backgroundTaskId)
+                    backgroundTaskId = .invalid
+                }
+            }
+        }
+        defer {
+            if backgroundTaskId != .invalid {
+                let taskToEnd = backgroundTaskId
+                DispatchQueue.main.async {
+                    UIApplication.shared.endBackgroundTask(taskToEnd)
+                }
+            }
+        }
+        #endif
 
         let code = try await LoopbackOAuthServer.shared.waitForAuthorizationCode(server: server)
 

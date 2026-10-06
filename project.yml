@@ -2,12 +2,12 @@ name: ClassroomTracker
 options:
   bundleIdPrefix: com.phucta
   deploymentTarget:
-    macOS: "27.0"
+    macOS: "14.0"
+    iOS: "17.0"
 
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MACOSX_DEPLOYMENT_TARGET: "27.0"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
 
@@ -15,8 +15,12 @@ targets:
   ClassroomApp:
     type: application
     platform: macOS
+    deploymentTarget: "14.0"
     sources:
       - path: ClassroomApp
+        excludes:
+          - "Info-iOS.plist"
+          - "ClassroomApp.iOS.entitlements"
       - path: Shared
     settings:
       base:
@@ -35,11 +39,16 @@ targets:
   ClassroomWidget:
     type: app-extension
     platform: macOS
+    deploymentTarget: "14.0"
     sources:
       - path: ClassroomWidget
+        excludes:
+          - "Info-iOS.plist"
+          - "ClassroomWidget.iOS.entitlements"
       - path: Shared/Models
       - path: Shared/Storage
       - path: Shared/WidgetViews
+      - path: Shared/Fonts
     settings:
       base:
         PRODUCT_NAME: "Classroom Deadlines"
@@ -47,4 +56,51 @@ targets:
         INFOPLIST_FILE: ClassroomWidget/Info.plist
         CODE_SIGN_ENTITLEMENTS: ClassroomWidget/ClassroomWidget.entitlements
         ENABLE_HARDENED_RUNTIME: YES
+        SKIP_INSTALL: YES
+
+  ClassroomApp-iOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: ClassroomApp
+        excludes:
+          - "Info.plist"
+          - "ClassroomApp.entitlements"
+          - "AppIcon.icns"
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_NAME: "Classroom Tracker"
+        PRODUCT_BUNDLE_IDENTIFIER: com.phucta.ClassroomTracker
+        INFOPLIST_FILE: ClassroomApp/Info-iOS.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: ClassroomApp/ClassroomApp.iOS.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
+        LD_RUNPATH_SEARCH_PATHS:
+          - $(inherited)
+          - "@executable_path/Frameworks"
+    dependencies:
+      - target: ClassroomWidget-iOS
+
+  ClassroomWidget-iOS:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: ClassroomWidget
+        excludes:
+          - "Info.plist"
+          - "ClassroomWidget.entitlements"
+      - path: Shared/Models
+      - path: Shared/Storage
+      - path: Shared/WidgetViews
+      - path: Shared/Fonts
+    settings:
+      base:
+        PRODUCT_NAME: "Classroom Deadlines"
+        PRODUCT_BUNDLE_IDENTIFIER: com.phucta.ClassroomTracker.widget
+        INFOPLIST_FILE: ClassroomWidget/Info-iOS.plist
+        CODE_SIGN_ENTITLEMENTS: ClassroomWidget/ClassroomWidget.iOS.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
         SKIP_INSTALL: YES

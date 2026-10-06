@@ -19,18 +19,18 @@ public struct ClassroomTimelineProvider: TimelineProvider {
     public init() {}
 
     public func placeholder(in context: Context) -> ClassroomEntry {
-        let items = ClassroomStorage.mockCoursework.filter { $0.isDueTodayOrTomorrow }
+        let items = ClassroomStorage.mockCoursework.filter { $0.isDueTomorrow }
         return ClassroomEntry(date: Date(), courseworkList: items)
     }
 
     public func getSnapshot(in context: Context, completion: @escaping (ClassroomEntry) -> Void) {
-        let items = ClassroomStorage.shared.getTodayAndTomorrowCoursework()
+        let items = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
         let entry = ClassroomEntry(date: Date(), courseworkList: items)
         completion(entry)
     }
 
     public func getTimeline(in context: Context, completion: @escaping (Timeline<ClassroomEntry>) -> Void) {
-        let items = ClassroomStorage.shared.getTodayAndTomorrowCoursework()
+        let items = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
         let currentDate = Date()
         let currentEntry = ClassroomEntry(date: currentDate, courseworkList: items)
 

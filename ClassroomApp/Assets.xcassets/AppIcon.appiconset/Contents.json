@@ -3,7 +3,13 @@
     {
       "filename" : "app_icon_1024.png",
       "idiom" : "universal",
-      "platform" : "mac",
+      "platform" : "ios",
+      "size" : "1024x1024"
+    },
+    {
+      "filename" : "app_icon_1024.png",
+      "idiom" : "mac",
+      "scale" : "1x",
       "size" : "1024x1024"
     }
   ],

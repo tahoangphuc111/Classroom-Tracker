@@ -7,37 +7,105 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00B75CE2BFF32A752C552E6E /* ClassroomApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D5202FF21D991CC0B9E2E0C /* ClassroomApp.swift */; };
 		00E5BD8166F74D4B2C9D65FC /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */; };
 		01D07892F24E0E6560C4CFCE /* WidgetVectorArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD22FBD16D58EFBCBCC5EBD /* WidgetVectorArt.swift */; };
+		02CF0AA3FEF95C009CBAF7CF /* PlusJakartaSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */; };
 		05A0A63CF06C4C92EEB24720 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 3376E7CF9516009BB923727C /* AppIcon.icns */; };
 		07E4D11AEE60B5EF8C30CCD8 /* WidgetSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054A7230A61A968D3470F649 /* WidgetSharedViews.swift */; };
+		10FB3F241A66521AEDBAA163 /* PlusJakartaSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */; };
+		13829B8122AA52F65FF977AD /* Outfit.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2B5B470280F43B64B25B5B3B /* Outfit.ttf */; };
 		13F9F888D4073EB78BF3441B /* ClassroomWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C19BE580149DEE05DF2162F /* ClassroomWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		14F37D8ACB579379078AEEAE /* ClassroomStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8187B2538BF1178DB6637F2 /* ClassroomStorage.swift */; };
+		17CCC4B43EED552571081077 /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
+		1A8B32DFBE34F54FAFBC0B26 /* AppUpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74F6B7930F668D92B55266E8 /* AppUpdateService.swift */; };
 		1C5FE8D79B4A254B96E23B45 /* LoopbackOAuthServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61242B4F8CB258A7002DEBFD /* LoopbackOAuthServer.swift */; };
 		1ED9F3207CD8350E182AE2F7 /* ClassroomWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067B66E7A83A695915BD2CF /* ClassroomWidget.swift */; };
+		20276564BFCC652AD4478085 /* BeVietnamPro-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */; };
+		221955AC320833CDCC19C27F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE51ED6CBB6D80D32FE576A /* ContentView.swift */; };
+		32A9D6AB8CD67C5930DFA090 /* ember_celebrating.svg in Resources */ = {isa = PBXBuildFile; fileRef = 7DE543871FC2F140693C327E /* ember_celebrating.svg */; };
+		3501C0CC7F4105BA6F589923 /* ClassroomWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 268C4F8AF62E9B98477FE3D7 /* ClassroomWidgetBundle.swift */; };
+		401E9B5335AFFF8CB723C43F /* BeVietnamPro-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */; };
+		465E27FD3D708A1BD1CE1565 /* PlusJakartaSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */; };
+		4B5EC507E4557E97831FB0F1 /* SmallWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72AA16D6CC38D1AB92759B4 /* SmallWidgetView.swift */; };
 		4C3044602C711FE33D56936C /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
+		4E819390C60CB7F99A7CAE8F /* ClassroomTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8D3F55C61287C9E7E225FD /* ClassroomTimelineProvider.swift */; };
 		50F195E70EDBD2CE8A6E5ED9 /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
+		564C7A526D4FACDC2789C218 /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
+		5651D16523E5B70943DC7C82 /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
+		56954DC1A0B76691F4AFCED0 /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
+		59FD024F21660871C8B48AEF /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
+		5A8BDBC5102357F31F06BAA7 /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
+		5B00F034FE2B8F6DBBD0413E /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
+		5C4423BBF792AD9417E76A07 /* WidgetVectorArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD22FBD16D58EFBCBCC5EBD /* WidgetVectorArt.swift */; };
+		647B4D125CBFD0082422D82B /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
+		671D466371D14585CBE67293 /* Course.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4508EBDBFF6D0212A21C01 /* Course.swift */; };
+		6CF1ED97794083A88871588E /* PlusJakartaSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */; };
 		73FD2A662BDEE2DF57710B2C /* ClassroomWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 268C4F8AF62E9B98477FE3D7 /* ClassroomWidgetBundle.swift */; };
 		7688B32D9ED237679EAD8055 /* ClassroomApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D5202FF21D991CC0B9E2E0C /* ClassroomApp.swift */; };
+		779E3EFC7475294CE7297979 /* ember_celebrating.svg in Resources */ = {isa = PBXBuildFile; fileRef = 7DE543871FC2F140693C327E /* ember_celebrating.svg */; };
 		77B982049D93BBDCAD1B7AC9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6630D04B4757AF2620FAC1B /* Assets.xcassets */; };
 		79411F264C4A7EE04F676B97 /* Coursework.swift in Sources */ = {isa = PBXBuildFile; fileRef = 577E534AFF94B7B61CD38E00 /* Coursework.swift */; };
+		7A06BD6E3891B315C2A80B20 /* Coursework.swift in Sources */ = {isa = PBXBuildFile; fileRef = 577E534AFF94B7B61CD38E00 /* Coursework.swift */; };
 		7BC77EFAB7F1BFCBF6A5906D /* Coursework.swift in Sources */ = {isa = PBXBuildFile; fileRef = 577E534AFF94B7B61CD38E00 /* Coursework.swift */; };
+		7BED0A874936FBF7E89B66A7 /* WidgetSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054A7230A61A968D3470F649 /* WidgetSharedViews.swift */; };
 		7F26CC1E72F68F52045C561C /* Course.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4508EBDBFF6D0212A21C01 /* Course.swift */; };
+		80F2715C5CC8A3EB91C2CA4C /* ClassroomStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8187B2538BF1178DB6637F2 /* ClassroomStorage.swift */; };
 		81716866BE0A0FDEBF6D6B2C /* SmallWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72AA16D6CC38D1AB92759B4 /* SmallWidgetView.swift */; };
+		821D63C6B16A746D570A2EEA /* WidgetVectorArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD22FBD16D58EFBCBCC5EBD /* WidgetVectorArt.swift */; };
+		84041CD13F559A0982D16A79 /* Outfit.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2B5B470280F43B64B25B5B3B /* Outfit.ttf */; };
 		843474698FC0949AC025D89A /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */; };
+		8AAF3EC9B54314246DA39CC8 /* ember_normal.svg in Resources */ = {isa = PBXBuildFile; fileRef = 0E71BB535F5533E7E10B9C14 /* ember_normal.svg */; };
 		8F42125ED7F9AAD9547E9947 /* AppUpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74F6B7930F668D92B55266E8 /* AppUpdateService.swift */; };
 		8FE49AF4C480914FF41344F4 /* WidgetSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054A7230A61A968D3470F649 /* WidgetSharedViews.swift */; };
+		90E3828D44E83C72AC8358D0 /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */; };
+		938A8D93DFB8D87251B0EC9E /* BeVietnamPro-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */; };
+		949CDA238E341F7C71E6632F /* ember_stressed.svg in Resources */ = {isa = PBXBuildFile; fileRef = 6DF031DF29F1D5BDA325C422 /* ember_stressed.svg */; };
 		9D0307AD1FB3BB9FAADBC2D0 /* ClassroomAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76246EB4C2B91BE0D7817282 /* ClassroomAPIService.swift */; };
+		9D9F458241DD55C2F682A7BF /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
+		A3048C4BC894E94862000751 /* WidgetSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054A7230A61A968D3470F649 /* WidgetSharedViews.swift */; };
 		A387480E11C4AFA7D4D074AD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE51ED6CBB6D80D32FE576A /* ContentView.swift */; };
+		A7395D60908C5BBBFE75E740 /* Coursework.swift in Sources */ = {isa = PBXBuildFile; fileRef = 577E534AFF94B7B61CD38E00 /* Coursework.swift */; };
+		A9246BD6E508F90B70753773 /* PlatformUICompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF386037AC3117B38590B24 /* PlatformUICompat.swift */; };
+		ADC75E78930175ED1CF6A219 /* ember_sleeping.svg in Resources */ = {isa = PBXBuildFile; fileRef = B539744053714389C757D947 /* ember_sleeping.svg */; };
+		B0D3E9BC239FC8AE303DB424 /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */; };
+		B2C84037AA5318BA266BBB45 /* LoopbackOAuthServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61242B4F8CB258A7002DEBFD /* LoopbackOAuthServer.swift */; };
 		B66C454110C15165187A2FB5 /* SmallWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72AA16D6CC38D1AB92759B4 /* SmallWidgetView.swift */; };
+		B88D489152047C28BAD8325F /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
+		C18DD5AFCE61166A6C7ECE6C /* ClassroomAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76246EB4C2B91BE0D7817282 /* ClassroomAPIService.swift */; };
+		C3A2ED4138C78EB4FD5C8211 /* ember_stressed.svg in Resources */ = {isa = PBXBuildFile; fileRef = 6DF031DF29F1D5BDA325C422 /* ember_stressed.svg */; };
+		C768A49C57F6329018704CFD /* Outfit.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2B5B470280F43B64B25B5B3B /* Outfit.ttf */; };
+		C8A7644A05A0EC9B89276B58 /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
+		CD98A7F27D77B3B825A6EF9F /* BeVietnamPro-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */; };
+		CFFD98A3CE699E345D3F36BF /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
+		D13D21E5F66F6BFFFA509A06 /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
+		D14BCF37E58AB8E37A787F4A /* ember_normal.svg in Resources */ = {isa = PBXBuildFile; fileRef = 0E71BB535F5533E7E10B9C14 /* ember_normal.svg */; };
+		D3E19AC3C68994D3B3F3DC88 /* SmallWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72AA16D6CC38D1AB92759B4 /* SmallWidgetView.swift */; };
+		D505E440E6AE41142C0D62DB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6630D04B4757AF2620FAC1B /* Assets.xcassets */; };
 		D6416DFF7CC7772D778904B8 /* ClassroomTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8D3F55C61287C9E7E225FD /* ClassroomTimelineProvider.swift */; };
+		D750CB748227403E3F7FCA33 /* GoogleOAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2322F2CE750E768C3F773D /* GoogleOAuthService.swift */; };
 		D91EC36EA55B8FD59587A65D /* ClassroomStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8187B2538BF1178DB6637F2 /* ClassroomStorage.swift */; };
+		DA384E556B37E0B3BA7231BF /* Course.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4508EBDBFF6D0212A21C01 /* Course.swift */; };
+		DFFE053BC293DC233B2235A9 /* ClassroomWidget-iOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 42570ADA07C6609BD0AD4EFB /* ClassroomWidget-iOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E0DA3413AFA4C2AAFEDC2B7E /* PlatformUICompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF386037AC3117B38590B24 /* PlatformUICompat.swift */; };
 		E3386CB5A5834CD0523BEAAD /* Course.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4508EBDBFF6D0212A21C01 /* Course.swift */; };
 		E3A34E0AB00CF89D9352A0A5 /* WidgetVectorArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD22FBD16D58EFBCBCC5EBD /* WidgetVectorArt.swift */; };
+		E94EC24BF2C0C534287A631B /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
+		EE433BAD28689B83729C10D9 /* ClassroomWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067B66E7A83A695915BD2CF /* ClassroomWidget.swift */; };
+		F88B8589A64C05EC2AAEA51D /* ember_sleeping.svg in Resources */ = {isa = PBXBuildFile; fileRef = B539744053714389C757D947 /* ember_sleeping.svg */; };
 		F97AC4CD49F0EC1A19375DCF /* GoogleOAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2322F2CE750E768C3F773D /* GoogleOAuthService.swift */; };
+		FB3DAD5704E94D8A7710CAE2 /* ClassroomStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8187B2538BF1178DB6637F2 /* ClassroomStorage.swift */; };
+		FEE672E73F026D8FEEBB5A58 /* Outfit.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2B5B470280F43B64B25B5B3B /* Outfit.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		5F003C3BDC4AEFBF077EF9BC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA0B70C22CE0480702A742C3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 658422E29B524D8FB381EBC0;
+			remoteInfo = "ClassroomWidget-iOS";
+		};
 		D4FF7E3C294D104CDAEE347B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = AA0B70C22CE0480702A742C3 /* Project object */;
@@ -59,31 +127,59 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C81E08226B44CA438B52F8F7 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				DFFE053BC293DC233B2235A9 /* ClassroomWidget-iOS.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		054A7230A61A968D3470F649 /* WidgetSharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSharedViews.swift; sourceTree = "<group>"; };
 		0C19BE580149DEE05DF2162F /* ClassroomWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ClassroomWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		0E71BB535F5533E7E10B9C14 /* ember_normal.svg */ = {isa = PBXFileReference; path = ember_normal.svg; sourceTree = "<group>"; };
 		10264E7130B2DE16D373CB26 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1C4508EBDBFF6D0212A21C01 /* Course.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Course.swift; sourceTree = "<group>"; };
+		1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = PlusJakartaSans.ttf; sourceTree = "<group>"; };
+		1E308446618598252C4FD03B /* ClassroomApp-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "ClassroomApp-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		268C4F8AF62E9B98477FE3D7 /* ClassroomWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomWidgetBundle.swift; sourceTree = "<group>"; };
+		2B5B470280F43B64B25B5B3B /* Outfit.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Outfit.ttf; sourceTree = "<group>"; };
 		2D2322F2CE750E768C3F773D /* GoogleOAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleOAuthService.swift; sourceTree = "<group>"; };
 		2D5202FF21D991CC0B9E2E0C /* ClassroomApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomApp.swift; sourceTree = "<group>"; };
 		2DD22FBD16D58EFBCBCC5EBD /* WidgetVectorArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetVectorArt.swift; sourceTree = "<group>"; };
 		2FE51ED6CBB6D80D32FE576A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		3376E7CF9516009BB923727C /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		3431777B869BAB240E94D902 /* ClassroomWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClassroomWidget.entitlements; sourceTree = "<group>"; };
+		42570ADA07C6609BD0AD4EFB /* ClassroomWidget-iOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "ClassroomWidget-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A8D3F55C61287C9E7E225FD /* ClassroomTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomTimelineProvider.swift; sourceTree = "<group>"; };
+		4DF386037AC3117B38590B24 /* PlatformUICompat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformUICompat.swift; sourceTree = "<group>"; };
 		577E534AFF94B7B61CD38E00 /* Coursework.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Coursework.swift; sourceTree = "<group>"; };
 		5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumWidgetView.swift; sourceTree = "<group>"; };
 		61242B4F8CB258A7002DEBFD /* LoopbackOAuthServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopbackOAuthServer.swift; sourceTree = "<group>"; };
+		6DF031DF29F1D5BDA325C422 /* ember_stressed.svg */ = {isa = PBXFileReference; path = ember_stressed.svg; sourceTree = "<group>"; };
 		7067B66E7A83A695915BD2CF /* ClassroomWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomWidget.swift; sourceTree = "<group>"; };
+		728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BeVietnamPro-Bold.ttf"; sourceTree = "<group>"; };
 		74F6B7930F668D92B55266E8 /* AppUpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdateService.swift; sourceTree = "<group>"; };
 		76246EB4C2B91BE0D7817282 /* ClassroomAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomAPIService.swift; sourceTree = "<group>"; };
+		774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BeVietnamPro-ExtraBold.ttf"; sourceTree = "<group>"; };
+		7DE543871FC2F140693C327E /* ember_celebrating.svg */ = {isa = PBXFileReference; path = ember_celebrating.svg; sourceTree = "<group>"; };
+		868849B7A0025D50233A9F1D /* ClassroomWidget.iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClassroomWidget.iOS.entitlements; sourceTree = "<group>"; };
+		93274F7E3D636D61BD56BBE2 /* ClassroomApp.iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClassroomApp.iOS.entitlements; sourceTree = "<group>"; };
+		B539744053714389C757D947 /* ember_sleeping.svg */ = {isa = PBXFileReference; path = ember_sleeping.svg; sourceTree = "<group>"; };
+		BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BeVietnamPro-SemiBold.ttf"; sourceTree = "<group>"; };
 		D1F316B5AF2C143DEF693CC7 /* ClassroomApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClassroomApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D6630D04B4757AF2620FAC1B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BeVietnamPro-Medium.ttf"; sourceTree = "<group>"; };
 		E3BCFF79FEC7F39C97CB3CD0 /* ClassroomApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClassroomApp.entitlements; sourceTree = "<group>"; };
 		E72AA16D6CC38D1AB92759B4 /* SmallWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmallWidgetView.swift; sourceTree = "<group>"; };
+		EB62635BFF32DA52DE014199 /* Info-iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Info-iOS.plist"; sourceTree = "<group>"; };
+		F045E4BD8C2C0E91C526F067 /* Info-iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Info-iOS.plist"; sourceTree = "<group>"; };
 		F5C5F371F9A48AE2A712F368 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F8187B2538BF1178DB6637F2 /* ClassroomStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomStorage.swift; sourceTree = "<group>"; };
 		F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LargeWidgetView.swift; sourceTree = "<group>"; };
@@ -95,8 +191,10 @@
 			children = (
 				4A8D3F55C61287C9E7E225FD /* ClassroomTimelineProvider.swift */,
 				3431777B869BAB240E94D902 /* ClassroomWidget.entitlements */,
+				868849B7A0025D50233A9F1D /* ClassroomWidget.iOS.entitlements */,
 				7067B66E7A83A695915BD2CF /* ClassroomWidget.swift */,
 				268C4F8AF62E9B98477FE3D7 /* ClassroomWidgetBundle.swift */,
+				F045E4BD8C2C0E91C526F067 /* Info-iOS.plist */,
 				F5C5F371F9A48AE2A712F368 /* Info.plist */,
 			);
 			path = ClassroomWidget;
@@ -137,7 +235,9 @@
 				3376E7CF9516009BB923727C /* AppIcon.icns */,
 				D6630D04B4757AF2620FAC1B /* Assets.xcassets */,
 				E3BCFF79FEC7F39C97CB3CD0 /* ClassroomApp.entitlements */,
+				93274F7E3D636D61BD56BBE2 /* ClassroomApp.iOS.entitlements */,
 				2D5202FF21D991CC0B9E2E0C /* ClassroomApp.swift */,
+				EB62635BFF32DA52DE014199 /* Info-iOS.plist */,
 				10264E7130B2DE16D373CB26 /* Info.plist */,
 				6CB00585FCBCF2BDAB75A11C /* Views */,
 			);
@@ -155,10 +255,20 @@
 		B16DE57B4CBBFF0065C869A6 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				1E308446618598252C4FD03B /* ClassroomApp-iOS.app */,
 				D1F316B5AF2C143DEF693CC7 /* ClassroomApp.app */,
+				42570ADA07C6609BD0AD4EFB /* ClassroomWidget-iOS.appex */,
 				0C19BE580149DEE05DF2162F /* ClassroomWidget.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		B9236A393178B107AE781C8C /* Assets */ = {
+			isa = PBXGroup;
+			children = (
+				E1FF12A6D199CA32B53B2913 /* Mascot */,
+			);
+			path = Assets;
 			sourceTree = "<group>";
 		};
 		DD4C9EE3CF1461DFDD2BDC54 = {
@@ -174,12 +284,26 @@
 		DFDEBBDA4102CB3A8F64231E /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				4DF386037AC3117B38590B24 /* PlatformUICompat.swift */,
+				B9236A393178B107AE781C8C /* Assets */,
+				F15399D68049716C6F10836A /* Fonts */,
 				47EC5A281BA1C8A789AC9A79 /* Models */,
 				E57DAD4DA83C74F333A2F04E /* Network */,
 				A58FC65C345F60C93BD82EF0 /* Storage */,
 				3F886A7FA7446B999B9FAB35 /* WidgetViews */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		E1FF12A6D199CA32B53B2913 /* Mascot */ = {
+			isa = PBXGroup;
+			children = (
+				7DE543871FC2F140693C327E /* ember_celebrating.svg */,
+				0E71BB535F5533E7E10B9C14 /* ember_normal.svg */,
+				B539744053714389C757D947 /* ember_sleeping.svg */,
+				6DF031DF29F1D5BDA325C422 /* ember_stressed.svg */,
+			);
+			path = Mascot;
 			sourceTree = "<group>";
 		};
 		E57DAD4DA83C74F333A2F04E /* Network */ = {
@@ -193,6 +317,19 @@
 			path = Network;
 			sourceTree = "<group>";
 		};
+		F15399D68049716C6F10836A /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */,
+				774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */,
+				D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */,
+				BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */,
+				2B5B470280F43B64B25B5B3B /* Outfit.ttf */,
+				1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -201,6 +338,7 @@
 			buildConfigurationList = CE409B4B9B23115249C712A6 /* Build configuration list for PBXNativeTarget "ClassroomWidget" */;
 			buildPhases = (
 				9732FB26044258CE4D144254 /* Sources */,
+				FCDA4F652C3CE7C428BD982C /* Resources */,
 			);
 			buildRules = (
 			);
@@ -211,6 +349,24 @@
 			);
 			productName = ClassroomWidget;
 			productReference = 0C19BE580149DEE05DF2162F /* ClassroomWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		658422E29B524D8FB381EBC0 /* ClassroomWidget-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 19C08BFB1C223C6077B406B3 /* Build configuration list for PBXNativeTarget "ClassroomWidget-iOS" */;
+			buildPhases = (
+				DC4D1E880EF8708B2EDA074A /* Sources */,
+				355CEF0398F5CB321C026159 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "ClassroomWidget-iOS";
+			packageProductDependencies = (
+			);
+			productName = "ClassroomWidget-iOS";
+			productReference = 42570ADA07C6609BD0AD4EFB /* ClassroomWidget-iOS.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		736C02404CE9ECC7EBBC9E8E /* ClassroomApp */ = {
@@ -233,6 +389,26 @@
 			productReference = D1F316B5AF2C143DEF693CC7 /* ClassroomApp.app */;
 			productType = "com.apple.product-type.application";
 		};
+		930A2332BD40C1F91822ED6E /* ClassroomApp-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9F9397E4821CFD9BA7C6418A /* Build configuration list for PBXNativeTarget "ClassroomApp-iOS" */;
+			buildPhases = (
+				18785515A676B4E0936175DE /* Sources */,
+				EE7D06E9012CE08B397DF132 /* Resources */,
+				C81E08226B44CA438B52F8F7 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C41A0623A30E8AFFA68C9327 /* PBXTargetDependency */,
+			);
+			name = "ClassroomApp-iOS";
+			packageProductDependencies = (
+			);
+			productName = "ClassroomApp-iOS";
+			productReference = 1E308446618598252C4FD03B /* ClassroomApp-iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -246,7 +422,15 @@
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
+					658422E29B524D8FB381EBC0 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
 					736C02404CE9ECC7EBBC9E8E = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					930A2332BD40C1F91822ED6E = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
@@ -268,23 +452,101 @@
 			targets = (
 				736C02404CE9ECC7EBBC9E8E /* ClassroomApp */,
 				0362C40323DDFABB28F81A81 /* ClassroomWidget */,
+				930A2332BD40C1F91822ED6E /* ClassroomApp-iOS */,
+				658422E29B524D8FB381EBC0 /* ClassroomWidget-iOS */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		355CEF0398F5CB321C026159 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5A8BDBC5102357F31F06BAA7 /* BeVietnamPro-Bold.ttf in Resources */,
+				938A8D93DFB8D87251B0EC9E /* BeVietnamPro-ExtraBold.ttf in Resources */,
+				B88D489152047C28BAD8325F /* BeVietnamPro-Medium.ttf in Resources */,
+				647B4D125CBFD0082422D82B /* BeVietnamPro-SemiBold.ttf in Resources */,
+				FEE672E73F026D8FEEBB5A58 /* Outfit.ttf in Resources */,
+				465E27FD3D708A1BD1CE1565 /* PlusJakartaSans.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6AA278CACFF9E9EEEB36F644 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				05A0A63CF06C4C92EEB24720 /* AppIcon.icns in Resources */,
 				77B982049D93BBDCAD1B7AC9 /* Assets.xcassets in Resources */,
+				E94EC24BF2C0C534287A631B /* BeVietnamPro-Bold.ttf in Resources */,
+				CD98A7F27D77B3B825A6EF9F /* BeVietnamPro-ExtraBold.ttf in Resources */,
+				564C7A526D4FACDC2789C218 /* BeVietnamPro-Medium.ttf in Resources */,
+				56954DC1A0B76691F4AFCED0 /* BeVietnamPro-SemiBold.ttf in Resources */,
+				84041CD13F559A0982D16A79 /* Outfit.ttf in Resources */,
+				02CF0AA3FEF95C009CBAF7CF /* PlusJakartaSans.ttf in Resources */,
+				32A9D6AB8CD67C5930DFA090 /* ember_celebrating.svg in Resources */,
+				8AAF3EC9B54314246DA39CC8 /* ember_normal.svg in Resources */,
+				F88B8589A64C05EC2AAEA51D /* ember_sleeping.svg in Resources */,
+				949CDA238E341F7C71E6632F /* ember_stressed.svg in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EE7D06E9012CE08B397DF132 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D505E440E6AE41142C0D62DB /* Assets.xcassets in Resources */,
+				5651D16523E5B70943DC7C82 /* BeVietnamPro-Bold.ttf in Resources */,
+				20276564BFCC652AD4478085 /* BeVietnamPro-ExtraBold.ttf in Resources */,
+				C8A7644A05A0EC9B89276B58 /* BeVietnamPro-Medium.ttf in Resources */,
+				9D9F458241DD55C2F682A7BF /* BeVietnamPro-SemiBold.ttf in Resources */,
+				13829B8122AA52F65FF977AD /* Outfit.ttf in Resources */,
+				10FB3F241A66521AEDBAA163 /* PlusJakartaSans.ttf in Resources */,
+				779E3EFC7475294CE7297979 /* ember_celebrating.svg in Resources */,
+				D14BCF37E58AB8E37A787F4A /* ember_normal.svg in Resources */,
+				ADC75E78930175ED1CF6A219 /* ember_sleeping.svg in Resources */,
+				C3A2ED4138C78EB4FD5C8211 /* ember_stressed.svg in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FCDA4F652C3CE7C428BD982C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CFFD98A3CE699E345D3F36BF /* BeVietnamPro-Bold.ttf in Resources */,
+				401E9B5335AFFF8CB723C43F /* BeVietnamPro-ExtraBold.ttf in Resources */,
+				17CCC4B43EED552571081077 /* BeVietnamPro-Medium.ttf in Resources */,
+				D13D21E5F66F6BFFFA509A06 /* BeVietnamPro-SemiBold.ttf in Resources */,
+				C768A49C57F6329018704CFD /* Outfit.ttf in Resources */,
+				6CF1ED97794083A88871588E /* PlusJakartaSans.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		18785515A676B4E0936175DE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A8B32DFBE34F54FAFBC0B26 /* AppUpdateService.swift in Sources */,
+				C18DD5AFCE61166A6C7ECE6C /* ClassroomAPIService.swift in Sources */,
+				00B75CE2BFF32A752C552E6E /* ClassroomApp.swift in Sources */,
+				80F2715C5CC8A3EB91C2CA4C /* ClassroomStorage.swift in Sources */,
+				221955AC320833CDCC19C27F /* ContentView.swift in Sources */,
+				DA384E556B37E0B3BA7231BF /* Course.swift in Sources */,
+				A7395D60908C5BBBFE75E740 /* Coursework.swift in Sources */,
+				D750CB748227403E3F7FCA33 /* GoogleOAuthService.swift in Sources */,
+				90E3828D44E83C72AC8358D0 /* LargeWidgetView.swift in Sources */,
+				B2C84037AA5318BA266BBB45 /* LoopbackOAuthServer.swift in Sources */,
+				59FD024F21660871C8B48AEF /* MediumWidgetView.swift in Sources */,
+				A9246BD6E508F90B70753773 /* PlatformUICompat.swift in Sources */,
+				D3E19AC3C68994D3B3F3DC88 /* SmallWidgetView.swift in Sources */,
+				A3048C4BC894E94862000751 /* WidgetSharedViews.swift in Sources */,
+				821D63C6B16A746D570A2EEA /* WidgetVectorArt.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9732FB26044258CE4D144254 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -318,9 +580,28 @@
 				00E5BD8166F74D4B2C9D65FC /* LargeWidgetView.swift in Sources */,
 				1C5FE8D79B4A254B96E23B45 /* LoopbackOAuthServer.swift in Sources */,
 				50F195E70EDBD2CE8A6E5ED9 /* MediumWidgetView.swift in Sources */,
+				E0DA3413AFA4C2AAFEDC2B7E /* PlatformUICompat.swift in Sources */,
 				B66C454110C15165187A2FB5 /* SmallWidgetView.swift in Sources */,
 				07E4D11AEE60B5EF8C30CCD8 /* WidgetSharedViews.swift in Sources */,
 				E3A34E0AB00CF89D9352A0A5 /* WidgetVectorArt.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DC4D1E880EF8708B2EDA074A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FB3DAD5704E94D8A7710CAE2 /* ClassroomStorage.swift in Sources */,
+				4E819390C60CB7F99A7CAE8F /* ClassroomTimelineProvider.swift in Sources */,
+				EE433BAD28689B83729C10D9 /* ClassroomWidget.swift in Sources */,
+				3501C0CC7F4105BA6F589923 /* ClassroomWidgetBundle.swift in Sources */,
+				671D466371D14585CBE67293 /* Course.swift in Sources */,
+				7A06BD6E3891B315C2A80B20 /* Coursework.swift in Sources */,
+				B0D3E9BC239FC8AE303DB424 /* LargeWidgetView.swift in Sources */,
+				5B00F034FE2B8F6DBBD0413E /* MediumWidgetView.swift in Sources */,
+				4B5EC507E4557E97831FB0F1 /* SmallWidgetView.swift in Sources */,
+				7BED0A874936FBF7E89B66A7 /* WidgetSharedViews.swift in Sources */,
+				5C4423BBF792AD9417E76A07 /* WidgetVectorArt.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -331,6 +612,11 @@
 			isa = PBXTargetDependency;
 			target = 0362C40323DDFABB28F81A81 /* ClassroomWidget */;
 			targetProxy = D4FF7E3C294D104CDAEE347B /* PBXContainerItemProxy */;
+		};
+		C41A0623A30E8AFFA68C9327 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 658422E29B524D8FB381EBC0 /* ClassroomWidget-iOS */;
+			targetProxy = 5F003C3BDC4AEFBF077EF9BC /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -382,11 +668,11 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;
@@ -446,12 +732,12 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
@@ -470,6 +756,7 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.phucta.ClassroomTracker.widget;
 				PRODUCT_NAME = "Classroom Deadlines";
 				SDKROOT = macosx;
@@ -489,12 +776,51 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.phucta.ClassroomTracker.widget;
 				PRODUCT_NAME = "Classroom Deadlines";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 			};
 			name = Debug;
+		};
+		AD5EBF83E19B395F8EF61422 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ClassroomWidget/ClassroomWidget.iOS.entitlements;
+				INFOPLIST_FILE = "ClassroomWidget/Info-iOS.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.phucta.ClassroomTracker.widget;
+				PRODUCT_NAME = "Classroom Deadlines";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B2E18B6B53B14B591D597CCC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ClassroomWidget/ClassroomWidget.iOS.entitlements;
+				INFOPLIST_FILE = "ClassroomWidget/Info-iOS.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.phucta.ClassroomTracker.widget;
+				PRODUCT_NAME = "Classroom Deadlines";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
 		};
 		CBA58AC526747EA9A81E32A8 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -508,11 +834,50 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.phucta.ClassroomTracker;
 				PRODUCT_NAME = "Classroom Tracker";
 				SDKROOT = macosx;
 			};
 			name = Debug;
+		};
+		DFF9D74A3CA0DEDC1B75CDF3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ClassroomApp/ClassroomApp.iOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "ClassroomApp/Info-iOS.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.phucta.ClassroomTracker;
+				PRODUCT_NAME = "Classroom Tracker";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EEB7C0BBAAA071C74B54A6A5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ClassroomApp/ClassroomApp.iOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "ClassroomApp/Info-iOS.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.phucta.ClassroomTracker;
+				PRODUCT_NAME = "Classroom Tracker";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
 		};
 		F42DAA34D23ED0EBD10E80D8 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -526,6 +891,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.phucta.ClassroomTracker;
 				PRODUCT_NAME = "Classroom Tracker";
 				SDKROOT = macosx;
@@ -535,11 +901,29 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		19C08BFB1C223C6077B406B3 /* Build configuration list for PBXNativeTarget "ClassroomWidget-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AD5EBF83E19B395F8EF61422 /* Debug */,
+				B2E18B6B53B14B591D597CCC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		6F7F69085B9CEEF10861AA01 /* Build configuration list for PBXNativeTarget "ClassroomApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CBA58AC526747EA9A81E32A8 /* Debug */,
 				F42DAA34D23ED0EBD10E80D8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9F9397E4821CFD9BA7C6418A /* Build configuration list for PBXNativeTarget "ClassroomApp-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DFF9D74A3CA0DEDC1B75CDF3 /* Debug */,
+				EEB7C0BBAAA071C74B54A6A5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

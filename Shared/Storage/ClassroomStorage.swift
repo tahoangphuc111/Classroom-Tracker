@@ -8,11 +8,15 @@ public final class ClassroomStorage: @unchecked Sendable {
     private let userDefaults: UserDefaults
     private let coursesKey = "cached_classroom_courses"
     private let courseworkKey = "cached_classroom_coursework"
+    private let coursesTimestampKey = "cached_classroom_courses_timestamp"
+    private let courseworkTimestampKey = "cached_classroom_coursework_timestamp"
     private let lastSyncKey = "cached_classroom_last_sync"
     private let userEmailKey = "cached_classroom_user_email"
 
     private var cachedCourses: [Course]?
+    private var cachedCoursesTimestamp: Double = 0
     private var cachedCoursework: [Coursework]?
+    private var cachedCourseworkTimestamp: Double = 0
     private let lock = NSLock()
 
     private init() {
@@ -26,19 +30,25 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public func saveCourses(_ courses: [Course]) {
+        let timestamp = Date().timeIntervalSince1970
         lock.lock()
         cachedCourses = courses
+        cachedCoursesTimestamp = timestamp
         lock.unlock()
 
         if let encoded = try? JSONEncoder().encode(courses) {
             userDefaults.set(encoded, forKey: coursesKey)
+            userDefaults.set(timestamp, forKey: coursesTimestampKey)
             UserDefaults.standard.set(encoded, forKey: coursesKey)
+            UserDefaults.standard.set(timestamp, forKey: coursesTimestampKey)
         }
+        notifyWidgetReload()
     }
 
     public func loadCourses() -> [Course] {
+        let latestTimestamp = userDefaults.double(forKey: coursesTimestampKey)
         lock.lock()
-        if let cached = cachedCourses {
+        if let cached = cachedCourses, latestTimestamp > 0 && latestTimestamp == cachedCoursesTimestamp {
             lock.unlock()
             return cached
         }
@@ -54,26 +64,32 @@ public final class ClassroomStorage: @unchecked Sendable {
         let result = loaded ?? ClassroomStorage.mockCourses
         lock.lock()
         cachedCourses = result
+        cachedCoursesTimestamp = latestTimestamp > 0 ? latestTimestamp : Date().timeIntervalSince1970
         lock.unlock()
         return result
     }
 
     public func saveCoursework(_ items: [Coursework]) {
+        let timestamp = Date().timeIntervalSince1970
         lock.lock()
         cachedCoursework = items
+        cachedCourseworkTimestamp = timestamp
         lock.unlock()
 
         if let encoded = try? JSONEncoder().encode(items) {
             userDefaults.set(encoded, forKey: courseworkKey)
+            userDefaults.set(timestamp, forKey: courseworkTimestampKey)
             UserDefaults.standard.set(encoded, forKey: courseworkKey)
+            UserDefaults.standard.set(timestamp, forKey: courseworkTimestampKey)
         }
         saveLastSyncTime(Date())
         notifyWidgetReload()
     }
 
     public func loadCoursework() -> [Coursework] {
+        let latestTimestamp = userDefaults.double(forKey: courseworkTimestampKey)
         lock.lock()
-        if let cached = cachedCoursework {
+        if let cached = cachedCoursework, latestTimestamp > 0 && latestTimestamp == cachedCourseworkTimestamp {
             lock.unlock()
             return cached
         }
@@ -89,6 +105,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         let result = loaded ?? ClassroomStorage.mockCoursework
         lock.lock()
         cachedCoursework = result
+        cachedCourseworkTimestamp = latestTimestamp > 0 ? latestTimestamp : Date().timeIntervalSince1970
         lock.unlock()
         return result
     }
@@ -99,41 +116,73 @@ public final class ClassroomStorage: @unchecked Sendable {
 
         return allItems
             .filter { activeCourseIds.contains($0.courseId) }
-            .filter { $0.status != .turnedIn && $0.status != .returned }
+            .filter { !$0.isCompleted }
             .sorted { (first, second) -> Bool in
-                guard let d1 = first.dueDate else { return false }
-                guard let d2 = second.dueDate else { return true }
-                if d1 != d2 {
-                    return d1 < d2
+                switch (first.dueDate, second.dueDate) {
+                case let (d1?, d2?):
+                    if d1 != d2 { return d1 < d2 }
+                    return first.title.localizedStandardCompare(second.title) == .orderedAscending
+                case (_?, nil):
+                    return true
+                case (nil, _?):
+                    return false
+                case (nil, nil):
+                    return first.title.localizedStandardCompare(second.title) == .orderedAscending
                 }
-                return first.title < second.title
             }
     }
 
     public func getTodayAndTomorrowCoursework() -> [Coursework] {
+        getTomorrowCoursework(includeCompleted: true)
+    }
+
+    public func getTomorrowCoursework(includeCompleted: Bool = true) -> [Coursework] {
         let allItems = loadCoursework()
         let activeCourseIds = Set(loadCourses().filter(\.isSelectedForWidget).map(\.id))
         let calendar = Calendar.current
         let startOfToday = calendar.startOfDay(for: Date())
-        guard let dayAfterTomorrow = calendar.date(byAdding: .day, value: 2, to: startOfToday) else {
+        guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
+              let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday) else {
             return []
         }
 
         return allItems
             .filter { activeCourseIds.contains($0.courseId) }
-            .filter { $0.status != .turnedIn && $0.status != .returned }
+            .filter { includeCompleted ? true : !$0.isCompleted }
             .filter { item in
                 guard let dueDate = item.dueDate else { return false }
-                return dueDate >= startOfToday && dueDate < dayAfterTomorrow
+                return dueDate >= startOfTomorrow && dueDate < startOfDayAfter
             }
             .sorted { (first, second) -> Bool in
-                guard let d1 = first.dueDate else { return false }
-                guard let d2 = second.dueDate else { return true }
-                if d1 != d2 {
-                    return d1 < d2
+                if first.isCompleted != second.isCompleted {
+                    return !first.isCompleted
                 }
-                return first.title < second.title
+                switch (first.dueDate, second.dueDate) {
+                case let (d1?, d2?):
+                    if d1 != d2 { return d1 < d2 }
+                    return first.title.localizedStandardCompare(second.title) == .orderedAscending
+                case (_?, nil):
+                    return true
+                case (nil, _?):
+                    return false
+                case (nil, nil):
+                    return first.title.localizedStandardCompare(second.title) == .orderedAscending
+                }
             }
+    }
+
+    public func updateCourseworkStatuses(ids: Set<String>, newStatus: SubmissionStatus) {
+        var currentItems = loadCoursework()
+        var changed = false
+        for i in currentItems.indices {
+            if ids.contains(currentItems[i].id) {
+                currentItems[i].status = newStatus
+                changed = true
+            }
+        }
+        if changed {
+            saveCoursework(currentItems)
+        }
     }
 
     public func saveLastSyncTime(_ date: Date) {
@@ -176,9 +225,9 @@ public final class ClassroomStorage: @unchecked Sendable {
     public static var mockCoursework: [Coursework] {
         let calendar = Calendar.current
         let now = Date()
-        let todayDue = calendar.date(bySettingHour: 23, minute: 59, second: 0, of: now) ?? now.addingTimeInterval(4 * 3600)
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now.addingTimeInterval(24 * 3600)
         let tomorrowDue = calendar.date(bySettingHour: 17, minute: 30, second: 0, of: tomorrow) ?? now.addingTimeInterval(26 * 3600)
+        let tomorrowEveningDue = calendar.date(bySettingHour: 23, minute: 59, second: 0, of: tomorrow) ?? now.addingTimeInterval(28 * 3600)
         let inThreeDays = calendar.date(byAdding: .day, value: 3, to: now) ?? now.addingTimeInterval(72 * 3600)
         let inFiveDays = calendar.date(byAdding: .day, value: 5, to: now) ?? now.addingTimeInterval(120 * 3600)
 
@@ -196,7 +245,7 @@ public final class ClassroomStorage: @unchecked Sendable {
                 4. Nộp bài trực tiếp qua hệ thống trước hạn chót.
                 """,
                 alternateLink: "https://classroom.google.com",
-                dueDate: todayDue,
+                dueDate: tomorrowEveningDue,
                 status: .pending,
                 maxPoints: 10
             ),

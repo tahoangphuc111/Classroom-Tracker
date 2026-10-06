@@ -41,15 +41,19 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         self.maxPoints = maxPoints
     }
 
+    public var isCompleted: Bool {
+        status == .turnedIn || status == .returned || isDueToday || isPast
+    }
+
     public var isUrgent: Bool {
         guard let dueDate else { return false }
         let interval = dueDate.timeIntervalSince(Date())
-        return interval > 0 && interval <= (12 * 3600)
+        return interval > 0 && interval <= (12 * 3600) && !isCompleted
     }
 
     public var isOverdue: Bool {
         guard let dueDate else { return false }
-        return dueDate < Date() && status != .turnedIn && status != .returned
+        return dueDate < Date() && !isCompleted
     }
 
     public var isPast: Bool {
@@ -84,7 +88,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     }
 
     public var isUpcomingTodayOrTomorrow: Bool {
-        isDueTodayOrTomorrow && status != .turnedIn
+        isDueTodayOrTomorrow && !isCompleted
     }
 
     public var timeOnlyString: String {
@@ -103,13 +107,20 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         let time = timeOnlyString
         let isEndOfDay = (time == "Cuối ngày")
 
-        if isDueToday {
+        if isOverdue {
+            if isDueToday {
+                return isEndOfDay ? "Quá hạn (hôm nay)" : "Quá hạn (\(time))"
+            } else {
+                let dayStr = ClassroomDateFormatters.shortDate.string(from: dueDate)
+                return "Quá hạn (\(dayStr))"
+            }
+        } else if isDueToday {
             return isEndOfDay ? "Hết hôm nay" : "Hôm nay, \(time)"
         } else if isDueTomorrow {
             return isEndOfDay ? "Hết ngày mai" : "Ngày mai, \(time)"
-        } else if isPast || isOverdue {
+        } else if isPast {
             let dayStr = ClassroomDateFormatters.shortDate.string(from: dueDate)
-            return "Quá hạn (\(dayStr))"
+            return "Đã qua (\(dayStr))"
         } else {
             let dayStr = ClassroomDateFormatters.dayAndDate.string(from: dueDate)
             return isEndOfDay ? "\(dayStr) (hết ngày)" : "\(dayStr), \(time)"
@@ -121,12 +132,17 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         let time = timeOnlyString
         let isEndOfDay = (time == "Cuối ngày")
 
-        if isDueToday {
+        if isOverdue {
+            if isDueToday {
+                return isEndOfDay ? "Quá hạn" : "Trễ \(time)"
+            }
+            return "Quá hạn"
+        } else if isDueToday {
             return isEndOfDay ? "Hết hôm nay" : time
         } else if isDueTomorrow {
             return isEndOfDay ? "Hết ngày mai" : "Mai \(time)"
-        } else if isPast || isOverdue {
-            return "Quá hạn"
+        } else if isPast {
+            return "Đã qua"
         } else {
             let dayStr = ClassroomDateFormatters.shortDate.string(from: dueDate)
             return isEndOfDay ? dayStr : "\(dayStr) \(time)"
@@ -176,7 +192,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     }
 
     public var urgencyColor: Color {
-        if status == .turnedIn || status == .returned {
+        if isCompleted {
             return .green
         }
         if isOverdue {

@@ -1,5 +1,10 @@
 import Foundation
+#if canImport(AppKit)
 import AppKit
+#elseif canImport(UIKit)
+import UIKit
+#endif
+
 
 public final class AppUpdateService: ObservableObject {
     public static let shared = AppUpdateService()
@@ -113,8 +118,9 @@ public final class AppUpdateService: ObservableObject {
         let downloadUrl: URL
         var request: URLRequest
 
-        if let assetId = latestAssetId {
-            downloadUrl = URL(string: "https://api.github.com/repos/\(repoOwner)/\(repoName)/releases/assets/\(assetId)")!
+        if let assetId = latestAssetId,
+           let constructedUrl = URL(string: "https://api.github.com/repos/\(repoOwner)/\(repoName)/releases/assets/\(assetId)") {
+            downloadUrl = constructedUrl
             request = URLRequest(url: downloadUrl)
             request.setValue("application/octet-stream", forHTTPHeaderField: "Accept")
             let token = githubToken
@@ -141,7 +147,13 @@ public final class AppUpdateService: ObservableObject {
             try FileManager.default.moveItem(at: tempLocalUrl, to: destinationUrl)
 
             statusMessage = "Đã tải xong! Đang mở trình cài đặt..."
+            #if os(macOS)
             NSWorkspace.shared.open(destinationUrl)
+            #elseif os(iOS)
+            if let releaseUrl = URL(string: "https://github.com/\(repoOwner)/\(repoName)/releases/latest") {
+                await UIApplication.shared.open(releaseUrl)
+            }
+            #endif
         } catch {
             statusMessage = "Lỗi khi tải cập nhật: \(error.localizedDescription)"
         }
