@@ -25,6 +25,7 @@
 		7F26CC1E72F68F52045C561C /* Course.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4508EBDBFF6D0212A21C01 /* Course.swift */; };
 		81716866BE0A0FDEBF6D6B2C /* SmallWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72AA16D6CC38D1AB92759B4 /* SmallWidgetView.swift */; };
 		843474698FC0949AC025D89A /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */; };
+		8F42125ED7F9AAD9547E9947 /* AppUpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74F6B7930F668D92B55266E8 /* AppUpdateService.swift */; };
 		8FE49AF4C480914FF41344F4 /* WidgetSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054A7230A61A968D3470F649 /* WidgetSharedViews.swift */; };
 		9D0307AD1FB3BB9FAADBC2D0 /* ClassroomAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76246EB4C2B91BE0D7817282 /* ClassroomAPIService.swift */; };
 		A387480E11C4AFA7D4D074AD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE51ED6CBB6D80D32FE576A /* ContentView.swift */; };
@@ -77,6 +78,7 @@
 		5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumWidgetView.swift; sourceTree = "<group>"; };
 		61242B4F8CB258A7002DEBFD /* LoopbackOAuthServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopbackOAuthServer.swift; sourceTree = "<group>"; };
 		7067B66E7A83A695915BD2CF /* ClassroomWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomWidget.swift; sourceTree = "<group>"; };
+		74F6B7930F668D92B55266E8 /* AppUpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdateService.swift; sourceTree = "<group>"; };
 		76246EB4C2B91BE0D7817282 /* ClassroomAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomAPIService.swift; sourceTree = "<group>"; };
 		D1F316B5AF2C143DEF693CC7 /* ClassroomApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClassroomApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D6630D04B4757AF2620FAC1B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -183,6 +185,7 @@
 		E57DAD4DA83C74F333A2F04E /* Network */ = {
 			isa = PBXGroup;
 			children = (
+				74F6B7930F668D92B55266E8 /* AppUpdateService.swift */,
 				76246EB4C2B91BE0D7817282 /* ClassroomAPIService.swift */,
 				2D2322F2CE750E768C3F773D /* GoogleOAuthService.swift */,
 				61242B4F8CB258A7002DEBFD /* LoopbackOAuthServer.swift */,
@@ -304,6 +307,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8F42125ED7F9AAD9547E9947 /* AppUpdateService.swift in Sources */,
 				9D0307AD1FB3BB9FAADBC2D0 /* ClassroomAPIService.swift in Sources */,
 				7688B32D9ED237679EAD8055 /* ClassroomApp.swift in Sources */,
 				D91EC36EA55B8FD59587A65D /* ClassroomStorage.swift in Sources */,

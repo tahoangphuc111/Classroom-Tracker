@@ -7,6 +7,7 @@ import AppKit
 public struct ContentView: View {
     @StateObject private var authService = GoogleOAuthService.shared
     @StateObject private var apiService = ClassroomAPIService.shared
+    @StateObject private var updateService = AppUpdateService.shared
 
     @State private var courses: [Course] = []
     @State private var allCoursework: [Coursework] = []
@@ -171,6 +172,9 @@ public struct ContentView: View {
                     refreshData()
                     autoSelectFirstItem()
                 }
+            }
+            Task {
+                await updateService.checkForUpdates()
             }
         }
         .onChange(of: selectedFilter) {
@@ -379,6 +383,10 @@ public struct ContentView: View {
         VStack(spacing: 0) {
             headerBarView
 
+            if updateService.updateAvailable {
+                updateBannerView
+            }
+
             Divider()
 
             if selectedFilter == .widgetPreview {
@@ -525,6 +533,37 @@ public struct ContentView: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    private var updateBannerView: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "sparkles")
+                .foregroundColor(.orange)
+                .font(.system(size: 14, weight: .semibold))
+
+            Text("Đã có bản cập nhật Classroom Tracker v\(updateService.latestVersion)!")
+                .font(.system(size: 13, weight: .medium))
+
+            Spacer()
+
+            if updateService.isDownloading {
+                ProgressView().controlSize(.small)
+                Text("Đang tải...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Button("Cập nhật ngay") {
+                    Task {
+                        await updateService.downloadAndInstall()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .background(Color.blue.opacity(0.10))
     }
 
     private var assignmentListPane: some View {
@@ -1109,6 +1148,63 @@ public struct ContentView: View {
                         refreshData()
                         autoSelectFirstItem()
                         showSettingsModal = false
+                    }
+                }
+
+                Section("Cập nhật ứng dụng") {
+                    HStack {
+                        Text("Phiên bản hiện tại:")
+                        Spacer()
+                        Text("v\(updateService.currentVersion)")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    TextField("GitHub Token (dành cho repo riêng tư)", text: Binding(
+                        get: { updateService.githubToken },
+                        set: { updateService.githubToken = $0 }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+
+                    if !updateService.statusMessage.isEmpty {
+                        Text(updateService.statusMessage)
+                            .font(.caption2)
+                            .foregroundStyle(updateService.updateAvailable ? .blue : .secondary)
+                    }
+
+                    if updateService.updateAvailable {
+                        Button {
+                            Task {
+                                await updateService.downloadAndInstall()
+                            }
+                        } label: {
+                            HStack {
+                                if updateService.isDownloading {
+                                    ProgressView().controlSize(.small)
+                                    Text("Đang tải bản cập nhật...")
+                                } else {
+                                    Image(systemName: "arrow.down.circle.fill")
+                                    Text("Cập nhật lên v\(updateService.latestVersion) ngay")
+                                }
+                            }
+                        }
+                        .disabled(updateService.isDownloading)
+                    } else {
+                        Button {
+                            Task {
+                                await updateService.checkForUpdates(isUserInitiated: true)
+                            }
+                        } label: {
+                            HStack {
+                                if updateService.isChecking {
+                                    ProgressView().controlSize(.small)
+                                    Text("Đang kiểm tra...")
+                                } else {
+                                    Image(systemName: "arrow.clockwise")
+                                    Text("Kiểm tra bản cập nhật mới")
+                                }
+                            }
+                        }
+                        .disabled(updateService.isChecking)
                     }
                 }
 
