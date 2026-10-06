@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- macOS Base Squircle Drop Shadows -->
+    <filter id="macAppShadow" x="-25%" y="-15%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="32" stdDeviation="32" flood-color="#080A22" flood-opacity="0.48"/>
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#050718" flood-opacity="0.32"/>
+    </filter>
+
+    <!-- Deep Background Squircle Gradient (Apple macOS Deep Royal Indigo & Violet) -->
+    <linearGradient id="squircleBg" x1="0.15" y1="0.0" x2="0.85" y2="1.0">
+      <stop offset="0%" stop-color="#4E32F8"/>
+      <stop offset="35%" stop-color="#5E2CE8"/>
+      <stop offset="70%" stop-color="#7224DE"/>
+      <stop offset="100%" stop-color="#4D14A3"/>
+    </linearGradient>
+
+    <!-- Top Inset Rim Bevel (Soft 1px Apple Specular Highlight) -->
+    <linearGradient id="topRimLight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="3%" stop-color="#FFFFFF" stop-opacity="0.15"/>
+      <stop offset="15%" stop-color="#FFFFFF" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <!-- Bottom Rim Subtle Glass Bevel Reflection -->
+    <linearGradient id="bottomRimStroke" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.0"/>
+      <stop offset="85%" stop-color="#FFFFFF" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.22"/>
+    </linearGradient>
+
+    <!-- Refined, subtle Apple bottom corner specular glints (Hugging the inner border curves) -->
+    <linearGradient id="bottomCornerGlintLeft" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.25"/>
+      <stop offset="35%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <linearGradient id="bottomCornerGlintRight" x1="1" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.25"/>
+      <stop offset="35%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <!-- Squircle Clip -->
+    <clipPath id="squircleClip">
+      <rect x="100" y="100" width="824" height="824" rx="190" ry="190"/>
+    </clipPath>
+
+    <!-- ULTRA-SMOOTH OPTICAL SHADOW RADIAL GRADIENTS (Guaranteed Zero Hard Edges!) -->
+    <!-- Broad Ambient Diffused Shadow -->
+    <radialGradient id="broadAmbientShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#050414" stop-opacity="0.55"/>
+      <stop offset="25%" stop-color="#050414" stop-opacity="0.42"/>
+      <stop offset="50%" stop-color="#060519" stop-opacity="0.25"/>
+      <stop offset="72%" stop-color="#0A0826" stop-opacity="0.10"/>
+      <stop offset="88%" stop-color="#0F0C35" stop-opacity="0.03"/>
+      <stop offset="100%" stop-color="#141042" stop-opacity="0.00"/>
+    </radialGradient>
+
+    <!-- Medium Cast Shadow (Directional under cap) -->
+    <radialGradient id="mediumCastShadow" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#03020C" stop-opacity="0.70"/>
+      <stop offset="30%" stop-color="#03020C" stop-opacity="0.52"/>
+      <stop offset="60%" stop-color="#040312" stop-opacity="0.28"/>
+      <stop offset="82%" stop-color="#07051E" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#0B082C" stop-opacity="0.00"/>
+    </radialGradient>
+
+    <!-- Tight Direct Contact Shadow under Skull Cap base -->
+    <radialGradient id="tightContactShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#020108" stop-opacity="0.85"/>
+      <stop offset="35%" stop-color="#020108" stop-opacity="0.65"/>
+      <stop offset="70%" stop-color="#020108" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#040212" stop-opacity="0.00"/>
+    </radialGradient>
+
+    <!-- Realistic Mortarboard Top Facet Gradient (Dark Oxford Charcoal Wool with Natural Lighting) -->
+    <linearGradient id="boardTopSurface" x1="0.1" y1="0.05" x2="0.9" y2="0.95">
+      <stop offset="0%" stop-color="#363E50"/>
+      <stop offset="22%" stop-color="#2A3141"/>
+      <stop offset="60%" stop-color="#1C212D"/>
+      <stop offset="100%" stop-color="#12161F"/>
+    </linearGradient>
+
+    <!-- Mortarboard 3D Front-Left Edge (Catches ambient light) -->
+    <linearGradient id="boardEdgeLeft" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2D3546"/>
+      <stop offset="100%" stop-color="#1E232E"/>
+    </linearGradient>
+
+    <!-- Mortarboard 3D Front-Right Edge (In shadow) -->
+    <linearGradient id="boardEdgeRight" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#151922"/>
+      <stop offset="100%" stop-color="#0D1016"/>
+    </linearGradient>
+
+    <!-- Skull Cap 3D Organic Cloth Shading -->
+    <linearGradient id="skullCapCloth" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#161B25"/>
+      <stop offset="18%" stop-color="#262F3E"/>
+      <stop offset="46%" stop-color="#384357"/>
+      <stop offset="78%" stop-color="#1F2633"/>
+      <stop offset="100%" stop-color="#11151D"/>
+    </linearGradient>
+
+    <!-- Deep Ambient Occlusion Shadow Under Overhang -->
+    <linearGradient id="skullCapOcclusion" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#040609" stop-opacity="0.95"/>
+      <stop offset="35%" stop-color="#090C12" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#090C12" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <!-- Golden Tassel Rich Metallic Shading -->
+    <linearGradient id="goldDomeGrad" x1="0.2" y1="0.1" x2="0.8" y2="0.9">
+      <stop offset="0%" stop-color="#FEF08A"/>
+      <stop offset="25%" stop-color="#F59E0B"/>
+      <stop offset="65%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#78350F"/>
+    </linearGradient>
+
+    <linearGradient id="goldCordGrad" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0%" stop-color="#FDE047"/>
+      <stop offset="25%" stop-color="#F59E0B"/>
+      <stop offset="65%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#92400E"/>
+    </linearGradient>
+
+    <linearGradient id="goldFringeBody" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#92400E"/>
+      <stop offset="18%" stop-color="#D97706"/>
+      <stop offset="45%" stop-color="#FDE047"/>
+      <stop offset="75%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#78350F"/>
+    </linearGradient>
+
+    <!-- Fabric Button Shading (Matching Black Velvet with Gold Trim) -->
+    <linearGradient id="fabricButtonGrad" x1="0.2" y1="0.1" x2="0.8" y2="0.9">
+      <stop offset="0%" stop-color="#424B5D"/>
+      <stop offset="40%" stop-color="#262D3B"/>
+      <stop offset="100%" stop-color="#141820"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 1. Apple macOS Base Squircle with Realistic Multi-stage Drop Shadow -->
+  <g filter="url(#macAppShadow)">
+    <rect x="100" y="100" width="824" height="824" rx="190" ry="190" fill="url(#squircleBg)"/>
+  </g>
+
+  <!-- 2. Inside Squircle Elements (Clipped strictly to Apple squircle) -->
+  <g clip-path="url(#squircleClip)">
+    <!-- Subtle top ambient light bloom -->
+    <ellipse cx="480" cy="220" rx="420" ry="240" fill="#93C5FD" opacity="0.10"/>
+
+    <!-- Subtle elegant Apple rim bevel strokes -->
+    <rect x="100" y="100" width="824" height="824" rx="190" ry="190" fill="none" stroke="url(#topRimLight)" stroke-width="2.2"/>
+    <rect x="100" y="100" width="824" height="824" rx="190" ry="190" fill="none" stroke="url(#bottomRimStroke)" stroke-width="1.8"/>
+
+    <!-- Refined, subtle Apple bottom corner glints (Hugging the inner border curves) -->
+    <path d="M 120 780 C 110 840, 160 890, 240 914" 
+          fill="none" stroke="url(#bottomCornerGlintLeft)" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 904 780 C 914 840, 864 890, 784 914" 
+          fill="none" stroke="url(#bottomCornerGlintRight)" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- 3. ULTRA-REALISTIC OPTICAL SHADOWS (Phần bóng chân thực, hoàn toàn mượt mà không viền cứng) -->
+    <!-- Layer A: Broad diffused ambient shadow of the entire mortarboard -->
+    <ellipse cx="525" cy="655" rx="340" ry="155" fill="url(#broadAmbientShadow)"/>
+
+    <!-- Layer B: Medium cast shadow directly under cap and skull base -->
+    <ellipse cx="516" cy="640" rx="220" ry="85" fill="url(#mediumCastShadow)"/>
+
+    <!-- Layer C: Deep core contact occlusion shadow where the base meets the surface -->
+    <ellipse cx="512" cy="635" rx="155" ry="42" fill="url(#tightContactShadow)"/>
+
+    <!-- 4. REALISTIC GRADUATION CAP (Cái mũ học vị chân thực, định vị hài hòa cân đối) -->
+    <g id="graduationCapGroup" transform="translate(0, 36)">
+
+      <!-- 4A. Skull Cap (Phần mũ ôm đầu) -->
+      <g id="skullCap">
+        <!-- Skull cap main fabric volume with organic curves -->
+        <path d="M 370 452 
+                 C 366 485, 362 525, 365 554 
+                 C 367 618, 657 618, 659 554 
+                 C 662 525, 658 485, 654 452 Z" 
+              fill="url(#skullCapCloth)"/>
+
+        <!-- Deep ambient occlusion shadow from the overhanging mortarboard -->
+        <path d="M 370 452 
+                 C 368 480, 366 505, 366 524 
+                 C 370 568, 654 568, 658 524 
+                 C 658 505, 656 480, 654 452 Z" 
+              fill="url(#skullCapOcclusion)"/>
+
+        <!-- Subtle vertical fabric panel seams for tactile realism -->
+        <path d="M 460 495 C 455 530, 452 560, 454 582" 
+              fill="none" stroke="#0D1016" stroke-width="1.4" opacity="0.55"/>
+        <path d="M 461 495 C 456 530, 453 560, 455 582" 
+              fill="none" stroke="#475569" stroke-width="0.8" opacity="0.35"/>
+
+        <path d="M 564 495 C 569 530, 572 560, 570 582" 
+              fill="none" stroke="#0D1016" stroke-width="1.4" opacity="0.55"/>
+        <path d="M 565 495 C 570 530, 573 560, 571 582" 
+              fill="none" stroke="#475569" stroke-width="0.8" opacity="0.35"/>
+
+        <!-- Subtle bottom rim hem stitching & delicate reflected light -->
+        <path d="M 374 558 C 420 606, 604 606, 650 558" 
+              fill="none" stroke="#64748B" stroke-width="1.8" opacity="0.35"/>
+        <path d="M 382 564 C 424 610, 600 610, 642 564" 
+              fill="none" stroke="#94A3B8" stroke-width="1.0" opacity="0.25"/>
+      </g>
+
+      <!-- 4B. Mortarboard Board (Physical Board with Depth & Rounded Fabric Corners) -->
+      <g id="mortarboardBoard">
+        <!-- 3D Board Thickness: Front-Left Edge (Facing Light) -->
+        <polygon points="244,395 512,518 512,534 244,411" fill="url(#boardEdgeLeft)"/>
+        <!-- 3D Board Thickness: Front-Right Edge (In Shadow) -->
+        <polygon points="512,518 780,395 780,411 512,534" fill="url(#boardEdgeRight)"/>
+
+        <!-- Bottom Rim Shadow Under Edge -->
+        <polyline points="244,411 512,534 780,411" 
+                  fill="none" stroke="#080A0E" stroke-width="1.5"/>
+
+        <!-- Mortarboard Top Surface Diamond (Natural rounded fabric corners) -->
+        <path d="M 504 271 
+                 C 508 267, 516 267, 520 271 
+                 L 775 391 
+                 C 781 394, 781 401, 775 404 
+                 L 520 520 
+                 C 516 523, 508 523, 504 520 
+                 L 249 404 
+                 C 243 401, 243 394, 249 391 Z" 
+              fill="url(#boardTopSurface)"/>
+
+        <!-- Soft Satin Sheen along front-left light rim -->
+        <path d="M 252 393 L 512 516" 
+              stroke="#64748B" stroke-width="1.8" stroke-linecap="round" opacity="0.45"/>
+        <!-- Back-Left Rim Light -->
+        <path d="M 252 393 L 512 270" 
+              stroke="#94A3B8" stroke-width="1.4" stroke-linecap="round" opacity="0.30"/>
+
+        <!-- Subtle Top Surface Diagonal Fabric Sheen (Left facet ambient reflection) -->
+        <polygon points="512,270 512,517 252,393" fill="#FFFFFF" opacity="0.04"/>
+      </g>
+
+      <!-- 4C. Center Button (Nút bọc vải cao cấp + đế kim loại đồng) -->
+      <g id="centerButton">
+        <!-- Button cast shadow onto board -->
+        <ellipse cx="512" cy="402" rx="19" ry="11" fill="#06080C" opacity="0.75"/>
+        <!-- Brass base washer -->
+        <circle cx="512" cy="396" r="17" fill="url(#goldDomeGrad)"/>
+        <!-- Fabric covered button dome -->
+        <circle cx="512" cy="395" r="14.5" fill="url(#fabricButtonGrad)"/>
+        <!-- Specular glint on button -->
+        <ellipse cx="507" cy="391" rx="5" ry="3" fill="#FFFFFF" opacity="0.45"/>
+        <!-- Brass center loop eyelet -->
+        <circle cx="512" cy="395" r="3.5" fill="url(#goldDomeGrad)"/>
+      </g>
+
+      <!-- 4D. Realistic Draped Golden Tassel (Dây tua rua vàng óng, rủ mềm qua cạnh bảng) -->
+      <g id="goldenTassel">
+        <!-- Tassel cord cast shadow on board surface -->
+        <path d="M 512 396 Q 402 410, 368 468" 
+              fill="none" stroke="#06080C" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+
+        <!-- Tassel cord hanging cast shadow on skull cap -->
+        <path d="M 364 476 Q 352 524, 356 580" 
+              fill="none" stroke="#05070B" stroke-width="11" stroke-linecap="round" opacity="0.60"/>
+
+        <!-- Braided Golden Cord (From center loop over board corner) -->
+        <path d="M 512 395 Q 404 406, 368 464" 
+              fill="none" stroke="url(#goldCordGrad)" stroke-width="9.5" stroke-linecap="round"/>
+        <!-- Highlight on the cord segment over the board -->
+        <path d="M 512 394 Q 404 405, 368 463" 
+              fill="none" stroke="#FEF08A" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>
+
+        <!-- Cord bending over the physical 3D board thickness (Catching edge light) -->
+        <path d="M 368 464 L 364 476" 
+              stroke="url(#goldDomeGrad)" stroke-width="10.5" stroke-linecap="round"/>
+        <line x1="367" y1="465" x2="363" y2="475" 
+              stroke="#FFFBEB" stroke-width="3" opacity="0.95"/>
+
+        <!-- Cord hanging vertically from the edge to the clasp -->
+        <path d="M 364 476 Q 355 520, 358 574" 
+              fill="none" stroke="url(#goldCordGrad)" stroke-width="9" stroke-linecap="round"/>
+        <path d="M 363 476 Q 354 520, 357 573" 
+              fill="none" stroke="#FEF08A" stroke-width="2.2" stroke-linecap="round" opacity="0.80"/>
+
+        <!-- Polished Brass Barrel Clasp / Ring (Khuyên kim loại vàng kim) -->
+        <!-- Shadow under clasp -->
+        <rect x="345" y="573" width="26" height="12" rx="4" fill="#05070B" opacity="0.55"/>
+        <!-- Clasp body -->
+        <rect x="346" y="570" width="24" height="12" rx="4" fill="url(#goldDomeGrad)"/>
+        <!-- Metallic specular reflection on clasp -->
+        <rect x="348" y="571" width="20" height="3.2" rx="1.5" fill="#FFFFFF" opacity="0.90"/>
+        <!-- Decorative band ribs on clasp -->
+        <line x1="346" y1="576" x2="370" y2="576" stroke="#92400E" stroke-width="1.2"/>
+
+        <!-- Tassel Fringe Skirt (Chùm tua rua buông rủ mượt mà) -->
+        <!-- Cast shadow of fringe onto skull cap -->
+        <path d="M 342 582 L 374 582 L 378 656 C 378 662, 338 662, 338 656 Z" 
+              fill="#040508" opacity="0.45"/>
+
+        <!-- Fringe silky body -->
+        <path d="M 345 581 L 371 581 L 375 654 C 375 660, 341 660, 341 654 Z" 
+              fill="url(#goldFringeBody)"/>
+
+        <!-- Individual Silky Thread Highlights -->
+        <line x1="348" y1="583" x2="345" y2="652" stroke="#FEF08A" stroke-width="1.8" opacity="0.85"/>
+        <line x1="352" y1="583" x2="350" y2="654" stroke="#FFFBEB" stroke-width="1.5" opacity="0.95"/>
+        <line x1="357" y1="583" x2="357" y2="655" stroke="#FDE047" stroke-width="1.8" opacity="0.90"/>
+        <line x1="362" y1="583" x2="363" y2="654" stroke="#FFFFFF" stroke-width="1.5" opacity="0.95"/>
+        <line x1="367" y1="583" x2="370" y2="652" stroke="#B45309" stroke-width="1.8" opacity="0.75"/>
+
+        <!-- Soft bottom ambient occlusion at fringe tips -->
+        <ellipse cx="358" cy="655" rx="16" ry="3.5" fill="#78350F" opacity="0.65"/>
+      </g>
+    </g>
+  </g>
+</svg>
