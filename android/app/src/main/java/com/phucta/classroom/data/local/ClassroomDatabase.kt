@@ -20,13 +20,11 @@ abstract class ClassroomDatabase : RoomDatabase() {
 
         fun getInstance(context: Context): ClassroomDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
+                INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     ClassroomDatabase::class.java,
                     "classroom_tracker.db"
-                ).fallbackToDestructiveMigration().build()
-                INSTANCE = instance
-                instance
+                ).fallbackToDestructiveMigration().build().also { INSTANCE = it }
             }
         }
     }

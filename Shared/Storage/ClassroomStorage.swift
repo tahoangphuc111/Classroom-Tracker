@@ -5,11 +5,19 @@ import os
 public final class ClassroomStorage: @unchecked Sendable {
     public static let shared = ClassroomStorage()
     public static var appGroupCandidates: [String] {
-        [
+        #if os(iOS)
+        return [
+            "group.com.phucta.classroom",
+            "4J32CASZVT.group.com.phucta.classroom",
+            "VGWH8K5259.group.com.phucta.classroom"
+        ]
+        #else
+        return [
             "4J32CASZVT.group.com.phucta.classroom",
             "VGWH8K5259.group.com.phucta.classroom",
             "group.com.phucta.classroom"
         ]
+        #endif
     }
 
     public static var appGroupId: String {
@@ -521,7 +529,7 @@ public final class ClassroomStorage: @unchecked Sendable {
             .filter { includeCompleted ? true : !$0.isCompleted }
             .filter { item in
                 guard let dueDate = item.dueDate else { return false }
-                return dueDate >= now && dueDate < startOfDayAfter
+                return dueDate >= startOfToday && dueDate < startOfDayAfter
             }
 
         return sortCoursework(filtered)
@@ -538,14 +546,60 @@ public final class ClassroomStorage: @unchecked Sendable {
             return []
         }
 
+        // 1. Due tomorrow (The primary target for Báo bài)
         let tomorrowFiltered = relevant
             .filter { includeCompleted ? true : !$0.isCompleted }
             .filter { item in
                 guard let dueDate = item.dueDate else { return false }
-                return dueDate >= startOfTomorrow && dueDate < startOfDayAfter && dueDate >= now
+                return dueDate >= startOfTomorrow && dueDate < startOfDayAfter
             }
 
-        return sortCoursework(tomorrowFiltered)
+        if !tomorrowFiltered.isEmpty {
+            return sortCoursework(tomorrowFiltered)
+        }
+
+        // Fallback 1: Overdue incomplete tasks (missed deadlines)
+        let overdue = relevant
+            .filter { !$0.isCompleted }
+            .filter { item in
+                guard let dueDate = item.dueDate else { return false }
+                return dueDate < now
+            }
+
+        if !overdue.isEmpty {
+            return sortCoursework(overdue)
+        }
+
+        // Fallback 2: Incomplete tasks due today that are still unsubmitted
+        let todayIncomplete = relevant
+            .filter { !$0.isCompleted }
+            .filter { item in
+                guard let dueDate = item.dueDate else { return false }
+                return dueDate >= now && dueDate < startOfTomorrow
+            }
+
+        if !todayIncomplete.isEmpty {
+            return sortCoursework(todayIncomplete)
+        }
+
+        // Fallback 3: Next upcoming tasks in 2+ days
+        let laterUpcoming = relevant
+            .filter { includeCompleted ? true : !$0.isCompleted }
+            .filter { item in
+                guard let dueDate = item.dueDate else { return false }
+                return dueDate >= startOfDayAfter
+            }
+
+        if !laterUpcoming.isEmpty {
+            return sortCoursework(laterUpcoming)
+        }
+
+        // Fallback 4: Undated tasks
+        let undated = relevant
+            .filter { includeCompleted ? true : !$0.isCompleted }
+            .filter { $0.dueDate == nil }
+
+        return sortCoursework(undated)
     }
 
     public func clearAllData() {

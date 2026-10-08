@@ -291,7 +291,8 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
 
 public extension String {
     func normalizedForVietnameseSearch() -> String {
-        self.replacingOccurrences(of: "đ", with: "d")
+        self.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "đ", with: "d")
             .replacingOccurrences(of: "Đ", with: "d")
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "vi_VN"))
             .lowercased()

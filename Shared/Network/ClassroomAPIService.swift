@@ -46,8 +46,8 @@ public final class ClassroomAPIService: ObservableObject {
             var allCoursework: [Coursework] = []
             let existingCoursework = ClassroomStorage.shared.loadCoursework()
 
-            // Chunk requests to avoid Google's 10 QPS quota
-            let chunkSize = 3
+            // Chunk requests to avoid Google's 10 QPS quota (Quota Shield)
+            let chunkSize = 2
             for startIndex in stride(from: 0, to: selectedCourses.count, by: chunkSize) {
                 guard GoogleOAuthService.shared.isAuthenticated, !Task.isCancelled else { return }
                 let chunk = Array(selectedCourses[startIndex..<min(startIndex + chunkSize, selectedCourses.count)])
@@ -74,6 +74,11 @@ public final class ClassroomAPIService: ObservableObject {
                         }
                     }
                 }
+
+                // Adaptive delay between batches to stay safely within Google's 10 QPS limit
+                if startIndex + chunkSize < selectedCourses.count {
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                }
             }
 
             guard GoogleOAuthService.shared.isAuthenticated, !Task.isCancelled else { return }
@@ -83,10 +88,12 @@ public final class ClassroomAPIService: ObservableObject {
             allCoursework.append(contentsOf: preservedItems)
 
             // Keep manual checklist completion if not yet turned in on Google
-            let existingStatusMap = Dictionary(existingCoursework.map { ($0.id, $0.status) }, uniquingKeysWith: { _, new in new })
+            // Reload fresh local completion states right before saving to prevent TOCTOU sync overwrite
+            let freshCoursework = ClassroomStorage.shared.loadCoursework()
+            let freshStatusMap = Dictionary(freshCoursework.map { ($0.id, $0.status) }, uniquingKeysWith: { _, new in new })
             let finalCoursework = allCoursework.map { item -> Coursework in
                 var updated = item
-                if let oldStatus = existingStatusMap[item.id], oldStatus == .turnedIn, !updated.isCompleted {
+                if let freshStatus = freshStatusMap[item.id], freshStatus == .turnedIn, !updated.isCompleted {
                     updated.status = .turnedIn
                 }
                 return updated

@@ -4,9 +4,41 @@ import AppKit
 #endif
 
 
-public struct ActiveLoopbackServer {
+public final class SafeSocketHandle: @unchecked Sendable {
+    private var fd: Int32
+    private let lock = NSLock()
+    private var isClosed = false
+
+    public init(fd: Int32) {
+        self.fd = fd
+    }
+
+    public var rawDescriptor: Int32 {
+        lock.lock()
+        defer { lock.unlock() }
+        return isClosed ? -1 : fd
+    }
+
+    public func close() {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !isClosed, fd >= 0 else { return }
+        isClosed = true
+        Darwin.close(fd)
+        fd = -1
+    }
+}
+
+public struct ActiveLoopbackServer: Sendable {
     public let serverFd: Int32
     public let port: Int
+    public let handle: SafeSocketHandle
+
+    public init(serverFd: Int32, port: Int, handle: SafeSocketHandle? = nil) {
+        self.serverFd = serverFd
+        self.port = port
+        self.handle = handle ?? SafeSocketHandle(fd: serverFd)
+    }
 }
 
 public final class LoopbackOAuthServer: @unchecked Sendable {
@@ -38,7 +70,7 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
         }
 
         guard bindResult == 0 else {
-            close(serverFd)
+            Darwin.close(serverFd)
             throw NSError(domain: "LoopbackOAuthServer", code: -2, userInfo: [NSLocalizedDescriptionKey: "Không thể bind socket tới 127.0.0.1"])
         }
 
@@ -52,11 +84,12 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
         let port = Int(UInt16(bigEndian: actualAddress.sin_port))
 
         guard listen(serverFd, 10) == 0 else {
-            close(serverFd)
+            Darwin.close(serverFd)
             throw NSError(domain: "LoopbackOAuthServer", code: -3, userInfo: [NSLocalizedDescriptionKey: "Không thể lắng nghe kết nối"])
         }
 
-        return ActiveLoopbackServer(serverFd: serverFd, port: port)
+        let handle = SafeSocketHandle(fd: serverFd)
+        return ActiveLoopbackServer(serverFd: serverFd, port: port, handle: handle)
     }
 
     public func waitForAuthorizationCode(server: ActiveLoopbackServer, timeoutSeconds: Int = 180) async throws -> String {
@@ -215,8 +248,8 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                         """
                         let errorResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(errorHtml.utf8.count)\r\nConnection: close\r\n\r\n\(errorHtml)"
                         _ = errorResponse.withCString { send(clientFd, $0, strlen($0), 0) }
-                        close(clientFd)
-                        close(serverFd)
+                        Darwin.close(clientFd)
+                        server.handle.close()
                         continuation.resume(throwing: NSError(domain: "LoopbackOAuthServer", code: -7, userInfo: [NSLocalizedDescriptionKey: "Đăng nhập Google bị hủy: \(oauthError)"]))
                         return
                     }
@@ -286,21 +319,26 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                         let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(html.utf8.count)\r\nConnection: close\r\n\r\n\(html)"
                         _ = response.withCString { send(clientFd, $0, strlen($0), 0) }
 
-                        close(clientFd)
-                        close(serverFd)
+                        Darwin.close(clientFd)
+                        server.handle.close()
+                        #if canImport(AppKit)
+                        DispatchQueue.main.async {
+                            NSApplication.shared.activate(ignoringOtherApps: true)
+                        }
+                        #endif
                         continuation.resume(returning: authCode)
                         return
                     }
 
-                    close(clientFd)
+                    Darwin.close(clientFd)
                 }
 
-                close(serverFd)
+                server.handle.close()
                 continuation.resume(throwing: NSError(domain: "LoopbackOAuthServer", code: -4, userInfo: [NSLocalizedDescriptionKey: "Hết thời gian chờ đăng nhập (Timeout). Vui lòng thử lại."]))
             }
         }
     } onCancel: {
-        close(server.serverFd)
+        server.handle.close()
     }
 }
 }

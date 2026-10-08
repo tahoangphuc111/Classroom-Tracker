@@ -6,15 +6,6 @@ final class ClassroomAppDelegate: NSObject, NSApplicationDelegate {
     private var backgroundSyncTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        enforceAquaAndWindowConstraints()
-        NotificationCenter.default.addObserver(
-            forName: NSWindow.didBecomeKeyNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.enforceAquaAndWindowConstraints()
-        }
-
         NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
             object: nil,
@@ -52,28 +43,6 @@ final class ClassroomAppDelegate: NSObject, NSApplicationDelegate {
         backgroundSyncTimer?.invalidate()
         backgroundSyncTimer = nil
     }
-
-    func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls {
-            Task { @MainActor in
-                _ = await GoogleOAuthService.shared.handleIncomingURL(url)
-            }
-        }
-    }
-
-    private func enforceAquaAndWindowConstraints() {
-        NSApplication.shared.appearance = NSAppearance(named: .aqua)
-        for window in NSApplication.shared.windows {
-            window.appearance = NSAppearance(named: .aqua)
-            window.minSize = NSSize(width: 900, height: 620)
-            if window.frame.size.width < 900 || window.frame.size.height < 620 {
-                var frame = window.frame
-                frame.size.width = max(frame.size.width, 980)
-                frame.size.height = max(frame.size.height, 680)
-                window.setFrame(frame, display: true, animate: true)
-            }
-        }
-    }
 }
 #endif
 
@@ -86,12 +55,10 @@ struct ClassroomApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .preferredColorScheme(.light)
                 #if os(macOS)
-                .frame(minWidth: 900, minHeight: 620)
+                .frame(minWidth: 840, minHeight: 580)
                 #endif
                 .onOpenURL { url in
-                    print("Nhận URL callback: \(url)")
                     #if os(macOS)
                     NSApplication.shared.activate(ignoringOtherApps: true)
                     for window in NSApplication.shared.windows {

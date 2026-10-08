@@ -59,8 +59,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -227,7 +227,9 @@ fun MainScreen() {
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = "Sync",
                                 tint = ChunkyColor.SkyBottom,
-                                modifier = if (isSyncing) Modifier.rotate(syncRotation) else Modifier
+                                modifier = Modifier.graphicsLayer {
+                                    rotationZ = if (isSyncing) syncRotation else 0f
+                                }
                             )
                         }
                         IconButton(onClick = { showSettingsDialog = true }) {

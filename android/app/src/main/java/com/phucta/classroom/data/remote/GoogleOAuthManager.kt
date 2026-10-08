@@ -87,6 +87,7 @@ class GoogleOAuthManager(
         val reversedClientId = clientId.split(".").reversed().joinToString(".")
         val redirectUri = "$reversedClientId:/oauth2redirect/google"
         activeRedirectUri = redirectUri
+        tokenStorage.saveAuthFlowState(verifier, redirectUri)
 
         val challenge = generateCodeChallenge(verifier)
 
@@ -114,8 +115,8 @@ class GoogleOAuthManager(
         }
 
         val code = uri.getQueryParameter("code") ?: return@withContext false
-        val verifier = activeCodeVerifier ?: return@withContext false
-        val redirectUri = activeRedirectUri ?: return@withContext false
+        val verifier = activeCodeVerifier ?: tokenStorage.loadAuthFlowVerifier() ?: return@withContext false
+        val redirectUri = activeRedirectUri ?: tokenStorage.loadAuthFlowRedirectUri() ?: return@withContext false
 
         try {
             val clientId = preferences.getEffectiveClientId()
@@ -164,6 +165,7 @@ class GoogleOAuthManager(
         } finally {
             activeCodeVerifier = null
             activeRedirectUri = null
+            tokenStorage.clearAuthFlowState()
         }
     }
 

@@ -41,6 +41,25 @@ class TokenStorage(context: Context) {
         private const val KEY_REFRESH_TOKEN = "refresh_token"
         private const val KEY_EXPIRES_IN = "expires_in"
         private const val KEY_EXPIRES_AT = "expires_at"
+        private const val KEY_AUTH_VERIFIER = "auth_verifier"
+        private const val KEY_AUTH_REDIRECT_URI = "auth_redirect_uri"
+    }
+
+    fun saveAuthFlowState(verifier: String, redirectUri: String) {
+        prefs.edit()
+            .putString(KEY_AUTH_VERIFIER, verifier)
+            .putString(KEY_AUTH_REDIRECT_URI, redirectUri)
+            .apply()
+    }
+
+    fun loadAuthFlowVerifier(): String? = prefs.getString(KEY_AUTH_VERIFIER, null)
+    fun loadAuthFlowRedirectUri(): String? = prefs.getString(KEY_AUTH_REDIRECT_URI, null)
+
+    fun clearAuthFlowState() {
+        prefs.edit()
+            .remove(KEY_AUTH_VERIFIER)
+            .remove(KEY_AUTH_REDIRECT_URI)
+            .apply()
     }
 
     fun saveTokens(tokens: OAuthTokens) {

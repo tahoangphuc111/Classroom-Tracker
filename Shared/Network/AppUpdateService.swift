@@ -20,6 +20,8 @@ public final class AppUpdateService: ObservableObject {
     private let repoOwner = "tahoangphuc111"
     private let repoName = "Classroom-Tracker"
     private let tokenKey = "com.phucta.classroomwidget.github_token"
+    private let etagKey = "com.phucta.classroomwidget.github_etag"
+    private let lastCheckKey = "com.phucta.classroomwidget.last_update_check"
 
     private var latestAssetId: Int? = nil
     private var latestDownloadUrl: URL? = nil
@@ -42,6 +44,15 @@ public final class AppUpdateService: ObservableObject {
     @MainActor
     public func checkForUpdates(isUserInitiated: Bool = false) async {
         guard !isChecking else { return }
+
+        // Throttle automatic background checks to once every 4 hours to preserve GitHub's 60 req/hour IP quota
+        if !isUserInitiated {
+            let lastCheck = UserDefaults.standard.double(forKey: lastCheckKey)
+            if lastCheck > 0 && Date().timeIntervalSince1970 - lastCheck < 14400 {
+                return
+            }
+        }
+
         isChecking = true
         statusMessage = "Đang kiểm tra bản cập nhật..."
 
@@ -56,9 +67,13 @@ public final class AppUpdateService: ObservableObject {
 
         var request = URLRequest(url: url)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("ClassroomTracker/\(currentVersion) (Macintosh; Apple Silicon)", forHTTPHeaderField: "User-Agent")
+        
         let token = githubToken
         if !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else if let savedEtag = UserDefaults.standard.string(forKey: etagKey), !savedEtag.isEmpty {
+            request.setValue(savedEtag, forHTTPHeaderField: "If-None-Match")
         }
 
         do {
@@ -68,9 +83,29 @@ public final class AppUpdateService: ObservableObject {
                 return
             }
 
-            if httpResponse.statusCode == 404 || httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastCheckKey)
+
+            if httpResponse.statusCode == 304 {
+                // Not modified, currently on the latest version
+                self.updateAvailable = false
+                self.statusMessage = "Bạn đang dùng phiên bản mới nhất (v\(currentVersion))."
+                return
+            }
+
+            if httpResponse.statusCode == 403 {
+                if token.isEmpty {
+                    if isUserInitiated {
+                        statusMessage = "Đã vượt hạn mức kiểm tra của GitHub (60 lần/giờ). Vui lòng thử lại sau."
+                    }
+                } else if isUserInitiated {
+                    statusMessage = "GitHub Token không có quyền truy cập repo này."
+                }
+                return
+            }
+
+            if httpResponse.statusCode == 404 || httpResponse.statusCode == 401 {
                 if isUserInitiated {
-                    statusMessage = "Không thể truy cập repo. Vui lòng kiểm tra lại GitHub Token."
+                    statusMessage = "Không tìm thấy bản phát hành hoặc cần Token truy cập repo riêng tư."
                 }
                 return
             }
@@ -78,6 +113,10 @@ public final class AppUpdateService: ObservableObject {
             guard httpResponse.statusCode == 200 else {
                 statusMessage = "Lỗi kiểm tra cập nhật (\(httpResponse.statusCode))."
                 return
+            }
+
+            if let newEtag = httpResponse.value(forHTTPHeaderField: "ETag") {
+                UserDefaults.standard.set(newEtag, forKey: etagKey)
             }
 
             let release = try JSONDecoder().decode(GitHubReleaseResponse.self, from: data)
@@ -147,6 +186,8 @@ public final class AppUpdateService: ObservableObject {
             return
         }
 
+        request.setValue("ClassroomTracker/\(currentVersion) (Macintosh; Apple Silicon)", forHTTPHeaderField: "User-Agent")
+
         do {
             let (tempLocalUrl, response) = try await URLSession.shared.download(for: request)
             guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
@@ -154,12 +195,20 @@ public final class AppUpdateService: ObservableObject {
                 return
             }
 
-            let destinationUrl = FileManager.default.temporaryDirectory.appendingPathComponent("ClassroomTracker.pkg")
-            try? FileManager.default.removeItem(at: destinationUrl)
-            try FileManager.default.moveItem(at: tempLocalUrl, to: destinationUrl)
+            let fileManager = FileManager.default
+            let downloadsDirectory = fileManager.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            let destinationUrl = (downloadsDirectory ?? fileManager.temporaryDirectory).appendingPathComponent("ClassroomTracker.pkg")
 
-            statusMessage = "Đã tải xong! Đang mở trình cài đặt..."
-            NSWorkspace.shared.open(destinationUrl)
+            try? fileManager.removeItem(at: destinationUrl)
+            try fileManager.moveItem(at: tempLocalUrl, to: destinationUrl)
+
+            let opened = NSWorkspace.shared.open(destinationUrl)
+            if opened {
+                statusMessage = "Đã tải xong! Đang mở trình cài đặt..."
+            } else {
+                NSWorkspace.shared.activateFileViewerSelecting([destinationUrl])
+                statusMessage = "Đã lưu tệp cài đặt vào thư mục Downloads. Vui lòng mở tệp để cài đặt."
+            }
         } catch {
             statusMessage = "Lỗi khi tải cập nhật: \(error.localizedDescription)"
         }
@@ -167,23 +216,32 @@ public final class AppUpdateService: ObservableObject {
     }
 
     private func isVersion(_ v1: String, newerThan v2: String) -> Bool {
-        let clean1 = v1.components(separatedBy: "-").first ?? v1
-        let clean2 = v2.components(separatedBy: "-").first ?? v2
-        let parts1 = clean1.split(separator: ".").compactMap { part -> Int? in
-            let digits = part.prefix(while: \.isNumber)
-            return digits.isEmpty ? nil : Int(digits)
-        }
-        let parts2 = clean2.split(separator: ".").compactMap { part -> Int? in
-            let digits = part.prefix(while: \.isNumber)
-            return digits.isEmpty ? nil : Int(digits)
-        }
-        let maxCount = max(parts1.count, parts2.count)
+        func parseVersion(_ raw: String) -> (numbers: [Int], isPreRelease: Bool) {
+            let lower = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            let isPre = lower.contains("beta") || lower.contains("alpha") || lower.contains("rc") || lower.contains("preview")
 
+            var clean = lower
+            if clean.hasPrefix("v") { clean.removeFirst() }
+
+            let tokens = clean.components(separatedBy: CharacterSet.decimalDigits.inverted)
+            let numbers = tokens.compactMap { Int($0) }
+            return (numbers, isPre)
+        }
+
+        let (remoteNums, remotePre) = parseVersion(v1)
+        let (currNums, currPre) = parseVersion(v2)
+
+        let maxCount = max(remoteNums.count, currNums.count)
         for i in 0..<maxCount {
-            let num1 = i < parts1.count ? parts1[i] : 0
-            let num2 = i < parts2.count ? parts2[i] : 0
+            let num1 = i < remoteNums.count ? remoteNums[i] : 0
+            let num2 = i < currNums.count ? currNums[i] : 0
             if num1 > num2 { return true }
             if num1 < num2 { return false }
+        }
+
+        // If numeric portions are equal (e.g. 0.5 vs 0.5 Beta), a stable release is newer than a pre-release
+        if currPre && !remotePre {
+            return true
         }
         return false
     }

@@ -52,15 +52,19 @@ fun AllUpcomingScreen(
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val normalizedQuery = searchQuery.normalizeForVietnameseSearch()
+    val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForVietnameseSearch() }
 
-    val filteredItems = if (normalizedQuery.isBlank()) {
-        allCoursework
-    } else {
-        allCoursework.filter { it.searchIndex.contains(normalizedQuery) }
+    val filteredItems = remember(allCoursework, normalizedQuery) {
+        if (normalizedQuery.isBlank()) {
+            allCoursework
+        } else {
+            allCoursework.filter { it.searchIndex.contains(normalizedQuery) }
+        }
     }
 
-    val buckets = BaoBaiBucketingUtils.computeBuckets(filteredItems, courses)
+    val buckets = remember(filteredItems, courses) {
+        BaoBaiBucketingUtils.computeBuckets(filteredItems, courses)
+    }
 
     Column(
         modifier = modifier

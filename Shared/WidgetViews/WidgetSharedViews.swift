@@ -67,9 +67,9 @@ public struct SubjectArtHelper {
         func matchCategory(text: String, tokens: Set<String>) -> SubjectCategory? {
             if text.contains("toán") || tokens.contains("math") || tokens.contains("maths") || text.contains("giải tích") || text.contains("đại số") || text.contains("hình học") || text.contains("xác suất") || tokens.contains("calculus") || tokens.contains("algebra") || tokens.contains("geometry") {
                 return .math
-            } else if text.contains("vật lý") || text.contains("vật lí") || tokens.contains("physics") || text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || (tokens.contains("lý") && !text.contains("quản lý") && !text.contains("xử lý") && !text.contains("tâm lý") && !text.contains("pháp lý") && !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("triết lý") && !text.contains("lý thuyết") && !text.contains("lý do")) {
+            } else if text.contains("vật lý") || text.contains("vật lí") || tokens.contains("physics") || text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") || ((tokens.contains("lý") || tokens.contains("lí")) && !text.contains("quản lý") && !text.contains("xử lý") && !text.contains("tâm lý") && !text.contains("pháp lý") && !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("triết lý") && !text.contains("lý thuyết") && !text.contains("lý do")) {
                 return .physics
-            } else if text.contains("hóa học") || text.contains("môn hóa") || tokens.contains("chemistry") || tokens.contains("chem") || (tokens.contains("hóa") && !text.contains("tự động hóa") && !text.contains("tiến hóa") && !text.contains("hóa đơn") && !text.contains("văn hóa") && !text.contains("tối ưu hóa") && !text.contains("chuẩn hóa") && !text.contains("công nghiệp hóa") && !text.contains("hiện đại hóa")) {
+            } else if text.contains("hóa học") || text.contains("hoá học") || text.contains("môn hóa") || text.contains("môn hoá") || tokens.contains("chemistry") || tokens.contains("chem") || ((tokens.contains("hóa") || tokens.contains("hoá")) && !text.contains("tự động hóa") && !text.contains("tiến hóa") && !text.contains("hóa đơn") && !text.contains("văn hóa") && !text.contains("tối ưu hóa") && !text.contains("chuẩn hóa") && !text.contains("công nghiệp hóa") && !text.contains("hiện đại hóa")) {
                 return .chemistry
             } else if text.contains("sinh học") || text.contains("môn sinh") || tokens.contains("biology") || tokens.contains("bio") || text.contains("y học") || (tokens.contains("sinh") && !text.contains("học sinh") && !text.contains("sinh viên") && !text.contains("sinh hoạt")) {
                 return .biology
@@ -97,10 +97,10 @@ public struct SubjectArtHelper {
             return nil
         }
 
-        if !titleLower.isEmpty, let matched = matchCategory(text: titleLower, tokens: titleTokens) {
+        if let matched = matchCategory(text: courseLower, tokens: courseTokens) {
             return matched
         }
-        if let matched = matchCategory(text: courseLower, tokens: courseTokens) {
+        if !titleLower.isEmpty, let matched = matchCategory(text: titleLower, tokens: titleTokens) {
             return matched
         }
         return .other

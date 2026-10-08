@@ -55,6 +55,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     private var pendingCodeVerifier: String?
     private var pendingRedirectUri: String?
     private var lastRedeemedAuthCode: String?
+    private var inFlightAuthCodes = Set<String>()
     private static let pendingVerifierKey = "cached_pending_oauth_verifier"
 
     private func savePendingVerifier(_ verifier: String) {
@@ -131,14 +132,19 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         #if os(iOS)
         try await signInWithWebSession(clientId: clientId, verifier: verifier)
         #elseif os(macOS)
-        try await signInWithLoopback(clientId: clientId, verifier: verifier)
+        do {
+            try await signInWithWebSession(clientId: clientId, verifier: verifier)
+        } catch {
+            if let authError = error as? ASWebAuthenticationSessionError, authError.code == .canceledLogin {
+                throw error
+            }
+            try await signInWithLoopback(clientId: clientId, verifier: verifier)
+        }
         #endif
     }
 
     @discardableResult
     public func handleIncomingURL(_ url: URL) async -> Bool {
-        print("GoogleOAuthService.handleIncomingURL nhận được: \(url.absoluteString)")
-
         let scheme = url.scheme?.lowercased() ?? ""
         guard scheme == "classroomwidget" || scheme == "classroomtracker" || scheme.hasPrefix("com.googleusercontent.apps.") else {
             return false
@@ -185,11 +191,17 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         }
 
         if let code {
-            if code == lastRedeemedAuthCode && self.isAuthenticated {
-                await ClassroomAPIService.shared.syncAll()
-                ClassroomStorage.shared.notifyWidgetReload()
-                return true
+            if code == lastRedeemedAuthCode || inFlightAuthCodes.contains(code) {
+                if self.isAuthenticated {
+                    await ClassroomAPIService.shared.syncAll()
+                    ClassroomStorage.shared.notifyWidgetReload()
+                    return true
+                }
+                return false
             }
+
+            inFlightAuthCodes.insert(code)
+            defer { inFlightAuthCodes.remove(code) }
 
             let clientId = configuredClientId
             let verifier = self.pendingCodeVerifier ?? loadPendingVerifier() ?? ""
@@ -234,7 +246,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         return false
     }
 
-    #if os(iOS)
+    #if os(iOS) || os(macOS)
     private func signInWithWebSession(clientId: String, verifier: String) async throws {
         let reversedClientId = clientId.components(separatedBy: ".").reversed().joined(separator: ".")
         let redirectUri = "\(reversedClientId):/oauth2redirect/google"
@@ -558,23 +570,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
 
     private func saveTokensToKeychain(tokens: OAuthTokens) {
         ClassroomStorage.shared.saveUserLoggedIn(true)
-        if let data = try? JSONEncoder().encode(tokens) {
-            for dir in allTokenDirectories {
-                do {
-                    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-                    let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
-                    do {
-                        try data.write(to: fileURL, options: .atomic)
-                    } catch {
-                        try data.write(to: fileURL, options: [])
-                    }
-                    try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: fileURL.path)
-                } catch {
-                    print("Lỗi ghi token vào thư mục \(dir.path): \(error.localizedDescription)")
-                }
-            }
-        }
-
         guard let data = try? JSONEncoder().encode(tokens) else { return }
         deleteTokensFromKeychain()
 
@@ -599,15 +594,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     }
 
     private func loadTokensFromKeychain() -> OAuthTokens? {
-        for dir in allTokenDirectories {
-            let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
-            if let data = try? Data(contentsOf: fileURL),
-               let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data),
-               !decoded.accessToken.isEmpty {
-                return decoded
-            }
-        }
-
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
@@ -625,10 +611,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         #endif
         if status == errSecSuccess, let data = item as? Data {
             if let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
-                for dir in allTokenDirectories {
-                    let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
-                    try? data.write(to: fileURL, options: .atomic)
-                }
                 return decoded
             }
         }
@@ -642,17 +624,19 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             try? FileManager.default.removeItem(at: fileURL)
         }
 
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
             kSecAttrAccount as String: "google_tokens"
         ]
         #if os(macOS)
-        var macQuery = query
-        macQuery[kSecUseDataProtectionKeychain as String] = true
-        SecItemDelete(macQuery as CFDictionary)
+        query[kSecUseDataProtectionKeychain as String] = true
         #endif
         SecItemDelete(query as CFDictionary)
+        #if os(macOS)
+        query.removeValue(forKey: kSecUseDataProtectionKeychain as String)
+        SecItemDelete(query as CFDictionary)
+        #endif
     }
 }
 

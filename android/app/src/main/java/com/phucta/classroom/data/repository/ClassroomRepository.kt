@@ -2,6 +2,7 @@ package com.phucta.classroom.data.repository
 
 import android.content.Context
 import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.room.withTransaction
 import com.phucta.classroom.data.local.ClassroomDatabase
 import com.phucta.classroom.data.local.ClassroomPreferences
 import com.phucta.classroom.data.local.CourseEntity
@@ -115,37 +116,25 @@ class ClassroomRepository(
             // 1. Fetch active courses
             val fetchedCourses = apiService.fetchActiveCourses(accessToken)
 
-            // If database currently holds mock data, purge mock data before saving real data
             val existingCourseEntities = courseDao.getAllCourses()
             val hasOnlyMockCourses = existingCourseEntities.isNotEmpty() &&
                     existingCourseEntities.all { MockDataProvider.isMockCourse(it.id) }
-            if (hasOnlyMockCourses) {
-                courseDao.deleteAllCourses()
-                courseworkDao.deleteAllCoursework()
-            }
 
             // Merge existing isSelectedForWidget states
-            val existingCourses = if (hasOnlyMockCourses) emptyList() else courseDao.getAllCourses().map { it.toDomain() }
+            val existingCourses = if (hasOnlyMockCourses) emptyList() else existingCourseEntities.map { it.toDomain() }
             val existingSelectionMap = existingCourses.associate { it.id to it.isSelectedForWidget }
 
             val mergedCourses = fetchedCourses.map { course ->
                 val preservedSelection = existingSelectionMap[course.id] ?: true
                 course.copy(isSelectedForWidget = preservedSelection)
             }
-            courseDao.upsertCourses(mergedCourses.map { CourseEntity.fromDomain(it) })
 
-            // Clean up stale courses that were archived or deleted on Google
-            val activeCourseIds = mergedCourses.map { it.id }
-            if (activeCourseIds.isNotEmpty()) {
-                courseDao.deleteCoursesNotIn(activeCourseIds)
-            }
-
-            // 2. Fetch coursework for selected courses using 10 QPS Quota Shield
+            // 2. Fetch coursework for selected courses using 10 QPS Quota Shield (chunk size 2, 350ms delay)
             val selectedCourses = mergedCourses.filter { it.isSelectedForWidget }
             val existingCoursework = if (hasOnlyMockCourses) emptyList() else courseworkDao.getAllCoursework().map { it.toDomain() }
             val allCoursework = mutableListOf<Coursework>()
 
-            val chunkSize = 3
+            val chunkSize = 2
             for (chunk in selectedCourses.chunked(chunkSize)) {
                 coroutineScope {
                     val deferredResults = chunk.map { course ->
@@ -161,7 +150,7 @@ class ClassroomRepository(
                     val results = deferredResults.awaitAll()
                     results.forEach { allCoursework.addAll(it) }
                 }
-                delay(200) // 10 QPS protection breathing room
+                delay(350) // 10 QPS protection breathing room
             }
 
             // Preserve unselected courses' coursework in cache
@@ -169,31 +158,50 @@ class ClassroomRepository(
             val preservedItems = existingCoursework.filter { unselectedIds.contains(it.courseId) }
             allCoursework.addAll(preservedItems)
 
-            // 3. Preserve manual checklist completion if not yet turned in on Google Classroom
-            val existingStatusMap = existingCoursework.associateBy { it.id }
-            val finalCoursework = allCoursework.map { incoming ->
-                val existing = existingStatusMap[incoming.id]
-                // If Google reports completed (TURNED_IN or RETURNED), accept Google's status.
-                // If Google reports incomplete, keep local checkmark if user previously marked it complete.
-                val wasManuallyCompleted = !incoming.isCompleted &&
-                        (existing?.isManuallyCompleted == true || existing?.status == SubmissionStatus.TURNED_IN)
-
-                if (wasManuallyCompleted) {
-                    incoming.copy(
-                        status = SubmissionStatus.TURNED_IN,
-                        isManuallyCompleted = true
-                    )
-                } else {
-                    incoming
+            // 3. Atomically persist courses and coursework in Room transaction with TOCTOU protection
+            database.withTransaction {
+                if (hasOnlyMockCourses) {
+                    courseDao.deleteAllCourses()
+                    courseworkDao.deleteAllCoursework()
                 }
-            }
 
-            courseworkDao.upsertCourseworks(finalCoursework.map { CourseworkEntity.fromDomain(it) })
+                courseDao.upsertCourses(mergedCourses.map { CourseEntity.fromDomain(it) })
 
-            // Clean up stale coursework that was removed on Google
-            val validCourseworkIds = finalCoursework.map { it.id }
-            if (validCourseworkIds.isNotEmpty()) {
-                courseworkDao.deleteCourseworkNotIn(validCourseworkIds)
+                // Clean up stale courses that were archived or deleted on Google
+                val activeCourseIds = mergedCourses.map { it.id }
+                if (activeCourseIds.isNotEmpty()) {
+                    courseDao.deleteCoursesNotIn(activeCourseIds)
+                }
+
+                // Reload fresh coursework right before saving to prevent overwriting user checkmarks
+                // toggled while network chunks were fetching (TOCTOU protection)
+                val latestCoursework = courseworkDao.getAllCoursework().map { it.toDomain() }
+                val latestStatusMap = latestCoursework.associateBy { it.id }
+
+                val finalCoursework = allCoursework.map { incoming ->
+                    val latest = latestStatusMap[incoming.id]
+                    // If Google reports completed (TURNED_IN or RETURNED), accept Google's status.
+                    // If Google reports incomplete, keep local checkmark if user previously marked it complete.
+                    val wasManuallyCompleted = !incoming.isCompleted &&
+                            (latest?.isManuallyCompleted == true || latest?.status == SubmissionStatus.TURNED_IN)
+
+                    if (wasManuallyCompleted) {
+                        incoming.copy(
+                            status = SubmissionStatus.TURNED_IN,
+                            isManuallyCompleted = true
+                        )
+                    } else {
+                        incoming
+                    }
+                }
+
+                courseworkDao.upsertCourseworks(finalCoursework.map { CourseworkEntity.fromDomain(it) })
+
+                // Clean up stale coursework that was removed on Google
+                val validCourseworkIds = finalCoursework.map { it.id }
+                if (validCourseworkIds.isNotEmpty()) {
+                    courseworkDao.deleteCourseworkNotIn(validCourseworkIds)
+                }
             }
 
             preferences.saveLastSyncTime(System.currentTimeMillis())

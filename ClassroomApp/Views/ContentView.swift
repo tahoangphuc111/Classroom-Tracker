@@ -268,7 +268,6 @@ public struct ContentView: View {
 
     public var body: some View {
         splitViewContainer
-            .preferredColorScheme(.light)
         .onAppear {
             clientIdInput = authService.configuredClientId
             clientSecretInput = authService.configuredClientSecret
@@ -347,22 +346,8 @@ public struct ContentView: View {
                 autoSelectFirstItem()
             }
         }
-        .onOpenURL { url in
-            Task { @MainActor in
-                let handled = await authService.handleIncomingURL(url)
-                if handled || url.scheme == "classroomwidget" || url.scheme == "classroomtracker" {
-                    if authService.isAuthenticated {
-                        await apiService.syncAll()
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                            refreshData()
-                        }
-                    }
-                }
-            }
-        }
         .sheet(isPresented: $showSettingsModal) {
             settingsSheetView
-                .preferredColorScheme(.light)
         }
     }
 
@@ -380,7 +365,7 @@ public struct ContentView: View {
             sidebarView
         } detail: {
             detailMasterView
-                .frame(minWidth: 640)
+                .frame(minWidth: 480)
         }
         .navigationSplitViewStyle(.balanced)
         #endif
@@ -610,9 +595,9 @@ public struct ContentView: View {
             if !showSettingsModal {
                 Group {
                     Button("") { selectNextItem() }
-                        .keyboardShortcut(.downArrow, modifiers: [])
+                        .keyboardShortcut(.downArrow, modifiers: [.option])
                     Button("") { selectPreviousItem() }
-                        .keyboardShortcut(.upArrow, modifiers: [])
+                        .keyboardShortcut(.upArrow, modifiers: [.option])
                     Button("") { isSearchFocused = true }
                         .keyboardShortcut("f", modifiers: [.command])
                     Button("") { handleEscape() }
@@ -623,7 +608,7 @@ public struct ContentView: View {
                             toggleCompletion(for: item)
                         }
                     }
-                    .keyboardShortcut(.space, modifiers: [])
+                    .keyboardShortcut("d", modifiers: [.command])
                     #endif
                 }
                 .opacity(0)
@@ -1705,7 +1690,7 @@ public struct ContentView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     #else
-                    Text("Lấy Client ID từ Google Cloud Console (loại ứng dụng iOS/macOS hoặc Desktop). Redirect URI đặt là: classroomwidget://oauth-callback")
+                    Text("Lấy Client ID từ Google Cloud Console (loại ứng dụng iOS/macOS hoặc Desktop). Ứng dụng hỗ trợ cả xác thực native an toàn và loopback.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     #endif
@@ -1812,7 +1797,6 @@ public struct ContentView: View {
             }
             .formStyle(.grouped)
             .navigationTitle("Cài đặt & Tài khoản")
-            .preferredColorScheme(.light)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { showSettingsModal = false }
@@ -1950,8 +1934,8 @@ public struct ContentView: View {
         self.allCoursework = ClassroomStorage.shared.loadCoursework()
         recomputeBuckets()
 
-        // If current filter has no items, but items exist in other categories, intelligently switch
-        if baseFilteredList.isEmpty && !allCoursework.isEmpty {
+        // If current filter has no items, but items exist in other categories, intelligently switch (skip when inspecting widget preview)
+        if selectedFilter != .widgetPreview && baseFilteredList.isEmpty && !allCoursework.isEmpty {
             if !buckets.tomorrow.isEmpty {
                 selectedFilter = .tomorrow
             } else if !buckets.todayAndTomorrow.isEmpty {

@@ -10,51 +10,75 @@ import UIKit
 
 public extension Color {
     static var platformWindowBackground: Color {
+        #if os(macOS)
+        Color(nsColor: .windowBackgroundColor)
+        #elseif os(iOS)
+        Color(uiColor: .systemGroupedBackground)
+        #else
         Color(red: 0.965, green: 0.970, blue: 0.976)
+        #endif
     }
 
     static var platformControlBackground: Color {
+        #if os(macOS)
+        Color(nsColor: .controlBackgroundColor)
+        #elseif os(iOS)
+        Color(uiColor: .secondarySystemGroupedBackground)
+        #else
         Color.white
+        #endif
     }
 
     static var platformSidebarBackground: Color {
+        #if os(macOS)
+        Color(nsColor: .windowBackgroundColor)
+        #elseif os(iOS)
+        Color(uiColor: .systemBackground)
+        #else
         Color(red: 0.948, green: 0.954, blue: 0.962)
+        #endif
     }
 
     static var platformCardBorder: Color {
-        Color.black.opacity(0.06)
+        Color.primary.opacity(0.08)
     }
 
     static var platformCardHoverBorder: Color {
-        Color.black.opacity(0.12)
+        Color.primary.opacity(0.16)
     }
 
     static var platformCardSelectedBorder: Color {
-        Color(red: 0.12, green: 0.52, blue: 0.95).opacity(0.24)
+        Color(red: 0.12, green: 0.52, blue: 0.95).opacity(0.6)
     }
 
     static var platformCardSelectedBackground: Color {
+        #if os(macOS)
+        Color(nsColor: .selectedContentBackgroundColor).opacity(0.12)
+        #elseif os(iOS)
+        Color(uiColor: .secondarySystemBackground)
+        #else
         Color.white
+        #endif
     }
 
     static var platformSubtleFill: Color {
-        Color.black.opacity(0.035)
+        Color.primary.opacity(0.04)
     }
 
     static var platformDivider: Color {
-        Color.black.opacity(0.07)
+        Color.primary.opacity(0.10)
     }
 
     static var platformTextPrimary: Color {
-        Color(red: 0.11, green: 0.13, blue: 0.18)
+        Color.primary
     }
 
     static var platformTextSecondary: Color {
-        Color(red: 0.44, green: 0.48, blue: 0.56)
+        Color.secondary
     }
 
     static var platformTextTertiary: Color {
-        Color(red: 0.62, green: 0.66, blue: 0.72)
+        Color.secondary.opacity(0.7)
     }
 }
 

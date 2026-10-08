@@ -66,16 +66,26 @@ object SubjectArtHelper {
                         tokens.contains("geometry") -> SubjectCategory.MATH
 
                 text.contains("vật lý") || text.contains("vật lí") || tokens.contains("physics") ||
-                        text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") ||
-                        (tokens.contains("lý") && !text.contains("quản lý") && !text.contains("xử lý") &&
-                                !text.contains("tâm lý") && !text.contains("pháp lý") && !text.contains("địa lý") &&
-                                !text.contains("địa lí") && !text.contains("triết lý") && !text.contains("lý thuyết") &&
-                                !text.contains("lý do")) -> SubjectCategory.PHYSICS
+                        text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") ||
+                        ((tokens.contains("lý") || tokens.contains("lí")) && !text.contains("quản lý") && !text.contains("quản lí") &&
+                                !text.contains("xử lý") && !text.contains("xử lí") &&
+                                !text.contains("tâm lý") && !text.contains("tâm lí") &&
+                                !text.contains("pháp lý") && !text.contains("pháp lí") &&
+                                !text.contains("địa lý") && !text.contains("địa lí") &&
+                                !text.contains("triết lý") && !text.contains("triết lí") &&
+                                !text.contains("lý thuyết") && !text.contains("lí thuyết") &&
+                                !text.contains("lý do") && !text.contains("lí do")) -> SubjectCategory.PHYSICS
 
-                text.contains("hóa học") || text.contains("môn hóa") || tokens.contains("chemistry") || tokens.contains("chem") ||
-                        (tokens.contains("hóa") && !text.contains("tự động hóa") && !text.contains("tiến hóa") &&
-                                !text.contains("hóa đơn") && !text.contains("văn hóa") && !text.contains("tối ưu hóa") &&
-                                !text.contains("chuẩn hóa") && !text.contains("công nghiệp hóa") && !text.contains("hiện đại hóa")) -> SubjectCategory.CHEMISTRY
+                text.contains("hóa học") || text.contains("hoá học") || text.contains("môn hóa") || text.contains("môn hoá") ||
+                        tokens.contains("chemistry") || tokens.contains("chem") ||
+                        ((tokens.contains("hóa") || tokens.contains("hoá")) && !text.contains("tự động hóa") && !text.contains("tự động hoá") &&
+                                !text.contains("tiến hóa") && !text.contains("tiến hoá") &&
+                                !text.contains("hóa đơn") && !text.contains("hoá đơn") &&
+                                !text.contains("văn hóa") && !text.contains("văn hoá") &&
+                                !text.contains("tối ưu hóa") && !text.contains("tối ưu hoá") &&
+                                !text.contains("chuẩn hóa") && !text.contains("chuẩn hoá") &&
+                                !text.contains("công nghiệp hóa") && !text.contains("công nghiệp hoá") &&
+                                !text.contains("hiện đại hóa") && !text.contains("hiện đại hoá")) -> SubjectCategory.CHEMISTRY
 
                 text.contains("sinh học") || text.contains("môn sinh") || tokens.contains("biology") || tokens.contains("bio") ||
                         text.contains("y học") || (tokens.contains("sinh") && !text.contains("học sinh") &&
@@ -125,10 +135,10 @@ object SubjectArtHelper {
             }
         }
 
+        match(courseLower, courseTokens)?.let { return it }
         if (titleLower.isNotEmpty()) {
             match(titleLower, titleTokens)?.let { return it }
         }
-        match(courseLower, courseTokens)?.let { return it }
         return SubjectCategory.OTHER
     }
 
