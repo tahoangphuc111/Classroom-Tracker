@@ -24,6 +24,8 @@ public struct ContentView: View {
     @State private var clientSecretInput: String = ""
     @State private var isSigningIn: Bool = false
     @State private var errorMessage: String? = nil
+    @State private var isDemoMode: Bool = false
+    @State private var showAdvancedOAuthConfig: Bool = false
     @State private var searchText: String = ""
     @State private var copyFeedbackMessage: String? = nil
     @FocusState private var isSearchFocused: Bool
@@ -267,7 +269,13 @@ public struct ContentView: View {
     }
 
     public var body: some View {
-        splitViewContainer
+        Group {
+            if authService.isAuthenticated || isDemoMode {
+                splitViewContainer
+            } else {
+                welcomeLoginView
+            }
+        }
         .onAppear {
             clientIdInput = authService.configuredClientId
             clientSecretInput = authService.configuredClientSecret
@@ -352,6 +360,252 @@ public struct ContentView: View {
     }
 
     @ViewBuilder
+    private var welcomeLoginView: some View {
+        ScrollView {
+            VStack(spacing: 28) {
+                Spacer(minLength: 28)
+
+                // App Branding
+                VStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.blue, Color(red: 0.1, green: 0.42, blue: 0.95)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 80, height: 80)
+                            .shadow(color: Color.blue.opacity(0.35), radius: 14, x: 0, y: 7)
+
+                        Image(systemName: "graduationcap.fill")
+                            .font(.system(size: 40, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+
+                    Text("Classroom Tracker")
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+
+                    Text("Theo dõi bài tập Google Classroom thông minh cho học sinh, sinh viên")
+                        .font(.system(size: 13.5, weight: .regular))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 420)
+                }
+
+                // Feature Highlights Cards
+                VStack(spacing: 12) {
+                    welcomeFeatureRow(
+                        icon: "calendar.badge.clock",
+                        iconColor: .orange,
+                        title: "Báo bài Ngày mai",
+                        description: "Tự động phân loại bài tập cần nộp vào ngày mai theo từng môn học, không lo quên bài."
+                    )
+                    welcomeFeatureRow(
+                        icon: "macwindow.on.rectangle",
+                        iconColor: .blue,
+                        title: "Widget Màn hình chính",
+                        description: "Hiển thị danh sách bài tập mọi lúc ngay trên Desktop macOS & màn hình chính iOS."
+                    )
+                    welcomeFeatureRow(
+                        icon: "arrow.triangle.2.circlepath",
+                        iconColor: .green,
+                        title: "Tự động đồng bộ",
+                        description: "Kết nối trực tiếp tài khoản Google Classroom, lưu trữ an toàn và bảo mật trên thiết bị."
+                    )
+                }
+                .padding(18)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.platformControlBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.platformCardBorder, lineWidth: 1)
+                        )
+                )
+                .frame(maxWidth: 460)
+
+                if let err = errorMessage ?? authService.authErrorMessage {
+                    HStack(spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                        Text(err)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.leading)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.red.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .frame(maxWidth: 460)
+                }
+
+                // Primary Action: Google Login
+                VStack(spacing: 12) {
+                    Button {
+                        triggerHapticFeedback()
+                        startGoogleLogin()
+                    } label: {
+                        HStack(spacing: 10) {
+                            if isSigningIn {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text("Đang kết nối Google...")
+                                    .font(.system(size: 14.5, weight: .semibold))
+                            } else {
+                                Image(systemName: "person.badge.key.fill")
+                                    .font(.system(size: 15, weight: .semibold))
+                                Text("Đăng nhập bằng Google")
+                                    .font(.system(size: 14.5, weight: .bold))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Color.blue)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .shadow(color: Color.blue.opacity(0.25), radius: 8, x: 0, y: 4)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isSigningIn)
+
+                    // Secondary: Demo Mode
+                    Button {
+                        triggerHapticFeedback()
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            ClassroomStorage.shared.populateMockDataManually()
+                            refreshData()
+                            isDemoMode = true
+                            autoSelectFirstItem()
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                            Text("Xem thử giao diện với dữ liệu mẫu")
+                        }
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .frame(maxWidth: 360)
+
+                // Collapsible Advanced Configuration
+                DisclosureGroup(
+                    isExpanded: $showAdvancedOAuthConfig,
+                    content: {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Ứng dụng đã có sẵn Google Client ID hoạt động ngay. Bạn chỉ cần cấu hình nếu muốn dùng dự án Google Cloud riêng.")
+                                .font(.system(size: 11.5))
+                                .foregroundStyle(.secondary)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Client ID:")
+                                    .font(.system(size: 11.5, weight: .medium))
+                                TextField("Google Client ID", text: $clientIdInput)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(size: 11.5, design: .monospaced))
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Client Secret (Tùy chọn):")
+                                    .font(.system(size: 11.5, weight: .medium))
+                                SecureField("Google Client Secret", text: $clientSecretInput)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(size: 11.5, design: .monospaced))
+                            }
+
+                            HStack {
+                                Button("Mặc định") {
+                                    clientIdInput = GoogleOAuthService.bundledClientId
+                                    clientSecretInput = GoogleOAuthService.bundledClientSecret
+                                    authService.configuredClientId = GoogleOAuthService.bundledClientId
+                                    authService.configuredClientSecret = GoogleOAuthService.bundledClientSecret
+                                }
+                                .font(.system(size: 11.5))
+
+                                Spacer()
+
+                                Button("Lưu") {
+                                    authService.configuredClientId = clientIdInput
+                                    authService.configuredClientSecret = clientSecretInput
+                                    showToast(title: "Đã lưu cấu hình OAuth", icon: "checkmark.circle.fill", tint: .green)
+                                }
+                                .font(.system(size: 11.5, weight: .semibold))
+                            }
+                        }
+                        .padding(.top, 6)
+                    },
+                    label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "gearshape")
+                            Text("Cấu hình Google OAuth nâng cao")
+                        }
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    }
+                )
+                .frame(maxWidth: 460)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.platformControlBackground.opacity(0.6))
+                )
+
+                Spacer(minLength: 28)
+            }
+            .padding(.horizontal, 24)
+            .frame(maxWidth: .infinity)
+        }
+        .background(Color.platformWindowBackground)
+        #if os(macOS)
+        .frame(minWidth: 520, minHeight: 580)
+        #endif
+        .overlay(alignment: .bottom) {
+            if let toast = activeToast {
+                FloatingToastHUD(toast: toast, onDismiss: { dismissToast() })
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .offset(y: 12)),
+                        removal: .opacity.combined(with: .scale(scale: 0.92))
+                    ))
+                    .zIndex(100)
+            }
+        }
+    }
+
+    private func welcomeFeatureRow(icon: String, iconColor: Color, title: String, description: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(iconColor.opacity(0.12))
+                    .frame(width: 32, height: 32)
+
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(iconColor)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13.5, weight: .bold))
+                    .foregroundStyle(.primary)
+
+                Text(description)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+        }
+    }
+
+    @ViewBuilder
     private var splitViewContainer: some View {
         #if os(iOS)
         NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: $preferredCompactColumn) {
@@ -386,6 +640,39 @@ public struct ContentView: View {
                 }
             }
         )) {
+            if !authService.isAuthenticated {
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .foregroundStyle(.purple)
+                            Text("Chế độ xem thử")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.purple)
+                        }
+                        Text("Đang hiển thị dữ liệu mẫu. Đăng nhập để đồng bộ Google Classroom thật.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+
+                        Button {
+                            startGoogleLogin()
+                        } label: {
+                            HStack {
+                                Image(systemName: "person.badge.key.fill")
+                                Text("Đăng nhập Google")
+                            }
+                            .font(.system(size: 11.5, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.blue)
+                        .controlSize(.small)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+
             Section("Danh mục báo bài") {
                 sidebarCategoryRow(for: .tomorrow, count: buckets.tomorrow.count)
                 sidebarCategoryRow(for: .todayAndTomorrow, count: buckets.todayAndTomorrow.count)
@@ -1786,6 +2073,7 @@ public struct ContentView: View {
 
                         Button("Đăng xuất", role: .destructive) {
                             authService.signOut()
+                            isDemoMode = false
                             refreshData()
                             autoSelectFirstItem()
                             showSettingsModal = false

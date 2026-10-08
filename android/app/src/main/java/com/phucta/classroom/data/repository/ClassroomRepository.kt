@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class ClassroomRepository(
@@ -44,41 +45,22 @@ class ClassroomRepository(
     val syncErrorMessage: StateFlow<String?> = _syncErrorMessage.asStateFlow()
 
     // Observable Flows from Room
-    val coursesFlow: Flow<List<Course>> = combine(
-        courseDao.observeAllCourses(),
-        preferences.hasUserLoggedInFlow
-    ) { entities, hasLoggedIn ->
-        if (entities.isNotEmpty()) {
-            entities.map { it.toDomain() }
-        } else if (!hasLoggedIn) {
-            MockDataProvider.mockCourses
-        } else {
-            emptyList()
-        }
+    val coursesFlow: Flow<List<Course>> = courseDao.observeAllCourses().map { entities ->
+        entities.map { it.toDomain() }
     }
 
-    val courseworkFlow: Flow<List<Coursework>> = combine(
-        courseworkDao.observeAllCoursework(),
-        preferences.hasUserLoggedInFlow
-    ) { entities, hasLoggedIn ->
-        if (entities.isNotEmpty()) {
-            entities.map { it.toDomain() }
-        } else if (!hasLoggedIn) {
-            MockDataProvider.getMockCoursework()
-        } else {
-            emptyList()
-        }
+    val courseworkFlow: Flow<List<Coursework>> = courseworkDao.observeAllCoursework().map { entities ->
+        entities.map { it.toDomain() }
     }
 
     suspend fun ensureInitialData() = withContext(Dispatchers.IO) {
-        val hasLoggedIn = preferences.hasUserLoggedInFlow.first()
-        if (!hasLoggedIn) {
-            val existingCourses = courseDao.getAllCourses()
-            if (existingCourses.isEmpty()) {
-                courseDao.upsertCourses(MockDataProvider.mockCourses.map { CourseEntity.fromDomain(it) })
-                courseworkDao.upsertCourseworks(MockDataProvider.getMockCoursework().map { CourseworkEntity.fromDomain(it) })
-            }
-        }
+        // Cold start does not auto-populate mock data so unauthenticated users see clean login screen
+    }
+
+    suspend fun populateMockDataManually() = withContext(Dispatchers.IO) {
+        courseDao.upsertCourses(MockDataProvider.mockCourses.map { CourseEntity.fromDomain(it) })
+        courseworkDao.upsertCourseworks(MockDataProvider.getMockCoursework().map { CourseworkEntity.fromDomain(it) })
+        notifyWidgetReload()
     }
 
     suspend fun updateCourseWidgetSelection(courseId: String, isSelected: Boolean) = withContext(Dispatchers.IO) {

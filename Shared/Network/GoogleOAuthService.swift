@@ -44,7 +44,13 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     public static let defaultClientIdKey = "google_oauth_client_id"
     public static let defaultClientSecretKey = "google_oauth_client_secret"
 
+    private static let tokenUserDefaultsKey = "secure_oauth_tokens_cache"
+    private var inMemoryTokens: OAuthTokens?
+
     private let scopes = [
+        "openid",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
         "https://www.googleapis.com/auth/classroom.courses.readonly",
         "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
         "https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
@@ -110,6 +116,11 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         if let tokens = loadTokensFromKeychain(), !tokens.accessToken.isEmpty {
             self.isAuthenticated = true
             self.currentUserEmail = ClassroomStorage.shared.loadUserEmail()
+            if self.currentUserEmail == nil {
+                Task { [weak self] in
+                    await self?.fetchUserInfo()
+                }
+            }
         } else {
             self.isAuthenticated = false
         }
@@ -439,6 +450,19 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
 
         saveTokensToKeychain(tokens: tokens)
         self.isAuthenticated = true
+
+        if let idToken = tokenResponse.idToken, let payload = decodeJWTPayload(idToken) {
+            if let email = payload["email"] as? String {
+                self.currentUserEmail = email
+                ClassroomStorage.shared.saveUserEmail(email)
+            }
+            if let name = payload["name"] as? String {
+                self.currentUserName = name
+            }
+            if let picture = payload["picture"] as? String {
+                self.currentUserAvatar = picture
+            }
+        }
     }
 
     private var refreshTask: Task<String, Error>?
@@ -530,16 +554,47 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             var request = URLRequest(url: url)
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
-            let (data, _) = try await URLSession.shared.data(for: request)
-            let userInfo = try JSONDecoder().decode(GoogleUserInfo.self, from: data)
-
-            self.currentUserEmail = userInfo.email
-            self.currentUserName = userInfo.name
-            self.currentUserAvatar = userInfo.picture
-            ClassroomStorage.shared.saveUserEmail(userInfo.email)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
+                let userInfo = try JSONDecoder().decode(GoogleUserInfo.self, from: data)
+                self.currentUserEmail = userInfo.email
+                self.currentUserName = userInfo.name
+                self.currentUserAvatar = userInfo.picture
+                ClassroomStorage.shared.saveUserEmail(userInfo.email)
+            } else {
+                // Fallback to openidconnect userinfo
+                if let oidcUrl = URL(string: "https://openidconnect.googleapis.com/v1/userinfo") {
+                    var oidcRequest = URLRequest(url: oidcUrl)
+                    oidcRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+                    let (oidcData, oidcResponse) = try await URLSession.shared.data(for: oidcRequest)
+                    if let oidcHttp = oidcResponse as? HTTPURLResponse, (200...299).contains(oidcHttp.statusCode) {
+                        let userInfo = try JSONDecoder().decode(GoogleUserInfo.self, from: oidcData)
+                        self.currentUserEmail = userInfo.email
+                        self.currentUserName = userInfo.name
+                        self.currentUserAvatar = userInfo.picture
+                        ClassroomStorage.shared.saveUserEmail(userInfo.email)
+                    }
+                }
+            }
         } catch {
             print("Lỗi lấy user info: \(error.localizedDescription)")
         }
+    }
+
+    private func decodeJWTPayload(_ jwt: String) -> [String: Any]? {
+        let parts = jwt.components(separatedBy: ".")
+        guard parts.count >= 2 else { return nil }
+        var base64 = parts[1]
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        while base64.count % 4 != 0 {
+            base64.append("=")
+        }
+        guard let data = Data(base64Encoded: base64),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return json
     }
 
     private func generateCodeVerifier() -> String {
@@ -569,9 +624,24 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     }
 
     private func saveTokensToKeychain(tokens: OAuthTokens) {
+        self.inMemoryTokens = tokens
         ClassroomStorage.shared.saveUserLoggedIn(true)
         guard let data = try? JSONEncoder().encode(tokens) else { return }
-        deleteTokensFromKeychain()
+
+        // 1. UserDefaults cache (Standard + App Group suites)
+        UserDefaults.standard.set(data, forKey: Self.tokenUserDefaultsKey)
+        for ud in ClassroomStorage.shared.allUserDefaults {
+            ud.set(data, forKey: Self.tokenUserDefaultsKey)
+        }
+
+        // 2. Shared container disk cache
+        for dir in allTokenDirectories {
+            let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
+            try? data.write(to: fileURL, options: .atomic)
+        }
+
+        // 3. System Keychain
+        deleteKeychainOnly()
 
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -594,6 +664,11 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     }
 
     private func loadTokensFromKeychain() -> OAuthTokens? {
+        if let memory = inMemoryTokens, !memory.accessToken.isEmpty {
+            return memory
+        }
+
+        // 1. System Keychain
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
@@ -611,6 +686,33 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         #endif
         if status == errSecSuccess, let data = item as? Data {
             if let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
+                self.inMemoryTokens = decoded
+                return decoded
+            }
+        }
+
+        // 2. Standard UserDefaults
+        if let data = UserDefaults.standard.data(forKey: Self.tokenUserDefaultsKey),
+           let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
+            self.inMemoryTokens = decoded
+            return decoded
+        }
+
+        // 3. App Group UserDefaults suites
+        for ud in ClassroomStorage.shared.allUserDefaults {
+            if let data = ud.data(forKey: Self.tokenUserDefaultsKey),
+               let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
+                self.inMemoryTokens = decoded
+                return decoded
+            }
+        }
+
+        // 4. Shared container disk cache
+        for dir in allTokenDirectories {
+            let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
+            if let data = try? Data(contentsOf: fileURL),
+               let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
+                self.inMemoryTokens = decoded
                 return decoded
             }
         }
@@ -618,12 +720,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         return nil
     }
 
-    private func deleteTokensFromKeychain() {
-        for dir in allTokenDirectories {
-            let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
-            try? FileManager.default.removeItem(at: fileURL)
-        }
-
+    private func deleteKeychainOnly() {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
@@ -638,6 +735,19 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         SecItemDelete(query as CFDictionary)
         #endif
     }
+
+    private func deleteTokensFromKeychain() {
+        self.inMemoryTokens = nil
+        UserDefaults.standard.removeObject(forKey: Self.tokenUserDefaultsKey)
+        for ud in ClassroomStorage.shared.allUserDefaults {
+            ud.removeObject(forKey: Self.tokenUserDefaultsKey)
+        }
+        for dir in allTokenDirectories {
+            let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+        deleteKeychainOnly()
+    }
 }
 
 private struct OAuthTokenResponse: Codable {
@@ -645,12 +755,14 @@ private struct OAuthTokenResponse: Codable {
     let refreshToken: String?
     let expiresIn: Int
     let tokenType: String
+    let idToken: String?
 
     enum CodingKeys: String, CodingKey {
         case accessToken = "access_token"
         case refreshToken = "refresh_token"
         case expiresIn = "expires_in"
         case tokenType = "token_type"
+        case idToken = "id_token"
     }
 }
 

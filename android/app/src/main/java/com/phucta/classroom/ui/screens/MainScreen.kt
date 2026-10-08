@@ -8,6 +8,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -90,6 +92,7 @@ fun MainScreen() {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var selectedCoursework by remember { mutableStateOf<Coursework?>(null) }
+    var isDemoMode by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Reactive State Flows
@@ -135,7 +138,8 @@ fun MainScreen() {
         label = "syncAngle"
     )
 
-    ModalNavigationDrawer(
+    if (isAuthenticated || isDemoMode) {
+        ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
@@ -316,6 +320,17 @@ fun MainScreen() {
                 }
             }
         }
+    } else {
+        WelcomeLoginScreen(
+            onSignIn = { scope.launch { oauthManager.startSignIn(context) } },
+            onDemoMode = {
+                scope.launch {
+                    repository.populateMockDataManually()
+                    isDemoMode = true
+                }
+            },
+            onOpenSettings = { showSettingsDialog = true }
+        )
     }
 
     // Detail Bottom Sheet
@@ -354,6 +369,7 @@ fun MainScreen() {
                 scope.launch { oauthManager.startSignIn(context) }
             },
             onSignOut = {
+                isDemoMode = false
                 scope.launch { repository.clearAllData() }
             },
             onSyncNow = {
@@ -362,6 +378,147 @@ fun MainScreen() {
             onSaveCustomCredentials = { customId, customSecret ->
                 scope.launch { preferences.saveCustomCredentials(customId, customSecret) }
             }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WelcomeLoginScreen(
+    onSignIn: () -> Unit,
+    onDemoMode: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    Scaffold(
+        containerColor = ChunkyColor.WindowBackground,
+        topBar = {
+            TopAppBar(
+                title = { },
+                actions = {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Cài đặt nâng cao",
+                            tint = ChunkyColor.TextMuted
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // App Branding Icon
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .background(ChunkyColor.SkyGradient, RoundedCornerShape(22.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Text(
+                text = "Classroom Tracker",
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp,
+                color = ChunkyColor.TextPrimary
+            )
+
+            Text(
+                text = "Theo dõi bài tập Google Classroom thông minh cho học sinh, sinh viên",
+                fontSize = 13.5.sp,
+                color = ChunkyColor.TextMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 6.dp, bottom = 24.dp)
+            )
+
+            // Features Card
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(ChunkyColor.SurfaceWhite, RoundedCornerShape(16.dp))
+                    .padding(18.dp)
+            ) {
+                WelcomeFeatureRow(
+                    title = "Báo bài Ngày mai",
+                    desc = "Tự động phân loại bài tập cần nộp vào ngày mai, không lo sót hạn."
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                WelcomeFeatureRow(
+                    title = "Widget Màn hình chính",
+                    desc = "Theo dõi bài tập nhanh chóng ngay trên Widget màn hình chính Android."
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                WelcomeFeatureRow(
+                    title = "Tự động đồng bộ",
+                    desc = "Kết nối trực tiếp tài khoản Google Classroom, an toàn và bảo mật."
+                )
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Primary Google Sign-in Button
+            androidx.compose.material3.Button(
+                onClick = onSignIn,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = ChunkyColor.SkyBottom
+                )
+            ) {
+                Text(
+                    text = "Đăng nhập bằng Google",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = Color.White
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Demo Mode
+            androidx.compose.material3.TextButton(onClick = onDemoMode) {
+                Text(
+                    text = "Xem thử giao diện với dữ liệu mẫu",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ChunkyColor.TextMuted
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WelcomeFeatureRow(title: String, desc: String) {
+    Column {
+        Text(
+            text = title,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.5.sp,
+            color = ChunkyColor.TextPrimary
+        )
+        Text(
+            text = desc,
+            fontSize = 12.sp,
+            color = ChunkyColor.TextMuted
         )
     }
 }

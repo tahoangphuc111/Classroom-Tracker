@@ -24,7 +24,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         appGroupCandidates.first ?? "group.com.phucta.classroom"
     }
 
-    private lazy var allUserDefaults: [UserDefaults] = {
+    public lazy var allUserDefaults: [UserDefaults] = {
         var list: [UserDefaults] = []
         for id in ClassroomStorage.appGroupCandidates {
             if let ud = UserDefaults(suiteName: id) {
@@ -367,10 +367,8 @@ public final class ClassroomStorage: @unchecked Sendable {
         let result: [Course]
         if let loaded, !loaded.isEmpty {
             result = loaded
-        } else if !hasUserLoggedIn && !isAppExtension {
-            result = ClassroomStorage.mockCourses
         } else {
-            result = loaded ?? []
+            result = []
         }
         let effectiveTimestamp = latestTimestamp > 0 ? latestTimestamp : Date().timeIntervalSince1970
 
@@ -445,10 +443,8 @@ public final class ClassroomStorage: @unchecked Sendable {
         let result: [Coursework]
         if let loaded, !loaded.isEmpty {
             result = loaded
-        } else if !hasUserLoggedIn && !isAppExtension {
-            result = ClassroomStorage.mockCoursework
         } else {
-            result = loaded ?? []
+            result = []
         }
         let effectiveTimestamp = latestTimestamp > 0 ? latestTimestamp : Date().timeIntervalSince1970
 
@@ -716,34 +712,15 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     private func ensureInitialData() {
-        let isAppExtension = Bundle.main.bundleURL.pathExtension == "appex"
-            || (Bundle.main.bundleIdentifier?.contains("widget") == true)
-        if isAppExtension {
-            return
-        }
+        // Cold start does not auto-populate mock data so unauthenticated users see clean login screen
+    }
 
-        if hasUserLoggedIn {
-            return
-        }
-
-        if readDataFromDirectories(fileName: "cached_classroom_coursework.json") != nil {
-            return
-        }
+    public func populateMockDataManually() {
         for ud in allUserDefaults {
-            if let data = ud.data(forKey: courseworkKey), !data.isEmpty {
-                return
-            }
+            ud.set(true, forKey: storageInitializedKey)
         }
-
-        let hasEverInitialized = allUserDefaults.contains { $0.bool(forKey: storageInitializedKey) }
-
-        if !hasEverInitialized {
-            for ud in allUserDefaults {
-                ud.set(true, forKey: storageInitializedKey)
-            }
-            saveCourses(ClassroomStorage.mockCourses)
-            saveCoursework(ClassroomStorage.mockCoursework)
-        }
+        saveCourses(ClassroomStorage.mockCourses)
+        saveCoursework(ClassroomStorage.mockCoursework)
     }
 
     public static let mockCourses: [Course] = [
