@@ -6,6 +6,69 @@ import AppKit
 import UIKit
 #endif
 
+public struct SpringPressButtonStyle: ButtonStyle {
+    public init() {}
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .opacity(configuration.isPressed ? 0.88 : 1.0)
+            .animation(.spring(response: 0.22, dampingFraction: 0.68), value: configuration.isPressed)
+    }
+}
+
+public struct AppLogoView: View {
+    public var size: CGFloat
+
+    public init(size: CGFloat = 84) {
+        self.size = size
+    }
+
+    public var body: some View {
+        Group {
+            #if os(macOS)
+            if let nsImg = NSApplication.shared.applicationIconImage {
+                Image(nsImage: nsImg)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else if let assetImg = NSImage(named: "AppLogo") {
+                Image(nsImage: assetImg)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                fallbackIcon
+            }
+            #else
+            if let uiImg = UIImage(named: "AppLogo") ?? UIImage(named: "AppIcon") {
+                Image(uiImage: uiImg)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                fallbackIcon
+            }
+            #endif
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.223, style: .continuous))
+        .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 6)
+    }
+
+    private var fallbackIcon: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.223, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(red: 0.22, green: 0.58, blue: 0.98), Color(red: 0.08, green: 0.42, blue: 0.92)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            Image(systemName: "checklist")
+                .font(.system(size: size * 0.45, weight: .semibold))
+                .foregroundStyle(.white)
+        }
+    }
+}
+
 public struct ContentView: View {
     @StateObject private var authService = GoogleOAuthService.shared
     @StateObject private var apiService = ClassroomAPIService.shared
@@ -26,6 +89,8 @@ public struct ContentView: View {
     @State private var errorMessage: String? = nil
     @State private var isDemoMode: Bool = false
     @State private var showAdvancedOAuthConfig: Bool = false
+    @State private var welcomeAppeared: Bool = false
+    @State private var floatingPhase: CGFloat = 0
     @State private var searchText: String = ""
     @State private var copyFeedbackMessage: String? = nil
     @FocusState private var isSearchFocused: Bool
@@ -361,89 +426,48 @@ public struct ContentView: View {
 
     @ViewBuilder
     private var welcomeLoginView: some View {
-        ScrollView {
-            VStack(spacing: 28) {
-                Spacer(minLength: 28)
+        ZStack {
+            Color.platformWindowBackground
+                .ignoresSafeArea()
 
-                // App Branding
-                VStack(spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.blue, Color(red: 0.1, green: 0.42, blue: 0.95)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 80, height: 80)
-                            .shadow(color: Color.blue.opacity(0.35), radius: 14, x: 0, y: 7)
+            VStack(spacing: 24) {
+                Spacer()
 
-                        Image(systemName: "graduationcap.fill")
-                            .font(.system(size: 40, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
+                // App Logo with subtle floating motion
+                AppLogoView(size: 88)
+                    .offset(y: floatingPhase)
+                    .opacity(welcomeAppeared ? 1 : 0)
+                    .scaleEffect(welcomeAppeared ? 1 : 0.85)
 
+                // Title & Subtitle (human, direct, no AI buzzwords)
+                VStack(spacing: 6) {
                     Text("Classroom Tracker")
                         .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
 
-                    Text("Theo dõi bài tập Google Classroom thông minh cho học sinh, sinh viên")
-                        .font(.system(size: 13.5, weight: .regular))
+                    Text("Theo dõi bài tập Google Classroom")
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 420)
                 }
-
-                // Feature Highlights Cards
-                VStack(spacing: 12) {
-                    welcomeFeatureRow(
-                        icon: "calendar.badge.clock",
-                        iconColor: .orange,
-                        title: "Báo bài Ngày mai",
-                        description: "Tự động phân loại bài tập cần nộp vào ngày mai theo từng môn học, không lo quên bài."
-                    )
-                    welcomeFeatureRow(
-                        icon: "macwindow.on.rectangle",
-                        iconColor: .blue,
-                        title: "Widget Màn hình chính",
-                        description: "Hiển thị danh sách bài tập mọi lúc ngay trên Desktop macOS & màn hình chính iOS."
-                    )
-                    welcomeFeatureRow(
-                        icon: "arrow.triangle.2.circlepath",
-                        iconColor: .green,
-                        title: "Tự động đồng bộ",
-                        description: "Kết nối trực tiếp tài khoản Google Classroom, lưu trữ an toàn và bảo mật trên thiết bị."
-                    )
-                }
-                .padding(18)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.platformControlBackground)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(Color.platformCardBorder, lineWidth: 1)
-                        )
-                )
-                .frame(maxWidth: 460)
+                .opacity(welcomeAppeared ? 1 : 0)
+                .offset(y: welcomeAppeared ? 0 : 8)
 
                 if let err = errorMessage ?? authService.authErrorMessage {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.red)
                         Text(err)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.red)
-                            .multilineTextAlignment(.leading)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(Color.red.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .frame(maxWidth: 460)
+                    .frame(maxWidth: 380)
                 }
 
-                // Primary Action: Google Login
+                // Action Buttons with SpringPressButtonStyle (smooth 120fps feel)
                 VStack(spacing: 12) {
                     Button {
                         triggerHapticFeedback()
@@ -453,26 +477,28 @@ public struct ContentView: View {
                             if isSigningIn {
                                 ProgressView()
                                     .controlSize(.small)
+                                #if os(macOS)
+                                    .colorScheme(.dark)
+                                #endif
                                 Text("Đang kết nối Google...")
-                                    .font(.system(size: 14.5, weight: .semibold))
+                                    .font(.system(size: 15, weight: .semibold))
                             } else {
                                 Image(systemName: "person.badge.key.fill")
                                     .font(.system(size: 15, weight: .semibold))
                                 Text("Đăng nhập bằng Google")
-                                    .font(.system(size: 14.5, weight: .bold))
+                                    .font(.system(size: 15, weight: .bold))
                             }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
+                        .padding(.vertical, 14)
                         .background(Color.blue)
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .shadow(color: Color.blue.opacity(0.25), radius: 8, x: 0, y: 4)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SpringPressButtonStyle())
                     .disabled(isSigningIn)
 
-                    // Secondary: Demo Mode
                     Button {
                         triggerHapticFeedback()
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -482,23 +508,23 @@ public struct ContentView: View {
                             autoSelectFirstItem()
                         }
                     } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "sparkles")
-                            Text("Xem thử giao diện với dữ liệu mẫu")
-                        }
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        Text("Xem thử dữ liệu mẫu")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .padding(.vertical, 4)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SpringPressButtonStyle())
                 }
-                .frame(maxWidth: 360)
+                .frame(maxWidth: 320)
+                .opacity(welcomeAppeared ? 1 : 0)
+                .offset(y: welcomeAppeared ? 0 : 12)
 
                 // Collapsible Advanced Configuration
                 DisclosureGroup(
                     isExpanded: $showAdvancedOAuthConfig,
                     content: {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Ứng dụng đã có sẵn Google Client ID hoạt động ngay. Bạn chỉ cần cấu hình nếu muốn dùng dự án Google Cloud riêng.")
+                            Text("Ứng dụng đã có sẵn Google Client ID. Bạn chỉ cần cấu hình nếu muốn dùng Client ID riêng.")
                                 .font(.system(size: 11.5))
                                 .foregroundStyle(.secondary)
 
@@ -540,31 +566,39 @@ public struct ContentView: View {
                         .padding(.top, 6)
                     },
                     label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: 5) {
                             Image(systemName: "gearshape")
-                            Text("Cấu hình Google OAuth nâng cao")
+                            Text("Cài đặt OAuth nâng cao")
                         }
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.tertiary)
                     }
                 )
-                .frame(maxWidth: 460)
+                .frame(maxWidth: 380)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.platformControlBackground.opacity(0.6))
+                        .fill(Color.platformControlBackground.opacity(0.5))
                 )
+                .opacity(welcomeAppeared ? 1 : 0)
 
-                Spacer(minLength: 28)
+                Spacer()
             }
             .padding(.horizontal, 24)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color.platformWindowBackground)
         #if os(macOS)
-        .frame(minWidth: 520, minHeight: 580)
+        .frame(minWidth: 480, minHeight: 460)
         #endif
+        .onAppear {
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
+                welcomeAppeared = true
+            }
+            withAnimation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true)) {
+                floatingPhase = 5
+            }
+        }
         .overlay(alignment: .bottom) {
             if let toast = activeToast {
                 FloatingToastHUD(toast: toast, onDismiss: { dismissToast() })
@@ -576,32 +610,6 @@ public struct ContentView: View {
                     ))
                     .zIndex(100)
             }
-        }
-    }
-
-    private func welcomeFeatureRow(icon: String, iconColor: Color, title: String, description: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(iconColor.opacity(0.12))
-                    .frame(width: 32, height: 32)
-
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(iconColor)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 13.5, weight: .bold))
-                    .foregroundStyle(.primary)
-
-                Text(description)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer()
         }
     }
 
@@ -650,7 +658,7 @@ public struct ContentView: View {
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundStyle(.purple)
                         }
-                        Text("Đang hiển thị dữ liệu mẫu. Đăng nhập để đồng bộ Google Classroom thật.")
+                        Text("Đang dùng dữ liệu mẫu. Đăng nhập để đồng bộ bài tập.")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
 

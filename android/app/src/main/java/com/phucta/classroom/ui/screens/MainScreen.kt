@@ -1,15 +1,17 @@
 package com.phucta.classroom.ui.screens
 
 import android.content.Context
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +20,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
+import com.phucta.classroom.R
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -389,6 +395,17 @@ private fun WelcomeLoginScreen(
     onDemoMode: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "floating")
+    val floatOffset by infiniteTransition.animateFloat(
+        initialValue = -5f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "float"
+    )
+
     Scaffold(
         containerColor = ChunkyColor.WindowBackground,
         topBar = {
@@ -398,12 +415,12 @@ private fun WelcomeLoginScreen(
                     IconButton(onClick = onOpenSettings) {
                         Icon(
                             Icons.Default.Settings,
-                            contentDescription = "Cài đặt nâng cao",
+                            contentDescription = "Cài đặt",
                             tint = ChunkyColor.TextMuted
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
             )
         }
     ) { padding ->
@@ -411,26 +428,27 @@ private fun WelcomeLoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // App Branding Icon
+            // App Branding Icon with smooth floating animation
             Box(
                 modifier = Modifier
-                    .size(80.dp)
-                    .background(ChunkyColor.SkyGradient, RoundedCornerShape(22.dp)),
+                    .graphicsLayer { translationY = floatOffset }
+                    .size(88.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(ChunkyColor.SkyGradient),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.CalendarToday,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(40.dp)
+                Image(
+                    painter = painterResource(id = R.mipmap.ic_launcher),
+                    contentDescription = "Classroom Tracker",
+                    modifier = Modifier.fillMaxSize()
                 )
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Text(
                 text = "Classroom Tracker",
@@ -440,44 +458,19 @@ private fun WelcomeLoginScreen(
             )
 
             Text(
-                text = "Theo dõi bài tập Google Classroom thông minh cho học sinh, sinh viên",
-                fontSize = 13.5.sp,
+                text = "Theo dõi bài tập Google Classroom",
+                fontSize = 14.sp,
                 color = ChunkyColor.TextMuted,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 6.dp, bottom = 24.dp)
+                modifier = Modifier.padding(top = 4.dp, bottom = 32.dp)
             )
-
-            // Features Card
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(ChunkyColor.SurfaceWhite, RoundedCornerShape(16.dp))
-                    .padding(18.dp)
-            ) {
-                WelcomeFeatureRow(
-                    title = "Báo bài Ngày mai",
-                    desc = "Tự động phân loại bài tập cần nộp vào ngày mai, không lo sót hạn."
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                WelcomeFeatureRow(
-                    title = "Widget Màn hình chính",
-                    desc = "Theo dõi bài tập nhanh chóng ngay trên Widget màn hình chính Android."
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                WelcomeFeatureRow(
-                    title = "Tự động đồng bộ",
-                    desc = "Kết nối trực tiếp tài khoản Google Classroom, an toàn và bảo mật."
-                )
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
 
             // Primary Google Sign-in Button
             androidx.compose.material3.Button(
                 onClick = onSignIn,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .height(52.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                     containerColor = ChunkyColor.SkyBottom
@@ -487,38 +480,21 @@ private fun WelcomeLoginScreen(
                     text = "Đăng nhập bằng Google",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
-                    color = Color.White
+                    color = androidx.compose.ui.graphics.Color.White
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Demo Mode
             androidx.compose.material3.TextButton(onClick = onDemoMode) {
                 Text(
-                    text = "Xem thử giao diện với dữ liệu mẫu",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    text = "Xem thử dữ liệu mẫu",
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Medium,
                     color = ChunkyColor.TextMuted
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun WelcomeFeatureRow(title: String, desc: String) {
-    Column {
-        Text(
-            text = title,
-            fontWeight = FontWeight.Bold,
-            fontSize = 13.5.sp,
-            color = ChunkyColor.TextPrimary
-        )
-        Text(
-            text = desc,
-            fontSize = 12.sp,
-            color = ChunkyColor.TextMuted
-        )
     }
 }

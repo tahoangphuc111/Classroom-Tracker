@@ -121,7 +121,7 @@ public struct SubjectArtHelper {
         case .computerScience: return "laptopcomputer"
         case .networking: return "network"
         case .generalAssignment: return "checklist"
-        case .other: return "graduationcap"
+        case .other: return "book.closed"
         }
     }
 
@@ -333,7 +333,7 @@ public struct SubjectVectorArtComposition: View {
                     .font(.system(size: 42, weight: .light))
                     .foregroundStyle(.white.opacity(0.4))
             default:
-                Image(systemName: "graduationcap")
+                Image(systemName: "book.closed")
                     .font(.system(size: 34, weight: .light))
                     .foregroundStyle(.white.opacity(0.3))
                 Image(systemName: "books.vertical")
