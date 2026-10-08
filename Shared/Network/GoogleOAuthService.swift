@@ -412,23 +412,11 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     private let keychainService = "com.phucta.classroomwidget.tokens"
 
     private var allTokenDirectories: [URL] {
-        var dirs: [URL] = []
-        for id in ClassroomStorage.appGroupCandidates {
-            if let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id) {
-                if !dirs.contains(container) {
-                    dirs.append(container)
-                }
-            }
-        }
-        if let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-            if !dirs.contains(appSupport) {
-                dirs.append(appSupport)
-            }
-        }
-        return dirs
+        ClassroomStorage.sharedStorageDirectories
     }
 
     private func saveTokensToKeychain(tokens: OAuthTokens) {
+        ClassroomStorage.shared.saveUserLoggedIn(true)
         if let data = try? JSONEncoder().encode(tokens) {
             for dir in allTokenDirectories {
                 try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

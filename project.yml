@@ -4,6 +4,7 @@ options:
   deploymentTarget:
     macOS: "27.0"
     iOS: "17.0"
+  postGenCommand: sed -i '' 's/objectVersion = [0-9]*/objectVersion = 56/' ClassroomTracker.xcodeproj/project.pbxproj
 
 settings:
   base:

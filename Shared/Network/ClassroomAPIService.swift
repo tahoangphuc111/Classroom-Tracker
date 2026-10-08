@@ -100,16 +100,64 @@ public final class ClassroomAPIService: ObservableObject {
     }
 
     private func fetchActiveCourses(accessToken: String) async throws -> [Course] {
-        var allCourses: [Course] = []
+        var coursesMap: [String: Course] = [:]
+
+        // 1. Fetch courses where user is enrolled as a student (required by Classroom API for student accounts)
+        let studentCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: "studentId", filterValue: "me", courseState: "ACTIVE")
+        for course in studentCourses {
+            coursesMap[course.id] = course
+        }
+
+        // 2. Fetch courses where user is a teacher (for teacher accounts)
+        let teacherCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: "teacherId", filterValue: "me", courseState: "ACTIVE")
+        for course in teacherCourses {
+            coursesMap[course.id] = course
+        }
+
+        // 3. Fallback: if empty, try fetching without role filter (for domain admins / creators)
+        if coursesMap.isEmpty {
+            let adminCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: nil, filterValue: nil, courseState: "ACTIVE")
+            for course in adminCourses {
+                coursesMap[course.id] = course
+            }
+        }
+
+        // 4. Fallback 2: if still empty, try without courseStates=ACTIVE constraint in case courses have other states
+        if coursesMap.isEmpty {
+            let studentAllStateCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: "studentId", filterValue: "me", courseState: nil)
+            for course in studentAllStateCourses {
+                coursesMap[course.id] = course
+            }
+            let teacherAllStateCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: "teacherId", filterValue: "me", courseState: nil)
+            for course in teacherAllStateCourses {
+                coursesMap[course.id] = course
+            }
+        }
+
+        return Array(coursesMap.values)
+    }
+
+    private func fetchCoursesPage(
+        accessToken: String,
+        filterKey: String?,
+        filterValue: String?,
+        courseState: String? = "ACTIVE"
+    ) async -> [Course] {
+        var courses: [Course] = []
         var pageToken: String? = nil
         var pageCount = 0
 
         repeat {
-            var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses")!
+            guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses") else { break }
             var queryItems = [
-                URLQueryItem(name: "courseStates", value: "ACTIVE"),
                 URLQueryItem(name: "pageSize", value: "50")
             ]
+            if let courseState {
+                queryItems.append(URLQueryItem(name: "courseStates", value: courseState))
+            }
+            if let filterKey, let filterValue {
+                queryItems.append(URLQueryItem(name: filterKey, value: filterValue))
+            }
             if let token = pageToken, !token.isEmpty {
                 queryItems.append(URLQueryItem(name: "pageToken", value: token))
             }
@@ -120,34 +168,36 @@ public final class ClassroomAPIService: ObservableObject {
             request.timeoutInterval = 15
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                if allCourses.isEmpty {
-                    throw NSError(domain: "ClassroomAPIService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Không lấy được danh sách lớp"])
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                    break
                 }
+
+                let decoded = try JSONDecoder().decode(GoogleCoursesListResponse.self, from: data)
+                if let items = decoded.courses {
+                    let mapped = items.compactMap { item -> Course? in
+                        guard let id = item.id, !id.isEmpty, let name = item.name, !name.isEmpty else { return nil }
+                        return Course(
+                            id: id,
+                            name: name,
+                            section: item.section,
+                            descriptionHeading: item.descriptionHeading,
+                            room: item.room,
+                            alternateLink: item.alternateLink,
+                            isSelectedForWidget: true
+                        )
+                    }
+                    courses.append(contentsOf: mapped)
+                }
+                pageToken = decoded.nextPageToken
+                pageCount += 1
+            } catch {
                 break
             }
-
-            let decoded = try JSONDecoder().decode(GoogleCoursesListResponse.self, from: data)
-            if let items = decoded.courses {
-                let mapped = items.map { item in
-                    Course(
-                        id: item.id,
-                        name: item.name,
-                        section: item.section,
-                        descriptionHeading: item.descriptionHeading,
-                        room: item.room,
-                        alternateLink: item.alternateLink,
-                        isSelectedForWidget: true
-                    )
-                }
-                allCourses.append(contentsOf: mapped)
-            }
-            pageToken = decoded.nextPageToken
-            pageCount += 1
         } while pageToken != nil && pageCount < 10
 
-        return allCourses
+        return courses
     }
 
     private func fetchCourseworkForCourse(course: Course, accessToken: String) async throws -> [Coursework] {
@@ -158,8 +208,9 @@ public final class ClassroomAPIService: ObservableObject {
         let submissionsMap = await submissionsMapFetch
         let now = Date()
 
-        return rawItems.map { raw in
-            let submission = submissionsMap[raw.id]
+        return rawItems.compactMap { raw in
+            guard let id = raw.id, !id.isEmpty else { return nil }
+            let submission = submissionsMap[id]
             let dueDate = parseGoogleDueDate(date: raw.dueDate, time: raw.dueTime)
 
             let status: SubmissionStatus
@@ -183,10 +234,10 @@ public final class ClassroomAPIService: ObservableObject {
             }
 
             return Coursework(
-                id: raw.id,
+                id: id,
                 courseId: course.id,
                 courseName: course.name,
-                title: raw.title,
+                title: raw.title ?? "Bài tập không có tiêu đề",
                 description: raw.description,
                 alternateLink: raw.alternateLink,
                 dueDate: dueDate,
@@ -202,7 +253,7 @@ public final class ClassroomAPIService: ObservableObject {
         var pageCount = 0
 
         repeat {
-            var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses/\(courseId)/courseWork")!
+            guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses/\(courseId)/courseWork") else { break }
             var queryItems = [
                 URLQueryItem(name: "courseWorkStates", value: "PUBLISHED"),
                 URLQueryItem(name: "pageSize", value: "50")
@@ -222,13 +273,32 @@ public final class ClassroomAPIService: ObservableObject {
                 break
             }
 
-            let decoded = try JSONDecoder().decode(GoogleCourseworkListResponse.self, from: data)
-            if let items = decoded.courseWork {
+            if let decoded = try? JSONDecoder().decode(GoogleCourseworkListResponse.self, from: data),
+               let items = decoded.courseWork {
                 allItems.append(contentsOf: items)
+                pageToken = decoded.nextPageToken
+            } else {
+                break
             }
-            pageToken = decoded.nextPageToken
             pageCount += 1
         } while pageToken != nil && pageCount < 10
+
+        // Fallback: If courseWorkStates=PUBLISHED returned nothing, retry without courseWorkStates filter
+        if allItems.isEmpty {
+            guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses/\(courseId)/courseWork") else { return allItems }
+            components.queryItems = [URLQueryItem(name: "pageSize", value: "50")]
+            if let url = components.url {
+                var request = URLRequest(url: url)
+                request.timeoutInterval = 15
+                request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+                if let (data, response) = try? await URLSession.shared.data(for: request),
+                   let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode),
+                   let decoded = try? JSONDecoder().decode(GoogleCourseworkListResponse.self, from: data),
+                   let items = decoded.courseWork {
+                    allItems.append(contentsOf: items)
+                }
+            }
+        }
 
         return allItems
     }
@@ -239,7 +309,7 @@ public final class ClassroomAPIService: ObservableObject {
         var pageCount = 0
 
         repeat {
-            var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses/\(courseId)/courseWork/-/studentSubmissions")!
+            guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses/\(courseId)/courseWork/-/studentSubmissions") else { break }
             var queryItems = [
                 URLQueryItem(name: "userId", value: "me"),
                 URLQueryItem(name: "pageSize", value: "50")
@@ -261,7 +331,9 @@ public final class ClassroomAPIService: ObservableObject {
                 }
                 let decoded = try JSONDecoder().decode(GoogleSubmissionsListResponse.self, from: data)
                 for item in decoded.studentSubmissions ?? [] {
-                    map[item.courseWorkId] = item
+                    if let cwId = item.courseWorkId, !cwId.isEmpty {
+                        map[cwId] = item
+                    }
                 }
                 pageToken = decoded.nextPageToken
                 pageCount += 1
@@ -310,8 +382,8 @@ private struct GoogleCoursesListResponse: Codable {
 }
 
 private struct GoogleCourseItem: Codable {
-    let id: String
-    let name: String
+    let id: String?
+    let name: String?
     let section: String?
     let descriptionHeading: String?
     let room: String?
@@ -324,8 +396,8 @@ private struct GoogleCourseworkListResponse: Codable {
 }
 
 private struct GoogleCourseworkRawItem: Codable {
-    let id: String
-    let title: String
+    let id: String?
+    let title: String?
     let description: String?
     let alternateLink: String?
     let dueDate: GoogleDateItem?
@@ -351,8 +423,8 @@ private struct GoogleSubmissionsListResponse: Codable {
 }
 
 private struct GoogleSubmissionItem: Codable {
-    let id: String
-    let courseWorkId: String
+    let id: String?
+    let courseWorkId: String?
     let state: String?
     let late: Bool?
 }

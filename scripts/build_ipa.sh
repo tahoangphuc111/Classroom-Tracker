@@ -12,6 +12,11 @@ if command -v xcodegen >/dev/null 2>&1; then
   xcodegen generate
 fi
 
+# Ensure Xcode 15/14 compatibility (objectVersion 56)
+if [ -f "ClassroomTracker.xcodeproj/project.pbxproj" ]; then
+  sed -i '' 's/objectVersion = [0-9]*/objectVersion = 56/' ClassroomTracker.xcodeproj/project.pbxproj 2>/dev/null || true
+fi
+
 xcodebuild -project ClassroomTracker.xcodeproj \
   -scheme ClassroomApp-iOS \
   -configuration Release \

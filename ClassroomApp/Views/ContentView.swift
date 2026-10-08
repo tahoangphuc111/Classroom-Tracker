@@ -334,6 +334,31 @@ public struct ContentView: View {
                 )
             }
         }
+        .onChange(of: authService.isAuthenticated) {
+            if authService.isAuthenticated {
+                Task {
+                    await apiService.syncAll()
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                        refreshData()
+                    }
+                }
+            } else {
+                refreshData()
+                autoSelectFirstItem()
+            }
+        }
+        .onOpenURL { url in
+            if url.scheme == "classroomwidget" {
+                Task {
+                    if GoogleOAuthService.shared.isAuthenticated {
+                        await apiService.syncAll()
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                            refreshData()
+                        }
+                    }
+                }
+            }
+        }
         .sheet(isPresented: $showSettingsModal) {
             settingsSheetView
                 .preferredColorScheme(.light)
@@ -377,9 +402,7 @@ public struct ContentView: View {
         )) {
             Section("Danh mục báo bài") {
                 sidebarCategoryRow(for: .tomorrow, count: buckets.tomorrow.count)
-                if buckets.today.count > 0 {
-                    sidebarCategoryRow(for: .todayAndTomorrow, count: buckets.todayAndTomorrow.count)
-                }
+                sidebarCategoryRow(for: .todayAndTomorrow, count: buckets.todayAndTomorrow.count)
                 sidebarCategoryRow(for: .allUpcoming, count: buckets.allUpcoming.count)
                 if buckets.past.count > 0 {
                     sidebarCategoryRow(for: .past, count: buckets.past.count)
@@ -1921,6 +1944,21 @@ public struct ContentView: View {
         self.allCoursework = ClassroomStorage.shared.loadCoursework()
         recomputeBuckets()
 
+        // If current filter has no items, but items exist in other categories, intelligently switch
+        if baseFilteredList.isEmpty && !allCoursework.isEmpty {
+            if !buckets.tomorrow.isEmpty {
+                selectedFilter = .tomorrow
+            } else if !buckets.todayAndTomorrow.isEmpty {
+                selectedFilter = .todayAndTomorrow
+            } else if !buckets.allUpcoming.isEmpty {
+                selectedFilter = .allUpcoming
+            } else if !buckets.past.isEmpty {
+                selectedFilter = .past
+            } else if !buckets.completed.isEmpty {
+                selectedFilter = .completed
+            }
+        }
+
         if let current = selectedCoursework, currentFilteredList.contains(where: { $0.id == current.id }) {
             if let updated = allCoursework.first(where: { $0.id == current.id }) {
                 self.selectedCoursework = updated
@@ -2070,8 +2108,25 @@ public struct ContentView: View {
             do {
                 try await authService.startSignIn()
                 await apiService.syncAll()
-                refreshData()
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                    refreshData()
+                }
                 autoSelectFirstItem()
+                if let syncErr = apiService.syncErrorMessage {
+                    showToast(
+                        title: "Đồng bộ sau đăng nhập",
+                        subtitle: syncErr,
+                        icon: "exclamationmark.triangle.fill",
+                        tint: .orange
+                    )
+                } else {
+                    showToast(
+                        title: "Đăng nhập thành công!",
+                        subtitle: "Đã kết nối tài khoản Google và nạp bài tập",
+                        icon: "checkmark.circle.fill",
+                        tint: .blue
+                    )
+                }
             } catch {
                 errorMessage = error.localizedDescription
                 showToast(
@@ -2607,7 +2662,7 @@ private struct AssignmentListEmptyView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .padding(.top, 4)
-            } else if filter == .tomorrow, let onSwitchToUpcoming {
+            } else if (filter == .tomorrow || filter == .todayAndTomorrow), let onSwitchToUpcoming {
                 Button {
                     onSwitchToUpcoming()
                 } label: {

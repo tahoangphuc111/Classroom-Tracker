@@ -55,7 +55,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
     }
 
-    private lazy var allStorageDirectories: [URL] = {
+    public static var sharedStorageDirectories: [URL] {
         var dirs: [URL] = []
         for id in ClassroomStorage.appGroupCandidates {
             if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id) {
@@ -64,13 +64,26 @@ public final class ClassroomStorage: @unchecked Sendable {
                 }
             }
         }
+        if let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            let appSupportDir = appSupport.appendingPathComponent("ClassroomTracker", isDirectory: true)
+            if !dirs.contains(appSupportDir) {
+                dirs.append(appSupportDir)
+            }
+            if !dirs.contains(appSupport) {
+                dirs.append(appSupport)
+            }
+        }
         if let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
             if !dirs.contains(docs) {
                 dirs.append(docs)
             }
         }
         return dirs
-    }()
+    }
+
+    private var allStorageDirectories: [URL] {
+        Self.sharedStorageDirectories
+    }
 
     private func writeDataToAllDirectories(_ data: Data, fileName: String) {
         let logger = Logger(subsystem: "com.phucta.ClassroomTracker", category: "storage")
@@ -190,6 +203,15 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
         cachedHasUserLoggedIn = false
         return false
+    }
+
+    public func saveUserLoggedIn(_ loggedIn: Bool) {
+        lock.lock()
+        cachedHasUserLoggedIn = loggedIn
+        lock.unlock()
+        var metadata = loadSharedMetadata() ?? ClassroomSharedMetadata()
+        metadata.hasUserLoggedIn = loggedIn
+        saveSharedMetadata(metadata)
     }
 
     private init() {
