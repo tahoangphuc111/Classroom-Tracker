@@ -9,6 +9,27 @@ if [ -d "/opt/homebrew/opt/openjdk@17" ]; then
   export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
 fi
 
+# Ensure signing keystore is present for release build
+if [ -z "${KEYSTORE_FILE:-}" ] || [ ! -f "${KEYSTORE_FILE:-}" ]; then
+  FALLBACK_KEYSTORE="$ROOT_DIR/android/debug.keystore"
+  if [ ! -f "$FALLBACK_KEYSTORE" ]; then
+    echo "===> [Android] Generating self-signed keystore for release build..."
+    keytool -genkeypair -v \
+      -keystore "$FALLBACK_KEYSTORE" \
+      -alias androiddebugkey \
+      -keyalg RSA \
+      -keysize 2048 \
+      -validity 10000 \
+      -storepass android \
+      -keypass android \
+      -dname "CN=Android Debug,O=Android,C=US"
+  fi
+  export KEYSTORE_FILE="$FALLBACK_KEYSTORE"
+  export KEYSTORE_PASSWORD="android"
+  export KEY_ALIAS="androiddebugkey"
+  export KEY_PASSWORD="android"
+fi
+
 echo "===> [Android] Building Release APK..."
 chmod +x ./gradlew
 ./gradlew assembleRelease

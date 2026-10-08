@@ -24,13 +24,53 @@ android {
     signingConfigs {
         create("release") {
             val keystorePath = System.getenv("KEYSTORE_FILE")
-            if (!keystorePath.isNullOrEmpty() && file(keystorePath).exists()) {
-                storeFile = file(keystorePath)
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
+            val customFile = if (!keystorePath.isNullOrEmpty()) file(keystorePath) else null
+
+            if (customFile != null && customFile.exists()) {
+                storeFile = customFile
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "android"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "androiddebugkey"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
             } else {
-                initWith(getByName("debug"))
+                val projectDebugKeystore = file("${project.rootDir}/debug.keystore")
+                if (projectDebugKeystore.exists()) {
+                    storeFile = projectDebugKeystore
+                    storePassword = "android"
+                    keyAlias = "androiddebugkey"
+                    keyPassword = "android"
+                } else {
+                    val debugConfig = getByName("debug")
+                    val debugStoreFile = debugConfig.storeFile
+                    if (debugStoreFile != null && debugStoreFile.exists()) {
+                        initWith(debugConfig)
+                    } else {
+                        val targetKeystore = debugStoreFile ?: file("${System.getProperty("user.home")}/.android/debug.keystore")
+                        targetKeystore.parentFile?.mkdirs()
+                        if (!targetKeystore.exists()) {
+                            try {
+                                ProcessBuilder(
+                                    "keytool", "-genkeypair",
+                                    "-keystore", targetKeystore.absolutePath,
+                                    "-alias", "androiddebugkey",
+                                    "-keyalg", "RSA",
+                                    "-keysize", "2048",
+                                    "-validity", "10000",
+                                    "-storepass", "android",
+                                    "-keypass", "android",
+                                    "-dname", "CN=Android Debug,O=Android,C=US"
+                                ).start().waitFor()
+                            } catch (_: Exception) {}
+                        }
+                        if (targetKeystore.exists()) {
+                            storeFile = targetKeystore
+                            storePassword = "android"
+                            keyAlias = "androiddebugkey"
+                            keyPassword = "android"
+                        } else {
+                            initWith(debugConfig)
+                        }
+                    }
+                }
             }
         }
     }

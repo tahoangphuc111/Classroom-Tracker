@@ -111,7 +111,20 @@ jobs:
             echo "KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
             echo "KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
           else
-            echo "No custom keystore provided. Building with self-signed signature for testing/distribution."
+            echo "No custom keystore provided. Generating self-signed keystore for testing/distribution..."
+            keytool -genkeypair -v \
+              -keystore "$GITHUB_WORKSPACE/android/debug.keystore" \
+              -alias androiddebugkey \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass android \
+              -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US"
+            echo "KEYSTORE_FILE=$GITHUB_WORKSPACE/android/debug.keystore" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_ALIAS=androiddebugkey" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
           fi
 
       - name: Run Android Unit Tests
