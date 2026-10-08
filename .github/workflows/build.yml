@@ -153,6 +153,12 @@ jobs:
           name: ClassroomTracker-iOS-ipa
           path: dist
 
+      - name: Download Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: ClassroomTracker-Android-apk
+          path: dist
+
       - name: Verify downloaded assets
         run: |
           echo "Release assets ready for publication:"
@@ -176,6 +182,8 @@ jobs:
           files: |
             dist/ClassroomTracker.pkg
             dist/ClassroomTracker.ipa
+            dist/ClassroomTracker.apk
           draft: false
           prerelease: ${{ github.event.inputs.prerelease || false }}
           generate_release_notes: true
+
