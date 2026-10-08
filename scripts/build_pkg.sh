@@ -26,16 +26,29 @@ if [ -f "ClassroomTracker.xcodeproj/project.pbxproj" ]; then
   sed -i '' 's/objectVersion = [0-9]*/objectVersion = 56/' ClassroomTracker.xcodeproj/project.pbxproj 2>/dev/null || true
 fi
 
-xcodebuild -project ClassroomTracker.xcodeproj \
-  -scheme ClassroomApp \
-  -configuration Release \
-  -derivedDataPath build/DerivedData \
-  CONFIGURATION_BUILD_DIR="$ROOT_DIR/build/Release" \
-  MACOSX_DEPLOYMENT_TARGET="$TARGET_VER" \
-  CODE_SIGN_IDENTITY="" \
-  CODE_SIGNING_REQUIRED=NO \
-  CODE_SIGN_ENTITLEMENTS="" \
-  build
+SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep -E '^[[:space:]]*1\)' | head -n 1 | awk -F '"' '{print $2}' || true)
+
+if [ -n "$SIGN_IDENTITY" ]; then
+  echo "===> [macOS] Using signing identity: $SIGN_IDENTITY"
+  xcodebuild -project ClassroomTracker.xcodeproj \
+    -scheme ClassroomApp \
+    -configuration Release \
+    -derivedDataPath build/DerivedData \
+    CONFIGURATION_BUILD_DIR="$ROOT_DIR/build/Release" \
+    MACOSX_DEPLOYMENT_TARGET="$TARGET_VER" \
+    build
+else
+  echo "===> [macOS] No signing identity found, building with ad-hoc signing..."
+  xcodebuild -project ClassroomTracker.xcodeproj \
+    -scheme ClassroomApp \
+    -configuration Release \
+    -derivedDataPath build/DerivedData \
+    CONFIGURATION_BUILD_DIR="$ROOT_DIR/build/Release" \
+    MACOSX_DEPLOYMENT_TARGET="$TARGET_VER" \
+    CODE_SIGN_IDENTITY="-" \
+    CODE_SIGNING_REQUIRED=NO \
+    build
+fi
 
 echo "===> [macOS] Packaging into ClassroomTracker.pkg..."
 pkgbuild --component "$ROOT_DIR/build/Release/Classroom Tracker.app" \
