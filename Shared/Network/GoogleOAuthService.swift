@@ -9,6 +9,8 @@ import UIKit
 #endif
 
 
+import AuthenticationServices
+
 public struct OAuthTokens: Codable, Sendable {
     public let accessToken: String
     public let refreshToken: String?
@@ -91,6 +93,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     }
 
     public func startSignIn() async throws {
+        self.authErrorMessage = nil
         let clientId = configuredClientId
         guard !clientId.isEmpty else {
             throw NSError(
@@ -100,10 +103,103 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             )
         }
 
+        let verifier = generateCodeVerifier()
+
+        #if os(iOS)
+        try await signInWithWebSession(clientId: clientId, verifier: verifier)
+        #elseif os(macOS)
+        try await signInWithLoopback(clientId: clientId, verifier: verifier)
+        #endif
+    }
+
+    #if os(iOS)
+    private func signInWithWebSession(clientId: String, verifier: String) async throws {
+        let reversedClientId = clientId.components(separatedBy: ".").reversed().joined(separator: ".")
+        let redirectUri = "\(reversedClientId):/oauth2redirect/google"
+        let callbackScheme = reversedClientId
+
+        let challenge = generateCodeChallenge(from: verifier)
+
+        var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
+        components.queryItems = [
+            URLQueryItem(name: "client_id", value: clientId),
+            URLQueryItem(name: "redirect_uri", value: redirectUri),
+            URLQueryItem(name: "response_type", value: "code"),
+            URLQueryItem(name: "scope", value: scopes.joined(separator: " ")),
+            URLQueryItem(name: "code_challenge", value: challenge),
+            URLQueryItem(name: "code_challenge_method", value: "S256"),
+            URLQueryItem(name: "access_type", value: "offline"),
+            URLQueryItem(name: "prompt", value: "consent")
+        ]
+
+        guard let authURL = components.url else {
+            throw NSError(domain: "GoogleOAuthService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Không thể tạo URL xác thực."])
+        }
+
+        let callbackURL: URL = try await withCheckedThrowingContinuation { continuation in
+            let contextProvider = WebAuthPresentationContextProvider()
+            let session = ASWebAuthenticationSession(url: authURL, callbackURLScheme: callbackScheme) { url, error in
+                _ = contextProvider
+                if let error {
+                    if let authError = error as? ASWebAuthenticationSessionError, authError.code == .canceledLogin {
+                        continuation.resume(throwing: NSError(
+                            domain: "GoogleOAuthService",
+                            code: 499,
+                            userInfo: [NSLocalizedDescriptionKey: "Đã hủy đăng nhập Google."]
+                        ))
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
+
+                guard let url else {
+                    continuation.resume(throwing: NSError(
+                        domain: "GoogleOAuthService",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "Không nhận được phản hồi từ Google."]
+                    ))
+                    return
+                }
+
+                continuation.resume(returning: url)
+            }
+
+            session.presentationContextProvider = contextProvider
+            session.prefersEphemeralWebBrowserSession = false
+
+            guard session.start() else {
+                continuation.resume(throwing: NSError(
+                    domain: "GoogleOAuthService",
+                    code: -2,
+                    userInfo: [NSLocalizedDescriptionKey: "Không thể mở trình xác thực đăng nhập Google."]
+                ))
+                return
+            }
+        }
+
+        guard let urlComponents = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false) else {
+            throw NSError(domain: "GoogleOAuthService", code: -3, userInfo: [NSLocalizedDescriptionKey: "URL phản hồi không hợp lệ."])
+        }
+
+        if let oauthError = urlComponents.queryItems?.first(where: { $0.name == "error" })?.value {
+            throw NSError(domain: "GoogleOAuthService", code: -4, userInfo: [NSLocalizedDescriptionKey: "Đăng nhập Google thất bại: \(oauthError)"])
+        }
+
+        guard let code = urlComponents.queryItems?.first(where: { $0.name == "code" })?.value else {
+            throw NSError(domain: "GoogleOAuthService", code: -5, userInfo: [NSLocalizedDescriptionKey: "Không tìm thấy mã xác thực Google."])
+        }
+
+        try await exchangeCodeForTokens(code: code, verifier: verifier, clientId: clientId, redirectUri: redirectUri)
+        await fetchUserInfo()
+    }
+    #endif
+
+    #if os(macOS)
+    private func signInWithLoopback(clientId: String, verifier: String) async throws {
         let server = try LoopbackOAuthServer.shared.startServer()
         let loopbackRedirectUri = "http://127.0.0.1:\(server.port)"
 
-        let verifier = generateCodeVerifier()
         let challenge = generateCodeChallenge(from: verifier)
 
         var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
@@ -122,44 +218,27 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             throw NSError(domain: "GoogleOAuthService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Không thể tạo URL xác thực."])
         }
 
-        #if os(macOS)
         NSWorkspace.shared.open(authURL)
-        #elseif os(iOS)
-        await MainActor.run {
-            UIApplication.shared.open(authURL)
-        }
-        #endif
-
-        #if os(iOS)
-        var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
-        backgroundTaskId = await MainActor.run {
-            UIApplication.shared.beginBackgroundTask(withName: "GoogleOAuthLoopback") {
-                if backgroundTaskId != .invalid {
-                    UIApplication.shared.endBackgroundTask(backgroundTaskId)
-                    backgroundTaskId = .invalid
-                }
-            }
-        }
-        defer {
-            if backgroundTaskId != .invalid {
-                let taskToEnd = backgroundTaskId
-                DispatchQueue.main.async {
-                    UIApplication.shared.endBackgroundTask(taskToEnd)
-                }
-            }
-        }
-        #endif
 
         let code = try await LoopbackOAuthServer.shared.waitForAuthorizationCode(server: server)
-
         try await exchangeCodeForTokens(code: code, verifier: verifier, clientId: clientId, redirectUri: loopbackRedirectUri)
-
         await fetchUserInfo()
+    }
+    #endif
+
+    private static let formUrlAllowedCharacters: CharacterSet = {
+        var characters = CharacterSet.alphanumerics
+        characters.insert(charactersIn: "-._*")
+        return characters
+    }()
+
+    private static func urlFormEncode(_ string: String) -> String {
+        return string.addingPercentEncoding(withAllowedCharacters: formUrlAllowedCharacters) ?? string
     }
 
     public func signOut() {
         deleteTokensFromKeychain()
-        ClassroomStorage.shared.saveUserEmail(nil)
+        ClassroomStorage.shared.clearAllData()
         self.isAuthenticated = false
         self.currentUserEmail = nil
         self.currentUserName = nil
@@ -187,7 +266,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             bodyParams["client_secret"] = clientSecret
         }
 
-        let bodyString = bodyParams.map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")" }.joined(separator: "&")
+        let bodyString = bodyParams.map { "\(Self.urlFormEncode($0.key))=\(Self.urlFormEncode($0.value))" }.joined(separator: "&")
         request.httpBody = bodyString.data(using: .utf8)
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -209,8 +288,10 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         self.isAuthenticated = true
     }
 
+    private var refreshTask: Task<String, Error>?
+
     public func getValidAccessToken() async throws -> String {
-        guard var tokens = loadTokensFromKeychain() else {
+        guard let tokens = loadTokensFromKeychain() else {
             throw NSError(domain: "GoogleOAuthService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Chưa đăng nhập Google."])
         }
 
@@ -218,48 +299,74 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             return tokens.accessToken
         }
 
-        guard let refreshToken = tokens.refreshToken else {
-            throw NSError(domain: "GoogleOAuthService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Hết hạn phiên đăng nhập, vui lòng đăng nhập lại."])
+        if let activeTask = refreshTask {
+            return try await activeTask.value
         }
 
-        let clientId = configuredClientId
-        guard let tokenURL = URL(string: "https://oauth2.googleapis.com/token") else {
-            throw NSError(domain: "GoogleOAuthService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Lỗi URL"])
+        let task = Task<String, Error> { @MainActor [weak self] () -> String in
+            guard let self else {
+                throw NSError(domain: "GoogleOAuthService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Dịch vụ xác thực không khả dụng."])
+            }
+            defer { self.refreshTask = nil }
+
+            guard let currentTokens = self.loadTokensFromKeychain(),
+                  let refreshToken = currentTokens.refreshToken else {
+                self.signOut()
+                throw NSError(domain: "GoogleOAuthService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Hết hạn phiên đăng nhập, vui lòng đăng nhập lại."])
+            }
+
+            let clientId = self.configuredClientId
+            guard let tokenURL = URL(string: "https://oauth2.googleapis.com/token") else {
+                throw NSError(domain: "GoogleOAuthService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Lỗi URL"])
+            }
+
+            var request = URLRequest(url: tokenURL)
+            request.httpMethod = "POST"
+            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+            var bodyParams: [String: String] = [
+                "client_id": clientId,
+                "refresh_token": refreshToken,
+                "grant_type": "refresh_token"
+            ]
+
+            let clientSecret = self.configuredClientSecret
+            if !clientSecret.isEmpty {
+                bodyParams["client_secret"] = clientSecret
+            }
+
+            let bodyString = bodyParams.map { "\(Self.urlFormEncode($0.key))=\(Self.urlFormEncode($0.value))" }.joined(separator: "&")
+            request.httpBody = bodyString.data(using: .utf8)
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw NSError(domain: "GoogleOAuthService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Không nhận được phản hồi từ Google."])
+            }
+
+            if httpResponse.statusCode == 400 || httpResponse.statusCode == 401 {
+                self.signOut()
+                self.authErrorMessage = "Phiên đăng nhập đã hết hạn hoặc bị hủy trên Google. Vui lòng đăng nhập lại."
+                throw NSError(domain: "GoogleOAuthService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Phiên đăng nhập đã hết hạn hoặc bị hủy trên Google. Vui lòng đăng nhập lại."])
+            }
+
+            guard (200...299).contains(httpResponse.statusCode) else {
+                throw NSError(domain: "GoogleOAuthService", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Không thể làm mới token (\(httpResponse.statusCode))."])
+            }
+
+            let tokenResponse = try JSONDecoder().decode(OAuthTokenResponse.self, from: data)
+            let newTokens = OAuthTokens(
+                accessToken: tokenResponse.accessToken,
+                refreshToken: tokenResponse.refreshToken ?? refreshToken,
+                expiresIn: tokenResponse.expiresIn,
+                expiresAt: Date().addingTimeInterval(Double(tokenResponse.expiresIn))
+            )
+
+            self.saveTokensToKeychain(tokens: newTokens)
+            return newTokens.accessToken
         }
 
-        var request = URLRequest(url: tokenURL)
-        request.httpMethod = "POST"
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-
-        var bodyParams: [String: String] = [
-            "client_id": clientId,
-            "refresh_token": refreshToken,
-            "grant_type": "refresh_token"
-        ]
-
-        let clientSecret = configuredClientSecret
-        if !clientSecret.isEmpty {
-            bodyParams["client_secret"] = clientSecret
-        }
-
-        let bodyString = bodyParams.map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")" }.joined(separator: "&")
-        request.httpBody = bodyString.data(using: .utf8)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-            throw NSError(domain: "GoogleOAuthService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Không thể làm mới token."])
-        }
-
-        let tokenResponse = try JSONDecoder().decode(OAuthTokenResponse.self, from: data)
-        let newTokens = OAuthTokens(
-            accessToken: tokenResponse.accessToken,
-            refreshToken: tokenResponse.refreshToken ?? refreshToken,
-            expiresIn: tokenResponse.expiresIn,
-            expiresAt: Date().addingTimeInterval(Double(tokenResponse.expiresIn))
-        )
-
-        saveTokensToKeychain(tokens: newTokens)
-        return newTokens.accessToken
+        self.refreshTask = task
+        return try await task.value
     }
 
     public func fetchUserInfo() async {
@@ -304,44 +411,102 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
 
     private let keychainService = "com.phucta.classroomwidget.tokens"
 
+    private var allTokenDirectories: [URL] {
+        var dirs: [URL] = []
+        for id in ClassroomStorage.appGroupCandidates {
+            if let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id) {
+                if !dirs.contains(container) {
+                    dirs.append(container)
+                }
+            }
+        }
+        if let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            if !dirs.contains(appSupport) {
+                dirs.append(appSupport)
+            }
+        }
+        return dirs
+    }
+
     private func saveTokensToKeychain(tokens: OAuthTokens) {
+        if let data = try? JSONEncoder().encode(tokens) {
+            for dir in allTokenDirectories {
+                try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
+                try? data.write(to: fileURL, options: .atomic)
+            }
+        }
+
         guard let data = try? JSONEncoder().encode(tokens) else { return }
         deleteTokensFromKeychain()
 
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
             kSecAttrAccount as String: "google_tokens",
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
+        #if os(macOS)
+        query[kSecUseDataProtectionKeychain as String] = true
+        #endif
         SecItemAdd(query as CFDictionary, nil)
     }
 
     private func loadTokensFromKeychain() -> OAuthTokens? {
-        let query: [String: Any] = [
+        for dir in allTokenDirectories {
+            let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
+            if let data = try? Data(contentsOf: fileURL),
+               let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data),
+               !decoded.accessToken.isEmpty {
+                return decoded
+            }
+        }
+
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
             kSecAttrAccount as String: "google_tokens",
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
-
         var item: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status == errSecSuccess, let data = item as? Data else {
-            return nil
+        var status = SecItemCopyMatching(query as CFDictionary, &item)
+        #if os(macOS)
+        if status != errSecSuccess {
+            query[kSecUseDataProtectionKeychain as String] = true
+            status = SecItemCopyMatching(query as CFDictionary, &item)
+        }
+        #endif
+        if status == errSecSuccess, let data = item as? Data {
+            if let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
+                for dir in allTokenDirectories {
+                    let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
+                    try? data.write(to: fileURL, options: .atomic)
+                }
+                return decoded
+            }
         }
 
-        return try? JSONDecoder().decode(OAuthTokens.self, from: data)
+        return nil
     }
 
     private func deleteTokensFromKeychain() {
+        for dir in allTokenDirectories {
+            let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
             kSecAttrAccount as String: "google_tokens"
         ]
+        #if os(macOS)
+        var macQuery = query
+        macQuery[kSecUseDataProtectionKeychain as String] = true
+        SecItemDelete(macQuery as CFDictionary)
+        #endif
         SecItemDelete(query as CFDictionary)
     }
 }
@@ -359,3 +524,20 @@ private struct OAuthTokenResponse: Codable {
         case tokenType = "token_type"
     }
 }
+
+private final class WebAuthPresentationContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
+    #if os(iOS)
+    @MainActor
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.flatMap { $0.windows }.first { $0.isKeyWindow } ?? scenes.flatMap { $0.windows }.first
+        return window ?? ASPresentationAnchor()
+    }
+    #elseif os(macOS)
+    @MainActor
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        return NSApplication.shared.windows.first { $0.isKeyWindow } ?? NSApplication.shared.windows.first ?? ASPresentationAnchor()
+    }
+    #endif
+}
+

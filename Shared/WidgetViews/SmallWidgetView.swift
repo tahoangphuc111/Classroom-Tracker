@@ -8,22 +8,58 @@ public struct SmallWidgetView: View {
         self.courseworkList = courseworkList
     }
 
-    private var tomorrowItems: [Coursework] {
-        courseworkList.filter { $0.isDueTomorrow && !$0.isCompleted }
+    private var sectionHeaderTitle: String {
+        let pending = courseworkList.filter { !$0.isCompleted }
+        let hasOverdue = pending.contains(where: \.isOverdue)
+        let hasToday = pending.contains(where: \.isDueToday)
+        let hasTomorrow = pending.contains(where: \.isDueTomorrow)
+
+        if hasOverdue && !hasToday && !hasTomorrow {
+            return "QUÁ HẠN"
+        } else if hasToday && hasTomorrow {
+            return "HÔM NAY & MAI"
+        } else if hasToday {
+            return "HÔM NAY"
+        } else if hasTomorrow {
+            return "NGÀY MAI"
+        } else if hasOverdue {
+            return "QUÁ HẠN"
+        } else if !pending.isEmpty {
+            return "SẮP TỚI"
+        } else if courseworkList.contains(where: \.isDueToday) {
+            return "HÔM NAY"
+        } else {
+            return "NGÀY MAI"
+        }
+    }
+
+    private var activeItems: [Coursework] {
+        courseworkList.filter { !$0.isCompleted }
+    }
+
+    private var displayItems: [Coursework] {
+        if activeItems.isEmpty {
+            return courseworkList
+        }
+        return activeItems
     }
 
     private var primaryItem: Coursework? {
-        tomorrowItems.first
+        displayItems.first
     }
 
     private var extraCount: Int {
-        max(0, tomorrowItems.count - 1)
+        if activeItems.isEmpty {
+            return 0
+        }
+        let shownCount = displayItems.count == 1 ? 1 : 2
+        return max(0, activeItems.count - shownCount)
     }
 
     private var characterEmotion: EmberEmotion {
-        if tomorrowItems.isEmpty {
+        if activeItems.isEmpty {
             return courseworkList.contains(where: \.isCompleted) ? .celebrating : .sleeping
-        } else if tomorrowItems.count >= 3 {
+        } else if activeItems.count >= 3 {
             return .stressed
         } else {
             return .normal
@@ -31,153 +67,247 @@ public struct SmallWidgetView: View {
     }
 
     public var body: some View {
-        ZStack(alignment: .bottomLeading) {
+        ZStack {
             ChunkyTheme.skyGradient
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(ChunkyTheme.sheetBg)
-                        .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 6, x: 0, y: 2)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
-                        )
+            VStack(spacing: 5) {
+                HStack(alignment: .center, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text("\(activeItems.count)")
+                                .font(WidgetFontSystem.counter(size: 25))
+                                .foregroundStyle(Color.white)
+                                .shadow(color: Color.black.opacity(0.14), radius: 0, x: 0, y: 1)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(alignment: .center) {
-                            Text("NGÀY MAI")
-                                .font(WidgetFontSystem.sectionHeader(size: 8))
-                                .tracking(0.8)
-                                .foregroundStyle(ChunkyTheme.textMuted)
+                            Text(activeItems.isEmpty && !courseworkList.isEmpty ? "HOÀN TẤT" : "CẦN NỘP")
+                                .font(WidgetFontSystem.sectionHeader(size: 8.5))
+                                .tracking(0.0)
+                                .foregroundStyle(ChunkyTheme.butterYellow)
+                        }
 
-                            Spacer()
+                        HStack(spacing: 4) {
+                            Text(sectionHeaderTitle)
+                                .font(WidgetFontSystem.meta(size: 7.5))
+                                .tracking(0.0)
+                                .foregroundStyle(Color.white.opacity(0.95))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.white.opacity(0.22))
+                                .clipShape(Capsule())
 
                             if extraCount > 0 {
                                 Text("+\(extraCount)")
-                                    .font(WidgetFontSystem.statusTag(size: 8))
-                                    .foregroundStyle(ChunkyTheme.urgentAccent)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 1.5)
-                                    .background(ChunkyTheme.urgentAccent.opacity(0.12))
+                                    .font(WidgetFontSystem.statusTag(size: 7.5))
+                                    .foregroundStyle(Color.white)
+                                    .padding(.horizontal, 4.5)
+                                    .padding(.vertical, 2)
+                                    .background(ChunkyTheme.urgentAccent)
                                     .clipShape(Capsule())
                             }
                         }
-
-                        Rectangle()
-                            .fill(ChunkyTheme.editorialHairline)
-                            .frame(height: 0.8)
-
-                        if let item = primaryItem {
-                            if extraCount == 0 {
-                                VStack(alignment: .leading, spacing: 5) {
-                                    HStack(alignment: .center, spacing: 7) {
-                                        ZStack {
-                                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                                .fill(SubjectArtHelper.themeColor(for: item.courseName))
-                                                .frame(width: 22, height: 22)
-
-                                            Image(systemName: SubjectArtHelper.icon(for: item.courseName))
-                                                .font(.system(size: 11, weight: .bold))
-                                                .foregroundStyle(Color.white)
-                                        }
-
-                                        Text(item.courseName)
-                                            .font(WidgetFontSystem.courseTitle(size: 13.5))
-                                            .foregroundStyle(ChunkyTheme.textPrimary)
-                                            .lineLimit(1)
-                                            .truncationMode(.tail)
-                                    }
-
-                                    Text(item.timeOnlyString)
-                                        .font(WidgetFontSystem.statusTag(size: 7.5))
-                                        .foregroundStyle(ChunkyTheme.textMuted)
-                                        .padding(.horizontal, 5)
-                                        .padding(.vertical, 1.5)
-                                        .background(Color.black.opacity(0.04))
-                                        .clipShape(Capsule())
-                                }
-                                .padding(.top, 3)
-                            } else {
-                                let itemsToShow = Array(tomorrowItems.prefix(2))
-                                VStack(spacing: 5) {
-                                    ForEach(itemsToShow, id: \.id) { subItem in
-                                        HStack(spacing: 7) {
-                                            ZStack {
-                                                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                                    .fill(SubjectArtHelper.themeColor(for: subItem.courseName))
-                                                    .frame(width: 19, height: 19)
-
-                                                Image(systemName: SubjectArtHelper.icon(for: subItem.courseName))
-                                                    .font(.system(size: 9.5, weight: .bold))
-                                                    .foregroundStyle(Color.white)
-                                            }
-
-                                            Text(subItem.courseName)
-                                                .font(WidgetFontSystem.courseTitle(size: 12))
-                                                .foregroundStyle(ChunkyTheme.textPrimary)
-                                                .lineLimit(1)
-                                                .truncationMode(.tail)
-
-                                            Spacer(minLength: 0)
-
-                                            Text(subItem.timeOnlyString)
-                                                .font(WidgetFontSystem.meta(size: 7.5))
-                                                .foregroundStyle(ChunkyTheme.textMuted)
-                                        }
-                                    }
-                                }
-                                .padding(.top, 4)
-                            }
-                        } else {
-                            VStack(spacing: 2) {
-                                Spacer()
-                                Text("✦ Rảnh rồi!")
-                                    .font(WidgetFontSystem.sectionHeader(size: 11.5))
-                                    .foregroundStyle(ChunkyTheme.textPrimary)
-                                Text("Nghỉ ngơi nhé")
-                                    .font(WidgetFontSystem.meta(size: 9))
-                                    .foregroundStyle(ChunkyTheme.textMuted)
-                                Spacer()
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
                     }
-                    .padding(8.5)
+
+                    Spacer(minLength: 2)
+
+                    ChunkyEmberCharacterView(emotion: characterEmotion, size: 42)
                 }
-                .padding(.horizontal, 9)
-                .padding(.top, 9)
-                .frame(height: 98)
+                .padding(.horizontal, 10)
+                .padding(.top, 7)
 
-                Spacer(minLength: 0)
-            }
+                ZStack(alignment: .center) {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(ChunkyTheme.sheetBg)
+                        .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 5, x: 0, y: 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
+                        )
 
-            HStack(alignment: .bottom) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("\(tomorrowItems.count)")
-                        .font(WidgetFontSystem.counter(size: 18))
-                        .foregroundStyle(Color.white)
-                    Text("CẦN NỘP")
-                        .font(WidgetFontSystem.sectionHeader(size: 8))
-                        .tracking(0.6)
-                        .foregroundStyle(ChunkyTheme.butterYellow)
+                    cardContent
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
                 }
                 .padding(.horizontal, 8)
-                .padding(.vertical, 3.5)
-                .background(Color.black.opacity(0.18))
-                .clipShape(Capsule())
-                .padding(.leading, 11)
                 .padding(.bottom, 8)
-
-                Spacer()
-
-                ChunkyEmberCharacterView(emotion: characterEmotion, size: 48)
-                    .padding(.trailing, 10)
-                    .padding(.bottom, 4)
             }
         }
+        .widgetURL(primaryItem?.destinationURL)
+        .unredacted()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .preferredColorScheme(.light)
+    }
+
+    @ViewBuilder
+    private var cardContent: some View {
+        if displayItems.isEmpty {
+            emptyStateView
+        } else if displayItems.count == 1, let item = displayItems.first {
+            singleItemCard(item: item)
+        } else {
+            multiItemCard(items: displayItems)
+        }
+    }
+
+    private var emptyStateView: some View {
+        VStack(spacing: 3) {
+            Text("✦ Rảnh rồi!")
+                .font(WidgetFontSystem.sectionHeader(size: 11.5))
+                .tracking(0.0)
+                .foregroundStyle(ChunkyTheme.textPrimary)
+            Text("Nghỉ ngơi nhé")
+                .font(WidgetFontSystem.meta(size: 9))
+                .tracking(0.0)
+                .foregroundStyle(ChunkyTheme.textMuted)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+
+    private func singleItemCard(item: Coursework) -> some View {
+        VStack(alignment: .leading, spacing: 3.5) {
+            HStack(alignment: .center, spacing: 5) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
+                        .frame(width: 18, height: 18)
+
+                    Image(systemName: SubjectArtHelper.icon(for: item.courseName, title: item.title))
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(Color.white)
+                }
+
+                Text(item.courseName)
+                    .font(WidgetFontSystem.courseTitle(size: 9.5))
+                    .foregroundStyle(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Spacer(minLength: 2)
+
+                statusTag(for: item, fontSize: 7.5)
+            }
+
+            Rectangle()
+                .fill(ChunkyTheme.editorialHairline)
+                .frame(height: 0.8)
+
+            let headline = item.title.isEmpty ? item.courseName : item.title
+            Text(headline)
+                .font(WidgetFontSystem.courseTitle(size: 11))
+                .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
+                .lineLimit(3)
+                .minimumScaleFactor(0.8)
+                .lineSpacing(1.5)
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.top, 1)
+    }
+
+    private func multiItemCard(items: [Coursework]) -> some View {
+        let itemsToShow = Array(items.prefix(2))
+        return VStack(spacing: 0) {
+            ForEach(Array(itemsToShow.enumerated()), id: \.element.id) { index, subItem in
+                HStack(alignment: .center, spacing: 6) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 5.5, style: .continuous)
+                            .fill(SubjectArtHelper.themeColor(for: subItem.courseName, title: subItem.title))
+                            .frame(width: 18, height: 18)
+
+                        Image(systemName: SubjectArtHelper.icon(for: subItem.courseName, title: subItem.title))
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Color.white)
+                    }
+
+                    VStack(alignment: .leading, spacing: 1.5) {
+                        let headline = subItem.title.isEmpty ? subItem.courseName : subItem.title
+                        Text(headline)
+                            .font(WidgetFontSystem.courseTitle(size: 9.8))
+                            .foregroundStyle(subItem.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+
+                        HStack(spacing: 3) {
+                            Text(subItem.courseName)
+                                .font(WidgetFontSystem.meta(size: 7.8))
+                                .foregroundStyle(ChunkyTheme.textMuted)
+                                .lineLimit(1)
+
+                            Text("•")
+                                .font(.system(size: 6.5, weight: .bold))
+                                .foregroundStyle(ChunkyTheme.textMuted.opacity(0.45))
+
+                            Text(dueLabel(for: subItem))
+                                .font(WidgetFontSystem.meta(size: 7.8))
+                                .foregroundStyle(subItem.isOverdue ? ChunkyTheme.urgentAccent : (subItem.isCompleted ? Color.green : ChunkyTheme.textMuted))
+                                .lineLimit(1)
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+
+                    if subItem.isCompleted {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(Color.green)
+                    } else if subItem.isOverdue {
+                        Circle()
+                            .fill(ChunkyTheme.urgentAccent)
+                            .frame(width: 5, height: 5)
+                    }
+                }
+                .frame(maxHeight: .infinity)
+
+                if index < itemsToShow.count - 1 {
+                    Rectangle()
+                        .fill(ChunkyTheme.editorialHairline)
+                        .frame(height: 0.8)
+                }
+            }
+        }
+    }
+
+    private func dueLabel(for item: Coursework) -> String {
+        if item.isCompleted {
+            return "Đã nộp"
+        } else if item.isOverdue {
+            return "Quá hạn"
+        } else if item.isDueToday {
+            return item.timeOnlyString == "Cuối ngày" ? "23:59" : item.timeOnlyString
+        } else if item.isDueTomorrow {
+            return item.timeOnlyString == "Cuối ngày" ? "Mai" : "Mai \(item.timeOnlyString)"
+        } else if item.dueDate == nil {
+            return "Không hạn"
+        } else {
+            return item.timeOnlyString
+        }
+    }
+
+    @ViewBuilder
+    private func statusTag(for item: Coursework, fontSize: CGFloat) -> some View {
+        if item.isCompleted {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: fontSize + 4, weight: .bold))
+                .foregroundStyle(Color.green)
+        } else if item.isOverdue {
+            Text("Quá hạn")
+                .font(WidgetFontSystem.statusTag(size: fontSize))
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 1.5)
+                .background(ChunkyTheme.urgentAccent)
+                .clipShape(Capsule())
+        } else {
+            let labelText = item.timeOnlyString == "Cuối ngày" ? "23:59" : item.timeOnlyString
+            Text(labelText)
+                .font(WidgetFontSystem.statusTag(size: fontSize))
+                .foregroundStyle(ChunkyTheme.textMuted)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 1.5)
+                .background(Color.black.opacity(0.04))
+                .clipShape(Capsule())
+        }
     }
 }

@@ -1,40 +1,33 @@
 import SwiftUI
 import WidgetKit
 
-// MARK: - CHUNKY EMBER THEME (Minimalist Editorial & Warm Sky)
+// MARK: - Chunky Ember Theme
 public struct ChunkyTheme {
-    // 1. Sky Background (Gentle Serene Morning Sky - Soft Harmonious Blue Gradient)
-    public static let skyTop = Color(red: 0.38, green: 0.65, blue: 0.88)
-    public static let skyBottom = Color(red: 0.24, green: 0.52, blue: 0.78)
+    public static let skyTop = Color(red: 0.38, green: 0.78, blue: 1.00)
+    public static let skyBottom = Color(red: 0.14, green: 0.62, blue: 0.98)
 
-    // 2. Calm Assignment Sheet (Clean warm white paper)
     public static let sheetBg = Color.white
 
-    // 3. Ember Character (Warm vibrant coral-orange flame)
     public static let emberTop = Color(red: 1.00, green: 0.48, blue: 0.22)
     public static let emberBottom = Color(red: 0.94, green: 0.32, blue: 0.15)
-    public static let emberCore = Color(red: 1.00, green: 0.86, blue: 0.38) // Inner yellow flame
+    public static let emberCore = Color(red: 1.00, green: 0.86, blue: 0.38)
 
-    // 4. Typography
     public static let textPrimary = Color(red: 0.12, green: 0.16, blue: 0.24)
     public static let textMuted = Color(red: 0.46, green: 0.53, blue: 0.64)
 
-    // 5. Accents
-    public static let urgentAccent = Color(red: 0.94, green: 0.25, blue: 0.28) // Crimson warning
+    public static let urgentAccent = Color(red: 0.94, green: 0.25, blue: 0.28)
     public static let butterYellow = Color(red: 1.00, green: 0.86, blue: 0.38)
     public static let pillBlue = Color(red: 0.20, green: 0.52, blue: 0.82)
 
-    // 6. Hard Shadows & Editorial Diffusion
     public static let hardShadow = Color(red: 0.10, green: 0.26, blue: 0.40).opacity(0.28)
     public static let characterShadow = Color(red: 0.08, green: 0.20, blue: 0.32).opacity(0.32)
 
-    // 7. Minimalist Editorial Tokens
     public static let editorialCardBorder = Color.black.opacity(0.06)
     public static let editorialHairline = Color.primary.opacity(0.05)
     public static let editorialPillBg = Color(red: 0.94, green: 0.96, blue: 0.98)
 
     public static var skyGradient: LinearGradient {
-        LinearGradient(colors: [skyTop, skyBottom], startPoint: .top, endPoint: .bottom)
+        LinearGradient(colors: [skyTop, skyBottom], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
     public static var emberGradient: LinearGradient {
@@ -42,15 +35,14 @@ public struct ChunkyTheme {
     }
 }
 
-// MARK: - EMBER EMOTIONS
 public enum EmberEmotion: String, CaseIterable, Sendable {
-    case normal      // 1-2 tasks: energetic, bright-eyed
-    case stressed    // ≥ 3 tasks or urgent today: alert, determined
-    case sleeping    // 0 tasks: peaceful shut eyes, dreaming
-    case celebrating // all completed: triumphant, joyous sparkle
+    case normal
+    case stressed
+    case sleeping
+    case celebrating
 }
 
-// MARK: - STANDARDIZED FLAME VECTOR SHAPES (Chubby Spiky Bé Lửa)
+// MARK: - Flame Shapes
 public struct StandardEmberFlameOuter: Shape {
     let isUrgent: Bool
     let isSleeping: Bool
@@ -66,28 +58,24 @@ public struct StandardEmberFlameOuter: Shape {
         let h = rect.height
         let cx = w * 0.50
 
-        // 1. Plump rounded bottom base
         path.move(to: CGPoint(x: cx, y: h * 0.91))
 
-        // 2. Plump bottom right cheek
         path.addCurve(
             to: CGPoint(x: w * 0.78, y: h * 0.70),
             control1: CGPoint(x: w * 0.64, y: h * 0.91),
             control2: CGPoint(x: w * 0.78, y: h * 0.82)
         )
-        // 3. Right flank up to right spiky tongue
         path.addCurve(
             to: CGPoint(x: w * 0.85, y: h * 0.45),
             control1: CGPoint(x: w * 0.78, y: h * 0.58),
             control2: CGPoint(x: w * 0.85, y: h * 0.51)
         )
-        // 4. Right spiky tongue notch dipping in
         path.addCurve(
             to: CGPoint(x: w * 0.67, y: h * 0.36),
             control1: CGPoint(x: w * 0.82, y: h * 0.39),
             control2: CGPoint(x: w * 0.71, y: h * 0.38)
         )
-        // 5. Sweeping up to center crest apex
+
         let apexY = isUrgent ? h * 0.05 : (isSleeping ? h * 0.10 : h * 0.08)
         let apexX = isSleeping ? w * 0.63 : w * 0.61
         path.addCurve(
@@ -95,25 +83,21 @@ public struct StandardEmberFlameOuter: Shape {
             control1: CGPoint(x: w * 0.61, y: h * 0.24),
             control2: CGPoint(x: w * 0.65, y: h * 0.16)
         )
-        // 6. Apex curving down to left flame notch
         path.addCurve(
             to: CGPoint(x: w * 0.37, y: h * 0.25),
             control1: CGPoint(x: w * 0.53, y: apexY),
             control2: CGPoint(x: w * 0.42, y: h * 0.17)
         )
-        // 7. Left notch sweeping out to left spiky tongue
         path.addCurve(
             to: CGPoint(x: w * 0.16, y: h * 0.40),
             control1: CGPoint(x: w * 0.29, y: h * 0.29),
             control2: CGPoint(x: w * 0.16, y: h * 0.33)
         )
-        // 8. Left spiky tongue down to plump left cheek
         path.addCurve(
             to: CGPoint(x: w * 0.22, y: h * 0.70),
             control1: CGPoint(x: w * 0.16, y: h * 0.52),
             control2: CGPoint(x: w * 0.19, y: h * 0.62)
         )
-        // 9. Plump left cheek curving into bottom base
         path.addCurve(
             to: CGPoint(x: cx, y: h * 0.91),
             control1: CGPoint(x: w * 0.22, y: h * 0.82),
@@ -188,7 +172,6 @@ public struct StandardEmberFlameInner: Shape {
     }
 }
 
-// Inner glowing hearth core
 public struct StandardEmberFlameCore: Shape {
     public init() {}
 
@@ -228,9 +211,7 @@ public typealias Concept1FlameInner = StandardEmberFlameInner
 public typealias HarmoniousFlameCore = StandardEmberFlameInner
 public typealias Concept1FlameCore = StandardEmberFlameInner
 
-// MARK: - SPECULAR HIGHLIGHT CURVES (Tight Contour Hugging with Dual Fade)
-
-// 1. Hugs the left ridge of the main flame crest
+// MARK: - Specular Highlights
 public struct TightMainCrestGlossPath: Shape {
     public func path(in rect: CGRect) -> Path {
         var path = Path()
@@ -246,7 +227,6 @@ public struct TightMainCrestGlossPath: Shape {
     }
 }
 
-// 2. Hugs the upper edge and tip of the left spiky tongue
 public struct TightLeftTongueGlossPath: Shape {
     public func path(in rect: CGRect) -> Path {
         var path = Path()
@@ -262,7 +242,6 @@ public struct TightLeftTongueGlossPath: Shape {
     }
 }
 
-// 3. Hugs the plump left cheek contour
 public struct TightLeftCheekGlossPath: Shape {
     public func path(in rect: CGRect) -> Path {
         var path = Path()
@@ -278,7 +257,6 @@ public struct TightLeftCheekGlossPath: Shape {
     }
 }
 
-// 4. Hugs the right ridge of the main crest (secondary rim)
 public struct TightRightTipGlossPath: Shape {
     public func path(in rect: CGRect) -> Path {
         var path = Path()
@@ -294,7 +272,6 @@ public struct TightRightTipGlossPath: Shape {
     }
 }
 
-// 5. Hugs the right spiky tongue contour
 public struct TightRightTongueGlossPath: Shape {
     public func path(in rect: CGRect) -> Path {
         var path = Path()
@@ -310,7 +287,6 @@ public struct TightRightTongueGlossPath: Shape {
     }
 }
 
-// Backward compatibility alias for single-path callers
 public struct EmberSpecularHighlightPath: Shape {
     let isSleeping: Bool
 
@@ -325,23 +301,20 @@ public struct EmberSpecularHighlightPath: Shape {
 
 public typealias StandardEmberSpecularPath = EmberSpecularHighlightPath
 
-// MARK: - Celebrating Mouth & Tongue Shapes (nadicode-ai-designer Redesign)
+// MARK: - Celebrating Mouth Shapes
 public struct CelebratingMouthCavityShape: Shape {
     public init() {}
     public func path(in rect: CGRect) -> Path {
         var path = Path()
         let w = rect.width
         let h = rect.height
-        // Top lip with gentle cheerful upward curvature
         path.move(to: CGPoint(x: 0, y: h * 0.12))
         path.addQuadCurve(to: CGPoint(x: w, y: h * 0.12), control: CGPoint(x: w * 0.5, y: -h * 0.02))
-        // Right side down to bottom
         path.addCurve(
             to: CGPoint(x: w * 0.5, y: h),
             control1: CGPoint(x: w, y: h * 0.56),
             control2: CGPoint(x: w * 0.82, y: h)
         )
-        // Bottom back to left corner
         path.addCurve(
             to: CGPoint(x: 0, y: h * 0.12),
             control1: CGPoint(x: w * 0.18, y: h),
@@ -358,7 +331,6 @@ public struct CelebratingTongueShape: Shape {
         var path = Path()
         let w = rect.width
         let h = rect.height
-        // Plump heart-arched tongue rising from bottom
         path.move(to: CGPoint(x: w * 0.04, y: h * 1.15))
         path.addCurve(
             to: CGPoint(x: w * 0.5, y: h * 0.32),
@@ -375,13 +347,10 @@ public struct CelebratingTongueShape: Shape {
     }
 }
 
-
-// MARK: - 3D CUTE VECTOR EMBER MASCOT (nadicode-ai-designer High-Fidelity Character)
+// MARK: - Character View
 public struct ChunkyEmberCharacterView: View {
     let emotion: EmberEmotion
     var size: CGFloat = 76
-
-    @State private var isBreathing: Bool = false
 
     private let inkColor = Color(red: 0.12, green: 0.08, blue: 0.06)
 
@@ -392,7 +361,6 @@ public struct ChunkyEmberCharacterView: View {
 
     public var body: some View {
         ZStack {
-            // 0. Soft Ambient Ground Contact Shadow
             Ellipse()
                 .fill(
                     RadialGradient(
@@ -405,44 +373,30 @@ public struct ChunkyEmberCharacterView: View {
                 .frame(width: size * 0.74, height: size * 0.14)
                 .offset(y: size * 0.45)
 
-            // 1. Outer 3D Flame Body (Warm Vibrant Coral-Orange Gradient)
             flameOuterBody
                 .frame(width: size, height: size)
 
-            // 2. Inner Flame Body (Spiky Amber-Gold Gradient)
             flameInnerBody
                 .frame(width: size, height: size)
 
-            // 3. Inner Radiant Hearth Glow (Luminous Center)
             flameCoreHeart
                 .frame(width: size, height: size)
 
-            // 4. Tactile 3D Vinyl Specular Highlights (Đường bóng trắng ôm sát viền lửa)
             flameRimHighlights
                 .frame(width: size, height: size)
 
-            // 5. Soft Rosy Blush Cheeks (Nằm trọn vẹn, tự nhiên trên 2 má phúng phính)
             blushCheeks
                 .frame(width: size, height: size)
 
-            // 6. Expressive Facial Features (Eyes & Mouth)
             facialFeatures
                 .frame(width: size, height: size)
 
-            // 7. Mood Accessories (Sweat drop, Sleepy Zs, Celebration Sparkles)
             stateAccessories
                 .frame(width: size, height: size)
         }
         .frame(width: size, height: size)
-        .offset(y: isBreathing ? -1.5 : 1.5)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
-                isBreathing = true
-            }
-        }
     }
 
-    // MARK: - 1. Outer Flame Body
     private var flameOuterBody: some View {
         StandardEmberFlameOuter(isUrgent: emotion == .stressed, isSleeping: emotion == .sleeping)
             .fill(
@@ -459,7 +413,6 @@ public struct ChunkyEmberCharacterView: View {
             .shadow(color: Color(red: 0.86, green: 0.20, blue: 0.10).opacity(0.28), radius: 5, x: 0, y: 2.5)
     }
 
-    // MARK: - 2. Inner Flame Body
     private var flameInnerBody: some View {
         StandardEmberFlameInner(isSleeping: emotion == .sleeping)
             .fill(
@@ -475,7 +428,6 @@ public struct ChunkyEmberCharacterView: View {
             )
     }
 
-    // MARK: - 3. Inner Radiant Hearth Glow
     private var flameCoreHeart: some View {
         StandardEmberFlameCore()
             .fill(
@@ -491,10 +443,8 @@ public struct ChunkyEmberCharacterView: View {
             )
     }
 
-    // MARK: - 4. Specular Highlights (Đường bóng trắng ôm sát viền lửa - Dual Fade)
     private var flameRimHighlights: some View {
         ZStack {
-            // (a) Main Crest Left Rim
             TightMainCrestGlossPath()
                 .stroke(
                     LinearGradient(
@@ -510,7 +460,6 @@ public struct ChunkyEmberCharacterView: View {
                     style: StrokeStyle(lineWidth: max(2.0, size * 0.024), lineCap: .round)
                 )
 
-            // (b) Left Spiky Tongue Tip
             TightLeftTongueGlossPath()
                 .stroke(
                     LinearGradient(
@@ -526,7 +475,6 @@ public struct ChunkyEmberCharacterView: View {
                     style: StrokeStyle(lineWidth: max(2.0, size * 0.023), lineCap: .round)
                 )
 
-            // (c) Left Cheek Rim
             TightLeftCheekGlossPath()
                 .stroke(
                     LinearGradient(
@@ -542,7 +490,6 @@ public struct ChunkyEmberCharacterView: View {
                     style: StrokeStyle(lineWidth: max(2.2, size * 0.025), lineCap: .round)
                 )
 
-            // (d) Right Crest Rim
             TightRightTipGlossPath()
                 .stroke(
                     LinearGradient(
@@ -557,7 +504,6 @@ public struct ChunkyEmberCharacterView: View {
                     style: StrokeStyle(lineWidth: max(1.6, size * 0.016), lineCap: .round)
                 )
 
-            // (e) Right Spiky Tongue Rim
             TightRightTongueGlossPath()
                 .stroke(
                     LinearGradient(
@@ -574,7 +520,6 @@ public struct ChunkyEmberCharacterView: View {
         }
     }
 
-    // MARK: - 5. Soft Blush Cheeks (Nằm chuẩn xác, đối xứng trên khuôn mặt)
     private var blushCheeks: some View {
         HStack(spacing: size * 0.36) {
             Circle()
@@ -602,19 +547,16 @@ public struct ChunkyEmberCharacterView: View {
         .offset(x: size * 0.01, y: size * 0.105)
     }
 
-    // MARK: - 6. Facial Features
     @ViewBuilder
     private var facialFeatures: some View {
         switch emotion {
         case .normal:
-            // Alert, Intelligent, Sentient Eyes with Dual Specular Sparkles
             VStack(spacing: size * 0.035) {
                 HStack(spacing: size * 0.16) {
                     eyeView
                     eyeView
                 }
 
-                // Sweet Smile
                 Path { p in
                     p.move(to: CGPoint(x: 0, y: 0))
                     p.addQuadCurve(to: CGPoint(x: size * 0.10, y: 0), control: CGPoint(x: size * 0.05, y: size * 0.048))
@@ -625,14 +567,12 @@ public struct ChunkyEmberCharacterView: View {
             .offset(x: size * 0.01, y: size * 0.05)
 
         case .stressed:
-            // Wide alert eyes, sweat drop, nervous mouth
             VStack(spacing: size * 0.03) {
                 HStack(spacing: size * 0.16) {
                     eyeView
                     eyeView
                 }
 
-                // Wavy nervous mouth
                 Path { p in
                     p.move(to: CGPoint(x: 0, y: size * 0.015))
                     p.addCurve(
@@ -647,7 +587,6 @@ public struct ChunkyEmberCharacterView: View {
             .offset(x: size * 0.01, y: size * 0.05)
 
         case .sleeping:
-            // Peaceful curved closed eyelashes & sweet smile
             VStack(spacing: size * 0.04) {
                 HStack(spacing: size * 0.16) {
                     Path { p in
@@ -675,7 +614,6 @@ public struct ChunkyEmberCharacterView: View {
             .offset(x: size * 0.01, y: size * 0.05)
 
         case .celebrating:
-            // Joyful closed crescent eyes (^ ^) and beaming open smile with plump pink tongue
             let mouthW = size * 0.13
             let mouthH = size * 0.072
             VStack(spacing: size * 0.035) {
@@ -695,9 +633,7 @@ public struct ChunkyEmberCharacterView: View {
                     .frame(width: size * 0.095, height: size * 0.025)
                 }
 
-                // Joyful Open Smile with Plump Pink Tongue
                 ZStack {
-                    // 1. Deep Wine Cavity Background
                     CelebratingMouthCavityShape()
                         .fill(
                             LinearGradient(
@@ -707,7 +643,6 @@ public struct ChunkyEmberCharacterView: View {
                             )
                         )
 
-                    // 2. Plump Pink Tongue
                     CelebratingTongueShape()
                         .fill(
                             LinearGradient(
@@ -721,21 +656,18 @@ public struct ChunkyEmberCharacterView: View {
                             )
                         )
 
-                    // 3. Delicate Tongue Midline Crease
                     Path { p in
                         p.move(to: CGPoint(x: mouthW * 0.5, y: mouthH * 0.38))
                         p.addLine(to: CGPoint(x: mouthW * 0.5, y: mouthH * 0.68))
                     }
                     .stroke(Color(red: 0.79, green: 0.13, blue: 0.29).opacity(0.85), lineWidth: max(0.8, size * 0.009))
 
-                    // 4. Specular Highlight on Tongue
                     Ellipse()
                         .fill(Color.white.opacity(0.42))
                         .frame(width: mouthW * 0.36, height: mouthH * 0.22)
                         .offset(y: -mouthH * 0.06)
                 }
                 .clipShape(CelebratingMouthCavityShape())
-                // 5. Outer Outline Stroke with Round Cap & Join
                 .overlay(
                     CelebratingMouthCavityShape()
                         .stroke(inkColor, style: StrokeStyle(lineWidth: max(1.8, size * 0.018), lineCap: .round, lineJoin: .round))
@@ -746,7 +678,6 @@ public struct ChunkyEmberCharacterView: View {
         }
     }
 
-    // MARK: - Eye with Double Specular Highlights
     private var eyeView: some View {
         ZStack {
             Capsule()
@@ -763,11 +694,9 @@ public struct ChunkyEmberCharacterView: View {
         }
     }
 
-    // MARK: - 7. State Accessories
     @ViewBuilder
     private var stateAccessories: some View {
         if emotion == .stressed {
-            // Translucent 3D Sweat Bead
             ZStack {
                 Capsule()
                     .fill(
@@ -791,7 +720,6 @@ public struct ChunkyEmberCharacterView: View {
             .rotationEffect(.degrees(18))
             .offset(x: size * 0.28, y: -size * 0.08)
         } else if emotion == .sleeping {
-            // Dreamy Floating Z's
             VStack(alignment: .trailing, spacing: 2) {
                 Text("Z")
                     .font(.system(size: size * 0.12, weight: .heavy, design: .rounded))
@@ -803,7 +731,6 @@ public struct ChunkyEmberCharacterView: View {
             .shadow(color: Color.black.opacity(0.18), radius: 2, x: 0, y: 1)
             .offset(x: size * 0.26, y: -size * 0.24)
         } else if emotion == .celebrating {
-            // Golden Sparkle Starbursts
             ZStack {
                 Image(systemName: "sparkle")
                     .font(.system(size: size * 0.15, weight: .bold))
@@ -823,7 +750,7 @@ public struct ChunkyEmberCharacterView: View {
     }
 }
 
-// MARK: - MEDIUM WIDGET VIEW (Minimalist Editorial - Fluid, Clean, Airy)
+// MARK: - Medium Widget View
 public struct MediumWidgetView: View {
     let courseworkList: [Coursework]
 
@@ -831,12 +758,41 @@ public struct MediumWidgetView: View {
         self.courseworkList = courseworkList
     }
 
-    private var tomorrowItems: [Coursework] {
-        courseworkList.filter { $0.isDueTomorrow && !$0.isCompleted }
+    private var sectionHeaderTitle: String {
+        let pending = courseworkList.filter { !$0.isCompleted }
+        let hasOverdue = pending.contains(where: \.isOverdue)
+        let hasToday = pending.contains(where: \.isDueToday)
+        let hasTomorrow = pending.contains(where: \.isDueTomorrow)
+
+        if hasOverdue && !hasToday && !hasTomorrow {
+            return "QUÁ HẠN"
+        } else if hasToday && hasTomorrow {
+            return "HÔM NAY & MAI"
+        } else if hasToday {
+            return "HÔM NAY"
+        } else if hasTomorrow {
+            return "NGÀY MAI"
+        } else if hasOverdue {
+            return "QUÁ HẠN"
+        } else if !pending.isEmpty {
+            return "SẮP TỚI"
+        } else if courseworkList.contains(where: \.isDueToday) {
+            return "HÔM NAY"
+        } else {
+            return "NGÀY MAI"
+        }
     }
 
     private var activeItems: [Coursework] {
-        tomorrowItems
+        courseworkList.filter { !$0.isCompleted }
+    }
+
+    private var displayItems: [Coursework] {
+        if activeItems.isEmpty {
+            return courseworkList
+        }
+        let completed = courseworkList.filter(\.isCompleted)
+        return activeItems + completed
     }
 
     private var characterEmotion: EmberEmotion {
@@ -851,7 +807,7 @@ public struct MediumWidgetView: View {
 
     private var moodBadgeText: String {
         if activeItems.isEmpty {
-            return "Thảnh thơi ✨"
+            return courseworkList.isEmpty ? "Thảnh thơi ✨" : "Hoàn thành 🎉"
         } else if activeItems.count >= 4 {
             return "Tập trung"
         } else {
@@ -861,30 +817,24 @@ public struct MediumWidgetView: View {
 
     public var body: some View {
         ZStack(alignment: .bottomLeading) {
-            // 1. Serene Morning Sky Gradient
             ChunkyTheme.skyGradient
                 .ignoresSafeArea()
 
-            // Subtle Background Cloud Silhouettes
             backgroundClouds
 
-            // 2. Fluid Editorial Layout (Flexible HStack adapts to 325pt preview & 364pt system widget)
             HStack(spacing: 12) {
-                // LEFT COLUMN: Command & Mascot Hub (Balanced: 108pt width)
                 VStack(spacing: 0) {
-                    // Editorial Big Counter
                     VStack(spacing: 3) {
                         Text("\(activeItems.count)")
                             .font(WidgetFontSystem.counter(size: 38))
                             .foregroundStyle(Color.white)
                             .shadow(color: Color.black.opacity(0.18), radius: 0, x: 0, y: 1.5)
 
-                        Text("CẦN NỘP")
+                        Text(activeItems.isEmpty && !courseworkList.isEmpty ? "HOÀN TẤT" : "CẦN NỘP")
                             .font(WidgetFontSystem.sectionHeader(size: 8.5))
-                            .tracking(1.2)
+                            .tracking(0.0)
                             .foregroundStyle(ChunkyTheme.butterYellow)
 
-                        // Mood Status Capsule
                         Text(moodBadgeText)
                             .font(WidgetFontSystem.meta(size: 8))
                             .foregroundStyle(Color.white.opacity(0.92))
@@ -897,14 +847,12 @@ public struct MediumWidgetView: View {
 
                     Spacer(minLength: 0)
 
-                    // 3D Cute Ember Mascot (Grounded, expressive)
-                    ChunkyEmberCharacterView(emotion: characterEmotion, size: 78)
+                    ChunkyEmberCharacterView(emotion: characterEmotion, size: 74)
                         .padding(.bottom, 6)
                 }
-                .frame(width: 108)
+                .frame(width: 96)
                 .frame(maxHeight: .infinity)
 
-                // RIGHT COLUMN: Shrunk & Sleek White Card
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(ChunkyTheme.sheetBg)
@@ -914,13 +862,11 @@ public struct MediumWidgetView: View {
                                 .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
                         )
 
-                    // Editorial Card Content
                     VStack(alignment: .leading, spacing: 0) {
-                        // Sleek Minimal Header Bar
                         HStack(alignment: .center, spacing: 6) {
-                            Text("NGÀY MAI")
+                            Text(sectionHeaderTitle)
                                 .font(WidgetFontSystem.sectionHeader(size: 9.5))
-                                .tracking(1.1)
+                                .tracking(0.0)
                                 .foregroundStyle(ChunkyTheme.textMuted)
 
                             Spacer(minLength: 4)
@@ -937,20 +883,22 @@ public struct MediumWidgetView: View {
                                 Text("\(activeItems.count)")
                                     .font(WidgetFontSystem.sectionHeader(size: 8.5))
                                     .foregroundStyle(ChunkyTheme.textMuted)
+                            } else if !courseworkList.isEmpty {
+                                Text("✓")
+                                    .font(WidgetFontSystem.sectionHeader(size: 8.5))
+                                    .foregroundStyle(Color.green)
                             }
                         }
-                        .padding(.top, 10)
+                        .padding(.top, 8)
                         .padding(.horizontal, 12)
-                        .padding(.bottom, 6)
+                        .padding(.bottom, 4)
 
-                        // Hairline Divider
                         Rectangle()
                             .fill(ChunkyTheme.editorialHairline)
                             .frame(height: 0.8)
                             .padding(.horizontal, 10)
 
-                        // Coursework Items or Empty State
-                        if activeItems.isEmpty {
+                        if displayItems.isEmpty {
                             emptyStateView
                                 .padding(.horizontal, 12)
                                 .frame(maxHeight: .infinity, alignment: .center)
@@ -964,15 +912,14 @@ public struct MediumWidgetView: View {
                     }
                 }
                 .frame(maxHeight: .infinity)
-                .padding(.vertical, 14)
-                .padding(.trailing, 14)
+                .padding(.vertical, 10)
+                .padding(.trailing, 12)
             }
         }
+        .unredacted()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .preferredColorScheme(.light)
     }
 
-    // MARK: - Background Clouds Silhouettes
     private var backgroundClouds: some View {
         Canvas { context, size in
             let cloud1 = CGRect(x: size.width - 85, y: 6, width: 68, height: 18)
@@ -984,7 +931,6 @@ public struct MediumWidgetView: View {
         .allowsHitTesting(false)
     }
 
-    // MARK: - Empty State View (Tranquil & Clean)
     private var emptyStateView: some View {
         HStack(spacing: 12) {
             ZStack {
@@ -998,7 +944,7 @@ public struct MediumWidgetView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Ngày mai rảnh rồi!")
+                Text(sectionHeaderTitle == "HÔM NAY" ? "Hôm nay rảnh rồi!" : (sectionHeaderTitle == "SẮP TỚI" ? "Tạm thời rảnh rồi!" : "Ngày mai rảnh rồi!"))
                     .font(.system(size: 13.5, weight: .heavy, design: .rounded))
                     .foregroundStyle(ChunkyTheme.textPrimary)
 
@@ -1010,42 +956,59 @@ public struct MediumWidgetView: View {
         }
     }
 
-    // MARK: - Pure Task List Rows (Ghi mỗi môn học thôi, bỏ qua nội dung)
     @ViewBuilder
     private var pureTaskListRows: some View {
-        let itemsToShow = Array(activeItems.prefix(3))
-        let rowHeight: CGFloat = activeItems.count <= 2 ? 38 : 31
+        let itemsToShow = Array(displayItems.prefix(3))
+        let rowHeight: CGFloat = displayItems.count <= 2 ? 40 : 34
 
         VStack(spacing: 0) {
             ForEach(Array(itemsToShow.enumerated()), id: \.element.id) { index, item in
-                Link(destination: URL(string: item.alternateLink ?? "https://classroom.google.com")!) {
+                Link(destination: item.destinationURL) {
                     VStack(spacing: 0) {
                         HStack(alignment: .center, spacing: 9) {
-                            // Subject Icon Badge (Clean & Color Coded)
                             ZStack {
                                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(SubjectArtHelper.themeColor(for: item.courseName))
+                                    .fill(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
                                     .frame(width: 22, height: 22)
 
-                                Image(systemName: SubjectArtHelper.icon(for: item.courseName))
+                                Image(systemName: SubjectArtHelper.icon(for: item.courseName, title: item.title))
                                     .font(.system(size: 10.5, weight: .bold))
                                     .foregroundStyle(Color.white)
                             }
 
-                            // Only Course Name (Bỏ qua nội dung)
-                            Text(item.courseName)
-                                .font(WidgetFontSystem.courseTitle(size: 13))
-                                .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
+                            VStack(alignment: .leading, spacing: 1.5) {
+                                let mainHeadline = item.title.isEmpty ? item.courseName : item.title
+                                let subHeadline = item.title.isEmpty ? (item.description?.components(separatedBy: .newlines).first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) ?? "") : item.courseName
+
+                                Text(mainHeadline)
+                                    .font(WidgetFontSystem.courseTitle(size: displayItems.count <= 2 ? 11.5 : 10.5))
+                                    .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.82)
+
+                                if !subHeadline.isEmpty {
+                                    Text(subHeadline)
+                                        .font(WidgetFontSystem.meta(size: displayItems.count <= 2 ? 9 : 8))
+                                        .foregroundStyle(ChunkyTheme.textMuted)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.82)
+                                }
+                            }
 
                             Spacer(minLength: 4)
 
-                            // Status / Due tag
                             if item.isCompleted {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 12, weight: .bold))
                                     .foregroundStyle(Color.green)
+                            } else if item.isOverdue {
+                                Text("Quá hạn")
+                                    .font(WidgetFontSystem.statusTag(size: 7.5))
+                                    .foregroundStyle(Color.white)
+                                    .padding(.horizontal, 5.5)
+                                    .padding(.vertical, 2)
+                                    .background(ChunkyTheme.urgentAccent)
+                                    .clipShape(Capsule())
                             } else {
                                 Text(item.timeOnlyString)
                                     .font(WidgetFontSystem.statusTag(size: 7.5))
@@ -1056,9 +1019,8 @@ public struct MediumWidgetView: View {
                                     .clipShape(Capsule())
                             }
                         }
-                        .frame(height: rowHeight)
+                        .frame(minHeight: rowHeight)
 
-                        // Subtle Hairline Divider
                         if index < itemsToShow.count - 1 {
                             Rectangle()
                                 .fill(ChunkyTheme.editorialHairline)
@@ -1071,7 +1033,6 @@ public struct MediumWidgetView: View {
         }
     }
 
-    // MARK: - Editorial Subject Badge
     @ViewBuilder
     private func editorialSubjectBadge(name: String) -> some View {
         let code = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(3)).uppercased()
@@ -1087,7 +1048,6 @@ public struct MediumWidgetView: View {
     }
 }
 
-// MARK: - PREVIEWS
 #Preview("Bốn bài mẫu (Light Mode)") {
     MediumWidgetView(courseworkList: RisoMockData.fourTasks)
         .frame(width: 364, height: 170)

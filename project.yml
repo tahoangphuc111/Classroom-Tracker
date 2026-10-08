@@ -2,20 +2,20 @@ name: ClassroomTracker
 options:
   bundleIdPrefix: com.phucta
   deploymentTarget:
-    macOS: "14.0"
+    macOS: "27.0"
     iOS: "17.0"
 
 settings:
   base:
     SWIFT_VERSION: "5.9"
     CODE_SIGN_STYLE: Automatic
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: "4J32CASZVT"
 
 targets:
   ClassroomApp:
     type: application
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "27.0"
     sources:
       - path: ClassroomApp
         excludes:
@@ -39,7 +39,7 @@ targets:
   ClassroomWidget:
     type: app-extension
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "27.0"
     sources:
       - path: ClassroomWidget
         excludes:

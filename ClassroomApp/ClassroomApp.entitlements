@@ -10,6 +10,8 @@
     <true/>
     <key>com.apple.security.application-groups</key>
     <array>
+        <string>4J32CASZVT.group.com.phucta.classroom</string>
+        <string>VGWH8K5259.group.com.phucta.classroom</string>
         <string>group.com.phucta.classroom</string>
     </array>
 </dict>

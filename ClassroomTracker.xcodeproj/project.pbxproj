@@ -419,19 +419,19 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					0362C40323DDFABB28F81A81 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 4J32CASZVT;
 						ProvisioningStyle = Automatic;
 					};
 					658422E29B524D8FB381EBC0 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 4J32CASZVT;
 						ProvisioningStyle = Automatic;
 					};
 					736C02404CE9ECC7EBBC9E8E = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 4J32CASZVT;
 						ProvisioningStyle = Automatic;
 					};
 					930A2332BD40C1F91822ED6E = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 4J32CASZVT;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -657,7 +657,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 4J32CASZVT;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -669,7 +669,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -715,7 +715,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 4J32CASZVT;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -733,7 +733,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -756,7 +756,7 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.phucta.ClassroomTracker.widget;
 				PRODUCT_NAME = "Classroom Deadlines";
 				SDKROOT = macosx;
@@ -776,7 +776,7 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.phucta.ClassroomTracker.widget;
 				PRODUCT_NAME = "Classroom Deadlines";
 				SDKROOT = macosx;
@@ -834,7 +834,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.phucta.ClassroomTracker;
 				PRODUCT_NAME = "Classroom Tracker";
 				SDKROOT = macosx;
@@ -891,7 +891,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.phucta.ClassroomTracker;
 				PRODUCT_NAME = "Classroom Tracker";
 				SDKROOT = macosx;

@@ -19,6 +19,14 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     public var status: SubmissionStatus
     public let maxPoints: Double?
 
+    public let searchIndex: String
+    public let timeOnlyString: String
+    public let formattedFullDueDate: String
+
+    private enum CodingKeys: String, CodingKey {
+        case id, courseId, courseName, title, description, alternateLink, dueDate, status, maxPoints
+    }
+
     public init(
         id: String,
         courseId: String,
@@ -39,10 +47,61 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         self.dueDate = dueDate
         self.status = status
         self.maxPoints = maxPoints
+
+        self.searchIndex = Self.buildSearchIndex(title: title, courseName: courseName, description: description)
+        self.timeOnlyString = Self.buildTimeOnlyString(from: dueDate)
+        self.formattedFullDueDate = Self.buildFormattedFullDueDate(from: dueDate)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let id = try container.decode(String.self, forKey: .id)
+        let courseId = try container.decode(String.self, forKey: .courseId)
+        let courseName = try container.decode(String.self, forKey: .courseName)
+        let title = try container.decode(String.self, forKey: .title)
+        let description = try container.decodeIfPresent(String.self, forKey: .description)
+        let alternateLink = try container.decodeIfPresent(String.self, forKey: .alternateLink)
+        let dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
+        let status = try container.decode(SubmissionStatus.self, forKey: .status)
+        let maxPoints = try container.decodeIfPresent(Double.self, forKey: .maxPoints)
+
+        self.id = id
+        self.courseId = courseId
+        self.courseName = courseName
+        self.title = title
+        self.description = description
+        self.alternateLink = alternateLink
+        self.dueDate = dueDate
+        self.status = status
+        self.maxPoints = maxPoints
+
+        self.searchIndex = Self.buildSearchIndex(title: title, courseName: courseName, description: description)
+        self.timeOnlyString = Self.buildTimeOnlyString(from: dueDate)
+        self.formattedFullDueDate = Self.buildFormattedFullDueDate(from: dueDate)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(courseId, forKey: .courseId)
+        try container.encode(courseName, forKey: .courseName)
+        try container.encode(title, forKey: .title)
+        try container.encodeIfPresent(description, forKey: .description)
+        try container.encodeIfPresent(alternateLink, forKey: .alternateLink)
+        try container.encodeIfPresent(dueDate, forKey: .dueDate)
+        try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(maxPoints, forKey: .maxPoints)
     }
 
     public var isCompleted: Bool {
         status == .turnedIn || status == .returned
+    }
+
+    public var destinationURL: URL {
+        if let link = alternateLink, let url = URL(string: link) {
+            return url
+        }
+        return URL(string: "https://classroom.google.com") ?? URL(fileURLWithPath: "/")
     }
 
     public var isUrgent: Bool {
@@ -91,16 +150,6 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         isDueTodayOrTomorrow && !isCompleted
     }
 
-    public var timeOnlyString: String {
-        guard let dueDate else { return "--:--" }
-        let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: dueDate)
-        let minute = calendar.component(.minute, from: dueDate)
-        if (hour == 23 && minute >= 55) || (hour == 0 && minute == 0) {
-            return "Cuối ngày"
-        }
-        return ClassroomDateFormatters.timeOnly.string(from: dueDate)
-    }
 
     public var friendlyDueString: String {
         guard let dueDate else { return "Không có hạn" }
@@ -155,6 +204,9 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
 
     public var countdownBadgeString: String {
         guard let dueDate else { return "Không có hạn" }
+        if isCompleted {
+            return "Đã hoàn thành"
+        }
         let now = Date()
         let interval = dueDate.timeIntervalSince(now)
 
@@ -206,24 +258,50 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         }
     }
 
-    public var formattedFullDueDate: String {
-        guard let dueDate else { return "Không có hạn nộp" }
-        return ClassroomDateFormatters.fullDueDate.string(from: dueDate).capitalized
-    }
-
     public var statusTitle: String {
         switch status {
-        case .pending: return "Chưa nộp"
-        case .late: return "Nộp trễ"
+        case .pending: return isOverdue ? "Quá hạn" : "Chưa nộp"
+        case .late: return "Quá hạn"
         case .turnedIn: return "Đã nộp"
         case .returned: return "Đã chấm điểm"
         }
+    }
+
+    private static func buildSearchIndex(title: String, courseName: String, description: String?) -> String {
+        let combined = "\(title) \(courseName) \(description ?? "")"
+        return combined.normalizedForVietnameseSearch()
+    }
+
+    private static func buildTimeOnlyString(from dueDate: Date?) -> String {
+        guard let dueDate else { return "--:--" }
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: dueDate)
+        let minute = calendar.component(.minute, from: dueDate)
+        if hour == 23 && minute >= 55 {
+            return "Cuối ngày"
+        }
+        return ClassroomDateFormatters.timeOnly.string(from: dueDate)
+    }
+
+    private static func buildFormattedFullDueDate(from dueDate: Date?) -> String {
+        guard let dueDate else { return "Không có hạn nộp" }
+        return ClassroomDateFormatters.fullDueDate.string(from: dueDate).capitalized
+    }
+}
+
+public extension String {
+    func normalizedForVietnameseSearch() -> String {
+        self.replacingOccurrences(of: "đ", with: "d")
+            .replacingOccurrences(of: "Đ", with: "d")
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "vi_VN"))
+            .lowercased()
     }
 }
 
 private enum ClassroomDateFormatters {
     static let timeOnly: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "HH:mm"
         return formatter
     }()

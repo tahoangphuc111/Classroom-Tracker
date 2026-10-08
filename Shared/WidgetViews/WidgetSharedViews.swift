@@ -19,41 +19,95 @@ public enum SubjectCategory: Sendable {
 }
 
 public struct SubjectArtHelper {
-    public static func category(for courseName: String, title: String? = nil) -> SubjectCategory {
-        let combined = "\(courseName) \(title ?? "")".lowercased()
-        if combined.contains("toán") || combined.contains("math") || combined.contains("giải tích") || combined.contains("đại số") || combined.contains("hình học") || combined.contains("xác suất") || combined.contains("calculus") {
-            return .math
-        } else if combined.contains("lập trình") || combined.contains("tin học") || combined.contains("di động") || combined.contains("ios") || combined.contains("swift") || combined.contains("python") || combined.contains("java") || combined.contains("cntt") || combined.contains("công nghệ thông tin") || (combined.contains("tin") && !combined.contains("thông tin liên lạc")) {
-            return .computerScience
-        } else if combined.contains("mạng") || combined.contains("network") || combined.contains("an ninh mạng") || combined.contains("tcp") || combined.contains("socket") || combined.contains("cloud") {
-            return .networking
-        } else if combined.contains("ngữ văn") || combined.contains("tiếng việt") || combined.contains("literature") || combined.contains("writing") || combined.contains("essay") || (combined.contains("văn") && !combined.contains("văn phòng")) {
-            return .literature
-        } else if combined.contains("tiếng anh") || combined.contains("english") || combined.contains("ielts") || combined.contains("toeic") || (combined.contains("anh") && !combined.contains("hình ảnh") && !combined.contains("âm thanh")) {
-            return .english
-        } else if combined.contains("vật lý") || combined.contains("vật lí") || combined.contains("physics") || combined.contains("môn lý") || combined.contains("sbt lý") || (combined.contains("lý") && !combined.contains("quản lý") && !combined.contains("xử lý") && !combined.contains("tâm lý") && !combined.contains("pháp lý") && !combined.contains("địa lý") && !combined.contains("địa lí") && !combined.contains("triết lý")) {
-            return .physics
-        } else if combined.contains("hóa học") || combined.contains("môn hóa") || combined.contains("chemistry") || (combined.contains("hóa") && !combined.contains("tự động hóa") && !combined.contains("tiến hóa") && !combined.contains("hóa đơn") && !combined.contains("văn hóa")) {
-            return .chemistry
-        } else if combined.contains("sinh học") || combined.contains("môn sinh") || combined.contains("biology") || combined.contains("y học") || (combined.contains("sinh") && !combined.contains("học sinh") && !combined.contains("sinh viên") && !combined.contains("sinh hoạt")) {
-            return .biology
-        } else if combined.contains("lịch sử") || combined.contains("history") || combined.contains("địa lý") || combined.contains("địa lí") || combined.contains("geography") || (combined.contains("sử") && !combined.contains("sử dụng")) || (combined.contains("địa") && !combined.contains("địa chỉ")) {
-            return .historyOrGeography
-        } else if combined.contains("gdcd") || combined.contains("triết") || combined.contains("mác") || combined.contains("tư tưởng") || combined.contains("chính trị") || combined.contains("pháp luật") || combined.contains("kinh tế và pháp luật") || combined.contains("law") {
-            return .civicsOrPhilosophy
-        } else if combined.contains("kinh tế") || combined.contains("quản trị") || combined.contains("tài chính") || combined.contains("marketing") || combined.contains("kế toán") || combined.contains("business") {
-            return .economics
-        } else if combined.contains("đồ họa") || combined.contains("thiết kế") || combined.contains("mỹ thuật") || combined.contains("art") || combined.contains("design") || combined.contains("vẽ") {
-            return .artAndDesign
-        } else if combined.contains("nhiệm vụ") || combined.contains("lab") || combined.contains("thực hành") || combined.contains("bài tập") || combined.contains("project") || combined.contains("dự án") {
-            return .generalAssignment
-        } else {
-            return .other
-        }
+    public struct VisualTheme: Sendable {
+        public let category: SubjectCategory
+        public let icon: String
+        public let themeColor: Color
+        public let bannerBackground: Color
     }
 
-    public static func icon(for courseName: String, title: String? = nil) -> String {
-        switch category(for: courseName, title: title) {
+    private static let cacheLock = NSLock()
+    private static var categoryCache: [String: SubjectCategory] = [:]
+
+    public static func category(for courseName: String, title: String? = nil) -> SubjectCategory {
+        let key = "\(courseName)|\(title ?? "")"
+        cacheLock.lock()
+        if let cached = categoryCache[key] {
+            cacheLock.unlock()
+            return cached
+        }
+        cacheLock.unlock()
+
+        let computed = computeCategory(for: courseName, title: title)
+
+        cacheLock.lock()
+        categoryCache[key] = computed
+        cacheLock.unlock()
+
+        return computed
+    }
+
+    public static func theme(for courseName: String, title: String? = nil) -> VisualTheme {
+        let cat = category(for: courseName, title: title)
+        return VisualTheme(
+            category: cat,
+            icon: icon(for: cat),
+            themeColor: themeColor(for: cat),
+            bannerBackground: bannerBackground(for: cat)
+        )
+    }
+
+    private static func computeCategory(for courseName: String, title: String? = nil) -> SubjectCategory {
+        let titleLower = (title ?? "").lowercased()
+        let titleTokens = Set(titleLower.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty })
+
+        let courseLower = courseName.lowercased()
+        let courseTokens = Set(courseLower.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty })
+
+        func matchCategory(text: String, tokens: Set<String>) -> SubjectCategory? {
+            if text.contains("toán") || tokens.contains("math") || tokens.contains("maths") || text.contains("giải tích") || text.contains("đại số") || text.contains("hình học") || text.contains("xác suất") || tokens.contains("calculus") || tokens.contains("algebra") || tokens.contains("geometry") {
+                return .math
+            } else if text.contains("vật lý") || text.contains("vật lí") || tokens.contains("physics") || text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || (tokens.contains("lý") && !text.contains("quản lý") && !text.contains("xử lý") && !text.contains("tâm lý") && !text.contains("pháp lý") && !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("triết lý") && !text.contains("lý thuyết") && !text.contains("lý do")) {
+                return .physics
+            } else if text.contains("hóa học") || text.contains("môn hóa") || tokens.contains("chemistry") || tokens.contains("chem") || (tokens.contains("hóa") && !text.contains("tự động hóa") && !text.contains("tiến hóa") && !text.contains("hóa đơn") && !text.contains("văn hóa") && !text.contains("tối ưu hóa") && !text.contains("chuẩn hóa") && !text.contains("công nghiệp hóa") && !text.contains("hiện đại hóa")) {
+                return .chemistry
+            } else if text.contains("sinh học") || text.contains("môn sinh") || tokens.contains("biology") || tokens.contains("bio") || text.contains("y học") || (tokens.contains("sinh") && !text.contains("học sinh") && !text.contains("sinh viên") && !text.contains("sinh hoạt")) {
+                return .biology
+            } else if text.contains("lịch sử") || tokens.contains("history") || (tokens.contains("sử") && !text.contains("sử dụng")) {
+                return .historyOrGeography
+            } else if text.contains("địa lý") || text.contains("địa lí") || tokens.contains("geography") || (tokens.contains("địa") && !text.contains("địa chỉ") && !text.contains("địa điểm")) {
+                return .historyOrGeography
+            } else if text.contains("ngữ văn") || text.contains("tiếng việt") || tokens.contains("literature") || tokens.contains("writing") || tokens.contains("essay") || (tokens.contains("văn") && !text.contains("văn phòng") && !text.contains("văn hóa") && !text.contains("văn minh")) {
+                return .literature
+            } else if text.contains("tiếng anh") || tokens.contains("english") || tokens.contains("ielts") || tokens.contains("toeic") || tokens.contains("toefl") || (tokens.contains("anh") && !text.contains("hình ảnh") && !text.contains("âm thanh")) {
+                return .english
+            } else if tokens.contains("gdcd") || text.contains("triết học") || text.contains("chính trị") || text.contains("pháp luật") || text.contains("kinh tế và pháp luật") || tokens.contains("law") || text.contains("tư tưởng") || (tokens.contains("triết") && !text.contains("triết lý")) {
+                return .civicsOrPhilosophy
+            } else if text.contains("kinh tế") || text.contains("quản trị") || text.contains("tài chính") || text.contains("marketing") || text.contains("kế toán") || tokens.contains("business") || tokens.contains("economics") {
+                return .economics
+            } else if text.contains("đồ họa") || text.contains("thiết kế") || text.contains("mỹ thuật") || tokens.contains("design") || tokens.contains("ui") || tokens.contains("ux") || (tokens.contains("art") && !tokens.contains("part") && !tokens.contains("smart") && !tokens.contains("start")) || (tokens.contains("vẽ") && !text.contains("bản vẽ kỹ thuật")) {
+                return .artAndDesign
+            } else if text.contains("an ninh mạng") || text.contains("mạng máy tính") || (tokens.contains("mạng") && !text.contains("mạng xã hội")) || tokens.contains("network") || tokens.contains("networking") || tokens.contains("tcp") || tokens.contains("socket") || (tokens.contains("cloud") && !tokens.contains("soundcloud")) {
+                return .networking
+            } else if text.contains("lập trình") || text.contains("tin học") || text.contains("di động") || tokens.contains("ios") || tokens.contains("swift") || tokens.contains("python") || tokens.contains("java") || tokens.contains("cntt") || text.contains("công nghệ thông tin") || tokens.contains("it") || text.contains("thuật toán") || text.contains("cơ sở dữ liệu") || text.contains("khoa học máy tính") || (tokens.contains("tin") && !text.contains("thông tin liên lạc") && !tokens.contains("tự")) {
+                return .computerScience
+            } else if text.contains("nhiệm vụ") || tokens.contains("lab") || text.contains("thực hành") || text.contains("bài tập") || tokens.contains("project") || text.contains("dự án") {
+                return .generalAssignment
+            }
+            return nil
+        }
+
+        if !titleLower.isEmpty, let matched = matchCategory(text: titleLower, tokens: titleTokens) {
+            return matched
+        }
+        if let matched = matchCategory(text: courseLower, tokens: courseTokens) {
+            return matched
+        }
+        return .other
+    }
+
+    public static func icon(for category: SubjectCategory) -> String {
+        switch category {
         case .math: return "function"
         case .literature: return "book.pages"
         case .english: return "globe.americas"
@@ -71,8 +125,12 @@ public struct SubjectArtHelper {
         }
     }
 
-    public static func themeColor(for courseName: String, title: String? = nil) -> Color {
-        switch category(for: courseName, title: title) {
+    public static func icon(for courseName: String, title: String? = nil) -> String {
+        icon(for: category(for: courseName, title: title))
+    }
+
+    public static func themeColor(for category: SubjectCategory) -> Color {
+        switch category {
         case .math: return Color(red: 0.95, green: 0.60, blue: 0.10)
         case .literature: return Color(red: 0.92, green: 0.38, blue: 0.22)
         case .english: return Color(red: 0.15, green: 0.58, blue: 0.92)
@@ -90,8 +148,12 @@ public struct SubjectArtHelper {
         }
     }
 
-    public static func bannerBackground(for courseName: String, title: String? = nil) -> Color {
-        switch category(for: courseName, title: title) {
+    public static func themeColor(for courseName: String, title: String? = nil) -> Color {
+        themeColor(for: category(for: courseName, title: title))
+    }
+
+    public static func bannerBackground(for category: SubjectCategory) -> Color {
+        switch category {
         case .math: return Color(red: 0.52, green: 0.32, blue: 0.05)
         case .literature: return Color(red: 0.55, green: 0.22, blue: 0.08)
         case .english: return Color(red: 0.08, green: 0.32, blue: 0.60)
@@ -105,6 +167,10 @@ public struct SubjectArtHelper {
         case .economics, .artAndDesign, .generalAssignment, .other:
             return Color(red: 0.10, green: 0.25, blue: 0.48)
         }
+    }
+
+    public static func bannerBackground(for courseName: String, title: String? = nil) -> Color {
+        bannerBackground(for: category(for: courseName, title: title))
     }
 }
 
@@ -126,23 +192,20 @@ public struct SubjectArtBadgeView: View {
         self.size = size
     }
 
-    private var color: Color {
-        SubjectArtHelper.themeColor(for: courseName, title: title)
-    }
-
     public var body: some View {
+        let visualTheme = SubjectArtHelper.theme(for: courseName, title: title)
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                .fill(color.opacity(colorScheme == .dark ? 0.28 : 0.16))
+                .fill(visualTheme.themeColor.opacity(colorScheme == .dark ? 0.28 : 0.16))
                 .overlay(
                     RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                        .stroke(color.opacity(colorScheme == .dark ? 0.55 : 0.38), lineWidth: 1)
+                        .stroke(visualTheme.themeColor.opacity(colorScheme == .dark ? 0.55 : 0.38), lineWidth: 1)
                 )
                 .frame(width: size, height: size)
 
-            Image(systemName: SubjectArtHelper.icon(for: courseName, title: title))
+            Image(systemName: visualTheme.icon)
                 .font(.system(size: size * 0.52, weight: .semibold))
-                .foregroundStyle(color)
+                .foregroundStyle(visualTheme.themeColor)
         }
     }
 }
@@ -288,50 +351,85 @@ public struct ClassroomSubjectBanner: View {
     }
 
     public var body: some View {
+        let visualTheme = SubjectArtHelper.theme(for: item.courseName, title: item.title)
         ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(SubjectArtHelper.bannerBackground(for: item.courseName))
-                .frame(height: 105)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.white.opacity(isHovered ? 0.35 : 0.16), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            visualTheme.bannerBackground,
+                            visualTheme.bannerBackground.opacity(0.88)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
+                #if os(iOS)
+                .frame(minHeight: 88)
+                #else
+                .frame(minHeight: 110)
+                #endif
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.white.opacity(isHovered ? 0.35 : 0.18), lineWidth: 1)
+                )
+                .shadow(color: visualTheme.bannerBackground.opacity(0.22), radius: 8, x: 0, y: 3)
 
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         SubjectArtBadgeView(courseName: item.courseName, size: 20)
                         Text(item.courseName)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
+                            .font(.system(size: 12.5, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.95))
                     }
 
                     Text(item.title)
                         .font(.system(size: 15.5, weight: .bold))
                         .foregroundStyle(.white)
                         .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                    Text(item.formattedFullDueDate)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.88))
-                        .lineLimit(1)
+                    HStack(spacing: 5) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text(item.formattedFullDueDate)
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(.white.opacity(0.92))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.black.opacity(0.18))
+                    .clipShape(Capsule())
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
+                #if os(iOS)
+                let artWidth: CGFloat = 72
+                let artHeight: CGFloat = 65
+                #else
+                let artWidth: CGFloat = 88
+                let artHeight: CGFloat = 80
+                #endif
+
                 DuolingoStudyBookArtView()
-                    .frame(width: 88, height: 80)
-                    .scaleEffect(isHovered ? 1.05 : 1.0)
+                    .drawingGroup()
+                    .frame(width: artWidth, height: artHeight)
+                    .scaleEffect(isHovered ? 1.06 : 1.0)
                     .offset(x: isHovered ? -2 : 0, y: isHovered ? -2 : 0)
                     .animation(.spring(response: 0.35, dampingFraction: 0.72), value: isHovered)
             }
-            .padding(.leading, 18)
-            .padding(.trailing, 12)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
         }
+        #if os(macOS)
         .onHover { hovering in
             withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
                 isHovered = hovering
             }
         }
+        #endif
     }
 }
 
@@ -374,10 +472,11 @@ public struct CourseTagView: View {
     }
 
     public var body: some View {
+        let visualTheme = SubjectArtHelper.theme(for: name)
         HStack(spacing: 4) {
-            Image(systemName: SubjectArtHelper.icon(for: name))
+            Image(systemName: visualTheme.icon)
                 .font(.system(size: 9.5, weight: .semibold))
-                .foregroundStyle(SubjectArtHelper.themeColor(for: name))
+                .foregroundStyle(visualTheme.themeColor)
             Text(name)
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.secondary)
@@ -389,7 +488,6 @@ public struct CourseTagView: View {
 public struct DueBadgeView: View {
     let item: Coursework
     var compact: Bool = false
-    @Environment(\.colorScheme) private var colorScheme
 
     public init(item: Coursework, compact: Bool = false) {
         self.item = item
@@ -397,21 +495,32 @@ public struct DueBadgeView: View {
     }
 
     private var badgeColor: Color {
-        if item.isDueToday {
-            return RisoTheme.accent(for: colorScheme)
+        if item.isCompleted {
+            return Color(red: 0.12, green: 0.62, blue: 0.35)
+        } else if item.isOverdue {
+            return Color(red: 0.88, green: 0.22, blue: 0.20)
+        } else if item.isDueToday {
+            return Color(red: 0.90, green: 0.48, blue: 0.08)
         } else if item.isDueTomorrow {
-            return RisoTheme.sub(for: colorScheme)
+            return Color(red: 0.14, green: 0.48, blue: 0.92)
         } else {
-            return RisoTheme.muted(for: colorScheme)
+            return Color(red: 0.45, green: 0.50, blue: 0.58)
         }
     }
 
     private var badgeText: String {
         if compact {
-            if item.isDueToday {
-                return item.timeOnlyString == "Cuối ngày" ? "Hết hôm nay" : "Hôm nay \(item.timeOnlyString)"
+            if item.isCompleted {
+                return "Đã nộp"
+            } else if item.isOverdue {
+                return "Quá hạn"
+            } else if item.isDueToday {
+                return item.timeOnlyString == "Cuối ngày" ? "Hôm nay" : "Hôm nay \(item.timeOnlyString)"
             } else if item.isDueTomorrow {
-                return item.timeOnlyString == "Cuối ngày" ? "Hết ngày mai" : "Mai \(item.timeOnlyString)"
+                return item.timeOnlyString == "Cuối ngày" ? "Ngày mai" : "Mai \(item.timeOnlyString)"
+            }
+            if item.dueDate == nil {
+                return "Không hạn"
             }
             return item.timeOnlyString
         } else {
@@ -420,16 +529,32 @@ public struct DueBadgeView: View {
     }
 
     public var body: some View {
-        Text(badgeText)
-            .font(.system(size: compact ? 9.5 : 10.5, weight: .bold, design: .monospaced))
-            .foregroundStyle(badgeColor)
-            .padding(.horizontal, compact ? 6 : 8)
-            .padding(.vertical, compact ? 2.5 : 3.5)
-            .background(badgeColor.opacity(colorScheme == .dark ? 0.22 : 0.14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .stroke(badgeColor, lineWidth: 1)
-            )
+        HStack(spacing: 3.5) {
+            if item.isCompleted {
+                Image(systemName: "checkmark")
+                    .font(.system(size: compact ? 8 : 9, weight: .bold))
+            } else if item.isOverdue {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .font(.system(size: compact ? 8 : 9, weight: .semibold))
+            } else {
+                Image(systemName: "clock")
+                    .font(.system(size: compact ? 8 : 9, weight: .medium))
+            }
+
+            Text(badgeText)
+                .font(.system(size: compact ? 9.5 : 10.5, weight: .semibold, design: .rounded))
+        }
+        .foregroundStyle(badgeColor)
+        .padding(.horizontal, compact ? 7 : 9)
+        .padding(.vertical, compact ? 3 : 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(badgeColor.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .stroke(badgeColor.opacity(0.25), lineWidth: 1)
+        )
     }
 }
 
@@ -443,30 +568,24 @@ public struct WidgetEmptyStateView: View {
     }
 }
 
-// MARK: - RISOGRAPH POSTER & EDITORIAL PRINT SYSTEM
-// Strictly Flat: No Gradients, No Soft Shadows, No Blur, No Materials.
-// Depth is achieved purely through Flat Layering, Hard Offset Shadows,
-// Linocut Hatching, Hand-crafted Shapes, and Misregistration.
-
+// MARK: - Risograph Theme
 public struct RisoTheme {
-    // 5 Flat Colors (Light Mode - Risograph Studio Print on Washi Paper)
-    public static let paperLight = Color(red: 0.961, green: 0.949, blue: 0.922)      // #F5F2EB Washi paper
-    public static let paperCardLight = Color(red: 0.984, green: 0.976, blue: 0.957)  // #FAF9F4 Open Notebook
-    public static let inkLight = Color(red: 0.102, green: 0.133, blue: 0.188)        // #1A2230 Kuroshio navy-black ink
-    public static let accentLight = Color(red: 0.851, green: 0.263, blue: 0.196)     // #D94332 Risograph Scarlet Vermilion
-    public static let subLight = Color(red: 0.886, green: 0.639, blue: 0.212)        // #E2A336 Warm Ochre Mustard
-    public static let mutedLight = Color(red: 0.490, green: 0.475, blue: 0.435)      // #7D796F Raw Straw Gray
-    public static let hardShadowLight = Color(red: 0.102, green: 0.133, blue: 0.188) // Solid flat silhouette
+    public static let paperLight = Color(red: 0.961, green: 0.949, blue: 0.922)      // #F5F2EB
+    public static let paperCardLight = Color(red: 0.984, green: 0.976, blue: 0.957)  // #FAF9F4
+    public static let inkLight = Color(red: 0.102, green: 0.133, blue: 0.188)        // #1A2230
+    public static let accentLight = Color(red: 0.851, green: 0.263, blue: 0.196)     // #D94332
+    public static let subLight = Color(red: 0.886, green: 0.639, blue: 0.212)        // #E2A336
+    public static let mutedLight = Color(red: 0.490, green: 0.475, blue: 0.435)      // #7D796F
+    public static let hardShadowLight = Color(red: 0.102, green: 0.133, blue: 0.188)
     public static let gridLineLight = Color(red: 0.102, green: 0.133, blue: 0.188).opacity(0.12)
 
-    // 5 Flat Colors (Dark Mode - Midnight Desk with Warm Study Lamp)
-    public static let paperDark = Color(red: 0.078, green: 0.098, blue: 0.137)       // #141923 Midnight Desk Wood
-    public static let paperCardDark = Color(red: 0.102, green: 0.133, blue: 0.188)   // #1A2230 Deep Indigo Notebook
-    public static let inkDark = Color(red: 0.925, green: 0.906, blue: 0.863)         // #ECE7DC Chalk Ivory Print Ink
-    public static let accentDark = Color(red: 1.000, green: 0.369, blue: 0.302)      // #FF5E4D Luminous Scarlet Ink
-    public static let subDark = Color(red: 0.965, green: 0.729, blue: 0.290)         // #F6BA4A Sunlit Ochre
-    public static let mutedDark = Color(red: 0.525, green: 0.573, blue: 0.643)       // #8692A4 Slate Gray
-    public static let hardShadowDark = Color(red: 0.035, green: 0.047, blue: 0.067)  // #090C11 Midnight Shadow
+    public static let paperDark = Color(red: 0.078, green: 0.098, blue: 0.137)       // #141923
+    public static let paperCardDark = Color(red: 0.102, green: 0.133, blue: 0.188)   // #1A2230
+    public static let inkDark = Color(red: 0.925, green: 0.906, blue: 0.863)         // #ECE7DC
+    public static let accentDark = Color(red: 1.000, green: 0.369, blue: 0.302)      // #FF5E4D
+    public static let subDark = Color(red: 0.965, green: 0.729, blue: 0.290)         // #F6BA4A
+    public static let mutedDark = Color(red: 0.525, green: 0.573, blue: 0.643)       // #8692A4
+    public static let hardShadowDark = Color(red: 0.035, green: 0.047, blue: 0.067)  // #090C11
     public static let gridLineDark = Color(red: 0.925, green: 0.906, blue: 0.863).opacity(0.12)
 
     public static func paper(for scheme: ColorScheme) -> Color {
@@ -495,9 +614,7 @@ public struct RisoTheme {
     }
 }
 
-// MARK: - VECTOR ARTWORK COMPONENTS (Pure SwiftUI Shapes & Canvas)
-
-/// Subtle vector paper grain using crisp 1pt micro-flecks (no raster noise, no blur).
+// MARK: - Vector Artwork Components
 public struct RisoPaperGrainView: View {
     let color: Color
 
@@ -507,7 +624,6 @@ public struct RisoPaperGrainView: View {
 
     public var body: some View {
         Canvas { context, size in
-            // Deterministic pseudo-random vector flecks (fibers of washi paper)
             let step: CGFloat = 24.0
             var x: CGFloat = 8.0
             while x < size.width {
@@ -518,7 +634,6 @@ public struct RisoPaperGrainView: View {
                         let rect = CGRect(x: x, y: y, width: 1.2, height: 1.2)
                         context.fill(Path(rect), with: .color(color))
                     } else if hash % 7 == 0 {
-                        // Short 2.5pt fiber dash
                         var linePath = Path()
                         linePath.move(to: CGPoint(x: x, y: y))
                         linePath.addLine(to: CGPoint(x: x + 2.5, y: y + 0.8))
@@ -533,7 +648,6 @@ public struct RisoPaperGrainView: View {
     }
 }
 
-/// Linocut 45-degree diagonal hatching for desk texture and shadow planes.
 public struct RisoWoodcutHatchingShape: Shape {
     var spacing: CGFloat = 8.0
 
@@ -552,9 +666,6 @@ public struct RisoWoodcutHatchingShape: Shape {
     }
 }
 
-/// Official Risograph Assignment Seal Stamp (Con Dấu Báo Bài)
-/// Featuring a double circular border, misregistration offset accent underlay,
-/// curved arch typography, and a huge editorial serif count numeral.
 public struct RisoSealStampView: View {
     let count: Int
     var size: CGFloat = 56
@@ -570,23 +681,19 @@ public struct RisoSealStampView: View {
 
     public var body: some View {
         ZStack {
-            // Misregistration layer (Risograph print offset: shifted flat accent layer)
             Circle()
                 .fill(accent.opacity(colorScheme == .dark ? 0.26 : 0.18))
                 .frame(width: size, height: size)
                 .offset(x: 2.0, y: 2.0)
 
-            // Outer dashed circular ring
             Circle()
                 .stroke(ink, style: StrokeStyle(lineWidth: 1.2, dash: [3.5, 2.5]))
                 .frame(width: size, height: size)
 
-            // Inner solid circular ring
             Circle()
                 .stroke(ink, lineWidth: 1.2)
                 .frame(width: size - 8, height: size - 8)
 
-            // Stamp Typography Layout
             VStack(spacing: 0) {
                 Text("BÁO BÀI")
                     .font(.system(size: size * 0.12, weight: .heavy, design: .serif))
@@ -596,7 +703,6 @@ public struct RisoSealStampView: View {
 
                 Spacer(minLength: 0)
 
-                // Large Central Numeral
                 if count > 0 {
                     Text("\(count)")
                         .font(.system(size: size * 0.44, weight: .heavy, design: .serif))
@@ -625,7 +731,6 @@ public struct RisoSealStampView: View {
     }
 }
 
-/// Editorial Wooden Ruler (Thước kẻ gỗ học trò) with millimeter graduation marks and hard flat shadow.
 public struct RisoWoodenRulerView: View {
     var height: CGFloat = 144
     @Environment(\.colorScheme) private var colorScheme
@@ -640,13 +745,11 @@ public struct RisoWoodenRulerView: View {
 
     public var body: some View {
         ZStack(alignment: .topLeading) {
-            // Hard offset shadow (flat solid offset, no blur)
             RoundedRectangle(cornerRadius: 3, style: .continuous)
                 .fill(shadow)
                 .frame(width: 22, height: height)
                 .offset(x: 2.5, y: 2.5)
 
-            // Ruler body
             RoundedRectangle(cornerRadius: 3, style: .continuous)
                 .fill(sub)
                 .frame(width: 22, height: height)
@@ -655,14 +758,12 @@ public struct RisoWoodenRulerView: View {
                         .stroke(ink, lineWidth: 1.2)
                 )
 
-            // Beveled edge facet (lighter flat strip)
             Rectangle()
                 .fill(sub.opacity(0.85))
                 .frame(width: 7, height: height - 6)
                 .padding(.leading, 1.2)
                 .padding(.vertical, 3)
 
-            // Millimeter graduation tick marks & numbers
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(0..<9) { index in
                     HStack(spacing: 3) {
@@ -686,7 +787,6 @@ public struct RisoWoodenRulerView: View {
     }
 }
 
-/// Hand-sharpened 6-facet Pencil (Cây bút chì gọt thủ công) with hard flat shadow.
 public struct RisoSharpenedPencilView: View {
     var length: CGFloat = 92
     @Environment(\.colorScheme) private var colorScheme
@@ -703,11 +803,9 @@ public struct RisoSharpenedPencilView: View {
 
     public var body: some View {
         ZStack(alignment: .topLeading) {
-            // Hard offset shadow
             pencilGeometry(isShadow: true)
                 .offset(x: 2.0, y: 2.0)
 
-            // Pencil body & components
             pencilGeometry(isShadow: false)
         }
         .frame(width: 14, height: length + 4)
@@ -721,19 +819,16 @@ public struct RisoSharpenedPencilView: View {
                     .fill(shadow)
                     .frame(width: 10, height: length)
             } else {
-                // Eraser top (flat red/scarlet)
                 RoundedRectangle(cornerRadius: 2)
                     .fill(accent)
                     .frame(width: 10, height: 9)
                     .overlay(RoundedRectangle(cornerRadius: 2).stroke(ink, lineWidth: 1))
 
-                // Metal ferrule ring
                 Rectangle()
                     .fill(ink.opacity(0.35))
                     .frame(width: 10, height: 5)
                     .overlay(Rectangle().stroke(ink, lineWidth: 1))
 
-                // Hexagonal shaft (two facets for crisp flat depth)
                 HStack(spacing: 0) {
                     Rectangle()
                         .fill(sub)
@@ -744,13 +839,11 @@ public struct RisoSharpenedPencilView: View {
                 }
                 .overlay(Rectangle().stroke(ink, lineWidth: 1))
 
-                // Whittled wooden cone
                 RisoWoodConeShape()
                     .fill(paperCard)
                     .frame(width: 10, height: 10)
                     .overlay(RisoWoodConeShape().stroke(ink, lineWidth: 1))
 
-                // Graphite tip
                 RisoGraphiteTipShape()
                     .fill(ink)
                     .frame(width: 6, height: 5)
@@ -782,7 +875,6 @@ public struct RisoGraphiteTipShape: Shape {
     }
 }
 
-/// Punched binder holes on the notebook page with connecting stitched line.
 public struct RisoBinderHolesView: View {
     var height: CGFloat = 130
     @Environment(\.colorScheme) private var colorScheme
@@ -798,7 +890,6 @@ public struct RisoBinderHolesView: View {
         VStack(spacing: 0) {
             ForEach(0..<4) { index in
                 ZStack {
-                    // Reveals the desk surface underneath
                     Circle()
                         .fill(paper)
                         .frame(width: 7, height: 7)
@@ -817,7 +908,6 @@ public struct RisoBinderHolesView: View {
     }
 }
 
-/// Vintage School Notebook Label (Nhãn Vở Học Sinh)
 public struct RisoVintageLabelHeader: View {
     let classTitle: String
     let dateString: String
@@ -834,7 +924,6 @@ public struct RisoVintageLabelHeader: View {
 
     public var body: some View {
         HStack(alignment: .center, spacing: 6) {
-            // Label box with linocut double frame
             HStack(spacing: 4) {
                 Rectangle()
                     .fill(sub)
@@ -855,7 +944,6 @@ public struct RisoVintageLabelHeader: View {
 
             Spacer(minLength: 4)
 
-            // Date / Status Stamp
             HStack(spacing: 3) {
                 Image(systemName: "calendar")
                     .font(.system(size: 8.5, weight: .bold))
@@ -868,7 +956,6 @@ public struct RisoVintageLabelHeader: View {
     }
 }
 
-/// Hand-carved linocut checkmark for completed tasks.
 public struct RisoHandDrawnCheckmark: View {
     var size: CGFloat = 12
     var color: Color = Color(red: 0.851, green: 0.263, blue: 0.196)
@@ -889,7 +976,6 @@ public struct RisoHandDrawnCheckmark: View {
     }
 }
 
-/// Hand-drawn double strike-through line for crossing out completed tasks.
 public struct RisoStrikeThroughLine: View {
     var color: Color
 
@@ -909,7 +995,6 @@ public struct RisoStrikeThroughLine: View {
     }
 }
 
-/// Linocut Subject Badge (e.g. [SỬ], [LÝ], [HÓA], [VĂN], [TOÁN])
 public struct RisoSubjectTag: View {
     let name: String
     @Environment(\.colorScheme) private var colorScheme
@@ -946,7 +1031,6 @@ public struct RisoSubjectTag: View {
     }
 }
 
-/// Empty State Desk Illustration: Closed Journal, ceramic tea mug, and tranquil editorial text.
 public struct RisoEmptyStateDeskView: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -961,15 +1045,12 @@ public struct RisoEmptyStateDeskView: View {
 
     public var body: some View {
         HStack(spacing: 16) {
-            // Closed Journal & Tea Mug Illustration
             ZStack(alignment: .bottomLeading) {
-                // Hard offset shadow for closed book
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                     .fill(shadow)
                     .frame(width: 58, height: 76)
                     .offset(x: 2.5, y: 2.5)
 
-                // Closed Journal cover
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                     .fill(sub)
                     .frame(width: 58, height: 76)
@@ -978,19 +1059,16 @@ public struct RisoEmptyStateDeskView: View {
                             .stroke(ink, lineWidth: 1.2)
                     )
 
-                // Book spine band
                 Rectangle()
                     .fill(ink.opacity(0.25))
                     .frame(width: 10, height: 76)
                     .overlay(Rectangle().stroke(ink, lineWidth: 1))
 
-                // Scarlet bookmark ribbon hanging out
                 Rectangle()
                     .fill(accent)
                     .frame(width: 6, height: 16)
                     .offset(x: 28, y: 8)
 
-                // Ceramic Tea Mug
                 ZStack {
                     Circle()
                         .fill(shadow)
@@ -1007,7 +1085,6 @@ public struct RisoEmptyStateDeskView: View {
                         .frame(width: 18, height: 18)
                         .overlay(Circle().stroke(ink, lineWidth: 0.8))
 
-                    // Mug handle
                     RoundedRectangle(cornerRadius: 2)
                         .stroke(ink, lineWidth: 1.2)
                         .frame(width: 6, height: 10)
@@ -1017,7 +1094,6 @@ public struct RisoEmptyStateDeskView: View {
             }
             .frame(width: 86, height: 86)
 
-            // Editorial Tranquil Message
             VStack(alignment: .leading, spacing: 3) {
                 Text("Ngày mai rảnh rồi")
                     .font(.system(size: 15, weight: .heavy, design: .serif))
@@ -1037,7 +1113,7 @@ public struct RisoEmptyStateDeskView: View {
     }
 }
 
-// MARK: - COMPREHENSIVE MOCK DATA SUITE
+// MARK: - Mock Data
 public struct RisoMockData {
     public static var tomorrowEvening: Date {
         let calendar = Calendar.current
@@ -1156,110 +1232,26 @@ public struct RisoMockData {
 
 public typealias ChunkyMockData = RisoMockData
 
-// MARK: - Widget Typography System (Google Fonts & System Fallback)
-import CoreText
-
+// MARK: - Typography
 public enum WidgetFontSystem {
-    private static var isRegistered = false
-
-    public static func registerCustomFonts() {
-        guard !isRegistered else { return }
-        isRegistered = true
-
-        let fontFiles = [
-            "BeVietnamPro-Bold.ttf",
-            "BeVietnamPro-SemiBold.ttf",
-            "BeVietnamPro-ExtraBold.ttf",
-            "BeVietnamPro-Medium.ttf",
-            "PlusJakartaSans.ttf"
-        ]
-
-        let searchDirs: [URL] = [
-            Bundle.main.bundleURL,
-            Bundle.main.resourceURL ?? Bundle.main.bundleURL,
-            URL(fileURLWithPath: "Shared/Fonts"),
-            URL(fileURLWithPath: "/Users/tahoangphuc/classroom/Shared/Fonts")
-        ]
-
-        for dir in searchDirs {
-            for fileName in fontFiles {
-                let fileURL = dir.appendingPathComponent(fileName)
-                if FileManager.default.fileExists(atPath: fileURL.path) {
-                    var error: Unmanaged<CFError>?
-                    CTFontManagerRegisterFontsForURL(fileURL as CFURL, .process, &error)
-                }
-            }
-        }
-    }
-
     public static func counter(size: CGFloat) -> Font {
-        registerCustomFonts()
-        #if canImport(AppKit)
-        if NSFont(name: "BeVietnamPro-ExtraBold", size: size) != nil {
-            return .custom("BeVietnamPro-ExtraBold", size: size)
-        }
-        #elseif canImport(UIKit)
-        if UIFont(name: "BeVietnamPro-ExtraBold", size: size) != nil {
-            return .custom("BeVietnamPro-ExtraBold", size: size)
-        }
-        #endif
-        return .system(size: size, weight: .heavy, design: .rounded)
+        .system(size: size, weight: .heavy, design: .rounded)
     }
 
     public static func sectionHeader(size: CGFloat) -> Font {
-        registerCustomFonts()
-        #if canImport(AppKit)
-        if NSFont(name: "BeVietnamPro-ExtraBold", size: size) != nil {
-            return .custom("BeVietnamPro-ExtraBold", size: size)
-        }
-        #elseif canImport(UIKit)
-        if UIFont(name: "BeVietnamPro-ExtraBold", size: size) != nil {
-            return .custom("BeVietnamPro-ExtraBold", size: size)
-        }
-        #endif
-        return .system(size: size, weight: .heavy, design: .rounded)
+        .system(size: size, weight: .heavy, design: .rounded)
     }
 
     public static func courseTitle(size: CGFloat) -> Font {
-        registerCustomFonts()
-        #if canImport(AppKit)
-        if NSFont(name: "BeVietnamPro-Bold", size: size) != nil {
-            return .custom("BeVietnamPro-Bold", size: size)
-        }
-        #elseif canImport(UIKit)
-        if UIFont(name: "BeVietnamPro-Bold", size: size) != nil {
-            return .custom("BeVietnamPro-Bold", size: size)
-        }
-        #endif
-        return .system(size: size, weight: .bold, design: .rounded)
+        .system(size: size, weight: .bold, design: .rounded)
     }
 
     public static func statusTag(size: CGFloat) -> Font {
-        registerCustomFonts()
-        #if canImport(AppKit)
-        if NSFont(name: "BeVietnamPro-Bold", size: size) != nil {
-            return .custom("BeVietnamPro-Bold", size: size)
-        }
-        #elseif canImport(UIKit)
-        if UIFont(name: "BeVietnamPro-Bold", size: size) != nil {
-            return .custom("BeVietnamPro-Bold", size: size)
-        }
-        #endif
-        return .system(size: size, weight: .bold, design: .rounded)
+        .system(size: size, weight: .bold, design: .rounded)
     }
 
     public static func meta(size: CGFloat) -> Font {
-        registerCustomFonts()
-        #if canImport(AppKit)
-        if NSFont(name: "BeVietnamPro-SemiBold", size: size) != nil {
-            return .custom("BeVietnamPro-SemiBold", size: size)
-        }
-        #elseif canImport(UIKit)
-        if UIFont(name: "BeVietnamPro-SemiBold", size: size) != nil {
-            return .custom("BeVietnamPro-SemiBold", size: size)
-        }
-        #endif
-        return .system(size: size, weight: .medium, design: .rounded)
+        .system(size: size, weight: .medium, design: .rounded)
     }
 }
 

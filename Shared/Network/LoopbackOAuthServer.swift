@@ -21,6 +21,10 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
 
         var opt: Int32 = 1
         setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, socklen_t(MemoryLayout<Int32>.size))
+        #if os(macOS) || os(iOS)
+        var nosigpipe: Int32 = 1
+        setsockopt(serverFd, SOL_SOCKET, SO_NOSIGPIPE, &nosigpipe, socklen_t(MemoryLayout<Int32>.size))
+        #endif
 
         var address = sockaddr_in()
         address.sin_family = sa_family_t(AF_INET)
@@ -56,38 +60,44 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
     }
 
     public func waitForAuthorizationCode(server: ActiveLoopbackServer, timeoutSeconds: Int = 180) async throws -> String {
-        return try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let serverFd = server.serverFd
-                let port = server.port
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let serverFd = server.serverFd
+                    let port = server.port
 
-                let startTime = Date()
+                    let startTime = Date()
 
-                while Date().timeIntervalSince(startTime) < Double(timeoutSeconds) {
-                    var pfd = pollfd(fd: serverFd, events: Int16(POLLIN), revents: 0)
-                    let pollRes = poll(&pfd, 1, 1000)
-                    if pollRes < 0 {
-                        if errno == EINTR { continue }
-                        break
-                    }
-                    if pollRes == 0 {
-                        continue
-                    }
-
-                    var clientAddress = sockaddr_in()
-                    var clientLen = socklen_t(MemoryLayout<sockaddr_in>.size)
-                    let clientFd = withUnsafeMutablePointer(to: &clientAddress) {
-                        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                            accept(serverFd, $0, &clientLen)
+                    while Date().timeIntervalSince(startTime) < Double(timeoutSeconds) {
+                        var pfd = pollfd(fd: serverFd, events: Int16(POLLIN), revents: 0)
+                        let pollRes = poll(&pfd, 1, 1000)
+                        if pollRes < 0 {
+                            if errno == EINTR { continue }
+                            break
                         }
-                    }
+                        if pollRes == 0 {
+                            continue
+                        }
 
-                    guard clientFd >= 0 else {
-                        continue
-                    }
+                        var clientAddress = sockaddr_in()
+                        var clientLen = socklen_t(MemoryLayout<sockaddr_in>.size)
+                        let clientFd = withUnsafeMutablePointer(to: &clientAddress) {
+                            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                                accept(serverFd, $0, &clientLen)
+                            }
+                        }
 
-                    var buffer = [CChar](repeating: 0, count: 4096)
-                    let bytesRead = recv(clientFd, &buffer, buffer.count - 1, 0)
+                        guard clientFd >= 0 else {
+                            continue
+                        }
+
+                        #if os(macOS) || os(iOS)
+                        var clientNoSigPipe: Int32 = 1
+                        setsockopt(clientFd, SOL_SOCKET, SO_NOSIGPIPE, &clientNoSigPipe, socklen_t(MemoryLayout<Int32>.size))
+                        #endif
+
+                        var buffer = [CChar](repeating: 0, count: 4096)
+                        let bytesRead = recv(clientFd, &buffer, buffer.count - 1, 0)
                     if bytesRead <= 0 {
                         close(clientFd)
                         continue
@@ -213,5 +223,9 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                 continuation.resume(throwing: NSError(domain: "LoopbackOAuthServer", code: -4, userInfo: [NSLocalizedDescriptionKey: "Hết thời gian chờ đăng nhập (Timeout). Vui lòng thử lại."]))
             }
         }
+    } onCancel: {
+        close(server.serverFd)
     }
 }
+}
+

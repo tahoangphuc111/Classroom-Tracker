@@ -8,20 +8,51 @@ public struct LargeWidgetView: View {
         self.courseworkList = courseworkList
     }
 
-    private var tomorrowItems: [Coursework] {
-        courseworkList.filter { $0.isDueTomorrow && !$0.isCompleted }
+    private var sectionHeaderTitle: String {
+        let pending = courseworkList.filter { !$0.isCompleted }
+        let hasOverdue = pending.contains(where: \.isOverdue)
+        let hasToday = pending.contains(where: \.isDueToday)
+        let hasTomorrow = pending.contains(where: \.isDueTomorrow)
+
+        if hasOverdue && !hasToday && !hasTomorrow {
+            return "QUÁ HẠN"
+        } else if hasToday && hasTomorrow {
+            return "HÔM NAY & MAI"
+        } else if hasToday {
+            return "HÔM NAY"
+        } else if hasTomorrow {
+            return "NGÀY MAI"
+        } else if hasOverdue {
+            return "QUÁ HẠN"
+        } else if !pending.isEmpty {
+            return "SẮP TỚI"
+        } else if courseworkList.contains(where: \.isDueToday) {
+            return "HÔM NAY"
+        } else {
+            return "NGÀY MAI"
+        }
+    }
+
+    private var sectionCapsuleLabel: String {
+        switch sectionHeaderTitle {
+        case "QUÁ HẠN": return "Quá hạn"
+        case "HÔM NAY & MAI": return "Hôm nay & mai"
+        case "HÔM NAY": return "Hôm nay"
+        case "SẮP TỚI": return "Sắp tới"
+        default: return "Ngày mai"
+        }
     }
 
     private var activeItems: [Coursework] {
-        tomorrowItems
+        courseworkList.filter { !$0.isCompleted }
     }
 
     private var allItems: [Coursework] {
-        courseworkList.filter { $0.isDueTomorrow }
+        courseworkList
     }
 
     private var completedItems: [Coursework] {
-        courseworkList.filter { $0.isDueTomorrow && $0.isCompleted }
+        allItems.filter(\.isCompleted)
     }
 
     private var characterEmotion: EmberEmotion {
@@ -36,32 +67,31 @@ public struct LargeWidgetView: View {
 
     public var body: some View {
         ZStack(alignment: .topLeading) {
-            // Serene Morning Sky Gradient
             ChunkyTheme.skyGradient
                 .ignoresSafeArea()
 
+            backgroundClouds
+
             VStack(spacing: 0) {
-                // TOP BANNER: Mascot & Executive Summary (Enhanced typography & presence)
                 HStack(alignment: .center, spacing: 14) {
-                    ChunkyEmberCharacterView(emotion: characterEmotion, size: 82)
+                    ChunkyEmberCharacterView(emotion: characterEmotion, size: 78)
                         .padding(.leading, 18)
 
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 4.5) {
+                        HStack(alignment: .firstTextBaseline, spacing: 7) {
                             Text("\(activeItems.count)")
-                                .font(WidgetFontSystem.counter(size: 44))
+                                .font(WidgetFontSystem.counter(size: 40))
                                 .foregroundStyle(Color.white)
-                                .shadow(color: Color.black.opacity(0.18), radius: 0, x: 0, y: 1.5)
+                                .shadow(color: Color.black.opacity(0.14), radius: 0, x: 0, y: 1.5)
 
                             Text(activeItems.count == 0 ? "HOÀN TẤT" : "CẦN NỘP")
-                                .font(WidgetFontSystem.sectionHeader(size: 16.5))
-                                .tracking(1.0)
+                                .font(WidgetFontSystem.sectionHeader(size: 15))
+                                .tracking(0.0)
                                 .foregroundStyle(ChunkyTheme.butterYellow)
                         }
 
-                        // Compact Pills with larger font
                         HStack(spacing: 6) {
-                            summaryCapsule(label: "Ngày mai: \(activeItems.count)", isUrgent: false)
+                            summaryCapsule(label: "\(sectionCapsuleLabel): \(activeItems.count)", isUrgent: false)
                             if !completedItems.isEmpty {
                                 summaryCapsule(label: "Đã xong: \(completedItems.count)", isUrgent: false, isSuccess: true)
                             }
@@ -70,9 +100,8 @@ public struct LargeWidgetView: View {
 
                     Spacer()
                 }
-                .frame(height: 94)
+                .frame(height: 90)
 
-                // BOTTOM SHEET: Pure Subjects List (Big readable typography)
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(ChunkyTheme.sheetBg)
@@ -84,28 +113,27 @@ public struct LargeWidgetView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                     VStack(alignment: .leading, spacing: 0) {
-                        // Header with clearer font
                         HStack(alignment: .center) {
-                            Text("NGÀY MAI")
-                                .font(WidgetFontSystem.sectionHeader(size: 11))
-                                .tracking(1.1)
+                            Text(sectionHeaderTitle)
+                                .font(WidgetFontSystem.sectionHeader(size: 10.5))
+                                .tracking(0.0)
                                 .foregroundStyle(ChunkyTheme.textMuted)
 
                             Spacer()
 
                             if !activeItems.isEmpty {
                                 Text("\(activeItems.count)")
-                                    .font(WidgetFontSystem.sectionHeader(size: 10.5))
+                                    .font(WidgetFontSystem.sectionHeader(size: 10))
                                     .foregroundStyle(ChunkyTheme.urgentAccent)
                                     .padding(.horizontal, 7)
-                                    .padding(.vertical, 2.5)
+                                    .padding(.vertical, 2)
                                     .background(ChunkyTheme.urgentAccent.opacity(0.12))
                                     .clipShape(Capsule())
                             }
                         }
                         .padding(.horizontal, 18)
-                        .padding(.top, 14)
-                        .padding(.bottom, 7)
+                        .padding(.top, 13)
+                        .padding(.bottom, 6)
 
                         Rectangle()
                             .fill(ChunkyTheme.editorialHairline)
@@ -118,7 +146,6 @@ public struct LargeWidgetView: View {
                             let itemsToShow = Array(allItems.prefix(5))
                             let count = itemsToShow.count
 
-                            // Adaptive row heights & generous typography
                             let rowHeight: CGFloat = {
                                 switch count {
                                 case 1, 2: return 66
@@ -146,50 +173,60 @@ public struct LargeWidgetView: View {
                                 }
                             }()
 
-                            // BIGGER FONTS (TĂNG KÍCH THƯỚC CHỮ)
                             let titleFontSize: CGFloat = {
                                 switch count {
-                                case 1, 2: return 22
-                                case 3: return 20
-                                case 4: return 18.5
-                                default: return 16
+                                case 1, 2: return 15.5
+                                case 3: return 14
+                                case 4: return 13
+                                default: return 12
                                 }
                             }()
 
                             let tagFontSize: CGFloat = {
                                 switch count {
-                                case 1, 2: return 10.5
-                                case 3: return 10
-                                case 4: return 9.5
+                                case 1, 2: return 10
+                                case 3: return 9.5
+                                case 4: return 9
                                 default: return 8.5
                                 }
                             }()
 
                             VStack(spacing: 0) {
                                 ForEach(Array(itemsToShow.enumerated()), id: \.element.id) { index, item in
-                                    Link(destination: URL(string: item.alternateLink ?? "https://classroom.google.com")!) {
+                                    Link(destination: item.destinationURL) {
                                         VStack(spacing: 0) {
                                             HStack(alignment: .center, spacing: 14) {
-                                                // Subject Icon Badge
                                                 ZStack {
                                                     RoundedRectangle(cornerRadius: count <= 2 ? 11 : 9, style: .continuous)
-                                                        .fill(SubjectArtHelper.themeColor(for: item.courseName))
+                                                        .fill(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
                                                         .frame(width: badgeSize, height: badgeSize)
 
-                                                    Image(systemName: SubjectArtHelper.icon(for: item.courseName))
+                                                    Image(systemName: SubjectArtHelper.icon(for: item.courseName, title: item.title))
                                                         .font(.system(size: iconSize, weight: .bold))
                                                         .foregroundStyle(Color.white)
                                                 }
 
-                                                 // Course Name with Be Vietnam Pro
-                                                Text(item.courseName)
-                                                    .font(WidgetFontSystem.courseTitle(size: titleFontSize))
-                                                    .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
-                                                    .lineLimit(1)
+                                                VStack(alignment: .leading, spacing: 2) {
+                                                    let mainHeadline = item.title.isEmpty ? item.courseName : item.title
+                                                    let subHeadline = item.title.isEmpty ? (item.description?.components(separatedBy: .newlines).first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) ?? "") : item.courseName
+
+                                                    Text(mainHeadline)
+                                                        .font(WidgetFontSystem.courseTitle(size: titleFontSize))
+                                                        .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
+                                                        .lineLimit(1)
+                                                        .minimumScaleFactor(0.85)
+
+                                                    if !subHeadline.isEmpty {
+                                                        Text(subHeadline)
+                                                            .font(WidgetFontSystem.meta(size: max(9.5, titleFontSize - 3.5)))
+                                                            .foregroundStyle(ChunkyTheme.textMuted)
+                                                            .lineLimit(1)
+                                                            .minimumScaleFactor(0.85)
+                                                    }
+                                                }
 
                                                 Spacer(minLength: 4)
 
-                                                // Status Badge
                                                 statusTag(for: item, fontSize: tagFontSize)
                                             }
                                             .frame(height: rowHeight)
@@ -215,8 +252,19 @@ public struct LargeWidgetView: View {
                 .padding(.bottom, 12)
             }
         }
+        .unredacted()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .preferredColorScheme(.light)
+    }
+
+    private var backgroundClouds: some View {
+        Canvas { context, size in
+            let cloud1 = CGRect(x: size.width - 95, y: 12, width: 80, height: 20)
+            context.fill(Path(roundedRect: cloud1, cornerRadius: 10), with: .color(Color.white.opacity(0.18)))
+
+            let cloud2 = CGRect(x: size.width - 150, y: 22, width: 55, height: 16)
+            context.fill(Path(roundedRect: cloud2, cornerRadius: 8), with: .color(Color.white.opacity(0.14)))
+        }
+        .allowsHitTesting(false)
     }
 
     @ViewBuilder
@@ -225,9 +273,11 @@ public struct LargeWidgetView: View {
             Spacer()
             Text("✦ Tuyệt vời! ✦")
                 .font(WidgetFontSystem.sectionHeader(size: 20))
+                .tracking(0.0)
                 .foregroundStyle(ChunkyTheme.textPrimary)
             Text("Không có môn nào cần nộp")
                 .font(WidgetFontSystem.meta(size: 13))
+                .tracking(0.0)
                 .foregroundStyle(ChunkyTheme.textMuted)
             Spacer()
         }
@@ -240,6 +290,14 @@ public struct LargeWidgetView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: fontSize + 5, weight: .bold))
                 .foregroundStyle(Color.green)
+        } else if item.isOverdue {
+            Text("Quá hạn")
+                .font(WidgetFontSystem.statusTag(size: fontSize))
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3.5)
+                .background(ChunkyTheme.urgentAccent)
+                .clipShape(Capsule())
         } else {
             Text(item.timeOnlyString)
                 .font(WidgetFontSystem.statusTag(size: fontSize))
@@ -253,12 +311,19 @@ public struct LargeWidgetView: View {
 
     @ViewBuilder
     private func summaryCapsule(label: String, isUrgent: Bool, isSuccess: Bool = false) -> some View {
-        Text(label)
-            .font(WidgetFontSystem.meta(size: 9.5))
-            .foregroundStyle(isUrgent ? Color.white : (isSuccess ? Color(red: 0.20, green: 0.95, blue: 0.60) : Color.white.opacity(0.92)))
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(isUrgent ? ChunkyTheme.urgentAccent : Color.black.opacity(0.18))
-            .clipShape(Capsule())
+        HStack(spacing: 3.5) {
+            if isSuccess {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            Text(label)
+                .font(WidgetFontSystem.meta(size: 9))
+                .tracking(0.0)
+        }
+        .foregroundStyle(Color.white)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(isUrgent ? ChunkyTheme.urgentAccent : (isSuccess ? Color(red: 0.16, green: 0.72, blue: 0.44).opacity(0.85) : Color.white.opacity(0.24)))
+        .clipShape(Capsule())
     }
 }

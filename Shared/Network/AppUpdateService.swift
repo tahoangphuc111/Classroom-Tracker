@@ -26,7 +26,7 @@ public final class AppUpdateService: ObservableObject {
 
     public var githubToken: String {
         get {
-            UserDefaults.standard.string(forKey: tokenKey) ?? "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"
+            UserDefaults.standard.string(forKey: tokenKey) ?? ""
         }
         set {
             UserDefaults.standard.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: tokenKey)
@@ -88,7 +88,13 @@ public final class AppUpdateService: ObservableObject {
             self.latestAssetId = pkgAsset?.id
             self.latestDownloadUrl = pkgAsset.flatMap { URL(string: $0.browserDownloadUrl) }
 
-            if isNewer && (self.latestAssetId != nil || self.latestDownloadUrl != nil) {
+            #if os(iOS)
+            let canUpdate = isNewer
+            #else
+            let canUpdate = isNewer && (self.latestAssetId != nil || self.latestDownloadUrl != nil)
+            #endif
+
+            if canUpdate {
                 self.updateAvailable = true
                 self.latestVersion = remoteVersion
                 self.releaseNotes = release.body ?? ""
@@ -107,6 +113,13 @@ public final class AppUpdateService: ObservableObject {
     @MainActor
     public func downloadAndInstall() async {
         guard !isDownloading else { return }
+
+        #if os(iOS)
+        if let releaseUrl = URL(string: "https://github.com/\(repoOwner)/\(repoName)/releases/latest") {
+            await UIApplication.shared.open(releaseUrl)
+        }
+        return
+        #else
         isDownloading = true
         downloadProgress = 0.0
         statusMessage = "Đang tải bản cập nhật..."
@@ -118,15 +131,14 @@ public final class AppUpdateService: ObservableObject {
         let downloadUrl: URL
         var request: URLRequest
 
-        if let assetId = latestAssetId,
+        let token = githubToken
+        if !token.isEmpty,
+           let assetId = latestAssetId,
            let constructedUrl = URL(string: "https://api.github.com/repos/\(repoOwner)/\(repoName)/releases/assets/\(assetId)") {
             downloadUrl = constructedUrl
             request = URLRequest(url: downloadUrl)
             request.setValue("application/octet-stream", forHTTPHeaderField: "Accept")
-            let token = githubToken
-            if !token.isEmpty {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         } else if let fallbackUrl = latestDownloadUrl {
             downloadUrl = fallbackUrl
             request = URLRequest(url: downloadUrl)
@@ -147,21 +159,24 @@ public final class AppUpdateService: ObservableObject {
             try FileManager.default.moveItem(at: tempLocalUrl, to: destinationUrl)
 
             statusMessage = "Đã tải xong! Đang mở trình cài đặt..."
-            #if os(macOS)
             NSWorkspace.shared.open(destinationUrl)
-            #elseif os(iOS)
-            if let releaseUrl = URL(string: "https://github.com/\(repoOwner)/\(repoName)/releases/latest") {
-                await UIApplication.shared.open(releaseUrl)
-            }
-            #endif
         } catch {
             statusMessage = "Lỗi khi tải cập nhật: \(error.localizedDescription)"
         }
+        #endif
     }
 
     private func isVersion(_ v1: String, newerThan v2: String) -> Bool {
-        let parts1 = v1.split(separator: ".").compactMap { Int($0) }
-        let parts2 = v2.split(separator: ".").compactMap { Int($0) }
+        let clean1 = v1.components(separatedBy: "-").first ?? v1
+        let clean2 = v2.components(separatedBy: "-").first ?? v2
+        let parts1 = clean1.split(separator: ".").compactMap { part -> Int? in
+            let digits = part.prefix(while: \.isNumber)
+            return digits.isEmpty ? nil : Int(digits)
+        }
+        let parts2 = clean2.split(separator: ".").compactMap { part -> Int? in
+            let digits = part.prefix(while: \.isNumber)
+            return digits.isEmpty ? nil : Int(digits)
+        }
         let maxCount = max(parts1.count, parts2.count)
 
         for i in 0..<maxCount {

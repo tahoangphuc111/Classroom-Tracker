@@ -1,9 +1,31 @@
 import Foundation
 import WidgetKit
+import os
 
 public final class ClassroomStorage: @unchecked Sendable {
     public static let shared = ClassroomStorage()
-    public static let appGroupId = "group.com.phucta.classroom"
+    public static var appGroupCandidates: [String] {
+        [
+            "4J32CASZVT.group.com.phucta.classroom",
+            "VGWH8K5259.group.com.phucta.classroom",
+            "group.com.phucta.classroom"
+        ]
+    }
+
+    public static var appGroupId: String {
+        appGroupCandidates.first ?? "group.com.phucta.classroom"
+    }
+
+    private lazy var allUserDefaults: [UserDefaults] = {
+        var list: [UserDefaults] = []
+        for id in ClassroomStorage.appGroupCandidates {
+            if let ud = UserDefaults(suiteName: id) {
+                list.append(ud)
+            }
+        }
+        list.append(.standard)
+        return list
+    }()
 
     private let userDefaults: UserDefaults
     private let coursesKey = "cached_classroom_courses"
@@ -17,28 +39,241 @@ public final class ClassroomStorage: @unchecked Sendable {
     private var cachedCoursesTimestamp: Double = 0
     private var cachedCoursework: [Coursework]?
     private var cachedCourseworkTimestamp: Double = 0
-    private let lock = NSLock()
+    private let lock = NSRecursiveLock()
+    private let ioQueue = DispatchQueue(label: "com.phucta.classroom.storage.io", qos: .utility)
+    private let storageInitializedKey = "cached_classroom_storage_initialized"
 
-    private var sharedContainerURL: URL? {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: ClassroomStorage.appGroupId)
+    public struct ClassroomSharedMetadata: Codable {
+        public var userEmail: String?
+        public var lastSyncTimestamp: Double?
+        public var hasUserLoggedIn: Bool
+
+        public init(userEmail: String? = nil, lastSyncTimestamp: Double? = nil, hasUserLoggedIn: Bool = false) {
+            self.userEmail = userEmail
+            self.lastSyncTimestamp = lastSyncTimestamp
+            self.hasUserLoggedIn = hasUserLoggedIn
+        }
     }
 
-    private var coursesFileURL: URL? {
-        sharedContainerURL?.appendingPathComponent("cached_classroom_courses.json")
+    private lazy var allStorageDirectories: [URL] = {
+        var dirs: [URL] = []
+        for id in ClassroomStorage.appGroupCandidates {
+            if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id) {
+                if !dirs.contains(url) {
+                    dirs.append(url)
+                }
+            }
+        }
+        if let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            if !dirs.contains(docs) {
+                dirs.append(docs)
+            }
+        }
+        return dirs
+    }()
+
+    private func writeDataToAllDirectories(_ data: Data, fileName: String) {
+        let logger = Logger(subsystem: "com.phucta.ClassroomTracker", category: "storage")
+        for dir in allStorageDirectories {
+            do {
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                let fileURL = dir.appendingPathComponent(fileName)
+                do {
+                    try data.write(to: fileURL, options: .atomic)
+                } catch {
+                    try data.write(to: fileURL, options: [])
+                }
+                try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: fileURL.path)
+                logger.notice("WROTE \(data.count) bytes of \(fileName, privacy: .public) to \(fileURL.path, privacy: .public)")
+            } catch {
+                logger.error("Error writing \(fileName, privacy: .public) to \(dir.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
+        }
     }
 
-    private var courseworkFileURL: URL? {
-        sharedContainerURL?.appendingPathComponent("cached_classroom_coursework.json")
+    public var isAppExtension: Bool {
+        Bundle.main.bundleURL.pathExtension == "appex"
+            || (Bundle.main.bundleIdentifier?.contains("widget") == true)
+    }
+
+    public func isMockCoursesData(_ data: Data) -> Bool {
+        guard let courses = try? JSONDecoder().decode([Course].self, from: data) else { return false }
+        if courses.isEmpty { return true }
+        return courses.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
+    }
+
+    public func isMockCourseworkData(_ data: Data) -> Bool {
+        guard let items = try? JSONDecoder().decode([Coursework].self, from: data) else { return false }
+        if items.isEmpty { return true }
+        return items.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
+    }
+
+    private func readDataFromDirectories(fileName: String) -> Data? {
+        let logger = Logger(subsystem: "com.phucta.ClassroomTracker", category: "storage")
+        var candidateData: Data? = nil
+        for dir in allStorageDirectories {
+            let fileURL = dir.appendingPathComponent(fileName)
+            let exists = FileManager.default.fileExists(atPath: fileURL.path)
+            logger.notice("readData check \(fileName, privacy: .public) at \(fileURL.path, privacy: .public) -> exists=\(exists)")
+            if exists {
+                do {
+                    let data = try Data(contentsOf: fileURL)
+                    logger.notice("readData read \(data.count) bytes of \(fileName, privacy: .public) at \(dir.path, privacy: .public)")
+                    if data.isEmpty {
+                        logger.error("readData: file is 0 bytes at \(fileURL.path, privacy: .public)")
+                    } else {
+                        if fileName == "cached_classroom_courses.json" {
+                            let isMock = isMockCoursesData(data)
+                            logger.notice("readData courses isMock=\(isMock) for \(dir.path, privacy: .public)")
+                            if !isMock { return data }
+                        } else if fileName == "cached_classroom_coursework.json" {
+                            let isMock = isMockCourseworkData(data)
+                            logger.notice("readData coursework isMock=\(isMock) for \(dir.path, privacy: .public)")
+                            if !isMock { return data }
+                        }
+                        if candidateData == nil {
+                            candidateData = data
+                        }
+                    }
+                } catch {
+                    logger.error("readData FAILED to read \(fileURL.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                }
+            }
+        }
+        if let candidateData {
+            if isAppExtension {
+                if fileName == "cached_classroom_courses.json" && isMockCoursesData(candidateData) {
+                    return nil
+                }
+                if fileName == "cached_classroom_coursework.json" && isMockCourseworkData(candidateData) {
+                    return nil
+                }
+            }
+        }
+        return candidateData
+    }
+
+    public func loadSharedMetadata() -> ClassroomSharedMetadata? {
+        if let data = readDataFromDirectories(fileName: "cached_classroom_metadata.json"),
+           let metadata = try? JSONDecoder().decode(ClassroomSharedMetadata.self, from: data) {
+            return metadata
+        }
+        return nil
+    }
+
+    public func saveSharedMetadata(_ metadata: ClassroomSharedMetadata) {
+        if let data = try? JSONEncoder().encode(metadata) {
+            writeDataToAllDirectories(data, fileName: "cached_classroom_metadata.json")
+        }
+    }
+
+    private var cachedHasUserLoggedIn: Bool? = nil
+
+    public var hasUserLoggedIn: Bool {
+        if let cached = cachedHasUserLoggedIn {
+            return cached
+        }
+        if let metadata = loadSharedMetadata(), metadata.hasUserLoggedIn {
+            cachedHasUserLoggedIn = true
+            return true
+        }
+        if let email = loadUserEmail(), !email.trimmingCharacters(in: .whitespaces).isEmpty {
+            cachedHasUserLoggedIn = true
+            return true
+        }
+        for dir in allStorageDirectories {
+            let tokenFile = dir.appendingPathComponent("cached_oauth_tokens.json")
+            if FileManager.default.fileExists(atPath: tokenFile.path) {
+                cachedHasUserLoggedIn = true
+                return true
+            }
+        }
+        cachedHasUserLoggedIn = false
+        return false
     }
 
     private init() {
-        if let sharedDefaults = UserDefaults(suiteName: ClassroomStorage.appGroupId) {
-            self.userDefaults = sharedDefaults
+        if let candidate = ClassroomStorage.appGroupCandidates.compactMap({ UserDefaults(suiteName: $0) }).first {
+            self.userDefaults = candidate
         } else {
             self.userDefaults = .standard
         }
 
-        ensureInitialData()
+        if !isAppExtension {
+            synchronizeAllStorageLayers()
+            ensureInitialData()
+        }
+    }
+
+    public func synchronizeAllStorageLayers() {
+        guard !isAppExtension else { return }
+        var bestCoursesData: Data?
+        var bestCourseworkData: Data?
+        var bestEmail: String?
+        var bestSyncTime: Double = 0
+
+        if let fData = readDataFromDirectories(fileName: "cached_classroom_courses.json") {
+            bestCoursesData = fData
+        }
+        if let fData = readDataFromDirectories(fileName: "cached_classroom_coursework.json") {
+            bestCourseworkData = fData
+        }
+        if let meta = loadSharedMetadata() {
+            if let e = meta.userEmail, !e.isEmpty { bestEmail = e }
+            if let t = meta.lastSyncTimestamp, t > 0 { bestSyncTime = t }
+        }
+
+        for ud in allUserDefaults {
+            if let email = ud.string(forKey: userEmailKey), !email.isEmpty, bestEmail == nil {
+                bestEmail = email
+            }
+            if let cData = ud.data(forKey: coursesKey), !cData.isEmpty {
+                if bestCoursesData == nil || (isMockCoursesData(bestCoursesData!) && !isMockCoursesData(cData)) {
+                    bestCoursesData = cData
+                }
+            }
+            if let cwData = ud.data(forKey: courseworkKey), !cwData.isEmpty {
+                if bestCourseworkData == nil || (isMockCourseworkData(bestCourseworkData!) && !isMockCourseworkData(cwData)) {
+                    bestCourseworkData = cwData
+                }
+            }
+            let sTime = ud.double(forKey: lastSyncKey)
+            if sTime > bestSyncTime {
+                bestSyncTime = sTime
+            }
+        }
+
+        for ud in allUserDefaults {
+            if let bestCoursesData {
+                ud.set(bestCoursesData, forKey: coursesKey)
+            }
+            if let bestCourseworkData {
+                ud.set(bestCourseworkData, forKey: courseworkKey)
+            }
+            if let bestEmail {
+                ud.set(bestEmail, forKey: userEmailKey)
+            }
+            if bestSyncTime > 0 {
+                ud.set(bestSyncTime, forKey: lastSyncKey)
+            }
+        }
+
+        if let bestCoursesData {
+            writeDataToAllDirectories(bestCoursesData, fileName: "cached_classroom_courses.json")
+        }
+        if let bestCourseworkData {
+            writeDataToAllDirectories(bestCourseworkData, fileName: "cached_classroom_coursework.json")
+        }
+
+        let isUserLogged = (bestEmail != nil && !bestEmail!.isEmpty) || hasUserLoggedIn
+        let metadata = ClassroomSharedMetadata(
+            userEmail: bestEmail,
+            lastSyncTimestamp: bestSyncTime > 0 ? bestSyncTime : Date().timeIntervalSince1970,
+            hasUserLoggedIn: isUserLogged
+        )
+        if let metaData = try? JSONEncoder().encode(metadata) {
+            writeDataToAllDirectories(metaData, fileName: "cached_classroom_metadata.json")
+        }
     }
 
     public func saveCourses(_ courses: [Course]) {
@@ -48,42 +283,72 @@ public final class ClassroomStorage: @unchecked Sendable {
         cachedCoursesTimestamp = timestamp
         lock.unlock()
 
-        if let encoded = try? JSONEncoder().encode(courses) {
-            if let fileURL = coursesFileURL {
-                try? encoded.write(to: fileURL, options: .atomic)
+        ioQueue.async { [weak self] in
+            guard let self else { return }
+            guard let encoded = try? JSONEncoder().encode(courses) else { return }
+
+            self.writeDataToAllDirectories(encoded, fileName: "cached_classroom_courses.json")
+
+            for ud in self.allUserDefaults {
+                ud.set(encoded, forKey: self.coursesKey)
+                ud.set(timestamp, forKey: self.coursesTimestampKey)
             }
-            userDefaults.set(encoded, forKey: coursesKey)
-            userDefaults.set(timestamp, forKey: coursesTimestampKey)
-            UserDefaults.standard.set(encoded, forKey: coursesKey)
-            UserDefaults.standard.set(timestamp, forKey: coursesTimestampKey)
+
+            self.notifyWidgetReload()
         }
-        notifyWidgetReload()
     }
 
     public func loadCourses() -> [Course] {
-        let latestTimestamp = userDefaults.double(forKey: coursesTimestampKey)
         lock.lock()
-        if let cached = cachedCourses, latestTimestamp > 0 && latestTimestamp == cachedCoursesTimestamp {
-            lock.unlock()
-            return cached
-        }
+        let memoryCached = cachedCourses
+        let memoryTimestamp = cachedCoursesTimestamp
         lock.unlock()
+
+        let latestTimestamp = allUserDefaults.map { $0.double(forKey: coursesTimestampKey) }.max() ?? 0
+
+        if let memoryCached, memoryTimestamp > 0, memoryTimestamp >= latestTimestamp {
+            return memoryCached
+        }
 
         var loaded: [Course]?
-        if let fileURL = coursesFileURL, let data = try? Data(contentsOf: fileURL) {
+        if let data = readDataFromDirectories(fileName: "cached_classroom_courses.json") {
             loaded = try? JSONDecoder().decode([Course].self, from: data)
         }
-        if loaded == nil, let data = userDefaults.data(forKey: coursesKey) {
-            loaded = try? JSONDecoder().decode([Course].self, from: data)
-        } else if loaded == nil, let data = UserDefaults.standard.data(forKey: coursesKey) {
-            loaded = try? JSONDecoder().decode([Course].self, from: data)
+        for ud in allUserDefaults {
+            if let data = ud.data(forKey: coursesKey),
+               let decoded = try? JSONDecoder().decode([Course].self, from: data),
+               !decoded.isEmpty {
+                let currentIsMock = loaded.map { items in items.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil } } ?? true
+                let newIsMock = decoded.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
+                if loaded == nil || loaded?.isEmpty == true || (currentIsMock && !newIsMock) {
+                    loaded = decoded
+                }
+            }
         }
 
-        let result = loaded ?? ClassroomStorage.mockCourses
+        // Never show mock data in widget extensions
+        if isAppExtension, let loadedItems = loaded {
+            let allMock = loadedItems.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
+            if allMock {
+                loaded = nil
+            }
+        }
+
+        let result: [Course]
+        if let loaded, !loaded.isEmpty {
+            result = loaded
+        } else if !hasUserLoggedIn && !isAppExtension {
+            result = ClassroomStorage.mockCourses
+        } else {
+            result = loaded ?? []
+        }
+        let effectiveTimestamp = latestTimestamp > 0 ? latestTimestamp : Date().timeIntervalSince1970
+
         lock.lock()
         cachedCourses = result
-        cachedCoursesTimestamp = latestTimestamp > 0 ? latestTimestamp : Date().timeIntervalSince1970
+        cachedCoursesTimestamp = effectiveTimestamp
         lock.unlock()
+
         return result
     }
 
@@ -94,52 +359,116 @@ public final class ClassroomStorage: @unchecked Sendable {
         cachedCourseworkTimestamp = timestamp
         lock.unlock()
 
-        if let encoded = try? JSONEncoder().encode(items) {
-            if let fileURL = courseworkFileURL {
-                try? encoded.write(to: fileURL, options: .atomic)
+        let syncDate = Date()
+        ioQueue.async { [weak self] in
+            guard let self else { return }
+            guard let encoded = try? JSONEncoder().encode(items) else { return }
+
+            self.writeDataToAllDirectories(encoded, fileName: "cached_classroom_coursework.json")
+
+            for ud in self.allUserDefaults {
+                ud.set(encoded, forKey: self.courseworkKey)
+                ud.set(timestamp, forKey: self.courseworkTimestampKey)
             }
-            userDefaults.set(encoded, forKey: courseworkKey)
-            userDefaults.set(timestamp, forKey: courseworkTimestampKey)
-            UserDefaults.standard.set(encoded, forKey: courseworkKey)
-            UserDefaults.standard.set(timestamp, forKey: courseworkTimestampKey)
+
+            self.saveLastSyncTime(syncDate)
+            self.notifyWidgetReload()
         }
-        saveLastSyncTime(Date())
-        notifyWidgetReload()
     }
 
     public func loadCoursework() -> [Coursework] {
-        let latestTimestamp = userDefaults.double(forKey: courseworkTimestampKey)
         lock.lock()
-        if let cached = cachedCoursework, latestTimestamp > 0 && latestTimestamp == cachedCourseworkTimestamp {
-            lock.unlock()
-            return cached
-        }
+        let memoryCached = cachedCoursework
+        let memoryTimestamp = cachedCourseworkTimestamp
         lock.unlock()
+
+        let latestTimestamp = allUserDefaults.map { $0.double(forKey: courseworkTimestampKey) }.max() ?? 0
+
+        if let memoryCached, memoryTimestamp > 0, memoryTimestamp >= latestTimestamp {
+            return memoryCached
+        }
 
         var loaded: [Coursework]?
-        if let fileURL = courseworkFileURL, let data = try? Data(contentsOf: fileURL) {
+        if let data = readDataFromDirectories(fileName: "cached_classroom_coursework.json") {
             loaded = try? JSONDecoder().decode([Coursework].self, from: data)
         }
-        if loaded == nil, let data = userDefaults.data(forKey: courseworkKey) {
-            loaded = try? JSONDecoder().decode([Coursework].self, from: data)
-        } else if loaded == nil, let data = UserDefaults.standard.data(forKey: courseworkKey) {
-            loaded = try? JSONDecoder().decode([Coursework].self, from: data)
+        for ud in allUserDefaults {
+            if let data = ud.data(forKey: courseworkKey),
+               let decoded = try? JSONDecoder().decode([Coursework].self, from: data),
+               !decoded.isEmpty {
+                let currentIsMock = loaded.map { items in items.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil } } ?? true
+                let newIsMock = decoded.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
+                if loaded == nil || loaded?.isEmpty == true || (currentIsMock && !newIsMock) {
+                    loaded = decoded
+                }
+            }
         }
 
-        let result = loaded ?? ClassroomStorage.mockCoursework
+        // Never show mock data in widget extensions
+        if isAppExtension, let loadedItems = loaded {
+            let allMock = loadedItems.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
+            if allMock {
+                loaded = nil
+            }
+        }
+
+        let result: [Coursework]
+        if let loaded, !loaded.isEmpty {
+            result = loaded
+        } else if !hasUserLoggedIn && !isAppExtension {
+            result = ClassroomStorage.mockCoursework
+        } else {
+            result = loaded ?? []
+        }
+        let effectiveTimestamp = latestTimestamp > 0 ? latestTimestamp : Date().timeIntervalSince1970
+
         lock.lock()
         cachedCoursework = result
-        cachedCourseworkTimestamp = latestTimestamp > 0 ? latestTimestamp : Date().timeIntervalSince1970
+        cachedCourseworkTimestamp = effectiveTimestamp
         lock.unlock()
+
         return result
+    }
+
+    private func filterItemsByActiveCourses(_ items: [Coursework]) -> [Coursework] {
+        let loadedCourses = loadCourses()
+        guard !loadedCourses.isEmpty else { return items }
+
+        let allCourseIds = Set(loadedCourses.map(\.id))
+        let itemsBelongToLoadedCourses = items.contains { allCourseIds.contains($0.courseId) }
+
+        if itemsBelongToLoadedCourses {
+            let activeCourseIds = Set(loadedCourses.filter(\.isSelectedForWidget).map(\.id))
+            return items.filter { activeCourseIds.contains($0.courseId) }
+        }
+
+        return items
+    }
+
+    private func sortCoursework(_ items: [Coursework]) -> [Coursework] {
+        items.sorted { (first, second) -> Bool in
+            if first.isCompleted != second.isCompleted {
+                return !first.isCompleted
+            }
+            switch (first.dueDate, second.dueDate) {
+            case let (d1?, d2?):
+                if d1 != d2 { return d1 < d2 }
+                return first.title.localizedStandardCompare(second.title) == .orderedAscending
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            case (nil, nil):
+                return first.title.localizedStandardCompare(second.title) == .orderedAscending
+            }
+        }
     }
 
     public func getPendingCoursework() -> [Coursework] {
         let allItems = loadCoursework()
-        let activeCourseIds = Set(loadCourses().filter(\.isSelectedForWidget).map(\.id))
+        let relevant = filterItemsByActiveCourses(allItems)
 
-        return allItems
-            .filter { activeCourseIds.contains($0.courseId) }
+        return relevant
             .filter { !$0.isCompleted }
             .sorted { (first, second) -> Bool in
                 switch (first.dueDate, second.dueDate) {
@@ -156,46 +485,83 @@ public final class ClassroomStorage: @unchecked Sendable {
             }
     }
 
-    public func getTodayAndTomorrowCoursework() -> [Coursework] {
-        getTomorrowCoursework(includeCompleted: true)
+    public func getTodayAndTomorrowCoursework(includeCompleted: Bool = true) -> [Coursework] {
+        let allItems = loadCoursework()
+        let relevant = filterItemsByActiveCourses(allItems)
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfToday = calendar.startOfDay(for: now)
+        guard let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday) else {
+            return []
+        }
+
+        let filtered = relevant
+            .filter { includeCompleted ? true : !$0.isCompleted }
+            .filter { item in
+                guard let dueDate = item.dueDate else { return false }
+                return dueDate >= now && dueDate < startOfDayAfter
+            }
+
+        return sortCoursework(filtered)
     }
 
     public func getTomorrowCoursework(includeCompleted: Bool = true) -> [Coursework] {
         let allItems = loadCoursework()
-        let activeCourseIds = Set(loadCourses().filter(\.isSelectedForWidget).map(\.id))
+        let relevant = filterItemsByActiveCourses(allItems)
         let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: Date())
+        let now = Date()
+        let startOfToday = calendar.startOfDay(for: now)
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
               let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday) else {
             return []
         }
 
-        return allItems
-            .filter { activeCourseIds.contains($0.courseId) }
+        let tomorrowFiltered = relevant
             .filter { includeCompleted ? true : !$0.isCompleted }
             .filter { item in
                 guard let dueDate = item.dueDate else { return false }
-                return dueDate >= startOfTomorrow && dueDate < startOfDayAfter
+                return dueDate >= startOfTomorrow && dueDate < startOfDayAfter && dueDate >= now
             }
-            .sorted { (first, second) -> Bool in
-                if first.isCompleted != second.isCompleted {
-                    return !first.isCompleted
-                }
-                switch (first.dueDate, second.dueDate) {
-                case let (d1?, d2?):
-                    if d1 != d2 { return d1 < d2 }
-                    return first.title.localizedStandardCompare(second.title) == .orderedAscending
-                case (_?, nil):
-                    return true
-                case (nil, _?):
-                    return false
-                case (nil, nil):
-                    return first.title.localizedStandardCompare(second.title) == .orderedAscending
-                }
+
+        return sortCoursework(tomorrowFiltered)
+    }
+
+    public func clearAllData() {
+        lock.lock()
+        cachedCourses = nil
+        cachedCoursesTimestamp = 0
+        cachedCoursework = nil
+        cachedCourseworkTimestamp = 0
+        cachedHasUserLoggedIn = nil
+        lock.unlock()
+
+        ioQueue.async { [weak self] in
+            guard let self else { return }
+            for dir in self.allStorageDirectories {
+                try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_courses.json"))
+                try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_coursework.json"))
+                try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_metadata.json"))
             }
+            self.userDefaults.removeObject(forKey: self.coursesKey)
+            self.userDefaults.removeObject(forKey: self.courseworkKey)
+            self.userDefaults.removeObject(forKey: self.coursesTimestampKey)
+            self.userDefaults.removeObject(forKey: self.courseworkTimestampKey)
+            self.userDefaults.removeObject(forKey: self.lastSyncKey)
+            self.userDefaults.removeObject(forKey: self.userEmailKey)
+
+            UserDefaults.standard.removeObject(forKey: self.coursesKey)
+            UserDefaults.standard.removeObject(forKey: self.courseworkKey)
+            UserDefaults.standard.removeObject(forKey: self.coursesTimestampKey)
+            UserDefaults.standard.removeObject(forKey: self.courseworkTimestampKey)
+
+            self.notifyWidgetReload()
+        }
     }
 
     public func updateCourseworkStatuses(ids: Set<String>, newStatus: SubmissionStatus) {
+        lock.lock()
+        defer { lock.unlock() }
+
         var currentItems = loadCoursework()
         var changed = false
         for i in currentItems.indices {
@@ -210,45 +576,95 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public func saveLastSyncTime(_ date: Date) {
-        userDefaults.set(date.timeIntervalSince1970, forKey: lastSyncKey)
+        let timestamp = date.timeIntervalSince1970
+        var metadata = loadSharedMetadata() ?? ClassroomSharedMetadata()
+        metadata.lastSyncTimestamp = timestamp
+        saveSharedMetadata(metadata)
+        for ud in allUserDefaults {
+            ud.set(timestamp, forKey: lastSyncKey)
+        }
     }
 
     public func loadLastSyncTime() -> Date? {
-        let timestamp = userDefaults.double(forKey: lastSyncKey)
-        return timestamp > 0 ? Date(timeIntervalSince1970: timestamp) : nil
+        if let metaStamp = loadSharedMetadata()?.lastSyncTimestamp, metaStamp > 0 {
+            return Date(timeIntervalSince1970: metaStamp)
+        }
+        for ud in allUserDefaults {
+            let timestamp = ud.double(forKey: lastSyncKey)
+            if timestamp > 0 {
+                return Date(timeIntervalSince1970: timestamp)
+            }
+        }
+        return nil
     }
 
     public func saveUserEmail(_ email: String?) {
-        userDefaults.set(email, forKey: userEmailKey)
+        let isPresent = (email != nil && !email!.trimmingCharacters(in: .whitespaces).isEmpty)
+        lock.lock()
+        cachedHasUserLoggedIn = isPresent
+        lock.unlock()
+        var metadata = loadSharedMetadata() ?? ClassroomSharedMetadata()
+        metadata.userEmail = email
+        if isPresent {
+            metadata.hasUserLoggedIn = true
+        }
+        saveSharedMetadata(metadata)
+
+        for ud in allUserDefaults {
+            ud.set(email, forKey: userEmailKey)
+        }
     }
 
     public func loadUserEmail() -> String? {
-        userDefaults.string(forKey: userEmailKey)
+        if let metaEmail = loadSharedMetadata()?.userEmail, !metaEmail.isEmpty {
+            return metaEmail
+        }
+        for ud in allUserDefaults {
+            if let email = ud.string(forKey: userEmailKey), !email.trimmingCharacters(in: .whitespaces).isEmpty {
+                return email
+            }
+        }
+        return nil
     }
 
     public func notifyWidgetReload() {
         #if canImport(WidgetKit)
-        WidgetCenter.shared.reloadAllTimelines()
+        let isAppExtension = Bundle.main.bundleURL.pathExtension == "appex"
+            || (Bundle.main.bundleIdentifier?.contains("widget") == true)
+        guard !isAppExtension else { return }
+
+        DispatchQueue.main.async {
+            WidgetCenter.shared.reloadAllTimelines()
+        }
         #endif
     }
 
     private func ensureInitialData() {
-        var hasData = false
-        if let fileURL = courseworkFileURL, FileManager.default.fileExists(atPath: fileURL.path) {
-            hasData = true
-        } else if userDefaults.data(forKey: courseworkKey) != nil {
-            hasData = true
-            if let coursesData = userDefaults.data(forKey: coursesKey),
-               let fileURL = coursesFileURL {
-                try? coursesData.write(to: fileURL, options: .atomic)
-            }
-            if let courseworkData = userDefaults.data(forKey: courseworkKey),
-               let fileURL = courseworkFileURL {
-                try? courseworkData.write(to: fileURL, options: .atomic)
+        let isAppExtension = Bundle.main.bundleURL.pathExtension == "appex"
+            || (Bundle.main.bundleIdentifier?.contains("widget") == true)
+        if isAppExtension {
+            return
+        }
+
+        if hasUserLoggedIn {
+            return
+        }
+
+        if readDataFromDirectories(fileName: "cached_classroom_coursework.json") != nil {
+            return
+        }
+        for ud in allUserDefaults {
+            if let data = ud.data(forKey: courseworkKey), !data.isEmpty {
+                return
             }
         }
 
-        if !hasData {
+        let hasEverInitialized = allUserDefaults.contains { $0.bool(forKey: storageInitializedKey) }
+
+        if !hasEverInitialized {
+            for ud in allUserDefaults {
+                ud.set(true, forKey: storageInitializedKey)
+            }
             saveCourses(ClassroomStorage.mockCourses)
             saveCoursework(ClassroomStorage.mockCoursework)
         }

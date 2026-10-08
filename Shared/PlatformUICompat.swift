@@ -10,23 +10,51 @@ import UIKit
 
 public extension Color {
     static var platformWindowBackground: Color {
-        #if os(macOS)
-        return Color(NSColor.windowBackgroundColor)
-        #elseif os(iOS)
-        return Color(uiColor: .systemGroupedBackground)
-        #else
-        return Color(.systemBackground)
-        #endif
+        Color(red: 0.965, green: 0.970, blue: 0.976)
     }
 
     static var platformControlBackground: Color {
-        #if os(macOS)
-        return Color(NSColor.controlBackgroundColor)
-        #elseif os(iOS)
-        return Color(uiColor: .secondarySystemGroupedBackground)
-        #else
-        return Color(.secondarySystemBackground)
-        #endif
+        Color.white
+    }
+
+    static var platformSidebarBackground: Color {
+        Color(red: 0.948, green: 0.954, blue: 0.962)
+    }
+
+    static var platformCardBorder: Color {
+        Color.black.opacity(0.06)
+    }
+
+    static var platformCardHoverBorder: Color {
+        Color.black.opacity(0.12)
+    }
+
+    static var platformCardSelectedBorder: Color {
+        Color(red: 0.12, green: 0.52, blue: 0.95).opacity(0.45)
+    }
+
+    static var platformCardSelectedBackground: Color {
+        Color(red: 0.12, green: 0.52, blue: 0.95).opacity(0.06)
+    }
+
+    static var platformSubtleFill: Color {
+        Color.black.opacity(0.035)
+    }
+
+    static var platformDivider: Color {
+        Color.black.opacity(0.07)
+    }
+
+    static var platformTextPrimary: Color {
+        Color(red: 0.11, green: 0.13, blue: 0.18)
+    }
+
+    static var platformTextSecondary: Color {
+        Color(red: 0.44, green: 0.48, blue: 0.56)
+    }
+
+    static var platformTextTertiary: Color {
+        Color(red: 0.62, green: 0.66, blue: 0.72)
     }
 }
 

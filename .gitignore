@@ -13,3 +13,16 @@ project.xcworkspace/xcuserdata/
 # Agent & Tooling
 .agents/
 skills-lock.json
+
+# Secrets
+credentials.json
+*.keystore
+*.jks
+
+# Android
+.gradle/
+**/build/
+local.properties
+*.apk
+*.aab
+

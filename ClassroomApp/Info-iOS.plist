@@ -15,9 +15,9 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>0.5 Beta</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>0.5</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
@@ -28,11 +28,15 @@
             <key>CFBundleURLSchemes</key>
             <array>
                 <string>classroomwidget</string>
+                <string>classroomtracker</string>
+                <string>com.googleusercontent.apps.1024991814751-qs4rkg9pa09r092lp083l3e9gk6e3mru</string>
             </array>
         </dict>
     </array>
     <key>UILaunchScreen</key>
     <dict/>
+    <key>UIUserInterfaceStyle</key>
+    <string>Light</string>
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
