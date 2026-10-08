@@ -154,18 +154,20 @@ public struct SubjectArtHelper {
 
     public static func bannerBackground(for category: SubjectCategory) -> Color {
         switch category {
-        case .math: return Color(red: 0.52, green: 0.32, blue: 0.05)
-        case .literature: return Color(red: 0.55, green: 0.22, blue: 0.08)
-        case .english: return Color(red: 0.08, green: 0.32, blue: 0.60)
-        case .physics: return Color(red: 0.03, green: 0.34, blue: 0.42)
-        case .chemistry: return Color(red: 0.42, green: 0.12, blue: 0.38)
-        case .biology: return Color(red: 0.16, green: 0.38, blue: 0.10)
-        case .historyOrGeography: return Color(red: 0.46, green: 0.28, blue: 0.06)
-        case .computerScience: return Color(red: 0.04, green: 0.36, blue: 0.24)
-        case .networking: return Color(red: 0.26, green: 0.16, blue: 0.50)
-        case .civicsOrPhilosophy: return Color(red: 0.48, green: 0.12, blue: 0.14)
-        case .economics, .artAndDesign, .generalAssignment, .other:
-            return Color(red: 0.10, green: 0.25, blue: 0.48)
+        case .math: return Color(red: 0.88, green: 0.50, blue: 0.08)
+        case .literature: return Color(red: 0.86, green: 0.34, blue: 0.20)
+        case .english: return Color(red: 0.12, green: 0.48, blue: 0.88)
+        case .physics: return Color(red: 0.40, green: 0.34, blue: 0.84)
+        case .chemistry: return Color(red: 0.80, green: 0.24, blue: 0.60)
+        case .biology: return Color(red: 0.14, green: 0.60, blue: 0.34)
+        case .historyOrGeography: return Color(red: 0.80, green: 0.46, blue: 0.14)
+        case .computerScience: return Color(red: 0.06, green: 0.58, blue: 0.50)
+        case .networking: return Color(red: 0.48, green: 0.32, blue: 0.84)
+        case .civicsOrPhilosophy: return Color(red: 0.82, green: 0.24, blue: 0.28)
+        case .economics: return Color(red: 0.84, green: 0.56, blue: 0.10)
+        case .artAndDesign: return Color(red: 0.84, green: 0.22, blue: 0.52)
+        case .generalAssignment: return Color(red: 0.44, green: 0.36, blue: 0.78)
+        case .other: return Color(red: 0.30, green: 0.44, blue: 0.60)
         }
     }
 
@@ -358,7 +360,7 @@ public struct ClassroomSubjectBanner: View {
                     LinearGradient(
                         colors: [
                             visualTheme.bannerBackground,
-                            visualTheme.bannerBackground.opacity(0.88)
+                            visualTheme.bannerBackground.opacity(0.85)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -373,7 +375,7 @@ public struct ClassroomSubjectBanner: View {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(Color.white.opacity(isHovered ? 0.35 : 0.18), lineWidth: 1)
                 )
-                .shadow(color: visualTheme.bannerBackground.opacity(0.22), radius: 8, x: 0, y: 3)
+                .shadow(color: visualTheme.bannerBackground.opacity(0.18), radius: 8, x: 0, y: 3)
 
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {

@@ -22,6 +22,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.ui.components.AssignmentCard
 import com.phucta.classroom.ui.theme.ChunkyColor
@@ -37,29 +43,50 @@ fun CompletedHomeworkScreen(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(ChunkyColor.WindowBackground),
+                .background(ChunkyColor.WindowBackground)
+                .padding(20.dp),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = ChunkyColor.TextMuted.copy(alpha = 0.4f),
-                    modifier = Modifier.size(56.dp)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Chưa có bài tập nào hoàn thành",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
-                    color = ChunkyColor.TextPrimary
-                )
-                Text(
-                    text = "Tick vào ô tròn bên cạnh bài tập để đánh dấu hoàn thành.",
-                    fontSize = 12.5.sp,
-                    color = ChunkyColor.TextMuted,
-                    modifier = Modifier.padding(horizontal = 32.dp, vertical = 4.dp)
-                )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(ChunkyColor.SurfaceWhite)
+                    .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 24.dp, vertical = 36.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(ChunkyColor.SuccessGreen.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = ChunkyColor.SuccessGreen,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "Chưa có bài tập hoàn thành",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = ChunkyColor.TextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Chạm vào ô tròn bên cạnh bài tập ở danh sách Báo bài để đánh dấu hoàn thành.",
+                        fontSize = 13.sp,
+                        color = ChunkyColor.TextMuted,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 18.sp
+                    )
+                }
             }
         }
     } else {

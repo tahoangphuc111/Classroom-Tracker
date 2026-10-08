@@ -87,7 +87,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         .fillMaxSize()
                         .cornerRadius(16.dp)
                         .background(ChunkyColor.SkyBottom)
-                        .clickable(actionStartActivity<MainActivity>())
+                        .clickable(actionStartActivity(android.content.Intent(context, MainActivity::class.java)))
                         .padding(10.dp)
                 ) {
                     if (!isAuthenticated) {
@@ -239,7 +239,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.defaultWeight(),
                 style = TextStyle(
                     color = ColorProvider(ChunkyColor.TextPrimary),
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     fontSize = 10.5.sp
                 )
             )

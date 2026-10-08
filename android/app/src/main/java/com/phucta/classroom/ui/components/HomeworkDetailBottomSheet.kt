@@ -2,7 +2,9 @@ package com.phucta.classroom.ui.components
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,7 +80,7 @@ fun HomeworkDetailBottomSheet(
                     text = coursework.courseName,
                     color = ChunkyColor.TextMuted,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 13.sp
+                    fontSize = 13.5.sp
                 )
             }
 
@@ -88,26 +91,34 @@ fun HomeworkDetailBottomSheet(
                 text = coursework.title,
                 color = ChunkyColor.TextPrimary,
                 fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
+                fontSize = 18.5.sp,
                 lineHeight = 24.sp
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
             // Due Date & Countdown Badge
-            val badgeBg = when {
-                coursework.isCompleted -> ChunkyColor.SuccessGreen.copy(alpha = 0.12f)
-                coursework.isOverdue -> ChunkyColor.UrgentAccent.copy(alpha = 0.12f)
-                coursework.isDueToday -> ChunkyColor.EmberTop.copy(alpha = 0.12f)
-                coursework.isDueTomorrow -> ChunkyColor.SkyBottom.copy(alpha = 0.12f)
-                else -> Color.Black.copy(alpha = 0.05f)
-            }
-            val badgeTextColor = when {
-                coursework.isCompleted -> ChunkyColor.SuccessGreen
-                coursework.isOverdue -> ChunkyColor.UrgentAccent
-                coursework.isDueToday -> ChunkyColor.EmberTop
-                coursework.isDueTomorrow -> ChunkyColor.SkyBottom
-                else -> ChunkyColor.TextMuted
+            val (badgeBg, badgeTextColor) = when {
+                coursework.isCompleted -> Pair(
+                    ChunkyColor.SuccessGreen.copy(alpha = 0.12f),
+                    Color(0xFF2E7D32)
+                )
+                coursework.isOverdue -> Pair(
+                    ChunkyColor.UrgentAccent.copy(alpha = 0.12f),
+                    Color(0xFFD32F2F)
+                )
+                coursework.isDueToday -> Pair(
+                    ChunkyColor.EmberTop.copy(alpha = 0.15f),
+                    Color(0xFFE65100)
+                )
+                coursework.isDueTomorrow -> Pair(
+                    ChunkyColor.SkyBottom.copy(alpha = 0.15f),
+                    Color(0xFF0277BD)
+                )
+                else -> Pair(
+                    Color(0xFFF1F3F5),
+                    Color(0xFF5A6E85)
+                )
             }
 
             Row(
@@ -171,52 +182,66 @@ fun HomeworkDetailBottomSheet(
             Spacer(modifier = Modifier.height(8.dp))
 
             val description = coursework.description
-            if (!description.isNullOrBlank()) {
-                Text(
-                    text = description,
-                    color = ChunkyColor.TextPrimary,
-                    fontSize = 14.sp,
-                    lineHeight = 21.sp
-                )
-            } else {
-                Text(
-                    text = "Không có mô tả chi tiết cho bài tập này.",
-                    color = ChunkyColor.TextMuted,
-                    fontSize = 13.sp
-                )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(ChunkyColor.WindowBackground)
+                    .padding(14.dp)
+            ) {
+                if (!description.isNullOrBlank()) {
+                    Text(
+                        text = description,
+                        color = ChunkyColor.TextPrimary,
+                        fontSize = 13.5.sp,
+                        lineHeight = 20.sp
+                    )
+                } else {
+                    Text(
+                        text = "Không có mô tả chi tiết cho bài tập này.",
+                        color = ChunkyColor.TextMuted,
+                        fontSize = 13.sp
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Action Buttons
+            // Action Buttons in Daylight Palette
             Row(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Toggle Completion
+                // Toggle Completion Button
                 Button(
                     onClick = {
                         onToggleCompletion(coursework.id, !coursework.isCompleted)
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (coursework.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.SkyBottom
                     ),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
                         imageVector = if (coursework.isCompleted) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
                         contentDescription = null,
-                        modifier = Modifier.padding(end = 6.dp)
+                        modifier = Modifier
+                            .size(18.dp)
+                            .padding(end = 6.dp)
                     )
                     Text(
                         text = if (coursework.isCompleted) "Đã hoàn thành" else "Đánh dấu đã nộp",
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
                     )
                 }
 
                 Spacer(modifier = Modifier.width(10.dp))
 
-                // Open in Classroom Web
+                // Open in Classroom Web Button
                 OutlinedButton(
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(coursework.destinationURL)).apply {
@@ -224,12 +249,26 @@ fun HomeworkDetailBottomSheet(
                         }
                         context.startActivity(intent)
                     },
-                    shape = RoundedCornerShape(10.dp)
+                    modifier = Modifier.height(48.dp),
+                    border = BorderStroke(1.dp, ChunkyColor.SkyBottom.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = ChunkyColor.SkyBottom.copy(alpha = 0.08f),
+                        contentColor = ChunkyColor.SkyBottom
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.OpenInBrowser,
-                        contentDescription = null,
-                        tint = ChunkyColor.TextPrimary
+                        contentDescription = "Mở trên Classroom",
+                        tint = ChunkyColor.SkyBottom,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Mở link",
+                        color = ChunkyColor.SkyBottom,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp
                     )
                 }
             }

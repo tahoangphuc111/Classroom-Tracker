@@ -1,8 +1,10 @@
 package com.phucta.classroom.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -101,64 +103,102 @@ fun AllUpcomingScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
+                    .padding(20.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        tint = ChunkyColor.TextMuted.copy(alpha = 0.4f),
-                        modifier = Modifier.size(56.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = if (searchQuery.isNotBlank()) "Không tìm thấy bài tập" else "Chưa có bài tập nào",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
-                        color = ChunkyColor.TextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (searchQuery.isNotBlank()) {
-                            "Không có kết quả nào phù hợp với \"$searchQuery\"."
-                        } else {
-                            "Danh sách bài tập sắp tới hiện đang trống."
-                        },
-                        fontSize = 12.5.sp,
-                        color = ChunkyColor.TextMuted,
-                        textAlign = TextAlign.Center
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(ChunkyColor.SurfaceWhite)
+                        .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 24.dp, vertical = 36.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(ChunkyColor.SkyBottom.copy(alpha = 0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null,
+                                tint = ChunkyColor.SkyBottom,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = if (searchQuery.isNotBlank()) "Không tìm thấy bài tập" else "Chưa có bài tập nào",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = ChunkyColor.TextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = if (searchQuery.isNotBlank()) {
+                                "Không có bài tập nào khớp với từ khóa \"$searchQuery\"."
+                            } else {
+                                "Danh sách bài tập sắp tới hiện đang trống."
+                            },
+                            fontSize = 13.sp,
+                            color = ChunkyColor.TextMuted,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 18.sp
+                        )
+                    }
                 }
             }
         } else if (!hasAnyUpcoming) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
+                    .padding(20.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = ChunkyColor.SuccessGreen.copy(alpha = 0.5f),
-                        modifier = Modifier.size(56.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Không có bài tập nào cần nộp",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
-                        color = ChunkyColor.TextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Tất cả bài tập đã được đánh dấu hoàn thành ✦",
-                        fontSize = 12.5.sp,
-                        color = ChunkyColor.TextMuted,
-                        textAlign = TextAlign.Center
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(ChunkyColor.SurfaceWhite)
+                        .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 24.dp, vertical = 36.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(ChunkyColor.SuccessGreen.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = ChunkyColor.SuccessGreen,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = "Không có bài tập cần nộp!",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = ChunkyColor.TextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Tất cả bài tập đã được đánh dấu hoàn thành xuất sắc ✦",
+                            fontSize = 13.sp,
+                            color = ChunkyColor.TextMuted,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 18.sp
+                        )
+                    }
                 }
             }
         } else {

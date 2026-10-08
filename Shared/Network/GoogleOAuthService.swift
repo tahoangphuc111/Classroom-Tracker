@@ -52,6 +52,28 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         "profile"
     ]
 
+    private var pendingCodeVerifier: String?
+    private var pendingRedirectUri: String?
+    private var lastRedeemedAuthCode: String?
+    private static let pendingVerifierKey = "cached_pending_oauth_verifier"
+
+    private func savePendingVerifier(_ verifier: String) {
+        self.pendingCodeVerifier = verifier
+        UserDefaults.standard.set(verifier, forKey: Self.pendingVerifierKey)
+    }
+
+    private func loadPendingVerifier() -> String? {
+        if let memory = pendingCodeVerifier, !memory.isEmpty {
+            return memory
+        }
+        return UserDefaults.standard.string(forKey: Self.pendingVerifierKey)
+    }
+
+    private func clearPendingVerifier() {
+        self.pendingCodeVerifier = nil
+        UserDefaults.standard.removeObject(forKey: Self.pendingVerifierKey)
+    }
+
     private override init() {
         super.init()
         checkStoredAuthentication()
@@ -104,12 +126,112 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         }
 
         let verifier = generateCodeVerifier()
+        savePendingVerifier(verifier)
 
         #if os(iOS)
         try await signInWithWebSession(clientId: clientId, verifier: verifier)
         #elseif os(macOS)
         try await signInWithLoopback(clientId: clientId, verifier: verifier)
         #endif
+    }
+
+    @discardableResult
+    public func handleIncomingURL(_ url: URL) async -> Bool {
+        print("GoogleOAuthService.handleIncomingURL nhận được: \(url.absoluteString)")
+
+        let scheme = url.scheme?.lowercased() ?? ""
+        guard scheme == "classroomwidget" || scheme == "classroomtracker" || scheme.hasPrefix("com.googleusercontent.apps.") else {
+            return false
+        }
+
+        var code: String?
+        var error: String?
+
+        if let components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            code = components.queryItems?.first(where: { $0.name == "code" })?.value
+            error = components.queryItems?.first(where: { $0.name == "error" })?.value
+        }
+
+        // Fallback thủ công nếu URLComponents thất bại do ký tự đặc biệt
+        if code == nil && error == nil {
+            let queryString: String
+            if let q = url.query {
+                queryString = q
+            } else if let qIdx = url.absoluteString.firstIndex(of: "?") {
+                queryString = String(url.absoluteString[url.absoluteString.index(after: qIdx)...])
+            } else {
+                queryString = ""
+            }
+
+            if !queryString.isEmpty {
+                for pair in queryString.components(separatedBy: "&") {
+                    let parts = pair.components(separatedBy: "=")
+                    if parts.count >= 2 {
+                        let key = parts[0]
+                        let val = parts[1...].joined(separator: "=").removingPercentEncoding ?? parts[1]
+                        if key == "code" && code == nil {
+                            code = val
+                        } else if key == "error" && error == nil {
+                            error = val
+                        }
+                    }
+                }
+            }
+        }
+
+        if let error {
+            self.authErrorMessage = "Đăng nhập Google thất bại: \(error)"
+            return false
+        }
+
+        if let code {
+            if code == lastRedeemedAuthCode && self.isAuthenticated {
+                await ClassroomAPIService.shared.syncAll()
+                ClassroomStorage.shared.notifyWidgetReload()
+                return true
+            }
+
+            let clientId = configuredClientId
+            let verifier = self.pendingCodeVerifier ?? loadPendingVerifier() ?? ""
+
+            // Hỗ trợ cả redirectUri của Loopback lẫn Custom URI scheme nếu người dùng dùng Custom Client ID (classroomwidget://oauth-callback)
+            let redirectUri: String
+            if let pending = self.pendingRedirectUri, !pending.isEmpty {
+                redirectUri = pending
+            } else if scheme.hasPrefix("com.googleusercontent.apps.") {
+                redirectUri = "\(scheme):/oauth2redirect/google"
+            } else {
+                redirectUri = "classroomwidget://oauth-callback"
+            }
+
+            do {
+                try await exchangeCodeForTokens(code: code, verifier: verifier, clientId: clientId, redirectUri: redirectUri)
+                self.lastRedeemedAuthCode = code
+                self.pendingRedirectUri = nil
+                clearPendingVerifier()
+                self.isAuthenticated = true
+                await fetchUserInfo()
+                await ClassroomAPIService.shared.syncAll()
+                ClassroomStorage.shared.notifyWidgetReload()
+                return true
+            } catch {
+                print("Lỗi đổi token trong handleIncomingURL: \(error.localizedDescription)")
+                self.authErrorMessage = "Lỗi xác thực Google: \(error.localizedDescription)"
+                return false
+            }
+        }
+
+        let hostOrPath = (url.host ?? "") + url.path
+        if hostOrPath.contains("auth-complete") || hostOrPath.contains("oauth-callback") {
+            if self.isAuthenticated {
+                await fetchUserInfo()
+                await ClassroomAPIService.shared.syncAll()
+                ClassroomStorage.shared.notifyWidgetReload()
+                return true
+            }
+        }
+
+        return false
     }
 
     #if os(iOS)
@@ -191,7 +313,13 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         }
 
         try await exchangeCodeForTokens(code: code, verifier: verifier, clientId: clientId, redirectUri: redirectUri)
+        self.lastRedeemedAuthCode = code
+        self.pendingRedirectUri = nil
+        clearPendingVerifier()
+        self.isAuthenticated = true
         await fetchUserInfo()
+        await ClassroomAPIService.shared.syncAll()
+        ClassroomStorage.shared.notifyWidgetReload()
     }
     #endif
 
@@ -199,6 +327,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     private func signInWithLoopback(clientId: String, verifier: String) async throws {
         let server = try LoopbackOAuthServer.shared.startServer()
         let loopbackRedirectUri = "http://127.0.0.1:\(server.port)"
+        self.pendingRedirectUri = loopbackRedirectUri
 
         let challenge = generateCodeChallenge(from: verifier)
 
@@ -222,7 +351,13 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
 
         let code = try await LoopbackOAuthServer.shared.waitForAuthorizationCode(server: server)
         try await exchangeCodeForTokens(code: code, verifier: verifier, clientId: clientId, redirectUri: loopbackRedirectUri)
+        self.lastRedeemedAuthCode = code
+        self.pendingRedirectUri = nil
+        clearPendingVerifier()
+        self.isAuthenticated = true
         await fetchUserInfo()
+        await ClassroomAPIService.shared.syncAll()
+        ClassroomStorage.shared.notifyWidgetReload()
     }
     #endif
 
@@ -243,6 +378,8 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         self.currentUserEmail = nil
         self.currentUserName = nil
         self.currentUserAvatar = nil
+        self.lastRedeemedAuthCode = nil
+        clearPendingVerifier()
         ClassroomStorage.shared.notifyWidgetReload()
     }
 
@@ -256,10 +393,14 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         var bodyParams: [String: String] = [
             "client_id": clientId,
             "code": code,
-            "code_verifier": verifier,
             "grant_type": "authorization_code",
             "redirect_uri": redirectUri
         ]
+
+        let trimmedVerifier = verifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedVerifier.isEmpty {
+            bodyParams["code_verifier"] = trimmedVerifier
+        }
 
         let clientSecret = configuredClientSecret
         if !clientSecret.isEmpty {
@@ -419,9 +560,18 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         ClassroomStorage.shared.saveUserLoggedIn(true)
         if let data = try? JSONEncoder().encode(tokens) {
             for dir in allTokenDirectories {
-                try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-                let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
-                try? data.write(to: fileURL, options: .atomic)
+                do {
+                    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                    let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
+                    do {
+                        try data.write(to: fileURL, options: .atomic)
+                    } catch {
+                        try data.write(to: fileURL, options: [])
+                    }
+                    try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: fileURL.path)
+                } catch {
+                    print("Lỗi ghi token vào thư mục \(dir.path): \(error.localizedDescription)")
+                }
             }
         }
 
@@ -438,7 +588,14 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         #if os(macOS)
         query[kSecUseDataProtectionKeychain as String] = true
         #endif
-        SecItemAdd(query as CFDictionary, nil)
+        var status = SecItemAdd(query as CFDictionary, nil)
+        #if os(macOS)
+        if status != errSecSuccess {
+            var legacyQuery = query
+            legacyQuery.removeValue(forKey: kSecUseDataProtectionKeychain as String)
+            status = SecItemAdd(legacyQuery as CFDictionary, nil)
+        }
+        #endif
     }
 
     private func loadTokensFromKeychain() -> OAuthTokens? {

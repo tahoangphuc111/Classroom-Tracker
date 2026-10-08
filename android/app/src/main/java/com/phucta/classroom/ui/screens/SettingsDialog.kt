@@ -40,7 +40,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.phucta.classroom.ui.theme.ChunkyColor
 
 @Composable
@@ -60,11 +62,18 @@ fun SettingsDialog(
     var customClientId by remember(initialClientId) { mutableStateOf(initialClientId ?: "") }
     var customClientSecret by remember(initialClientSecret) { mutableStateOf(initialClientSecret ?: "") }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
         Surface(
             shape = RoundedCornerShape(20.dp),
             color = ChunkyColor.SurfaceWhite,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .padding(vertical = 24.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -209,22 +218,35 @@ fun SettingsDialog(
                     value = customClientId,
                     onValueChange = { customClientId = it },
                     label = { Text("Google Client ID") },
-                    placeholder = { Text("Để trống để dùng Client ID mặc định") },
+                    placeholder = { Text("Để trống để dùng Client ID mặc định", fontSize = 12.sp) },
                     singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ChunkyColor.SkyBottom,
+                        unfocusedBorderColor = ChunkyColor.CardBorder,
+                        focusedLabelColor = ChunkyColor.SkyBottom
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 OutlinedTextField(
                     value = customClientSecret,
                     onValueChange = { customClientSecret = it },
                     label = { Text("Client Secret") },
+                    placeholder = { Text("Để trống nếu dùng mặc định", fontSize = 12.sp) },
                     singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ChunkyColor.SkyBottom,
+                        unfocusedBorderColor = ChunkyColor.CardBorder,
+                        focusedLabelColor = ChunkyColor.SkyBottom
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Button(
                     onClick = {
@@ -234,10 +256,15 @@ fun SettingsDialog(
                         )
                         onDismiss()
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ChunkyColor.SkyBottom
+                    ),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Lưu cấu hình", fontWeight = FontWeight.SemiBold)
+                    Text("Lưu cấu hình", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

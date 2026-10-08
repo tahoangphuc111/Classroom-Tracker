@@ -25,4 +25,11 @@ credentials.json
 local.properties
 *.apk
 *.aab
+.kotlin/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
 

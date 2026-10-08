@@ -27,6 +27,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.semantics.Role
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.ui.theme.ChunkyColor
 import com.phucta.classroom.ui.theme.OutfitFontFamily
@@ -47,102 +49,129 @@ fun AssignmentCard(
             .clip(RoundedCornerShape(12.dp))
             .background(ChunkyColor.SurfaceWhite)
             .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(12.dp))
-            .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Completion Checkbox
+            // Dedicated Completion Checkbox touch area (isolated from card click)
             Box(
                 modifier = Modifier
-                    .size(24.dp)
+                    .padding(start = 6.dp, top = 4.dp, bottom = 4.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (isCompleted) ChunkyColor.SuccessGreen else Color.Transparent
-                    )
-                    .border(
-                        width = 1.5.dp,
-                        color = if (isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted.copy(alpha = 0.5f),
-                        shape = CircleShape
-                    )
-                    .clickable { onToggleCompletion(!isCompleted) },
+                    .clickable(
+                        role = Role.Checkbox,
+                        onClick = { onToggleCompletion(!isCompleted) }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                if (isCompleted) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Completed",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isCompleted) ChunkyColor.SuccessGreen else Color.Transparent
+                        )
+                        .border(
+                            width = 1.75.dp,
+                            color = if (isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted.copy(alpha = 0.5f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isCompleted) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Completed",
+                            tint = Color.White,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Subject Pill
-            SubjectBadgePill(
-                courseName = coursework.courseName,
-                title = coursework.title
-            )
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            // Title & Course
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = coursework.title,
-                    color = if (isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
-                )
-                Text(
-                    text = coursework.courseName,
-                    color = ChunkyColor.TextMuted,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Due Time Badge / Status
-            val badgeBg = when {
-                isCompleted -> ChunkyColor.SuccessGreen.copy(alpha = 0.12f)
-                isOverdue -> ChunkyColor.UrgentAccent.copy(alpha = 0.12f)
-                coursework.isDueToday -> ChunkyColor.EmberTop.copy(alpha = 0.12f)
-                coursework.isDueTomorrow -> ChunkyColor.SkyBottom.copy(alpha = 0.12f)
-                else -> Color.Black.copy(alpha = 0.05f)
-            }
-            val badgeTextColor = when {
-                isCompleted -> ChunkyColor.SuccessGreen
-                isOverdue -> ChunkyColor.UrgentAccent
-                coursework.isDueToday -> ChunkyColor.EmberTop
-                coursework.isDueTomorrow -> ChunkyColor.SkyBottom
-                else -> ChunkyColor.TextMuted
-            }
-
-            Box(
+            // Card details click area (clicking anywhere here opens bottom sheet)
+            Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(badgeBg)
-                    .padding(horizontal = 7.dp, vertical = 3.dp)
+                    .weight(1f)
+                    .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
+                    .clickable(onClick = onClick)
+                    .padding(start = 4.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = coursework.compactDueString,
-                    color = badgeTextColor,
-                    fontFamily = OutfitFontFamily,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 11.sp
+                // Subject Pill
+                SubjectBadgePill(
+                    courseName = coursework.courseName,
+                    title = coursework.title
                 )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                // Title & Course
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = coursework.title,
+                        color = if (isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = coursework.courseName,
+                        color = ChunkyColor.TextMuted,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Due Time Badge / Status with high contrast
+                val (badgeBg, badgeTextColor) = when {
+                    isCompleted -> Pair(
+                        ChunkyColor.SuccessGreen.copy(alpha = 0.12f),
+                        Color(0xFF2E7D32)
+                    )
+                    isOverdue -> Pair(
+                        ChunkyColor.UrgentAccent.copy(alpha = 0.12f),
+                        Color(0xFFD32F2F)
+                    )
+                    coursework.isDueToday -> Pair(
+                        ChunkyColor.EmberTop.copy(alpha = 0.15f),
+                        Color(0xFFE65100)
+                    )
+                    coursework.isDueTomorrow -> Pair(
+                        ChunkyColor.SkyBottom.copy(alpha = 0.15f),
+                        Color(0xFF0277BD)
+                    )
+                    else -> Pair(
+                        Color(0xFFF1F3F5),
+                        Color(0xFF5A6E85)
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(badgeBg)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = coursework.compactDueString,
+                        color = badgeTextColor,
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
+                }
             }
         }
     }

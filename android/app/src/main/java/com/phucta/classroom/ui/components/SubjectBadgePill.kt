@@ -25,9 +25,9 @@ fun SubjectBadgePill(
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(theme.color)
-            .padding(horizontal = 5.dp, vertical = 2.dp),
+            .padding(horizontal = 7.dp, vertical = 3.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -35,7 +35,7 @@ fun SubjectBadgePill(
             color = Color.White,
             fontFamily = OutfitFontFamily,
             fontWeight = FontWeight.Bold,
-            fontSize = 9.sp,
+            fontSize = 10.sp,
             letterSpacing = 0.5.sp
         )
     }

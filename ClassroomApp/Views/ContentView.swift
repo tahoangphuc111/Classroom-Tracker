@@ -348,9 +348,10 @@ public struct ContentView: View {
             }
         }
         .onOpenURL { url in
-            if url.scheme == "classroomwidget" {
-                Task {
-                    if GoogleOAuthService.shared.isAuthenticated {
+            Task { @MainActor in
+                let handled = await authService.handleIncomingURL(url)
+                if handled || url.scheme == "classroomwidget" || url.scheme == "classroomtracker" {
+                    if authService.isAuthenticated {
                         await apiService.syncAll()
                         withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
                             refreshData()
@@ -466,12 +467,12 @@ public struct ContentView: View {
         HStack(spacing: 9) {
             ZStack {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(categoryIconColor(category).opacity(0.14))
+                    .fill(isSelected ? categoryIconColor(category) : categoryIconColor(category).opacity(0.12))
                     .frame(width: 24, height: 24)
 
                 Image(systemName: category.icon)
                     .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundStyle(categoryIconColor(category))
+                    .foregroundStyle(isSelected ? Color.white : categoryIconColor(category))
             }
 
             Text(category.rawValue)
@@ -487,9 +488,11 @@ public struct ContentView: View {
                     .contentTransition(.numericText())
                     .padding(.horizontal, 6.5)
                     .padding(.vertical, 2)
-                    .background(categoryBadgeBg(category))
-                    .foregroundStyle(categoryBadgeFg(category))
-                    .clipShape(Capsule())
+                    .background(
+                        Capsule()
+                            .fill(isSelected ? categoryIconColor(category) : categoryBadgeBg(category))
+                    )
+                    .foregroundStyle(isSelected ? Color.white : categoryBadgeFg(category))
             }
         }
         .padding(.vertical, 2)
@@ -497,17 +500,17 @@ public struct ContentView: View {
 
     private func categoryIconColor(_ category: AppFilterCategory) -> Color {
         switch category {
-        case .tomorrow: return Color(red: 0.12, green: 0.55, blue: 0.95)
-        case .todayAndTomorrow: return Color(red: 0.95, green: 0.55, blue: 0.10)
-        case .allUpcoming: return Color(red: 0.40, green: 0.45, blue: 0.75)
-        case .past: return Color(red: 0.88, green: 0.25, blue: 0.28)
-        case .completed: return Color(red: 0.15, green: 0.70, blue: 0.40)
-        case .widgetPreview: return Color.purple
+        case .tomorrow: return Color(red: 0.12, green: 0.52, blue: 0.95)
+        case .todayAndTomorrow: return Color(red: 0.88, green: 0.48, blue: 0.06)
+        case .allUpcoming: return Color(red: 0.38, green: 0.42, blue: 0.82)
+        case .past: return Color(red: 0.86, green: 0.24, blue: 0.26)
+        case .completed: return Color(red: 0.12, green: 0.62, blue: 0.35)
+        case .widgetPreview: return Color(red: 0.55, green: 0.35, blue: 0.85)
         }
     }
 
     private func categoryBadgeBg(_ category: AppFilterCategory) -> Color {
-        categoryIconColor(category).opacity(0.14)
+        categoryIconColor(category).opacity(0.12)
     }
 
     private func categoryBadgeFg(_ category: AppFilterCategory) -> Color {
@@ -689,6 +692,9 @@ public struct ContentView: View {
                     } else {
                         withAnimation(.easeOut(duration: 0.2)) {
                             syncRotationAngle = 0
+                        }
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                            refreshData()
                         }
                     }
                 }
@@ -2519,6 +2525,13 @@ private struct AssignmentListRow: View, Equatable {
         .onHover { hovering in
             isHovered = hovering
         }
+        #else
+        .shadow(
+            color: Color.black.opacity(isSelected ? 0.04 : 0.015),
+            radius: isSelected ? 4 : 2,
+            x: 0,
+            y: 1
+        )
         #endif
         .contentShape(Rectangle())
         .onTapGesture {
@@ -2574,12 +2587,16 @@ private struct MetaInfoCard: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(tint.opacity(0.12))
-                        .frame(width: 20, height: 20)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(tint.opacity(0.10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .stroke(tint.opacity(0.18), lineWidth: 0.5)
+                        )
+                        .frame(width: 22, height: 22)
 
                     Image(systemName: icon)
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 10.5, weight: .semibold))
                         .foregroundStyle(tint)
                 }
 
@@ -2603,9 +2620,9 @@ private struct MetaInfoCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(isHovered ? tint.opacity(0.35) : Color.platformCardBorder, lineWidth: 1)
+                .stroke(isHovered ? tint.opacity(0.24) : Color.platformCardBorder, lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(isHovered ? 0.03 : 0.015), radius: 3, x: 0, y: 1)
+        .shadow(color: Color.black.opacity(isHovered ? 0.035 : 0.015), radius: isHovered ? 4 : 2, x: 0, y: 1)
         .scaleEffect(isHovered ? 1.015 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onHover { hovering in

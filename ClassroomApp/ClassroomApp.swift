@@ -53,6 +53,14 @@ final class ClassroomAppDelegate: NSObject, NSApplicationDelegate {
         backgroundSyncTimer = nil
     }
 
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            Task { @MainActor in
+                _ = await GoogleOAuthService.shared.handleIncomingURL(url)
+            }
+        }
+    }
+
     private func enforceAquaAndWindowConstraints() {
         NSApplication.shared.appearance = NSAppearance(named: .aqua)
         for window in NSApplication.shared.windows {
@@ -84,6 +92,17 @@ struct ClassroomApp: App {
                 #endif
                 .onOpenURL { url in
                     print("Nhận URL callback: \(url)")
+                    #if os(macOS)
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                    for window in NSApplication.shared.windows {
+                        if window.canBecomeKey {
+                            window.makeKeyAndOrderFront(nil)
+                        }
+                    }
+                    #endif
+                    Task { @MainActor in
+                        _ = await GoogleOAuthService.shared.handleIncomingURL(url)
+                    }
                 }
         }
         #if os(macOS)

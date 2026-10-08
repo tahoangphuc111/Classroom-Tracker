@@ -4,6 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR/android"
 
+if [ -d "/opt/homebrew/opt/openjdk@17" ]; then
+  export JAVA_HOME="/opt/homebrew/opt/openjdk@17"
+  export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
+fi
+
 echo "===> [Android] Building Release APK..."
 chmod +x ./gradlew
 ./gradlew assembleRelease

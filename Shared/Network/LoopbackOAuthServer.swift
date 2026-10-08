@@ -51,7 +51,7 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
         }
         let port = Int(UInt16(bigEndian: actualAddress.sin_port))
 
-        guard listen(serverFd, 1) == 0 else {
+        guard listen(serverFd, 10) == 0 else {
             close(serverFd)
             throw NSError(domain: "LoopbackOAuthServer", code: -3, userInfo: [NSLocalizedDescriptionKey: "Không thể lắng nghe kết nối"])
         }
@@ -115,13 +115,40 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                     var authCode: String?
                     var oauthError: String?
 
-                    if let queryStart = requestString.range(of: "GET /")?.upperBound,
-                       let queryEnd = requestString.range(of: " HTTP/")?.lowerBound {
-                        let pathAndQuery = String(requestString[queryStart..<queryEnd])
-                        let fullUrlString = "http://127.0.0.1:\(port)/\(pathAndQuery)"
+                    // Tách chính xác request URI giữa "GET " và " HTTP/"
+                    if let uriStart = requestString.range(of: "GET ")?.upperBound,
+                       let uriEnd = requestString.range(of: " HTTP/")?.lowerBound,
+                       uriStart < uriEnd {
+                        let rawUri = String(requestString[uriStart..<uriEnd])
+                        let uri = rawUri.hasPrefix("/") ? rawUri : "/" + rawUri
+                        let fullUrlString = "http://127.0.0.1:\(port)\(uri)"
+
                         if let components = URLComponents(string: fullUrlString) {
                             authCode = components.queryItems?.first(where: { $0.name == "code" })?.value
                             oauthError = components.queryItems?.first(where: { $0.name == "error" })?.value
+                        }
+
+                        // Fallback parse query params nếu URLComponents trả về nil hoặc bị lỗi do ký tự đặc biệt
+                        if authCode == nil && oauthError == nil {
+                            let queryString: String
+                            if let qIndex = uri.firstIndex(of: "?") {
+                                queryString = String(uri[uri.index(after: qIndex)...])
+                            } else {
+                                queryString = uri
+                            }
+
+                            for param in queryString.components(separatedBy: "&") {
+                                let parts = param.components(separatedBy: "=")
+                                if parts.count >= 2 {
+                                    let key = parts[0]
+                                    let val = parts[1...].joined(separator: "=").removingPercentEncoding ?? parts[1]
+                                    if key == "code" && authCode == nil {
+                                        authCode = val
+                                    } else if key == "error" && oauthError == nil {
+                                        oauthError = val
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -129,13 +156,62 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                         let errorHtml = """
                         <!DOCTYPE html>
                         <html lang="vi">
-                        <head><meta charset="utf-8"><title>Đăng nhập không thành công</title></head>
-                        <body style="font-family:sans-serif;background:#0f172a;color:#f8fafc;display:flex;align-items:center;justify-content:center;height:100vh;">
-                          <div style="background:#1e293b;padding:32px;border-radius:16px;text-align:center;">
-                            <h2 style="color:#ef4444;">Đăng nhập bị từ chối (\(oauthError))</h2>
-                            <p style="color:#94a3b8;">Bạn có thể đóng tab này và thử lại trong ứng dụng.</p>
+                        <head>
+                          <meta charset="utf-8">
+                          <meta name="viewport" content="width=device-width, initial-scale=1">
+                          <title>Classroom Tracker - Đăng nhập không thành công</title>
+                          <style>
+                            body {
+                              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                              background: #0f172a;
+                              color: #f8fafc;
+                              display: flex;
+                              align-items: center;
+                              justify-content: center;
+                              height: 100vh;
+                              margin: 0;
+                            }
+                            .card {
+                              background: #1e293b;
+                              padding: 40px 32px;
+                              border-radius: 20px;
+                              box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+                              text-align: center;
+                              max-width: 400px;
+                              border: 1px solid rgba(255,255,255,0.08);
+                            }
+                            h1 { color: #ef4444; font-size: 22px; margin: 0 0 10px 0; }
+                            p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0; }
+                            .badge {
+                              display: inline-block;
+                              background: #dc2626;
+                              color: white;
+                              padding: 8px 18px;
+                              border-radius: 999px;
+                              font-weight: 600;
+                              font-size: 13px;
+                            }
+                          </style>
+                        </head>
+                        <body>
+                          <div class="card">
+                            <div style="margin-bottom: 16px;">
+                              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                            </div>
+                            <h1>Đăng nhập không thành công</h1>
+                            <p>Đăng nhập bị từ chối (\(oauthError)). Bạn có thể đóng tab này và thử lại trong ứng dụng.</p>
+                            <div class="badge">Đã hủy hoặc có lỗi</div>
+                            <script>
+                              setTimeout(function() {
+                                window.location.href = "classroomwidget://auth-complete?error=" + encodeURIComponent("\(oauthError)");
+                              }, 800);
+                            </script>
+                            <div style="margin-top: 18px;">
+                              <a href="classroomwidget://auth-complete?error=\(oauthError)" style="color: #ef4444; font-size: 13px; text-decoration: underline;">Quay lại Classroom Tracker</a>
+                            </div>
                           </div>
-                        </body></html>
+                        </body>
+                        </html>
                         """
                         let errorResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(errorHtml.utf8.count)\r\nConnection: close\r\n\r\n\(errorHtml)"
                         _ = errorResponse.withCString { send(clientFd, $0, strlen($0), 0) }

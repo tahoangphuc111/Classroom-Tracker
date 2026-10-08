@@ -30,11 +30,11 @@ public extension Color {
     }
 
     static var platformCardSelectedBorder: Color {
-        Color(red: 0.12, green: 0.52, blue: 0.95).opacity(0.45)
+        Color(red: 0.12, green: 0.52, blue: 0.95).opacity(0.24)
     }
 
     static var platformCardSelectedBackground: Color {
-        Color(red: 0.12, green: 0.52, blue: 0.95).opacity(0.06)
+        Color.white
     }
 
     static var platformSubtleFill: Color {

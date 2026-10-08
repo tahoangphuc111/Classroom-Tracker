@@ -9,6 +9,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
@@ -88,7 +89,7 @@ class ClassroomApiService(
         var pageCount = 0
 
         do {
-            val urlBuilder = okhttp3.HttpUrl.parse("https://classroom.googleapis.com/v1/courses")!!.newBuilder()
+            val urlBuilder = "https://classroom.googleapis.com/v1/courses".toHttpUrl().newBuilder()
                 .addQueryParameter("courseStates", "ACTIVE")
                 .addQueryParameter("pageSize", "50")
 
@@ -180,7 +181,7 @@ class ClassroomApiService(
         var pageCount = 0
 
         do {
-            val urlBuilder = okhttp3.HttpUrl.parse("https://classroom.googleapis.com/v1/courses/$courseId/courseWork")!!.newBuilder()
+            val urlBuilder = "https://classroom.googleapis.com/v1/courses/$courseId/courseWork".toHttpUrl().newBuilder()
                 .addQueryParameter("courseWorkStates", "PUBLISHED")
                 .addQueryParameter("pageSize", "50")
 
@@ -212,7 +213,7 @@ class ClassroomApiService(
         var pageCount = 0
 
         do {
-            val urlBuilder = okhttp3.HttpUrl.parse("https://classroom.googleapis.com/v1/courses/$courseId/courseWork/-/studentSubmissions")!!.newBuilder()
+            val urlBuilder = "https://classroom.googleapis.com/v1/courses/$courseId/courseWork/-/studentSubmissions".toHttpUrl().newBuilder()
                 .addQueryParameter("userId", "me")
                 .addQueryParameter("pageSize", "50")
 

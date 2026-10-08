@@ -12,6 +12,9 @@ import com.phucta.classroom.data.local.TokenStorage
 import com.phucta.classroom.data.remote.GoogleOAuthManager
 import com.phucta.classroom.data.repository.ClassroomRepository
 import com.phucta.classroom.worker.ClassroomSyncWorker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 class ClassroomApplication : Application() {
@@ -36,7 +39,7 @@ class ClassroomApplication : Application() {
         oauthManager = GoogleOAuthManager(this, preferences, tokenStorage)
         repository = ClassroomRepository(this, database, preferences, oauthManager)
 
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             repository.ensureInitialData()
         }
 
