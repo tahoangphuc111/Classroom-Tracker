@@ -53,8 +53,11 @@ public struct AppLogoView: View {
     }
 
     private var fallbackIcon: some View {
-        Glossy3DBookVectorArtView()
-            .frame(width: size, height: size)
+        ZStack {
+            ChunkyTheme.skyGradient
+            ChunkyEmberCharacterView(emotion: .normal, size: size * 0.72)
+        }
+        .frame(width: size, height: size)
     }
 }
 
@@ -684,6 +687,8 @@ public struct ContentView: View {
                             autoSelectFirstItem()
                         }
                     )
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 6)
                 }
         }
         .sheet(isPresented: $showCompactCourseFilterSheet) {
@@ -1163,10 +1168,10 @@ public struct ContentView: View {
         HStack(alignment: .center, spacing: 8) {
             HStack(spacing: 5) {
                 Image(systemName: "calendar")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(Color.platformTextTertiary)
                 Text(formattedCurrentDate())
-                    .font(.system(size: 11.5, weight: .medium))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color.platformTextSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -1177,15 +1182,15 @@ public struct ContentView: View {
             Button {
                 showCompactCourseFilterSheet = true
             } label: {
-                HStack(spacing: 3.5) {
+                HStack(spacing: 4) {
                     Image(systemName: "line.3.horizontal.decrease.circle")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                     Text("Lớp (\(courses.filter(\.isSelectedForWidget).count)/\(courses.count))")
-                        .font(.system(size: 10.5, weight: .medium))
+                        .font(.system(size: 12.5, weight: .medium))
                 }
                 .foregroundStyle(Color.platformTextSecondary)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3.5)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4.5)
                 .background(Color.platformControlBackground)
                 .clipShape(Capsule())
             }
@@ -1194,13 +1199,13 @@ public struct ContentView: View {
             if selectedFilter == .widgetPreview {
                 HStack(spacing: 4) {
                     Image(systemName: "macwindow.on.rectangle")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 11, weight: .semibold))
                     Text("Xem trước")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 12.5, weight: .medium))
                 }
                 .foregroundStyle(.purple)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3.5)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4.5)
                 .background(Color.purple.opacity(0.08))
                 .clipShape(Capsule())
             } else {
@@ -1209,32 +1214,32 @@ public struct ContentView: View {
                     HStack(spacing: 5) {
                         Circle()
                             .fill(categoryIconColor(selectedFilter))
-                            .frame(width: 5.5, height: 5.5)
+                            .frame(width: 6, height: 6)
                         Text("\(pendingCount) bài cần nộp")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .font(.system(size: 12.5, weight: .bold, design: .rounded))
                             .foregroundStyle(categoryIconColor(selectedFilter))
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3.5)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4.5)
                     .background(categoryIconColor(selectedFilter).opacity(0.09))
                     .clipShape(Capsule())
                 } else if !currentFilteredList.isEmpty {
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                         Text("Đã nộp tất cả")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .font(.system(size: 12.5, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3.5)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4.5)
                     .background(Color(red: 0.12, green: 0.62, blue: 0.35).opacity(0.10))
                     .clipShape(Capsule())
                 }
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.vertical, 9)
         .background(Color.platformWindowBackground)
     }
     #endif
@@ -1382,12 +1387,12 @@ public struct ContentView: View {
         return VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 11.5, weight: .medium))
+                    .font(.system(size: 13.5, weight: .medium))
                     .foregroundStyle(isSearchFocused ? .blue : Color.platformTextTertiary)
 
                 TextField(searchPlaceholder, text: $searchText)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 12.5))
+                    .font(.system(size: 14))
                     .autocorrectionDisabled()
                     #if os(iOS)
                     .textInputAutocapitalization(.never)
@@ -1404,7 +1409,7 @@ public struct ContentView: View {
                         }
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 11.5, weight: .medium))
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(Color.platformTextTertiary)
                             .frame(width: 28, height: 28)
                             .contentShape(Rectangle())
@@ -1425,8 +1430,8 @@ public struct ContentView: View {
                     #endif
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 8.5)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(Color.platformControlBackground)
@@ -1653,10 +1658,10 @@ public struct ContentView: View {
                             HStack {
                                 HStack(spacing: 6) {
                                     Image(systemName: "doc.text.fill")
-                                        .font(.system(size: 12, weight: .semibold))
+                                        .font(.system(size: 13.5, weight: .semibold))
                                         .foregroundStyle(Color.blue)
                                     Text("NỘI DUNG & HƯỚNG DẪN BÀI TẬP")
-                                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                                        .font(.system(size: 13.5, weight: .bold, design: .rounded))
                                         .foregroundStyle(Color.platformTextSecondary)
                                 }
 
@@ -1668,10 +1673,10 @@ public struct ContentView: View {
                                     } label: {
                                         HStack(spacing: 4) {
                                             Image(systemName: copyFeedbackMessage != nil ? "checkmark" : "doc.on.doc")
-                                                .font(.system(size: 10))
+                                                .font(.system(size: 11))
                                                 .foregroundStyle(copyFeedbackMessage != nil ? Color.green : Color.blue)
                                             Text(copyFeedbackMessage ?? "Sao chép nội dung")
-                                                .font(.system(size: 11, weight: .medium))
+                                                .font(.system(size: 12.5, weight: .medium))
                                         }
                                     }
                                     .buttonStyle(.plain)
@@ -1682,8 +1687,8 @@ public struct ContentView: View {
 
                             if let desc = item.description, !desc.isEmpty {
                                 Text(desc)
-                                    .font(.system(size: 13.5, weight: .regular))
-                                    .lineSpacing(5.5)
+                                    .font(.system(size: 15.5, weight: .regular))
+                                    .lineSpacing(6.5)
                                     .foregroundStyle(Color.platformTextPrimary)
                                     .textSelection(.enabled)
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1700,7 +1705,7 @@ public struct ContentView: View {
                                     Image(systemName: "info.circle")
                                         .foregroundStyle(Color.platformTextTertiary)
                                     Text("Bài tập này không có phần mô tả chi tiết từ giáo viên.")
-                                        .font(.system(size: 12.5))
+                                        .font(.system(size: 14))
                                         .foregroundStyle(Color.platformTextSecondary)
                                 }
                                 .padding(16)
@@ -1722,14 +1727,14 @@ public struct ContentView: View {
                         } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "arrow.up.right.square.fill")
-                                    .font(.system(size: 14, weight: .bold))
+                                    .font(.system(size: 15, weight: .bold))
                                 Text("Mở bài tập trên Google Classroom để nộp bài")
-                                    .font(.system(size: 13.5, weight: .semibold))
+                                    .font(.system(size: 15, weight: .bold))
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.85)
                                 #if os(macOS)
                                 Text("(⌘O)")
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.system(size: 12, weight: .medium))
                                     .opacity(0.85)
                                 #endif
                             }
@@ -1872,14 +1877,14 @@ public struct ContentView: View {
     private func readerStatusBadge(for item: Coursework) -> some View {
         HStack(spacing: 5) {
             Image(systemName: item.isCompleted ? "checkmark.circle.fill" : (item.isOverdue ? "exclamationmark.circle.fill" : "clock.fill"))
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: 12.5, weight: .bold))
             Text(item.statusTitle.uppercased())
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.system(size: 12.5, weight: .bold, design: .rounded))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 4.5)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
         .background(
             (item.isCompleted ? Color(red: 0.12, green: 0.62, blue: 0.35) : (item.isOverdue ? Color(red: 0.88, green: 0.22, blue: 0.20) : Color(red: 0.90, green: 0.48, blue: 0.08)))
                 .opacity(0.12)
@@ -1898,14 +1903,14 @@ public struct ContentView: View {
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: item.isCompleted ? "arrow.uturn.backward" : "checkmark")
-                    .font(.system(size: 10.5, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                 Text(item.isCompleted ? "Chưa nộp" : "Đã nộp")
-                    .font(.system(size: 11.5, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
                 #if os(macOS)
                 Text("(Space)")
-                    .font(.system(size: 9.5))
+                    .font(.system(size: 10))
                     .foregroundStyle(Color.platformTextTertiary)
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
@@ -1928,10 +1933,10 @@ public struct ContentView: View {
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: copyFeedbackMessage != nil ? "checkmark" : "doc.on.doc")
-                    .font(.system(size: 10.5))
+                    .font(.system(size: 12))
                     .foregroundStyle(copyFeedbackMessage != nil ? Color.green : Color.secondary)
                 Text(copyFeedbackMessage ?? "Sao chép đề")
-                    .font(.system(size: 11.5, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
             }
@@ -2674,22 +2679,22 @@ private struct CourseSelectionRow: View, Equatable {
 
     var body: some View {
         Button(action: onToggle) {
-            HStack(alignment: .center, spacing: 9) {
+            HStack(alignment: .center, spacing: 10) {
                 Image(systemName: course.isSelectedForWidget ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(course.isSelectedForWidget ? Color.blue : Color.secondary.opacity(0.45))
 
-                SubjectArtBadgeView(courseName: course.name, size: 22)
+                SubjectArtBadgeView(courseName: course.name, size: 26)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 2.5) {
                     Text(course.name)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 14.5, weight: .semibold))
                         .foregroundStyle(Color.platformTextPrimary)
                         .lineLimit(1)
 
                     if let section = course.section, !section.isEmpty {
                         Text(section)
-                            .font(.system(size: 10))
+                            .font(.system(size: 12))
                             .foregroundStyle(Color.platformTextSecondary)
                             .lineLimit(1)
                     }
@@ -2699,8 +2704,8 @@ private struct CourseSelectionRow: View, Equatable {
             }
             .padding(.horizontal, 4)
             #if os(iOS)
-            .padding(.vertical, 7)
-            .frame(minHeight: 44)
+            .padding(.vertical, 8)
+            .frame(minHeight: 48)
             #else
             .padding(.vertical, 3.5)
             #endif
@@ -2722,20 +2727,20 @@ private struct SectionHeaderPill: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 10.5, weight: .bold))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(color)
 
             Text(title)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.system(size: 12.5, weight: .bold, design: .rounded))
                 .foregroundStyle(color)
 
             Spacer()
 
             Text("\(count) bài")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .font(.system(size: 11.5, weight: .bold, design: .rounded))
                 .foregroundStyle(color)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2.5)
                 .background(color.opacity(0.14))
                 .clipShape(Capsule())
         }
@@ -2882,11 +2887,11 @@ private struct AssignmentListRow: View, Equatable {
                     onToggleCompletion()
                 } label: {
                     ZStack(alignment: .bottomTrailing) {
-                        SubjectArtBadgeView(courseName: item.courseName, title: item.title, size: 28)
+                        SubjectArtBadgeView(courseName: item.courseName, title: item.title, size: 32)
 
                         if isTurnedIn {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 13, weight: .bold))
+                                .font(.system(size: 15, weight: .bold))
                                 .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
                                 .background(Circle().fill(Color.white).padding(1))
                                 .offset(x: 3, y: 3)
@@ -2894,9 +2899,9 @@ private struct AssignmentListRow: View, Equatable {
                                 .transition(.scale.combined(with: .opacity))
                         } else {
                             Circle()
-                                .strokeBorder(Color.secondary.opacity(0.35), lineWidth: 1.2)
+                                .strokeBorder(Color.secondary.opacity(0.35), lineWidth: 1.3)
                                 .background(Circle().fill(Color.platformControlBackground.opacity(0.85)))
-                                .frame(width: 12, height: 12)
+                                .frame(width: 13, height: 13)
                                 .offset(x: 2, y: 2)
                         }
                     }
@@ -2909,19 +2914,19 @@ private struct AssignmentListRow: View, Equatable {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.title)
-                        .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
+                        .font(.system(size: 15.5, weight: isSelected ? .bold : .semibold))
                         .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
                         .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                         .animation(.easeInOut(duration: 0.2), value: isTurnedIn)
 
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Circle()
                             .fill(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
-                            .frame(width: 5, height: 5)
+                            .frame(width: 6, height: 6)
                         Text(item.courseName)
-                            .font(.system(size: 10.5, weight: .semibold))
+                            .font(.system(size: 12.5, weight: .semibold))
                             .foregroundStyle(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
                             .lineLimit(1)
                     }
@@ -2931,10 +2936,10 @@ private struct AssignmentListRow: View, Equatable {
 
                 DueBadgeView(item: item, compact: true)
         }
-        .padding(.horizontal, 9)
+        .padding(.horizontal, 10)
         #if os(iOS)
-        .padding(.vertical, 9)
-        .frame(minHeight: 52)
+        .padding(.vertical, 10)
+        .frame(minHeight: 58)
         #else
         .padding(.vertical, 8)
         #endif
@@ -3020,35 +3025,35 @@ private struct MetaInfoCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
+            HStack(spacing: 7) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(tint.opacity(0.10))
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(tint.opacity(0.12))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .stroke(tint.opacity(0.18), lineWidth: 0.5)
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .stroke(tint.opacity(0.22), lineWidth: 0.5)
                         )
-                        .frame(width: 22, height: 22)
+                        .frame(width: 26, height: 26)
 
                     Image(systemName: icon)
-                        .font(.system(size: 10.5, weight: .semibold))
+                        .font(.system(size: 12.5, weight: .semibold))
                         .foregroundStyle(tint)
                 }
 
                 Text(label)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(Color.platformTextSecondary)
                     .lineLimit(1)
             }
 
             Text(value)
-                .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                .font(.system(size: 14.5, weight: .bold, design: .rounded))
                 .foregroundStyle(Color.platformTextPrimary)
                 .lineLimit(2)
                 .minimumScaleFactor(0.85)
                 .contentTransition(.numericText())
         }
-        .padding(.horizontal, 11)
+        .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.platformControlBackground)
@@ -3104,11 +3109,11 @@ private struct AssignmentListEmptyView: View {
 
             VStack(spacing: 6) {
                 Text(emptyTitle)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.platformTextPrimary)
 
                 Text(emptySubtitle)
-                    .font(.system(size: 12))
+                    .font(.system(size: 13.5))
                     .foregroundStyle(Color.platformTextSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
@@ -3120,7 +3125,7 @@ private struct AssignmentListEmptyView: View {
                     onClearSearch()
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.small)
+                .controlSize(.regular)
                 .padding(.top, 4)
             } else if (filter == .tomorrow || filter == .todayAndTomorrow), let onSwitchToUpcoming {
                 Button {
@@ -3128,13 +3133,13 @@ private struct AssignmentListEmptyView: View {
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "tray")
-                            .font(.system(size: 11))
+                            .font(.system(size: 12))
                         Text("Xem tất cả bài tập sắp tới")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 13.5, weight: .semibold))
                     }
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.small)
+                .controlSize(.regular)
                 .padding(.top, 4)
             }
 
@@ -3222,14 +3227,14 @@ private struct HomeworkReaderEmptyStateView: View {
 
             VStack(spacing: 6) {
                 Text("Chọn một bài tập từ danh sách bên trái")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.platformTextPrimary)
 
                 Text("Toàn bộ nội dung, hướng dẫn và hạn nộp chi tiết sẽ hiển thị tại đây")
-                    .font(.system(size: 12))
+                    .font(.system(size: 13.5))
                     .foregroundStyle(Color.platformTextSecondary)
                     .multilineTextAlignment(.center)
-                    .frame(maxWidth: 320)
+                    .frame(maxWidth: 340)
             }
 
             #if os(macOS)
@@ -3395,25 +3400,35 @@ public struct LiquidGlassBottomNavigationBar: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            Divider()
-                .opacity(colorScheme == .dark ? 0.35 : 0.65)
-
-            HStack(spacing: 0) {
-                ForEach(tabs) { tab in
-                    tabButton(for: tab)
-                }
+        HStack(spacing: 3) {
+            ForEach(tabs) { tab in
+                tabButton(for: tab)
             }
-            .frame(height: 50)
-            .padding(.top, 4)
-            .padding(.bottom, 2)
         }
-        .frame(maxWidth: .infinity)
-        .background(
-            Rectangle()
+        .padding(.horizontal, 6)
+        .padding(.vertical, 5)
+        .frame(maxWidth: 520)
+        .background {
+            Capsule()
                 .fill(.ultraThinMaterial)
-                .ignoresSafeArea(edges: .bottom)
-        )
+                .overlay {
+                    Capsule()
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(colorScheme == .dark ? 0.35 : 0.85),
+                                    Color.white.opacity(colorScheme == .dark ? 0.12 : 0.30),
+                                    Color.clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                }
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 7)
+                .shadow(color: Color.primary.opacity(0.04), radius: 2, x: 0, y: 1)
+        }
     }
 
     @ViewBuilder
@@ -3424,42 +3439,71 @@ public struct LiquidGlassBottomNavigationBar: View {
         Button {
             selectTab(tab.category)
         } label: {
-            VStack(spacing: 3) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: isSelected ? tab.activeIcon : tab.icon)
-                        .font(.system(size: 21, weight: isSelected ? .bold : .medium))
-                        .foregroundStyle(isSelected ? tabColor : Color.secondary)
-                        .scaleEffect(isSelected ? 1.06 : 1.0)
-                        .frame(width: 28, height: 24)
+            Group {
+                if isSelected {
+                    HStack(spacing: 6) {
+                        Image(systemName: tab.activeIcon)
+                            .font(.system(size: 16.5, weight: .bold))
+                            .foregroundStyle(tabColor)
 
-                    if let count = tab.count, count > 0 {
-                        Text(count > 99 ? "99+" : "\(count)")
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.white)
-                            .padding(.horizontal, 3.5)
-                            .padding(.vertical, 1)
-                            .background(Capsule().fill(tabColor))
-                            .offset(x: 10, y: -4)
-                            .scaleEffect(isSelected ? 1.05 : 1.0)
+                        Text(tab.shortTitle)
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(tabColor)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+
+                        if let count = tab.count, count > 0 {
+                            Text(count > 99 ? "99+" : "\(count)")
+                                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                                .foregroundStyle(Color.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1.5)
+                                .background(Capsule().fill(tabColor))
+                        }
                     }
-                }
+                    .padding(.horizontal, 13)
+                    .frame(height: 38)
+                    .background {
+                        Capsule()
+                            .fill(tabColor.opacity(colorScheme == .dark ? 0.24 : 0.14))
+                            .overlay {
+                                Capsule()
+                                    .stroke(tabColor.opacity(colorScheme == .dark ? 0.45 : 0.28), lineWidth: 1)
+                            }
+                            .matchedGeometryEffect(id: "liquidGlassActivePill", in: glassNamespace)
+                    }
+                } else {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 19, weight: .medium))
+                            .foregroundStyle(Color.secondary.opacity(0.85))
+                            .frame(width: 26, height: 26)
 
-                Text(tab.shortTitle)
-                    .font(.system(size: 10, weight: isSelected ? .semibold : .medium))
-                    .foregroundStyle(isSelected ? tabColor : Color.secondary)
-                    .lineLimit(1)
+                        if let count = tab.count, count > 0 {
+                            Text(count > 99 ? "99+" : "\(count)")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Capsule().fill(tabColor.opacity(0.88)))
+                                .offset(x: 10, y: -7)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 38)
+                    .contentShape(Rectangle())
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: isSelected)
+        .accessibilityLabel(Text(tab.category.rawValue))
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     private func selectTab(_ category: ContentView.AppFilterCategory) {
         guard selectedFilter != category else { return }
         triggerFeedback()
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.76)) {
             selectedFilter = category
             onSelect(category)
         }

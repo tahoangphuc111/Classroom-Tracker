@@ -411,14 +411,14 @@ public struct ClassroomSubjectBanner: View {
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
-                        SubjectArtBadgeView(courseName: item.courseName, size: 20)
+                        SubjectArtBadgeView(courseName: item.courseName, size: 22)
                         Text(item.courseName)
-                            .font(.system(size: 12.5, weight: .bold))
+                            .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(.white.opacity(0.95))
                     }
 
                     Text(item.title)
-                        .font(.system(size: 15.5, weight: .bold))
+                        .font(.system(size: 17.5, weight: .bold))
                         .foregroundStyle(.white)
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
@@ -426,13 +426,13 @@ public struct ClassroomSubjectBanner: View {
 
                     HStack(spacing: 5) {
                         Image(systemName: "calendar")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold))
                         Text(item.formattedFullDueDate)
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 12.5, weight: .semibold))
                     }
                     .foregroundStyle(.white.opacity(0.92))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 3.5)
                     .background(Color.black.opacity(0.18))
                     .clipShape(Capsule())
                 }
@@ -446,12 +446,20 @@ public struct ClassroomSubjectBanner: View {
                 let artHeight: CGFloat = 80
                 #endif
 
-                DuolingoStudyBookArtView()
-                    .drawingGroup()
-                    .frame(width: artWidth, height: artHeight)
-                    .scaleEffect(isHovered ? 1.06 : 1.0)
+                ZStack {
+                    RealSubjectArtScene(courseName: item.courseName)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .opacity(0.85)
+
+                    ChunkyEmberCharacterView(
+                        emotion: item.isCompleted ? .celebrating : (item.isUrgent ? .stressed : .normal),
+                        size: artHeight * 0.88
+                    )
+                    .scaleEffect(isHovered ? 1.08 : 1.0)
                     .offset(x: isHovered ? -2 : 0, y: isHovered ? -2 : 0)
                     .animation(.spring(response: 0.35, dampingFraction: 0.72), value: isHovered)
+                }
+                .frame(width: artWidth, height: artHeight)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
@@ -558,21 +566,21 @@ public struct DueBadgeView: View {
     }
 
     public var body: some View {
-        HStack(spacing: 3.5) {
+        HStack(spacing: 4) {
             if item.isCompleted {
                 Image(systemName: "checkmark")
-                    .font(.system(size: compact ? 8 : 9, weight: .bold))
+                    .font(.system(size: compact ? 9.5 : 11, weight: .bold))
             } else {
                 Image(systemName: "clock")
-                    .font(.system(size: compact ? 8 : 9, weight: .medium))
+                    .font(.system(size: compact ? 9.5 : 11, weight: .semibold))
             }
 
             Text(badgeText)
-                .font(.system(size: compact ? 9.5 : 10.5, weight: .semibold, design: .rounded))
+                .font(.system(size: compact ? 11.5 : 12.5, weight: .semibold, design: .rounded))
         }
         .foregroundStyle(badgeColor)
-        .padding(.horizontal, compact ? 7 : 9)
-        .padding(.vertical, compact ? 3 : 4)
+        .padding(.horizontal, compact ? 7.5 : 9.5)
+        .padding(.vertical, compact ? 3.5 : 4.5)
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(badgeColor.opacity(0.12))

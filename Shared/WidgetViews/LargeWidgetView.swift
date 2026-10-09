@@ -174,19 +174,19 @@ public struct LargeWidgetView: View {
 
                             let titleFontSize: CGFloat = {
                                 switch count {
-                                case 1, 2: return 15.5
-                                case 3: return 14
-                                case 4: return 13
-                                default: return 12
+                                case 1, 2: return 17
+                                case 3: return 15.5
+                                case 4: return 14.5
+                                default: return 13.5
                                 }
                             }()
 
                             let tagFontSize: CGFloat = {
                                 switch count {
-                                case 1, 2: return 10
-                                case 3: return 9.5
-                                case 4: return 9
-                                default: return 8.5
+                                case 1, 2: return 11
+                                case 3: return 10.5
+                                case 4: return 10
+                                default: return 9.5
                                 }
                             }()
 
