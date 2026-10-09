@@ -29,7 +29,6 @@ class MainActivity : ComponentActivity() {
         handleOAuthIntent(intent)
 
         setContent {
-            // Strict Light Mode Color Scheme
             MaterialTheme(
                 colorScheme = lightColorScheme(
                     primary = ChunkyColor.SkyBottom,

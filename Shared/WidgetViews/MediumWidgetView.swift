@@ -395,6 +395,7 @@ public struct ChunkyEmberCharacterView: View {
                 .frame(width: size, height: size)
         }
         .frame(width: size, height: size)
+        .drawingGroup()
     }
 
     private var flameOuterBody: some View {
@@ -753,27 +754,24 @@ public struct ChunkyEmberCharacterView: View {
 // MARK: - Medium Widget View
 public struct MediumWidgetView: View {
     let courseworkList: [Coursework]
+    let isLoggedIn: Bool
 
-    public init(courseworkList: [Coursework]) {
+    public init(courseworkList: [Coursework], isLoggedIn: Bool = true) {
         self.courseworkList = courseworkList
+        self.isLoggedIn = isLoggedIn
     }
 
     private var sectionHeaderTitle: String {
         let pending = courseworkList.filter { !$0.isCompleted }
-        let hasOverdue = pending.contains(where: \.isOverdue)
         let hasToday = pending.contains(where: \.isDueToday)
         let hasTomorrow = pending.contains(where: \.isDueTomorrow)
 
-        if hasOverdue && !hasToday && !hasTomorrow {
-            return "QUÁ HẠN"
-        } else if hasToday && hasTomorrow {
+        if hasToday && hasTomorrow {
             return "HÔM NAY & MAI"
         } else if hasToday {
             return "HÔM NAY"
         } else if hasTomorrow {
             return "NGÀY MAI"
-        } else if hasOverdue {
-            return "QUÁ HẠN"
         } else if !pending.isEmpty {
             return "SẮP TỚI"
         } else if courseworkList.contains(where: \.isDueToday) {
@@ -807,7 +805,7 @@ public struct MediumWidgetView: View {
 
     private var moodBadgeText: String {
         if activeItems.isEmpty {
-            return courseworkList.isEmpty ? "Thảnh thơi ✨" : "Hoàn thành 🎉"
+            return courseworkList.isEmpty ? "Thảnh thơi" : "Hoàn thành"
         } else if activeItems.count >= 4 {
             return "Tập trung"
         } else {
@@ -822,15 +820,18 @@ public struct MediumWidgetView: View {
 
             backgroundClouds
 
-            HStack(spacing: 12) {
-                VStack(spacing: 0) {
-                    VStack(spacing: 3) {
-                        Text("\(activeItems.count)")
-                            .font(WidgetFontSystem.counter(size: 38))
-                            .foregroundStyle(Color.white)
-                            .shadow(color: Color.black.opacity(0.18), radius: 0, x: 0, y: 1.5)
+            if !isLoggedIn {
+                loggedOutMediumView
+            } else {
+                HStack(spacing: 12) {
+                    VStack(spacing: 0) {
+                        VStack(spacing: 3) {
+                            Text("\(activeItems.count)")
+                                .font(WidgetFontSystem.counter(size: 38))
+                                .foregroundStyle(Color.white)
+                                .shadow(color: Color.black.opacity(0.18), radius: 0, x: 0, y: 1.5)
 
-                        Text(activeItems.isEmpty && !courseworkList.isEmpty ? "HOÀN TẤT" : "CẦN NỘP")
+                            Text(activeItems.isEmpty && !courseworkList.isEmpty ? "HOÀN TẤT" : "CẦN NỘP")
                             .font(WidgetFontSystem.sectionHeader(size: 8.5))
                             .tracking(0.0)
                             .foregroundStyle(ChunkyTheme.butterYellow)
@@ -884,7 +885,7 @@ public struct MediumWidgetView: View {
                                     .font(WidgetFontSystem.sectionHeader(size: 8.5))
                                     .foregroundStyle(ChunkyTheme.textMuted)
                             } else if !courseworkList.isEmpty {
-                                Text("✓")
+                                Image(systemName: "checkmark")
                                     .font(WidgetFontSystem.sectionHeader(size: 8.5))
                                     .foregroundStyle(Color.green)
                             }
@@ -914,10 +915,54 @@ public struct MediumWidgetView: View {
                 .frame(maxHeight: .infinity)
                 .padding(.vertical, 10)
                 .padding(.trailing, 12)
+                }
             }
         }
         .unredacted()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var loggedOutMediumView: some View {
+        HStack(spacing: 14) {
+            VStack(spacing: 6) {
+                ChunkyEmberCharacterView(emotion: .normal, size: 68)
+
+                Text("Báo bài")
+                    .font(WidgetFontSystem.sectionHeader(size: 10))
+                    .foregroundStyle(ChunkyTheme.butterYellow)
+            }
+            .frame(width: 90)
+
+            ZStack(alignment: .center) {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(ChunkyTheme.sheetBg)
+                    .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 6, x: 0, y: 2.5)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
+                    )
+
+                VStack(spacing: 6) {
+                    Image(systemName: "person.crop.circle.badge.plus")
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(ChunkyTheme.pillBlue)
+
+                    Text("Chưa đăng nhập")
+                        .font(WidgetFontSystem.courseTitle(size: 13))
+                        .foregroundStyle(ChunkyTheme.textPrimary)
+
+                    Text("Chạm để đăng nhập Google Classroom")
+                        .font(WidgetFontSystem.meta(size: 10))
+                        .foregroundStyle(ChunkyTheme.textMuted)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                }
+                .padding(.horizontal, 12)
+            }
+            .frame(maxHeight: .infinity)
+            .padding(.vertical, 10)
+            .padding(.trailing, 12)
+        }
     }
 
     private var backgroundClouds: some View {
@@ -938,8 +983,8 @@ public struct MediumWidgetView: View {
                     .fill(ChunkyTheme.butterYellow.opacity(0.35))
                     .frame(width: 36, height: 36)
 
-                Text("✦")
-                    .font(.system(size: 18, weight: .bold))
+                Image(systemName: "sparkles")
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
             }
 
@@ -948,7 +993,7 @@ public struct MediumWidgetView: View {
                     .font(.system(size: 13.5, weight: .heavy, design: .rounded))
                     .foregroundStyle(ChunkyTheme.textPrimary)
 
-                Text("Tất cả môn học đã hoàn thành.\nNghỉ ngơi và thư giãn nhé ✦")
+                Text("Tất cả môn học đã hoàn thành.\nNghỉ ngơi và thư giãn nhé.")
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .lineSpacing(2)
                     .foregroundStyle(ChunkyTheme.textMuted)
@@ -1001,21 +1046,13 @@ public struct MediumWidgetView: View {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 12, weight: .bold))
                                     .foregroundStyle(Color.green)
-                            } else if item.isOverdue {
-                                Text("Quá hạn")
-                                    .font(WidgetFontSystem.statusTag(size: 7.5))
-                                    .foregroundStyle(Color.white)
-                                    .padding(.horizontal, 5.5)
-                                    .padding(.vertical, 2)
-                                    .background(ChunkyTheme.urgentAccent)
-                                    .clipShape(Capsule())
                             } else {
                                 Text(item.timeOnlyString)
                                     .font(WidgetFontSystem.statusTag(size: 7.5))
-                                    .foregroundStyle(ChunkyTheme.textMuted)
+                                    .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
                                     .padding(.horizontal, 5.5)
                                     .padding(.vertical, 2)
-                                    .background(Color.black.opacity(0.04))
+                                    .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.04))
                                     .clipShape(Capsule())
                             }
                         }
@@ -1035,7 +1072,7 @@ public struct MediumWidgetView: View {
 
     @ViewBuilder
     private func editorialSubjectBadge(name: String) -> some View {
-        let code = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(3)).uppercased()
+        let code = SubjectArtHelper.badgeCode(for: name)
         let color = SubjectArtHelper.themeColor(for: name)
 
         Text(code)

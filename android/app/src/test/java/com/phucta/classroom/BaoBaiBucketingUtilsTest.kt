@@ -124,7 +124,7 @@ class BaoBaiBucketingUtilsTest {
     }
 
     @Test
-    fun testBaoBaiFallback_WhenTomorrowEmpty_OverduePriority() {
+    fun testBaoBai_OverdueIsConsideredCompleted_AndNotShownAsPending() {
         val cal = Calendar.getInstance().apply {
             add(Calendar.DAY_OF_YEAR, -1) // Yesterday
         }
@@ -139,13 +139,16 @@ class BaoBaiBucketingUtilsTest {
             status = SubmissionStatus.PENDING
         )
 
+        // Triết lý: Cứ hết hạn thì tính là đã hoàn thành
+        assertTrue(taskOverdue.isCompleted)
+        assertFalse(taskOverdue.isOverdue)
+
         val batch = BaoBaiBucketingUtils.getTomorrowCoursework(listOf(taskOverdue))
-        assertEquals(1, batch.size)
-        assertEquals("overdue_task", batch.first().id)
+        assertTrue(batch.isEmpty())
     }
 
     @Test
-    fun testComputeBuckets_OverdueEarlierToday() {
+    fun testComputeBuckets_OverdueEarlierTodayIsCompleted() {
         val oneHourAgo = System.currentTimeMillis() - 3600_000
 
         val taskEarlierToday = Coursework(
@@ -157,9 +160,11 @@ class BaoBaiBucketingUtilsTest {
             status = SubmissionStatus.PENDING
         )
 
+        assertTrue(taskEarlierToday.isCompleted)
         val buckets = BaoBaiBucketingUtils.computeBuckets(listOf(taskEarlierToday), emptyList())
-        assertEquals(1, buckets.overdue.size)
-        assertEquals("earlier_today", buckets.overdue.first().id)
+        assertEquals(0, buckets.overdue.size)
+        assertEquals(1, buckets.completed.size)
+        assertEquals("earlier_today", buckets.completed.first().id)
         assertEquals(0, buckets.today.size)
     }
 

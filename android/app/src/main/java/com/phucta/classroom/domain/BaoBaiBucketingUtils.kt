@@ -19,53 +19,61 @@ object BaoBaiBucketingUtils {
         val widgetItems: List<Coursework> get() = tomorrow
     }
 
-    fun sortCoursework(items: List<Coursework>): List<Coursework> {
-        return items.sortedWith { first, second ->
-            if (first.isCompleted != second.isCompleted) {
-                return@sortedWith if (!first.isCompleted) -1 else 1
-            }
-            when {
-                first.dueEpochMillis != null && second.dueEpochMillis != null -> {
-                    if (first.dueEpochMillis != second.dueEpochMillis) {
-                        first.dueEpochMillis.compareTo(second.dueEpochMillis)
-                    } else {
-                        first.title.compareTo(second.title, ignoreCase = true)
-                    }
+    val COURSEWORK_COMPARATOR = Comparator<Coursework> { first, second ->
+        if (first.isCompleted != second.isCompleted) {
+            if (!first.isCompleted) -1 else 1
+        } else when {
+            first.dueEpochMillis != null && second.dueEpochMillis != null -> {
+                if (first.dueEpochMillis != second.dueEpochMillis) {
+                    first.dueEpochMillis.compareTo(second.dueEpochMillis)
+                } else {
+                    first.title.compareTo(second.title, ignoreCase = true)
                 }
-                first.dueEpochMillis != null && second.dueEpochMillis == null -> -1
-                first.dueEpochMillis == null && second.dueEpochMillis != null -> 1
-                else -> first.title.compareTo(second.title, ignoreCase = true)
             }
+            first.dueEpochMillis != null && second.dueEpochMillis == null -> -1
+            first.dueEpochMillis == null && second.dueEpochMillis != null -> 1
+            else -> first.title.compareTo(second.title, ignoreCase = true)
         }
+    }
+
+    fun sortCoursework(items: List<Coursework>): List<Coursework> {
+        if (items.size <= 1) return items
+        return items.sortedWith(COURSEWORK_COMPARATOR)
     }
 
     fun filterByActiveCourses(items: List<Coursework>, courses: List<Course>): List<Coursework> {
         if (courses.isEmpty() || items.isEmpty()) return items
+        var hasUnselected = false
         val allCourseIds = HashSet<String>(courses.size)
         val activeCourseIds = HashSet<String>(courses.size)
         for (course in courses) {
             allCourseIds.add(course.id)
             if (course.isSelectedForWidget) {
                 activeCourseIds.add(course.id)
+            } else {
+                hasUnselected = true
             }
         }
-        val itemsMatchCourses = items.any { allCourseIds.contains(it.courseId) }
-        if (!itemsMatchCourses || activeCourseIds.isEmpty()) return items
-        return items.filter { activeCourseIds.contains(it.courseId) }
+        if (!hasUnselected || activeCourseIds.isEmpty()) return items
+
+        val result = ArrayList<Coursework>(items.size)
+        var anyMatchesLoadedCourses = false
+        for (item in items) {
+            if (allCourseIds.contains(item.courseId)) {
+                anyMatchesLoadedCourses = true
+                if (activeCourseIds.contains(item.courseId)) {
+                    result.add(item)
+                }
+            } else {
+                result.add(item)
+            }
+        }
+        return if (anyMatchesLoadedCourses) result else items
     }
 
     /**
-     * Core Algorithm for "Báo bài Ngày mai":
-     * "Báo bài là Ngày mai - Ngày hôm nay mặc định đã hoàn thành."
-     *
-     * 1. Primary target: Assignments due TOMORROW (startOfTomorrow until startOfDayAfter).
-     *    Today's completed tasks are EXCLUDED from tomorrow's agenda.
-     * 2. Fallback sequence when tomorrow has no assignments:
-     *    - Overdue incomplete tasks (stuff that was missed: dueEpochMillis < now && !isCompleted)
-     *    - Incomplete tasks due today (now <= dueEpochMillis < startOfTomorrow && !isCompleted)
-     *    - Next upcoming tasks (in 2+ days: dueEpochMillis >= startOfDayAfter)
-     *    - Undated tasks
-     *    - Empty state ("Ngày mai rảnh rồi!")
+     * "Báo bài Ngày mai": prioritizes assignments due tomorrow.
+     * If tomorrow is clear, falls back in order: overdue -> due today -> later upcoming -> undated.
      */
     fun getTomorrowCoursework(
         items: List<Coursework>,
@@ -91,7 +99,6 @@ object BaoBaiBucketingUtils {
         val startOfDayAfter = cal.timeInMillis
 
         val tomorrowFiltered = ArrayList<Coursework>()
-        val overdue = ArrayList<Coursework>()
         val todayIncomplete = ArrayList<Coursework>()
         val upcomingFiltered = ArrayList<Coursework>()
         val undatedFiltered = ArrayList<Coursework>()
@@ -101,12 +108,12 @@ object BaoBaiBucketingUtils {
             val due = item.dueEpochMillis
 
             if (due != null) {
+                // Triết lý: Cứ hết hạn thì tính là đã hoàn thành.
+                // Bài tập quá hạn (due < now) không được tính là bài cần làm và không đưa vào widget báo bài.
                 if (due in startOfTomorrow until startOfDayAfter) {
                     if (isEligible) tomorrowFiltered.add(item)
                 } else if (!item.isCompleted) {
-                    if (due < now) {
-                        overdue.add(item)
-                    } else if (due < startOfTomorrow) {
+                    if (due in now until startOfTomorrow) {
                         todayIncomplete.add(item)
                     } else if (isEligible && due >= startOfDayAfter) {
                         upcomingFiltered.add(item)
@@ -120,7 +127,6 @@ object BaoBaiBucketingUtils {
         }
 
         if (tomorrowFiltered.isNotEmpty()) return sortCoursework(tomorrowFiltered)
-        if (overdue.isNotEmpty()) return sortCoursework(overdue)
         if (todayIncomplete.isNotEmpty()) return sortCoursework(todayIncomplete)
         if (upcomingFiltered.isNotEmpty()) return sortCoursework(upcomingFiltered)
         if (undatedFiltered.isNotEmpty()) return sortCoursework(undatedFiltered)

@@ -82,6 +82,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
 
         provideContent {
             GlanceTheme {
+                val currentSize = androidx.glance.LocalSize.current
                 Box(
                     modifier = GlanceModifier
                         .fillMaxSize()
@@ -92,6 +93,8 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 ) {
                     if (!isAuthenticated) {
                         UnauthenticatedWidgetView()
+                    } else if (currentSize.width < 180.dp) {
+                        SmallChunkyWidgetContent(tomorrowItems)
                     } else {
                         MediumChunkyWidgetContent(tomorrowItems)
                     }
@@ -117,10 +120,50 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
             )
             Spacer(modifier = GlanceModifier.height(4.dp))
             Text(
-                text = "Vui lòng mở ứng dụng để đăng nhập Google.",
+                text = "Chạm để đăng nhập",
                 style = TextStyle(
-                    color = ColorProvider(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f)),
+                    color = ColorProvider(ChunkyColor.ButterYellow),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
+                )
+            )
+        }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun SmallChunkyWidgetContent(items: List<Coursework>) {
+        val incomplete = items.filter { !it.isCompleted }
+        val isAllDone = items.isEmpty() || incomplete.isEmpty()
+
+        Column(
+            modifier = GlanceModifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = if (isAllDone) "RẢNH RỒI" else "NGÀY MAI",
+                style = TextStyle(
+                    color = ColorProvider(ChunkyColor.ButterYellow),
+                    fontWeight = FontWeight.Bold,
                     fontSize = 11.sp
+                )
+            )
+            Spacer(modifier = GlanceModifier.height(2.dp))
+            Text(
+                text = if (isAllDone) "0" else "${incomplete.size}",
+                style = TextStyle(
+                    color = ColorProvider(androidx.compose.ui.graphics.Color.White),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp
+                )
+            )
+            Spacer(modifier = GlanceModifier.height(2.dp))
+            Text(
+                text = if (isAllDone) "Đã xong hết" else "bài cần nộp",
+                style = TextStyle(
+                    color = ColorProvider(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f)),
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 10.sp
                 )
             )
         }
@@ -133,9 +176,8 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         val isAllDone = items.isEmpty() || incomplete.isEmpty()
 
         val headerTitle = when {
-            isAllDone -> "✦ RẢNH RỒI"
+            isAllDone -> "RẢNH RỒI"
             incomplete.any { it.isDueTomorrow } -> "NGÀY MAI"
-            incomplete.all { it.isOverdue } -> "QUÁ HẠN"
             incomplete.all { it.isDueToday } -> "HÔM NAY"
             else -> "SẮP TỚI"
         }
@@ -149,7 +191,6 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
             modifier = GlanceModifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left Column: Mascot status
             Column(
                 modifier = GlanceModifier.width(90.dp).padding(end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -174,7 +215,6 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 )
             }
 
-            // Right Column: Task Cards
             Column(
                 modifier = GlanceModifier
                     .defaultWeight()
@@ -186,7 +226,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
             ) {
                 if (displayItems.isEmpty()) {
                     Text(
-                        text = if (items.isNotEmpty()) "Tất cả bài tập đã xong xuôi ✦" else "Không có bài tập nào cho ngày mai ✦",
+                        text = if (items.isNotEmpty()) "Tất cả bài tập đã xong xuôi." else "Không có bài tập nào cho ngày mai.",
                         style = TextStyle(
                             color = ColorProvider(ChunkyColor.TextMuted),
                             fontWeight = FontWeight.Medium,
@@ -213,7 +253,6 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Subject code
             Box(
                 modifier = GlanceModifier
                     .cornerRadius(3.dp)
@@ -232,7 +271,6 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.width(6.dp))
 
-            // Title
             Text(
                 text = item.title,
                 maxLines = 1,
@@ -246,7 +284,6 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.width(4.dp))
 
-            // Time
             Text(
                 text = item.timeOnlyString,
                 style = TextStyle(

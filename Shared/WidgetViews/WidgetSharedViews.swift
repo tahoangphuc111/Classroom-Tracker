@@ -28,6 +28,7 @@ public struct SubjectArtHelper {
 
     private static let cacheLock = NSLock()
     private static var categoryCache: [String: SubjectCategory] = [:]
+    private static let nonAlphanumericCharacterSet = CharacterSet.alphanumerics.inverted
 
     public static func category(for courseName: String, title: String? = nil) -> SubjectCategory {
         let key = "\(courseName)|\(title ?? "")"
@@ -57,19 +58,49 @@ public struct SubjectArtHelper {
         )
     }
 
+    public static func badgeCode(for category: SubjectCategory, courseName: String) -> String {
+        switch category {
+        case .math: return "TOÁ"
+        case .physics: return "LÝ"
+        case .chemistry: return "HOÁ"
+        case .biology: return "SINH"
+        case .historyOrGeography:
+            return courseName.localizedCaseInsensitiveContains("địa") ? "ĐỊA" : "SỬ"
+        case .literature: return "VĂN"
+        case .english: return "ANH"
+        case .civicsOrPhilosophy: return "GDCD"
+        case .economics: return "KTẾ"
+        case .artAndDesign: return "TKẾ"
+        case .computerScience: return "TIN"
+        case .networking: return "MẠNG"
+        case .generalAssignment: return "BTH"
+        case .other:
+            let cleaned = courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if cleaned.count >= 3 {
+                return String(cleaned.prefix(3)).uppercased()
+            }
+            return "MÔN"
+        }
+    }
+
+    public static func badgeCode(for courseName: String, title: String? = nil) -> String {
+        let cat = category(for: courseName, title: title)
+        return badgeCode(for: cat, courseName: courseName)
+    }
+
     private static func computeCategory(for courseName: String, title: String? = nil) -> SubjectCategory {
         let titleLower = (title ?? "").lowercased()
-        let titleTokens = Set(titleLower.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty })
+        let titleTokens = Set(titleLower.components(separatedBy: nonAlphanumericCharacterSet).filter { !$0.isEmpty })
 
         let courseLower = courseName.lowercased()
-        let courseTokens = Set(courseLower.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty })
+        let courseTokens = Set(courseLower.components(separatedBy: nonAlphanumericCharacterSet).filter { !$0.isEmpty })
 
         func matchCategory(text: String, tokens: Set<String>) -> SubjectCategory? {
             if text.contains("toán") || tokens.contains("math") || tokens.contains("maths") || text.contains("giải tích") || text.contains("đại số") || text.contains("hình học") || text.contains("xác suất") || tokens.contains("calculus") || tokens.contains("algebra") || tokens.contains("geometry") {
                 return .math
-            } else if text.contains("vật lý") || text.contains("vật lí") || tokens.contains("physics") || text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") || ((tokens.contains("lý") || tokens.contains("lí")) && !text.contains("quản lý") && !text.contains("xử lý") && !text.contains("tâm lý") && !text.contains("pháp lý") && !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("triết lý") && !text.contains("lý thuyết") && !text.contains("lý do")) {
+            } else if text.contains("vật lý") || text.contains("vật lí") || tokens.contains("physics") || text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") || ((tokens.contains("lý") || tokens.contains("lí")) && !text.contains("quản lý") && !text.contains("quản lí") && !text.contains("xử lý") && !text.contains("xử lí") && !text.contains("tâm lý") && !text.contains("tâm lí") && !text.contains("pháp lý") && !text.contains("pháp lí") && !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("triết lý") && !text.contains("triết lí") && !text.contains("lý thuyết") && !text.contains("lí thuyết") && !text.contains("lý do") && !text.contains("lí do")) {
                 return .physics
-            } else if text.contains("hóa học") || text.contains("hoá học") || text.contains("môn hóa") || text.contains("môn hoá") || tokens.contains("chemistry") || tokens.contains("chem") || ((tokens.contains("hóa") || tokens.contains("hoá")) && !text.contains("tự động hóa") && !text.contains("tiến hóa") && !text.contains("hóa đơn") && !text.contains("văn hóa") && !text.contains("tối ưu hóa") && !text.contains("chuẩn hóa") && !text.contains("công nghiệp hóa") && !text.contains("hiện đại hóa")) {
+            } else if text.contains("hóa học") || text.contains("hoá học") || text.contains("môn hóa") || text.contains("môn hoá") || tokens.contains("chemistry") || tokens.contains("chem") || ((tokens.contains("hóa") || tokens.contains("hoá")) && !text.contains("tự động hóa") && !text.contains("tự động hoá") && !text.contains("tiến hóa") && !text.contains("tiến hoá") && !text.contains("hóa đơn") && !text.contains("hoá đơn") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("tối ưu hóa") && !text.contains("tối ưu hoá") && !text.contains("chuẩn hóa") && !text.contains("chuẩn hoá") && !text.contains("công nghiệp hóa") && !text.contains("công nghiệp hoá") && !text.contains("hiện đại hóa") && !text.contains("hiện đại hoá")) {
                 return .chemistry
             } else if text.contains("sinh học") || text.contains("môn sinh") || tokens.contains("biology") || tokens.contains("bio") || text.contains("y học") || (tokens.contains("sinh") && !text.contains("học sinh") && !text.contains("sinh viên") && !text.contains("sinh hoạt")) {
                 return .biology
@@ -77,9 +108,9 @@ public struct SubjectArtHelper {
                 return .historyOrGeography
             } else if text.contains("địa lý") || text.contains("địa lí") || tokens.contains("geography") || (tokens.contains("địa") && !text.contains("địa chỉ") && !text.contains("địa điểm")) {
                 return .historyOrGeography
-            } else if text.contains("ngữ văn") || text.contains("tiếng việt") || tokens.contains("literature") || tokens.contains("writing") || tokens.contains("essay") || (tokens.contains("văn") && !text.contains("văn phòng") && !text.contains("văn hóa") && !text.contains("văn minh")) {
+            } else if text.contains("ngữ văn") || text.contains("tiếng việt") || tokens.contains("literature") || tokens.contains("writing") || tokens.contains("essay") || (tokens.contains("văn") && !text.contains("văn phòng") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("văn minh")) {
                 return .literature
-            } else if text.contains("tiếng anh") || tokens.contains("english") || tokens.contains("ielts") || tokens.contains("toeic") || tokens.contains("toefl") || (tokens.contains("anh") && !text.contains("hình ảnh") && !text.contains("âm thanh")) {
+            } else if text.contains("tiếng anh") || tokens.contains("english") || tokens.contains("ielts") || tokens.contains("toeic") || tokens.contains("toefl") || (tokens.contains("anh") && !text.contains("hình ảnh") && !text.contains("âm thanh") && !text.contains("thầy") && !text.contains("cô") && !text.contains("gv")) {
                 return .english
             } else if tokens.contains("gdcd") || text.contains("triết học") || text.contains("chính trị") || text.contains("pháp luật") || text.contains("kinh tế và pháp luật") || tokens.contains("law") || text.contains("tư tưởng") || (tokens.contains("triết") && !text.contains("triết lý")) {
                 return .civicsOrPhilosophy
@@ -499,8 +530,6 @@ public struct DueBadgeView: View {
     private var badgeColor: Color {
         if item.isCompleted {
             return Color(red: 0.12, green: 0.62, blue: 0.35)
-        } else if item.isOverdue {
-            return Color(red: 0.88, green: 0.22, blue: 0.20)
         } else if item.isDueToday {
             return Color(red: 0.90, green: 0.48, blue: 0.08)
         } else if item.isDueTomorrow {
@@ -513,13 +542,11 @@ public struct DueBadgeView: View {
     private var badgeText: String {
         if compact {
             if item.isCompleted {
-                return "Đã nộp"
-            } else if item.isOverdue {
-                return "Quá hạn"
+                return "Đã xong"
             } else if item.isDueToday {
-                return item.timeOnlyString == "Cuối ngày" ? "Hôm nay" : "Hôm nay \(item.timeOnlyString)"
+                return item.timeOnlyString == "Cuối ngày" ? "Hết hôm nay" : "Hôm nay \(item.timeOnlyString)"
             } else if item.isDueTomorrow {
-                return item.timeOnlyString == "Cuối ngày" ? "Ngày mai" : "Mai \(item.timeOnlyString)"
+                return item.timeOnlyString == "Cuối ngày" ? "Hết ngày mai" : "Mai \(item.timeOnlyString)"
             }
             if item.dueDate == nil {
                 return "Không hạn"
@@ -535,9 +562,6 @@ public struct DueBadgeView: View {
             if item.isCompleted {
                 Image(systemName: "checkmark")
                     .font(.system(size: compact ? 8 : 9, weight: .bold))
-            } else if item.isOverdue {
-                Image(systemName: "exclamationmark.circle.fill")
-                    .font(.system(size: compact ? 8 : 9, weight: .semibold))
             } else {
                 Image(systemName: "clock")
                     .font(.system(size: compact ? 8 : 9, weight: .medium))
@@ -712,8 +736,8 @@ public struct RisoSealStampView: View {
                         .widgetAccentable()
                         .offset(y: -1)
                 } else {
-                    Text("✦")
-                        .font(.system(size: size * 0.38, weight: .heavy, design: .serif))
+                    Image(systemName: "checkmark")
+                        .font(.system(size: size * 0.34, weight: .bold))
                         .foregroundStyle(accent)
                         .widgetAccentable()
                         .offset(y: -1)
@@ -1102,7 +1126,7 @@ public struct RisoEmptyStateDeskView: View {
                     .foregroundStyle(ink)
                     .lineLimit(1)
 
-                Text("Tất cả bài tập đã hoàn thành.\nHãy nghỉ ngơi và tận hưởng buổi tối ✦")
+                Text("Tất cả bài tập đã hoàn thành.\nHãy nghỉ ngơi và tận hưởng buổi tối.")
                     .font(.system(size: 11, weight: .medium, design: .serif))
                     .lineSpacing(2.5)
                     .foregroundStyle(muted)

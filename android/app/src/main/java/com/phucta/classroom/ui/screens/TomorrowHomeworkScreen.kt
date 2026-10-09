@@ -25,9 +25,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,13 +55,16 @@ fun TomorrowHomeworkScreen(
     onSelectAssignment: (Coursework) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val incompleteCount = tomorrowItems.count { !it.isCompleted }
-    val isAllDone = tomorrowItems.isNotEmpty() && incompleteCount == 0
+    val incompleteCount = remember(tomorrowItems) { tomorrowItems.count { !it.isCompleted } }
+    val isAllDone = remember(tomorrowItems, incompleteCount) { tomorrowItems.isNotEmpty() && incompleteCount == 0 }
 
-    val emotion = when {
-        tomorrowItems.isEmpty() || isAllDone -> EmberEmotion.SLEEPING
-        incompleteCount >= 3 -> EmberEmotion.STRESSED
-        else -> EmberEmotion.NORMAL
+    val emotion = remember(tomorrowItems.isEmpty(), isAllDone, incompleteCount) {
+        when {
+            isAllDone -> EmberEmotion.CELEBRATING
+            tomorrowItems.isEmpty() -> EmberEmotion.SLEEPING
+            incompleteCount >= 3 -> EmberEmotion.STRESSED
+            else -> EmberEmotion.NORMAL
+        }
     }
 
     val emberTransition = rememberInfiniteTransition(label = "emberFloating")
@@ -75,10 +82,9 @@ fun TomorrowHomeworkScreen(
         modifier = modifier
             .fillMaxSize()
             .background(ChunkyColor.WindowBackground),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Hero Banner with Ember Flame
         item {
             Box(
                 modifier = Modifier
@@ -114,7 +120,7 @@ fun TomorrowHomeworkScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Không có bài tập nào cần chuẩn bị cho ngày mai. Nghỉ ngơi nhé ✦",
+                                text = "Không có bài tập nào cần chuẩn bị cho ngày mai. Nghỉ ngơi nhé.",
                                 color = Color.White.copy(alpha = 0.95f),
                                 fontSize = 12.5.sp,
                                 lineHeight = 17.sp
@@ -128,7 +134,7 @@ fun TomorrowHomeworkScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Tất cả bài tập ngày mai đã được giải quyết xong xuôi ✦",
+                                text = "Tất cả bài tập ngày mai đã được giải quyết xong xuôi.",
                                 color = Color.White.copy(alpha = 0.95f),
                                 fontSize = 12.5.sp,
                                 lineHeight = 17.sp
@@ -153,7 +159,6 @@ fun TomorrowHomeworkScreen(
             }
         }
 
-        // Empty state when no items at all
         if (tomorrowItems.isEmpty()) {
             item {
                 Box(
@@ -169,10 +174,11 @@ fun TomorrowHomeworkScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Text(
-                            text = "✦",
-                            fontSize = 32.sp,
-                            color = ChunkyColor.SkyBottom
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = ChunkyColor.SkyBottom,
+                            modifier = Modifier.size(36.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -193,7 +199,6 @@ fun TomorrowHomeworkScreen(
                 }
             }
         } else {
-            // All-done banner if applicable
             if (isAllDone) {
                 item {
                     Box(
@@ -205,7 +210,12 @@ fun TomorrowHomeworkScreen(
                             .padding(horizontal = 14.dp, vertical = 10.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "🎉", fontSize = 18.sp)
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = ChunkyColor.SuccessGreen,
+                                modifier = Modifier.size(20.dp)
+                            )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
                                 text = "Bạn đã hoàn thành tất cả bài tập cho ngày mai!",
@@ -218,7 +228,6 @@ fun TomorrowHomeworkScreen(
                 }
             }
 
-            // Section Title
             item {
                 Text(
                     text = "DANH SÁCH BÀI TẬP",

@@ -3,27 +3,24 @@ import WidgetKit
 
 public struct LargeWidgetView: View {
     let courseworkList: [Coursework]
+    let isLoggedIn: Bool
 
-    public init(courseworkList: [Coursework]) {
+    public init(courseworkList: [Coursework], isLoggedIn: Bool = true) {
         self.courseworkList = courseworkList
+        self.isLoggedIn = isLoggedIn
     }
 
     private var sectionHeaderTitle: String {
         let pending = courseworkList.filter { !$0.isCompleted }
-        let hasOverdue = pending.contains(where: \.isOverdue)
         let hasToday = pending.contains(where: \.isDueToday)
         let hasTomorrow = pending.contains(where: \.isDueTomorrow)
 
-        if hasOverdue && !hasToday && !hasTomorrow {
-            return "QUÁ HẠN"
-        } else if hasToday && hasTomorrow {
+        if hasToday && hasTomorrow {
             return "HÔM NAY & MAI"
         } else if hasToday {
             return "HÔM NAY"
         } else if hasTomorrow {
             return "NGÀY MAI"
-        } else if hasOverdue {
-            return "QUÁ HẠN"
         } else if !pending.isEmpty {
             return "SẮP TỚI"
         } else if courseworkList.contains(where: \.isDueToday) {
@@ -35,7 +32,6 @@ public struct LargeWidgetView: View {
 
     private var sectionCapsuleLabel: String {
         switch sectionHeaderTitle {
-        case "QUÁ HẠN": return "Quá hạn"
         case "HÔM NAY & MAI": return "Hôm nay & mai"
         case "HÔM NAY": return "Hôm nay"
         case "SẮP TỚI": return "Sắp tới"
@@ -72,35 +68,38 @@ public struct LargeWidgetView: View {
 
             backgroundClouds
 
-            VStack(spacing: 0) {
-                HStack(alignment: .center, spacing: 14) {
-                    ChunkyEmberCharacterView(emotion: characterEmotion, size: 78)
-                        .padding(.leading, 18)
+            if !isLoggedIn {
+                loggedOutLargeView
+            } else {
+                VStack(spacing: 0) {
+                    HStack(alignment: .center, spacing: 14) {
+                        ChunkyEmberCharacterView(emotion: characterEmotion, size: 78)
+                            .padding(.leading, 18)
 
-                    VStack(alignment: .leading, spacing: 4.5) {
-                        HStack(alignment: .firstTextBaseline, spacing: 7) {
-                            Text("\(activeItems.count)")
-                                .font(WidgetFontSystem.counter(size: 40))
-                                .foregroundStyle(Color.white)
-                                .shadow(color: Color.black.opacity(0.14), radius: 0, x: 0, y: 1.5)
+                        VStack(alignment: .leading, spacing: 4.5) {
+                            HStack(alignment: .firstTextBaseline, spacing: 7) {
+                                Text("\(activeItems.count)")
+                                    .font(WidgetFontSystem.counter(size: 40))
+                                    .foregroundStyle(Color.white)
+                                    .shadow(color: Color.black.opacity(0.14), radius: 0, x: 0, y: 1.5)
 
-                            Text(activeItems.count == 0 ? "HOÀN TẤT" : "CẦN NỘP")
-                                .font(WidgetFontSystem.sectionHeader(size: 15))
-                                .tracking(0.0)
-                                .foregroundStyle(ChunkyTheme.butterYellow)
-                        }
+                                Text(activeItems.count == 0 ? "HOÀN TẤT" : "CẦN NỘP")
+                                    .font(WidgetFontSystem.sectionHeader(size: 15))
+                                    .tracking(0.0)
+                                    .foregroundStyle(ChunkyTheme.butterYellow)
+                            }
 
-                        HStack(spacing: 6) {
-                            summaryCapsule(label: "\(sectionCapsuleLabel): \(activeItems.count)", isUrgent: false)
-                            if !completedItems.isEmpty {
-                                summaryCapsule(label: "Đã xong: \(completedItems.count)", isUrgent: false, isSuccess: true)
+                            HStack(spacing: 6) {
+                                summaryCapsule(label: "\(sectionCapsuleLabel): \(activeItems.count)", isUrgent: activeItems.contains(where: \.isUrgent))
+                                if !completedItems.isEmpty {
+                                    summaryCapsule(label: "Đã xong: \(completedItems.count)", isUrgent: false, isSuccess: true)
+                                }
                             }
                         }
-                    }
 
-                    Spacer()
-                }
-                .frame(height: 90)
+                        Spacer()
+                    }
+                    .frame(height: 90)
 
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -250,10 +249,65 @@ public struct LargeWidgetView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
+                }
             }
         }
         .unredacted()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var loggedOutLargeView: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 14) {
+                ChunkyEmberCharacterView(emotion: .normal, size: 78)
+                    .padding(.leading, 18)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("BÁO BÀI NGÀY MAI")
+                        .font(WidgetFontSystem.sectionHeader(size: 13))
+                        .foregroundStyle(ChunkyTheme.butterYellow)
+
+                    Text("Chưa đăng nhập")
+                        .font(WidgetFontSystem.counter(size: 24))
+                        .foregroundStyle(Color.white)
+                        .shadow(color: Color.black.opacity(0.14), radius: 0, x: 0, y: 1.5)
+                }
+
+                Spacer()
+            }
+            .frame(height: 90)
+
+            ZStack(alignment: .center) {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(ChunkyTheme.sheetBg)
+                    .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 8, x: 0, y: 3)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
+                    )
+
+                VStack(spacing: 12) {
+                    Image(systemName: "person.crop.circle.badge.plus")
+                        .font(.system(size: 42, weight: .semibold))
+                        .foregroundStyle(ChunkyTheme.pillBlue)
+
+                    VStack(spacing: 4) {
+                        Text("Chạm để đăng nhập")
+                            .font(WidgetFontSystem.courseTitle(size: 15))
+                            .foregroundStyle(ChunkyTheme.textPrimary)
+
+                        Text("Đăng nhập tài khoản Google Classroom để theo dõi bài tập cần hoàn thành cho ngày mai.")
+                            .font(WidgetFontSystem.meta(size: 11.5))
+                            .foregroundStyle(ChunkyTheme.textMuted)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                    }
+                }
+                .padding(.vertical, 20)
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 12)
+        }
     }
 
     private var backgroundClouds: some View {
@@ -271,10 +325,18 @@ public struct LargeWidgetView: View {
     private var emptyStateView: some View {
         VStack(spacing: 6) {
             Spacer()
-            Text("✦ Tuyệt vời! ✦")
-                .font(WidgetFontSystem.sectionHeader(size: 20))
-                .tracking(0.0)
-                .foregroundStyle(ChunkyTheme.textPrimary)
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
+                Text("Tuyệt vời!")
+                    .font(WidgetFontSystem.sectionHeader(size: 20))
+                    .tracking(0.0)
+                    .foregroundStyle(ChunkyTheme.textPrimary)
+                Image(systemName: "sparkles")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
+            }
             Text("Không có môn nào cần nộp")
                 .font(WidgetFontSystem.meta(size: 13))
                 .tracking(0.0)
@@ -290,21 +352,13 @@ public struct LargeWidgetView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: fontSize + 5, weight: .bold))
                 .foregroundStyle(Color.green)
-        } else if item.isOverdue {
-            Text("Quá hạn")
-                .font(WidgetFontSystem.statusTag(size: fontSize))
-                .foregroundStyle(Color.white)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3.5)
-                .background(ChunkyTheme.urgentAccent)
-                .clipShape(Capsule())
         } else {
             Text(item.timeOnlyString)
                 .font(WidgetFontSystem.statusTag(size: fontSize))
-                .foregroundStyle(ChunkyTheme.textMuted)
+                .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3.5)
-                .background(Color.black.opacity(0.04))
+                .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.04))
                 .clipShape(Capsule())
         }
     }

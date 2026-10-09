@@ -55,6 +55,7 @@ struct ClassroomApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .preferredColorScheme(.light)
                 #if os(macOS)
                 .frame(minWidth: 840, minHeight: 580)
                 #endif

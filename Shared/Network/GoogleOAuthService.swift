@@ -628,19 +628,16 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         ClassroomStorage.shared.saveUserLoggedIn(true)
         guard let data = try? JSONEncoder().encode(tokens) else { return }
 
-        // 1. UserDefaults cache (Standard + App Group suites)
         UserDefaults.standard.set(data, forKey: Self.tokenUserDefaultsKey)
         for ud in ClassroomStorage.shared.allUserDefaults {
             ud.set(data, forKey: Self.tokenUserDefaultsKey)
         }
 
-        // 2. Shared container disk cache
         for dir in allTokenDirectories {
             let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
             try? data.write(to: fileURL, options: .atomic)
         }
 
-        // 3. System Keychain
         deleteKeychainOnly()
 
         var query: [String: Any] = [
@@ -668,7 +665,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             return memory
         }
 
-        // 1. System Keychain
+        // Keychain -> UserDefaults -> app group suites -> shared disk cache
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
@@ -691,14 +688,12 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             }
         }
 
-        // 2. Standard UserDefaults
         if let data = UserDefaults.standard.data(forKey: Self.tokenUserDefaultsKey),
            let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
             self.inMemoryTokens = decoded
             return decoded
         }
 
-        // 3. App Group UserDefaults suites
         for ud in ClassroomStorage.shared.allUserDefaults {
             if let data = ud.data(forKey: Self.tokenUserDefaultsKey),
                let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
@@ -707,7 +702,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             }
         }
 
-        // 4. Shared container disk cache
         for dir in allTokenDirectories {
             let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
             if let data = try? Data(contentsOf: fileURL),

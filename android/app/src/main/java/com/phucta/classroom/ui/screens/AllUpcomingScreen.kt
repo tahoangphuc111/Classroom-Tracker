@@ -43,6 +43,12 @@ import com.phucta.classroom.domain.BaoBaiBucketingUtils
 import com.phucta.classroom.ui.components.AssignmentCard
 import com.phucta.classroom.ui.theme.ChunkyColor
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun AllUpcomingScreen(
@@ -52,8 +58,9 @@ fun AllUpcomingScreen(
     onSelectAssignment: (Coursework) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var searchQuery by remember { mutableStateOf("") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForVietnameseSearch() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val filteredItems = remember(allCoursework, normalizedQuery) {
         if (normalizedQuery.isBlank()) {
@@ -72,7 +79,6 @@ fun AllUpcomingScreen(
             .fillMaxSize()
             .background(ChunkyColor.WindowBackground)
     ) {
-        // Search Bar
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -86,6 +92,8 @@ fun AllUpcomingScreen(
                 }
             },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = ChunkyColor.SurfaceWhite,
@@ -98,11 +106,12 @@ fun AllUpcomingScreen(
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         )
 
-        val hasAnyUpcoming = buckets.overdue.isNotEmpty() ||
-                buckets.today.isNotEmpty() ||
+        val hasAnyUpcoming = buckets.today.isNotEmpty() ||
                 buckets.tomorrow.isNotEmpty() ||
                 buckets.laterUpcoming.isNotEmpty() ||
                 buckets.noDueDate.isNotEmpty()
+
+        val hasAnyCompletedMatches = searchQuery.isNotBlank() && buckets.completed.isNotEmpty()
 
         if (filteredItems.isEmpty()) {
             Box(
@@ -157,7 +166,7 @@ fun AllUpcomingScreen(
                     }
                 }
             }
-        } else if (!hasAnyUpcoming) {
+        } else if (!hasAnyUpcoming && !hasAnyCompletedMatches) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -197,7 +206,7 @@ fun AllUpcomingScreen(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Tất cả bài tập đã được đánh dấu hoàn thành xuất sắc ✦",
+                            text = "Tất cả bài tập đã được đánh dấu hoàn thành xuất sắc.",
                             fontSize = 13.sp,
                             color = ChunkyColor.TextMuted,
                             textAlign = TextAlign.Center,
@@ -209,28 +218,9 @@ fun AllUpcomingScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Overdue section
-                if (buckets.overdue.isNotEmpty()) {
-                    item {
-                        SectionHeader(title = "QUÁ HẠN (${buckets.overdue.size})", color = ChunkyColor.UrgentAccent)
-                    }
-                    items(buckets.overdue, key = { it.id }) { item ->
-                        AssignmentCard(
-                            coursework = item,
-                            onToggleCompletion = { onToggleCompletion(item.id, it) },
-                            onClick = { onSelectAssignment(item) },
-                            modifier = Modifier.animateItemPlacement(
-                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
-                            )
-                        )
-                    }
-                    item { Spacer(modifier = Modifier.height(6.dp)) }
-                }
-
-                // Today section
                 if (buckets.today.isNotEmpty()) {
                     item {
                         SectionHeader(title = "HÔM NAY (${buckets.today.size})", color = ChunkyColor.EmberTop)
@@ -248,7 +238,6 @@ fun AllUpcomingScreen(
                     item { Spacer(modifier = Modifier.height(6.dp)) }
                 }
 
-                // Tomorrow section
                 if (buckets.tomorrow.isNotEmpty()) {
                     item {
                         SectionHeader(title = "NGÀY MAI (${buckets.tomorrow.size})", color = ChunkyColor.SkyBottom)
@@ -266,7 +255,6 @@ fun AllUpcomingScreen(
                     item { Spacer(modifier = Modifier.height(6.dp)) }
                 }
 
-                // Later upcoming
                 if (buckets.laterUpcoming.isNotEmpty()) {
                     item {
                         SectionHeader(title = "SẮP TỚI (${buckets.laterUpcoming.size})", color = ChunkyColor.TextMuted)
@@ -284,12 +272,28 @@ fun AllUpcomingScreen(
                     item { Spacer(modifier = Modifier.height(6.dp)) }
                 }
 
-                // No due date
                 if (buckets.noDueDate.isNotEmpty()) {
                     item {
                         SectionHeader(title = "KHÔNG CÓ HẠN (${buckets.noDueDate.size})", color = ChunkyColor.TextMuted)
                     }
                     items(buckets.noDueDate, key = { it.id }) { item ->
+                        AssignmentCard(
+                            coursework = item,
+                            onToggleCompletion = { onToggleCompletion(item.id, it) },
+                            onClick = { onSelectAssignment(item) },
+                            modifier = Modifier.animateItemPlacement(
+                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            )
+                        )
+                    }
+                }
+
+                if (searchQuery.isNotBlank() && buckets.completed.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        SectionHeader(title = "ĐÃ HOÀN THÀNH (${buckets.completed.size})", color = ChunkyColor.SuccessGreen)
+                    }
+                    items(buckets.completed, key = { it.id }) { item ->
                         AssignmentCard(
                             coursework = item,
                             onToggleCompletion = { onToggleCompletion(item.id, it) },

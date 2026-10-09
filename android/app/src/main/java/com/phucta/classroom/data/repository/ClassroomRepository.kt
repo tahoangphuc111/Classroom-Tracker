@@ -44,7 +44,6 @@ class ClassroomRepository(
     private val _syncErrorMessage = MutableStateFlow<String?>(null)
     val syncErrorMessage: StateFlow<String?> = _syncErrorMessage.asStateFlow()
 
-    // Observable Flows from Room
     val coursesFlow: Flow<List<Course>> = courseDao.observeAllCourses().map { entities ->
         entities.map { it.toDomain() }
     }
@@ -75,12 +74,8 @@ class ClassroomRepository(
     }
 
     /**
-     * Synchronizes Google Classroom courses and coursework.
-     * Enforces:
-     * 1. 10 QPS Quota Shield: Chunks course queries by 3 with delay.
-     * 2. Checklist State Preservation: Never overwrites locally completed tasks, accepts Google completions.
-     * 3. Selection State Preservation: Merges existing course widget selection flags.
-     * 4. Cache Hygiene: Removes mock data on first sync and purges stale courses/tasks.
+     * Syncs active courses and coursework from Google Classroom.
+     * Preserves locally checked tasks and widget course selections.
      */
     suspend fun syncAll(): Result<Unit> = withContext(Dispatchers.IO) {
         if (_isSyncing.value) return@withContext Result.success(Unit)
@@ -95,14 +90,13 @@ class ClassroomRepository(
         try {
             val accessToken = oauthManager.getValidAccessToken()
 
-            // 1. Fetch active courses
             val fetchedCourses = apiService.fetchActiveCourses(accessToken)
 
             val existingCourseEntities = courseDao.getAllCourses()
             val hasOnlyMockCourses = existingCourseEntities.isNotEmpty() &&
                     existingCourseEntities.all { MockDataProvider.isMockCourse(it.id) }
 
-            // Merge existing isSelectedForWidget states
+            // Preserve widget selection preferences
             val existingCourses = if (hasOnlyMockCourses) emptyList() else existingCourseEntities.map { it.toDomain() }
             val existingSelectionMap = existingCourses.associate { it.id to it.isSelectedForWidget }
 
@@ -111,7 +105,7 @@ class ClassroomRepository(
                 course.copy(isSelectedForWidget = preservedSelection)
             }
 
-            // 2. Fetch coursework for selected courses using 10 QPS Quota Shield (chunk size 2, 350ms delay)
+            // Fetch in small batches to respect Google's rate limits
             val selectedCourses = mergedCourses.filter { it.isSelectedForWidget }
             val existingCoursework = if (hasOnlyMockCourses) emptyList() else courseworkDao.getAllCoursework().map { it.toDomain() }
             val allCoursework = mutableListOf<Coursework>()
@@ -132,7 +126,7 @@ class ClassroomRepository(
                     val results = deferredResults.awaitAll()
                     results.forEach { allCoursework.addAll(it) }
                 }
-                delay(350) // 10 QPS protection breathing room
+                delay(350)
             }
 
             // Preserve unselected courses' coursework in cache
@@ -140,7 +134,6 @@ class ClassroomRepository(
             val preservedItems = existingCoursework.filter { unselectedIds.contains(it.courseId) }
             allCoursework.addAll(preservedItems)
 
-            // 3. Atomically persist courses and coursework in Room transaction with TOCTOU protection
             database.withTransaction {
                 if (hasOnlyMockCourses) {
                     courseDao.deleteAllCourses()
@@ -149,21 +142,19 @@ class ClassroomRepository(
 
                 courseDao.upsertCourses(mergedCourses.map { CourseEntity.fromDomain(it) })
 
-                // Clean up stale courses that were archived or deleted on Google
+                // Remove deleted or archived courses
                 val activeCourseIds = mergedCourses.map { it.id }
                 if (activeCourseIds.isNotEmpty()) {
                     courseDao.deleteCoursesNotIn(activeCourseIds)
                 }
 
-                // Reload fresh coursework right before saving to prevent overwriting user checkmarks
-                // toggled while network chunks were fetching (TOCTOU protection)
+                // Re-read local status to avoid overwriting checkmarks toggled during fetch
                 val latestCoursework = courseworkDao.getAllCoursework().map { it.toDomain() }
                 val latestStatusMap = latestCoursework.associateBy { it.id }
 
                 val finalCoursework = allCoursework.map { incoming ->
                     val latest = latestStatusMap[incoming.id]
-                    // If Google reports completed (TURNED_IN or RETURNED), accept Google's status.
-                    // If Google reports incomplete, keep local checkmark if user previously marked it complete.
+                    // Keep local completion if not yet turned in on Classroom
                     val wasManuallyCompleted = !incoming.isCompleted &&
                             (latest?.isManuallyCompleted == true || latest?.status == SubmissionStatus.TURNED_IN)
 
@@ -179,7 +170,7 @@ class ClassroomRepository(
 
                 courseworkDao.upsertCourseworks(finalCoursework.map { CourseworkEntity.fromDomain(it) })
 
-                // Clean up stale coursework that was removed on Google
+                // Remove deleted assignments
                 val validCourseworkIds = finalCoursework.map { it.id }
                 if (validCourseworkIds.isNotEmpty()) {
                     courseworkDao.deleteCourseworkNotIn(validCourseworkIds)

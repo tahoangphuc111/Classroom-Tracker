@@ -45,7 +45,7 @@ public final class AppUpdateService: ObservableObject {
     public func checkForUpdates(isUserInitiated: Bool = false) async {
         guard !isChecking else { return }
 
-        // Throttle automatic background checks to once every 4 hours to preserve GitHub's 60 req/hour IP quota
+        // Throttle background checks to every 4 hours to avoid hitting GitHub rate limits
         if !isUserInitiated {
             let lastCheck = UserDefaults.standard.double(forKey: lastCheckKey)
             if lastCheck > 0 && Date().timeIntervalSince1970 - lastCheck < 14400 {
@@ -86,7 +86,7 @@ public final class AppUpdateService: ObservableObject {
             UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastCheckKey)
 
             if httpResponse.statusCode == 304 {
-                // Not modified, currently on the latest version
+                // 304 Not Modified: already on latest version
                 self.updateAvailable = false
                 self.statusMessage = "Bạn đang dùng phiên bản mới nhất (v\(currentVersion))."
                 return

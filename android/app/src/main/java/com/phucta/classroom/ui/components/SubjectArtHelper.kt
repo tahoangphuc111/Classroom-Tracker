@@ -25,21 +25,17 @@ data class SubjectTheme(
     val badgeCode: String
 )
 
+private val TOKEN_DELIMITER_REGEX = Regex("[^\\p{L}\\p{Nd}]+")
+
 object SubjectArtHelper {
 
-    private val categoryCache = mutableMapOf<String, SubjectCategory>()
+    private val categoryCache = java.util.concurrent.ConcurrentHashMap<String, SubjectCategory>()
 
     fun category(courseName: String, title: String? = null): SubjectCategory {
         val key = "$courseName|${title ?: ""}"
-        synchronized(categoryCache) {
-            categoryCache[key]?.let { return it }
+        return categoryCache.getOrPut(key) {
+            computeCategory(courseName, title)
         }
-
-        val computed = computeCategory(courseName, title)
-        synchronized(categoryCache) {
-            categoryCache[key] = computed
-        }
-        return computed
     }
 
     fun theme(courseName: String, title: String? = null): SubjectTheme {
@@ -53,10 +49,10 @@ object SubjectArtHelper {
 
     private fun computeCategory(courseName: String, title: String? = null): SubjectCategory {
         val titleLower = (title ?: "").lowercase()
-        val titleTokens = titleLower.split(Regex("[^\\p{L}\\p{Nd}]+")).filter { it.isNotEmpty() }.toSet()
+        val titleTokens = TOKEN_DELIMITER_REGEX.split(titleLower).filter { it.isNotEmpty() }.toSet()
 
         val courseLower = courseName.lowercase()
-        val courseTokens = courseLower.split(Regex("[^\\p{L}\\p{Nd}]+")).filter { it.isNotEmpty() }.toSet()
+        val courseTokens = TOKEN_DELIMITER_REGEX.split(courseLower).filter { it.isNotEmpty() }.toSet()
 
         fun match(text: String, tokens: Set<String>): SubjectCategory? {
             return when {
@@ -144,15 +140,15 @@ object SubjectArtHelper {
 
     fun themeColor(category: SubjectCategory): Color {
         return when (category) {
-            SubjectCategory.MATH -> Color(0xFFF2991A)
+            SubjectCategory.MATH -> Color(0xFFD97706)
             SubjectCategory.PHYSICS -> Color(0xFF7361E0)
             SubjectCategory.CHEMISTRY -> Color(0xFFDC47AD)
-            SubjectCategory.BIOLOGY -> Color(0xFF33B866)
-            SubjectCategory.HISTORY_OR_GEOGRAPHY -> Color(0xFFD98529)
+            SubjectCategory.BIOLOGY -> Color(0xFF15803D)
+            SubjectCategory.HISTORY_OR_GEOGRAPHY -> Color(0xFFC2410C)
             SubjectCategory.LITERATURE -> Color(0xFFEB6138)
             SubjectCategory.ENGLISH -> Color(0xFF2694EB)
             SubjectCategory.CIVICS_OR_PHILOSOPHY -> Color(0xFFE04752)
-            SubjectCategory.ECONOMICS -> Color(0xFFE6A61F)
+            SubjectCategory.ECONOMICS -> Color(0xFFB45309)
             SubjectCategory.ART_AND_DESIGN -> Color(0xFFE6408C)
             SubjectCategory.COMPUTER_SCIENCE -> Color(0xFF14AD8A)
             SubjectCategory.NETWORKING -> Color(0xFF8C66EB)

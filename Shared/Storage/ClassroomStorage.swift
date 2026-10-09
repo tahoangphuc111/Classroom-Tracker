@@ -24,16 +24,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         appGroupCandidates.first ?? "group.com.phucta.classroom"
     }
 
-    public lazy var allUserDefaults: [UserDefaults] = {
-        var list: [UserDefaults] = []
-        for id in ClassroomStorage.appGroupCandidates {
-            if let ud = UserDefaults(suiteName: id) {
-                list.append(ud)
-            }
-        }
-        list.append(.standard)
-        return list
-    }()
+    public let allUserDefaults: [UserDefaults]
 
     private let userDefaults: UserDefaults
     private let coursesKey = "cached_classroom_courses"
@@ -223,6 +214,15 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     private init() {
+        var list: [UserDefaults] = []
+        for id in ClassroomStorage.appGroupCandidates {
+            if let ud = UserDefaults(suiteName: id) {
+                list.append(ud)
+            }
+        }
+        list.append(.standard)
+        self.allUserDefaults = list
+
         if let candidate = ClassroomStorage.appGroupCandidates.compactMap({ UserDefaults(suiteName: $0) }).first {
             self.userDefaults = candidate
         } else {
@@ -566,7 +566,6 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
 
         var tomorrowFiltered: [Coursework] = []
-        var overdue: [Coursework] = []
         var todayIncomplete: [Coursework] = []
         var laterUpcoming: [Coursework] = []
         var undated: [Coursework] = []
@@ -578,12 +577,12 @@ public final class ClassroomStorage: @unchecked Sendable {
                 continue
             }
 
+            // Triết lý: Cứ hết hạn thì tính là đã hoàn thành.
+            // Các bài tập đã qua hạn (dueDate < now) không còn là bài tập cần giải quyết và không được đưa vào danh sách nhắc nhở widget.
             if dueDate >= startOfTomorrow && dueDate < startOfDayAfter {
                 if isEligible { tomorrowFiltered.append(item) }
             } else if !item.isCompleted {
-                if dueDate < now {
-                    overdue.append(item)
-                } else if dueDate >= now && dueDate < startOfTomorrow {
+                if dueDate >= now && dueDate < startOfTomorrow {
                     todayIncomplete.append(item)
                 } else if isEligible && dueDate >= startOfDayAfter {
                     laterUpcoming.append(item)
@@ -594,7 +593,6 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
 
         if !tomorrowFiltered.isEmpty { return sortCoursework(tomorrowFiltered) }
-        if !overdue.isEmpty { return sortCoursework(overdue) }
         if !todayIncomplete.isEmpty { return sortCoursework(todayIncomplete) }
         if !laterUpcoming.isEmpty { return sortCoursework(laterUpcoming) }
         if !undated.isEmpty { return sortCoursework(undated) }

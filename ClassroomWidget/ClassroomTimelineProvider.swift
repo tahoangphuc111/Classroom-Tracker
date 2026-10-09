@@ -5,10 +5,12 @@ import os
 public struct ClassroomEntry: TimelineEntry {
     public let date: Date
     public let courseworkList: [Coursework]
+    public let isLoggedIn: Bool
 
-    public init(date: Date, courseworkList: [Coursework]) {
+    public init(date: Date, courseworkList: [Coursework], isLoggedIn: Bool = true) {
         self.date = date
         self.courseworkList = courseworkList
+        self.isLoggedIn = isLoggedIn
     }
 
     public var hasUrgentTask: Bool {
@@ -22,22 +24,23 @@ public struct ClassroomTimelineProvider: TimelineProvider {
     public func placeholder(in context: Context) -> ClassroomEntry {
         let real = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
         if !real.isEmpty {
-            return ClassroomEntry(date: Date(), courseworkList: real)
+            return ClassroomEntry(date: Date(), courseworkList: real, isLoggedIn: true)
         }
-        return ClassroomEntry(date: Date(), courseworkList: ClassroomStorage.mockCoursework)
+        return ClassroomEntry(date: Date(), courseworkList: ClassroomStorage.mockCoursework, isLoggedIn: true)
     }
 
     public func getSnapshot(in context: Context, completion: @escaping (ClassroomEntry) -> Void) {
         let widgetLogger = Logger(subsystem: "com.phucta.ClassroomTracker.widget", category: "timeline")
+        let isLoggedIn = ClassroomStorage.shared.hasUserLoggedIn
         let real = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
         widgetLogger.notice("getSnapshot: isPreview=\(context.isPreview), real count=\(real.count), IDs: \(real.map(\.id).joined(separator: ","), privacy: .public)")
         if !real.isEmpty {
-            completion(ClassroomEntry(date: Date(), courseworkList: real))
+            completion(ClassroomEntry(date: Date(), courseworkList: real, isLoggedIn: isLoggedIn))
             return
         }
 
-        if ClassroomStorage.shared.hasUserLoggedIn {
-            completion(ClassroomEntry(date: Date(), courseworkList: []))
+        if isLoggedIn {
+            completion(ClassroomEntry(date: Date(), courseworkList: [], isLoggedIn: true))
             return
         }
 
@@ -45,21 +48,22 @@ public struct ClassroomTimelineProvider: TimelineProvider {
             let mock = ClassroomStorage.mockCoursework
             let tomorrow = mock.filter { $0.isDueTomorrow }
             let items = tomorrow.isEmpty ? mock : tomorrow
-            completion(ClassroomEntry(date: Date(), courseworkList: items))
+            completion(ClassroomEntry(date: Date(), courseworkList: items, isLoggedIn: true))
             return
         }
 
-        completion(ClassroomEntry(date: Date(), courseworkList: []))
+        completion(ClassroomEntry(date: Date(), courseworkList: [], isLoggedIn: false))
     }
 
     public func getTimeline(in context: Context, completion: @escaping (Timeline<ClassroomEntry>) -> Void) {
         let widgetLogger = Logger(subsystem: "com.phucta.ClassroomTracker.widget", category: "timeline")
+        let isLoggedIn = ClassroomStorage.shared.hasUserLoggedIn
         let real = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
         let displayItems: [Coursework] = real
         widgetLogger.notice("getTimeline: \(displayItems.count) items, IDs: \(displayItems.map(\.id).joined(separator: ","), privacy: .public)")
 
         let currentDate = Date()
-        let currentEntry = ClassroomEntry(date: currentDate, courseworkList: displayItems)
+        let currentEntry = ClassroomEntry(date: currentDate, courseworkList: displayItems, isLoggedIn: isLoggedIn)
 
         var nextRefresh = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate) ?? currentDate.addingTimeInterval(900)
 

@@ -108,7 +108,7 @@ public struct ContentView: View {
         case tomorrow = "Báo bài Ngày mai"
         case todayAndTomorrow = "Hôm nay & Ngày mai"
         case allUpcoming = "Tất cả sắp tới"
-        case past = "Đã qua hạn"
+        case past = "Đã quá hạn"
         case completed = "Đã hoàn thành"
         case widgetPreview = "Xem trước Widget"
 
@@ -145,6 +145,12 @@ public struct ContentView: View {
         public let allUpcoming: [Coursework]
         public var widgetItems: [Coursework] { tomorrow }
 
+        public let tomorrowPendingCount: Int
+        public let todayAndTomorrowPendingCount: Int
+        public let allUpcomingPendingCount: Int
+        public let pastPendingCount: Int
+        public let completedCount: Int
+
         public init(
             tomorrow: [Coursework] = [],
             today: [Coursework] = [],
@@ -161,6 +167,17 @@ public struct ContentView: View {
             self.completed = completed
             self.todayAndTomorrow = today + tomorrow
             self.allUpcoming = today + tomorrow + laterUpcoming + noDueDate
+
+            let tomorrowPending = tomorrow.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
+            let todayPending = today.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
+            let laterPending = laterUpcoming.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
+            let noDuePending = noDueDate.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
+
+            self.tomorrowPendingCount = tomorrowPending
+            self.todayAndTomorrowPendingCount = todayPending + tomorrowPending
+            self.allUpcomingPendingCount = todayPending + tomorrowPending + laterPending + noDuePending
+            self.pastPendingCount = past.count
+            self.completedCount = completed.count
         }
     }
 
@@ -193,7 +210,6 @@ public struct ContentView: View {
 
             if item.isCompleted {
                 comp.append(item)
-                continue
             }
 
             guard let dueDate = item.dueDate else {
@@ -202,7 +218,9 @@ public struct ContentView: View {
             }
 
             if dueDate < now {
-                pasts.append(item)
+                if !item.isCompleted {
+                    pasts.append(item)
+                }
             } else if dueDate < startOfTomorrow {
                 todays.append(item)
             } else if dueDate < startOfDayAfter {
@@ -212,7 +230,10 @@ public struct ContentView: View {
             }
         }
 
-        let dueDateAscending: (Coursework, Coursework) -> Bool = {
+        let sortWithPendingFirstAscending: (Coursework, Coursework) -> Bool = {
+            if $0.isCompleted != $1.isCompleted {
+                return !$0.isCompleted
+            }
             switch ($0.dueDate, $1.dueDate) {
             case let (d1?, d2?):
                 if d1 != d2 { return d1 < d2 }
@@ -236,12 +257,12 @@ public struct ContentView: View {
             }
         }
 
-        tomorrows.sort(by: dueDateAscending)
-        todays.sort(by: dueDateAscending)
-        laters.sort(by: dueDateAscending)
-        pasts.sort(by: dueDateDescending)
+        tomorrows.sort(by: sortWithPendingFirstAscending)
+        todays.sort(by: sortWithPendingFirstAscending)
+        laters.sort(by: sortWithPendingFirstAscending)
+        pasts.sort(by: sortWithPendingFirstAscending)
         comp.sort(by: dueDateDescending)
-        noDates.sort { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        noDates.sort(by: sortWithPendingFirstAscending)
 
         self.buckets = CourseworkBuckets(
             tomorrow: tomorrows,
@@ -304,13 +325,34 @@ public struct ContentView: View {
                 noDueDates: selectedFilter == .allUpcoming ? buckets.noDueDate : []
             )
         } else {
-            let listIds = Set(list.map(\.id))
-            return (
-                todays: buckets.today.filter { listIds.contains($0.id) },
-                tomorrows: buckets.tomorrow.filter { listIds.contains($0.id) },
-                laters: selectedFilter == .allUpcoming ? buckets.laterUpcoming.filter { listIds.contains($0.id) } : [],
-                noDueDates: selectedFilter == .allUpcoming ? buckets.noDueDate.filter { listIds.contains($0.id) } : []
-            )
+            let calendar = Calendar.current
+            let now = Date()
+            let startOfToday = calendar.startOfDay(for: now)
+            guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
+                  let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday) else {
+                return ([], [], [], [])
+            }
+
+            var todays: [Coursework] = []
+            var tomorrows: [Coursework] = []
+            var laters: [Coursework] = []
+            var noDueDates: [Coursework] = []
+
+            for item in list {
+                guard let dueDate = item.dueDate else {
+                    if selectedFilter == .allUpcoming { noDueDates.append(item) }
+                    continue
+                }
+                if dueDate < startOfTomorrow {
+                    todays.append(item)
+                } else if dueDate < startOfDayAfter {
+                    tomorrows.append(item)
+                } else if selectedFilter == .allUpcoming {
+                    laters.append(item)
+                }
+            }
+
+            return (todays, tomorrows, laters, noDueDates)
         }
     }
 
@@ -344,8 +386,30 @@ public struct ContentView: View {
             }
         }
         .onChange(of: selectedFilter) {
+            if selectedFilter == .past && buckets.past.isEmpty {
+                selectedFilter = .tomorrow
+            }
             autoSelectFirstItem()
         }
+        .onChange(of: searchText) {
+            let list = currentFilteredList
+            if let current = selectedCoursework, list.contains(where: { $0.id == current.id }) {
+                // Keep selected coursework if it matches query
+            } else if let first = list.first {
+                selectedCoursework = first
+                selectedCourseworkIds = [first.id]
+            } else {
+                selectedCoursework = nil
+                selectedCourseworkIds.removeAll()
+            }
+        }
+        #if os(iOS)
+        .onChange(of: selectedCoursework) {
+            if horizontalSizeClass == .compact && selectedCoursework == nil {
+                showMobileDetailSheet = false
+            }
+        }
+        #endif
         #if os(iOS)
         .onChange(of: verticalSizeClass) {
             if verticalSizeClass == .compact {
@@ -414,13 +478,11 @@ public struct ContentView: View {
             VStack(spacing: 24) {
                 Spacer()
 
-                // App Logo with subtle floating motion
                 AppLogoView(size: 88)
                     .offset(y: floatingPhase)
                     .opacity(welcomeAppeared ? 1 : 0)
                     .scaleEffect(welcomeAppeared ? 1 : 0.85)
 
-                // Title & Subtitle (human, direct, no AI buzzwords)
                 VStack(spacing: 6) {
                     Text("Classroom Tracker")
                         .font(.system(size: 26, weight: .bold, design: .rounded))
@@ -448,7 +510,6 @@ public struct ContentView: View {
                     .frame(maxWidth: 380)
                 }
 
-                // Action Buttons with SpringPressButtonStyle (smooth 120fps feel)
                 VStack(spacing: 12) {
                     Button {
                         triggerHapticFeedback()
@@ -500,7 +561,6 @@ public struct ContentView: View {
                 .opacity(welcomeAppeared ? 1 : 0)
                 .offset(y: welcomeAppeared ? 0 : 12)
 
-                // Collapsible Advanced Configuration
                 DisclosureGroup(
                     isExpanded: $showAdvancedOAuthConfig,
                     content: {
@@ -614,23 +674,17 @@ public struct ContentView: View {
     @ViewBuilder
     private var compactAppView: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                detailMasterView(isCompact: true)
-                    .padding(.bottom, 66)
-
-                LiquidGlassBottomNavigationBar(
-                    selectedFilter: $selectedFilter,
-                    buckets: buckets,
-                    glassNamespace: liquidGlassNamespace,
-                    onSelect: { _ in
-                        autoSelectFirstItem()
-                    }
-                )
-                .padding(.horizontal, 14)
-                .padding(.bottom, 10)
-                .zIndex(50)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            detailMasterView(isCompact: true)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    LiquidGlassBottomNavigationBar(
+                        selectedFilter: $selectedFilter,
+                        buckets: buckets,
+                        glassNamespace: liquidGlassNamespace,
+                        onSelect: { _ in
+                            autoSelectFirstItem()
+                        }
+                    )
+                }
         }
         .sheet(isPresented: $showCompactCourseFilterSheet) {
             compactCourseFilterSheetView
@@ -747,9 +801,9 @@ public struct ContentView: View {
             }
 
             Section("Danh mục báo bài") {
-                sidebarCategoryRow(for: .tomorrow, count: buckets.tomorrow.count)
-                sidebarCategoryRow(for: .todayAndTomorrow, count: buckets.todayAndTomorrow.count)
-                sidebarCategoryRow(for: .allUpcoming, count: buckets.allUpcoming.count)
+                sidebarCategoryRow(for: .tomorrow, count: buckets.tomorrowPendingCount)
+                sidebarCategoryRow(for: .todayAndTomorrow, count: buckets.todayAndTomorrowPendingCount)
+                sidebarCategoryRow(for: .allUpcoming, count: buckets.allUpcomingPendingCount)
                 if buckets.past.count > 0 {
                     sidebarCategoryRow(for: .past, count: buckets.past.count)
                 }
@@ -992,6 +1046,12 @@ public struct ContentView: View {
                             toggleCompletion(for: item)
                         }
                     }
+                    .keyboardShortcut(.space, modifiers: [])
+                    Button("") {
+                        if !isSearchFocused, let item = selectedCoursework {
+                            toggleCompletion(for: item)
+                        }
+                    }
                     .keyboardShortcut("d", modifiers: [.command])
                     #endif
                 }
@@ -1108,6 +1168,8 @@ public struct ContentView: View {
                 Text(formattedCurrentDate())
                     .font(.system(size: 11.5, weight: .medium))
                     .foregroundStyle(Color.platformTextSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
 
             Spacer()
@@ -1654,33 +1716,31 @@ public struct ContentView: View {
 
                         Spacer(minLength: 16)
 
-                        if let link = item.alternateLink, let url = URL(string: link) {
-                            Button {
-                                triggerHapticFeedback()
-                                openURL(url)
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "arrow.up.right.square.fill")
-                                        .font(.system(size: 14, weight: .bold))
-                                    Text("Mở bài tập trên Google Classroom để nộp bài")
-                                        .font(.system(size: 13.5, weight: .semibold))
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.85)
-                                    #if os(macOS)
-                                    Text("(⌘O)")
-                                        .font(.system(size: 11, weight: .medium))
-                                        .opacity(0.85)
-                                    #endif
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
+                        Button {
+                            triggerHapticFeedback()
+                            openURL(item.destinationURL)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "arrow.up.right.square.fill")
+                                    .font(.system(size: 14, weight: .bold))
+                                Text("Mở bài tập trên Google Classroom để nộp bài")
+                                    .font(.system(size: 13.5, weight: .semibold))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.85)
+                                #if os(macOS)
+                                Text("(⌘O)")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .opacity(0.85)
+                                #endif
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(Color.blue)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            .keyboardShortcut("o", modifiers: [.command])
-                            .help("Mở bài tập trực tiếp trên Google Classroom (⌘O)")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
                         }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.blue)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .keyboardShortcut("o", modifiers: [.command])
+                        .help("Mở bài tập trực tiếp trên Google Classroom (⌘O)")
                     }
                     #if os(iOS)
                     .padding(horizontalSizeClass == .compact ? 16 : 24)
@@ -1928,10 +1988,10 @@ public struct ContentView: View {
                 regularPreviewControls
                 #endif
 
-                if buckets.widgetItems.isEmpty && !useSampleDataForPreview {
+                if !useSampleDataForPreview && !ClassroomStorage.shared.hasUserLoggedIn && ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true).isEmpty {
                     HStack(spacing: 4) {
                         Image(systemName: "info.circle")
-                        Text("Chưa có bài tập đến hạn hôm nay & mai (đang tự động dùng dữ liệu mẫu)")
+                        Text("Chưa đăng nhập (đang tự động dùng dữ liệu mẫu cho xem trước)")
                     }
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
@@ -2119,7 +2179,7 @@ public struct ContentView: View {
                     HStack {
                         Text("Phiên bản hiện tại:")
                         Spacer()
-                        Text("v\(updateService.currentVersion)")
+                        Text("v\(updateService.latestVersion)")
                             .foregroundStyle(.secondary)
                     }
 
@@ -2335,21 +2395,6 @@ public struct ContentView: View {
         self.courses = ClassroomStorage.shared.loadCourses()
         self.allCoursework = ClassroomStorage.shared.loadCoursework()
         recomputeBuckets()
-
-        // If current filter has no items, but items exist in other categories, intelligently switch (skip when inspecting widget preview)
-        if selectedFilter != .widgetPreview && baseFilteredList.isEmpty && !allCoursework.isEmpty {
-            if !buckets.tomorrow.isEmpty {
-                selectedFilter = .tomorrow
-            } else if !buckets.todayAndTomorrow.isEmpty {
-                selectedFilter = .todayAndTomorrow
-            } else if !buckets.allUpcoming.isEmpty {
-                selectedFilter = .allUpcoming
-            } else if !buckets.past.isEmpty {
-                selectedFilter = .past
-            } else if !buckets.completed.isEmpty {
-                selectedFilter = .completed
-            }
-        }
 
         if let current = selectedCoursework, currentFilteredList.contains(where: { $0.id == current.id }) {
             if let updated = allCoursework.first(where: { $0.id == current.id }) {
@@ -2841,17 +2886,23 @@ private struct AssignmentListRow: View, Equatable {
 
                         if isTurnedIn {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 12, weight: .bold))
+                                .font(.system(size: 13, weight: .bold))
                                 .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
                                 .background(Circle().fill(Color.white).padding(1))
                                 .offset(x: 3, y: 3)
                                 .scaleEffect(checkmarkBounce ? 1.3 : 1.0)
                                 .transition(.scale.combined(with: .opacity))
+                        } else {
+                            Circle()
+                                .strokeBorder(Color.secondary.opacity(0.35), lineWidth: 1.2)
+                                .background(Circle().fill(Color.platformControlBackground.opacity(0.85)))
+                                .frame(width: 12, height: 12)
+                                .offset(x: 2, y: 2)
                         }
                     }
                     .scaleEffect(checkmarkBounce ? 1.15 : 1.0)
                 }
-                .frame(width: 38, height: 38)
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
                 .buttonStyle(.plain)
                 .help(isTurnedIn ? "Đã nộp bài (Space hoặc bấm để hoàn tác)" : "Chưa nộp bài (Space hoặc bấm để đánh dấu hoàn thành)")
@@ -3026,21 +3077,29 @@ private struct AssignmentListEmptyView: View {
         VStack(spacing: 16) {
             Spacer()
 
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [emptyTint.opacity(0.18), emptyTint.opacity(0.0)],
-                            center: .center,
-                            startRadius: 10,
-                            endRadius: 54
+            if !isSearching && (filter == .tomorrow || filter == .todayAndTomorrow) {
+                ChunkyEmberCharacterView(emotion: .sleeping, size: 76)
+                    .padding(.bottom, 2)
+            } else if !isSearching && filter == .past {
+                ChunkyEmberCharacterView(emotion: .celebrating, size: 76)
+                    .padding(.bottom, 2)
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [emptyTint.opacity(0.18), emptyTint.opacity(0.0)],
+                                center: .center,
+                                startRadius: 10,
+                                endRadius: 54
+                            )
                         )
-                    )
-                    .frame(width: 92, height: 92)
+                        .frame(width: 92, height: 92)
 
-                Image(systemName: emptyIcon)
-                    .font(.system(size: 34, weight: .light))
-                    .foregroundStyle(emptyTint)
+                    Image(systemName: emptyIcon)
+                        .font(.system(size: 34, weight: .light))
+                        .foregroundStyle(emptyTint)
+                }
             }
 
             VStack(spacing: 6) {
@@ -3241,7 +3300,7 @@ private struct GuideStepRow: View {
     }
 }
 
-// MARK: - Liquid Glass Bottom Navigation Bar (OS 27 SDK)
+// MARK: - Bottom Navigation Bar
 
 public struct LiquidGlassBottomNavigationBar: View {
     @Binding var selectedFilter: ContentView.AppFilterCategory
@@ -3249,27 +3308,76 @@ public struct LiquidGlassBottomNavigationBar: View {
     var glassNamespace: Namespace.ID
     let onSelect: (ContentView.AppFilterCategory) -> Void
 
-    private struct TabItem: Identifiable {
+    @Environment(\.colorScheme) private var colorScheme
+
+    private struct TabItem: Identifiable, Equatable {
         let category: ContentView.AppFilterCategory
         let shortTitle: String
         let icon: String
+        let activeIcon: String
         let count: Int?
 
         var id: String { category.rawValue }
+
+        static func == (lhs: TabItem, rhs: TabItem) -> Bool {
+            lhs.category == rhs.category && lhs.count == rhs.count
+        }
     }
 
     private var tabs: [TabItem] {
         var items: [TabItem] = [
-            TabItem(category: .tomorrow, shortTitle: "Báo bài", icon: ContentView.AppFilterCategory.tomorrow.icon, count: buckets.tomorrow.count),
-            TabItem(category: .todayAndTomorrow, shortTitle: "Hôm nay", icon: ContentView.AppFilterCategory.todayAndTomorrow.icon, count: buckets.todayAndTomorrow.count),
-            TabItem(category: .allUpcoming, shortTitle: "Sắp tới", icon: ContentView.AppFilterCategory.allUpcoming.icon, count: buckets.allUpcoming.count),
+            TabItem(
+                category: .tomorrow,
+                shortTitle: "Báo bài",
+                icon: "calendar.badge.clock",
+                activeIcon: "calendar.badge.clock",
+                count: buckets.tomorrowPendingCount
+            ),
+            TabItem(
+                category: .todayAndTomorrow,
+                shortTitle: "Hôm nay",
+                icon: "clock",
+                activeIcon: "clock.fill",
+                count: buckets.todayAndTomorrowPendingCount
+            ),
+            TabItem(
+                category: .allUpcoming,
+                shortTitle: "Sắp tới",
+                icon: "tray",
+                activeIcon: "tray.fill",
+                count: buckets.allUpcomingPendingCount
+            ),
         ]
         if buckets.past.count > 0 {
-            items.append(TabItem(category: .past, shortTitle: "Quá hạn", icon: ContentView.AppFilterCategory.past.icon, count: buckets.past.count))
+            items.append(
+                TabItem(
+                    category: .past,
+                    shortTitle: "Quá hạn",
+                    icon: "clock.badge.exclamationmark",
+                    activeIcon: "clock.badge.exclamationmark.fill",
+                    count: buckets.past.count
+                )
+            )
         }
-        items.append(TabItem(category: .completed, shortTitle: "Đã xong", icon: ContentView.AppFilterCategory.completed.icon, count: buckets.completed.count))
+        items.append(
+            TabItem(
+                category: .completed,
+                shortTitle: "Đã xong",
+                icon: "checkmark.seal",
+                activeIcon: "checkmark.seal.fill",
+                count: buckets.completed.count
+            )
+        )
         if buckets.past.count == 0 {
-            items.append(TabItem(category: .widgetPreview, shortTitle: "Widget", icon: ContentView.AppFilterCategory.widgetPreview.icon, count: nil))
+            items.append(
+                TabItem(
+                    category: .widgetPreview,
+                    shortTitle: "Widget",
+                    icon: "macwindow",
+                    activeIcon: "macwindow.on.rectangle",
+                    count: nil
+                )
+            )
         }
         return items
     }
@@ -3287,105 +3395,74 @@ public struct LiquidGlassBottomNavigationBar: View {
     }
 
     public var body: some View {
-        if #available(iOS 26, macOS 26, *) {
-            GlassEffectContainer(spacing: 4) {
-                HStack(spacing: 4) {
-                    ForEach(tabs) { tab in
-                        liquidGlassTabButton(for: tab)
+        VStack(spacing: 0) {
+            Divider()
+                .opacity(colorScheme == .dark ? 0.35 : 0.65)
+
+            HStack(spacing: 0) {
+                ForEach(tabs) { tab in
+                    tabButton(for: tab)
+                }
+            }
+            .frame(height: 50)
+            .padding(.top, 4)
+            .padding(.bottom, 2)
+        }
+        .frame(maxWidth: .infinity)
+        .background(
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea(edges: .bottom)
+        )
+    }
+
+    @ViewBuilder
+    private func tabButton(for tab: TabItem) -> some View {
+        let isSelected = (selectedFilter == tab.category)
+        let tabColor = categoryColor(tab.category)
+
+        Button {
+            selectTab(tab.category)
+        } label: {
+            VStack(spacing: 3) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: isSelected ? tab.activeIcon : tab.icon)
+                        .font(.system(size: 21, weight: isSelected ? .bold : .medium))
+                        .foregroundStyle(isSelected ? tabColor : Color.secondary)
+                        .scaleEffect(isSelected ? 1.06 : 1.0)
+                        .frame(width: 28, height: 24)
+
+                    if let count = tab.count, count > 0 {
+                        Text(count > 99 ? "99+" : "\(count)")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color.white)
+                            .padding(.horizontal, 3.5)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(tabColor))
+                            .offset(x: 10, y: -4)
+                            .scaleEffect(isSelected ? 1.05 : 1.0)
                     }
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 5)
-            }
-            .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 5)
-        } else {
-            HStack(spacing: 4) {
-                ForEach(tabs) { tab in
-                    materialTabButton(for: tab)
-                }
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 5)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
-            .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 5)
-        }
-    }
 
-    @available(iOS 26, macOS 26, *)
-    @ViewBuilder
-    private func liquidGlassTabButton(for tab: TabItem) -> some View {
-        let isSelected = (selectedFilter == tab.category)
-        let tabColor = categoryColor(tab.category)
-
-        Button {
-            triggerFeedback()
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.72)) {
-                selectedFilter = tab.category
-                onSelect(tab.category)
+                Text(tab.shortTitle)
+                    .font(.system(size: 10, weight: isSelected ? .semibold : .medium))
+                    .foregroundStyle(isSelected ? tabColor : Color.secondary)
+                    .lineLimit(1)
             }
-        } label: {
-            tabLabel(for: tab, isSelected: isSelected, tabColor: tabColor)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .glassEffect(
-            isSelected
-                ? .regular.tint(tabColor.opacity(0.32)).interactive()
-                : .regular.interactive(),
-            in: .capsule
-        )
-        .glassEffectID(tab.id, in: glassNamespace)
+        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: isSelected)
     }
 
-    @ViewBuilder
-    private func materialTabButton(for tab: TabItem) -> some View {
-        let isSelected = (selectedFilter == tab.category)
-        let tabColor = categoryColor(tab.category)
-
-        Button {
-            triggerFeedback()
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.72)) {
-                selectedFilter = tab.category
-                onSelect(tab.category)
-            }
-        } label: {
-            tabLabel(for: tab, isSelected: isSelected, tabColor: tabColor)
-                .background(
-                    Capsule()
-                        .fill(isSelected ? tabColor.opacity(0.20) : Color.clear)
-                )
+    private func selectTab(_ category: ContentView.AppFilterCategory) {
+        guard selectedFilter != category else { return }
+        triggerFeedback()
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+            selectedFilter = category
+            onSelect(category)
         }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private func tabLabel(for tab: TabItem, isSelected: Bool, tabColor: Color) -> some View {
-        VStack(spacing: 2) {
-            ZStack(alignment: .topTrailing) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 13, weight: isSelected ? .bold : .semibold))
-                    .foregroundStyle(isSelected ? tabColor : Color.primary.opacity(0.72))
-                    .frame(width: 22, height: 18)
-
-                if let count = tab.count, count > 0 {
-                    Text("\(count)")
-                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.white)
-                        .padding(.horizontal, 3.5)
-                        .padding(.vertical, 1)
-                        .background(Capsule().fill(tabColor))
-                        .offset(x: 9, y: -5)
-                }
-            }
-
-            Text(tab.shortTitle)
-                .font(.system(size: 9.5, weight: isSelected ? .bold : .medium))
-                .foregroundStyle(isSelected ? tabColor : Color.secondary)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 7)
-        .padding(.vertical, 5)
-        .contentShape(Capsule())
     }
 
     private func triggerFeedback() {
@@ -3405,4 +3482,3 @@ public struct LiquidGlassBottomNavigationBar: View {
         }
     }
 }
-

@@ -45,6 +45,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.phucta.classroom.ui.theme.ChunkyColor
 
+import androidx.compose.foundation.layout.imePadding
+
 @Composable
 fun SettingsDialog(
     isAuthenticated: Boolean,
@@ -61,6 +63,7 @@ fun SettingsDialog(
 ) {
     var customClientId by remember(initialClientId) { mutableStateOf(initialClientId ?: "") }
     var customClientSecret by remember(initialClientSecret) { mutableStateOf(initialClientSecret ?: "") }
+    var showLogoutConfirmation by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -74,13 +77,13 @@ fun SettingsDialog(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .padding(vertical = 24.dp)
+                .imePadding()
         ) {
             Column(
                 modifier = Modifier
                     .padding(20.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -99,7 +102,6 @@ fun SettingsDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Account Section
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -157,7 +159,6 @@ fun SettingsDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Auth Action Button
                 if (isAuthenticated) {
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Button(
@@ -183,7 +184,7 @@ fun SettingsDialog(
                         Spacer(modifier = Modifier.width(10.dp))
 
                         OutlinedButton(
-                            onClick = onSignOut,
+                            onClick = { showLogoutConfirmation = true },
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text("Đăng xuất", color = ChunkyColor.UrgentAccent)
@@ -204,7 +205,6 @@ fun SettingsDialog(
                 HorizontalDivider(color = ChunkyColor.Hairline)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Custom Credentials (Optional)
                 Text(
                     text = "CẤU HÌNH CLIENT ID RIÊNG (TÙY CHỌN)",
                     fontWeight = FontWeight.Bold,
@@ -258,7 +258,7 @@ fun SettingsDialog(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(46.dp),
+                        .height(48.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = ChunkyColor.SkyBottom
                     ),
@@ -276,5 +276,44 @@ fun SettingsDialog(
                 )
             }
         }
+    }
+
+    if (showLogoutConfirmation) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showLogoutConfirmation = false },
+            title = {
+                Text(
+                    text = "Đăng xuất tài khoản?",
+                    fontWeight = FontWeight.Bold,
+                    color = ChunkyColor.TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "Toàn bộ dữ liệu bài tập đã lưu trên thiết bị sẽ được xoá. Bạn có thể đăng nhập lại bất kỳ lúc nào.",
+                    color = ChunkyColor.TextMuted,
+                    fontSize = 13.5.sp
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showLogoutConfirmation = false
+                        onSignOut()
+                    }
+                ) {
+                    Text("Đăng xuất", color = ChunkyColor.UrgentAccent, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { showLogoutConfirmation = false }
+                ) {
+                    Text("Huỷ", color = ChunkyColor.TextPrimary)
+                }
+            },
+            containerColor = ChunkyColor.SurfaceWhite,
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 }

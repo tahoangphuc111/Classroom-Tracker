@@ -5,19 +5,16 @@ import java.util.Locale
 import java.util.regex.Pattern
 
 private val DIACRITICS_PATTERN = Pattern.compile("\\p{InCombiningDiacriticalMarks}+")
+private val VIETNAMESE_LOCALE = Locale("vi", "VN")
 
 fun String.normalizeForVietnameseSearch(): String {
     if (this.isEmpty()) return ""
 
-    // 1. Replace Vietnamese specific 'đ' and 'Đ'
-    val replaced = this
-        .replace("đ", "d")
-        .replace("Đ", "d")
+    // Lowercase first using Vietnamese locale so both 'đ' and 'Đ' map to 'đ'
+    val lower = this.lowercase(VIETNAMESE_LOCALE).replace('đ', 'd')
 
-    // 2. Decompose diacritics using NFD and remove combining marks
-    val decomposed = Normalizer.normalize(replaced, Normalizer.Form.NFD)
+    val decomposed = Normalizer.normalize(lower, Normalizer.Form.NFD)
     val stripped = DIACRITICS_PATTERN.matcher(decomposed).replaceAll("")
 
-    // 3. Lowercase with Vietnamese locale
-    return stripped.lowercase(Locale("vi", "VN")).trim()
+    return stripped.trim()
 }

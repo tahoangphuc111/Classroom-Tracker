@@ -10,13 +10,13 @@ struct ClassroomWidgetEntryView: View {
         Group {
             switch family {
             case .systemSmall:
-                SmallWidgetView(courseworkList: entry.courseworkList)
+                SmallWidgetView(courseworkList: entry.courseworkList, isLoggedIn: entry.isLoggedIn)
             case .systemMedium:
-                MediumWidgetView(courseworkList: entry.courseworkList)
+                MediumWidgetView(courseworkList: entry.courseworkList, isLoggedIn: entry.isLoggedIn)
             case .systemLarge:
-                LargeWidgetView(courseworkList: entry.courseworkList)
+                LargeWidgetView(courseworkList: entry.courseworkList, isLoggedIn: entry.isLoggedIn)
             default:
-                SmallWidgetView(courseworkList: entry.courseworkList)
+                SmallWidgetView(courseworkList: entry.courseworkList, isLoggedIn: entry.isLoggedIn)
             }
         }
         .environment(\.colorScheme, .light)

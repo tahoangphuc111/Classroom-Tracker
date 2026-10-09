@@ -3,27 +3,24 @@ import WidgetKit
 
 public struct SmallWidgetView: View {
     let courseworkList: [Coursework]
+    let isLoggedIn: Bool
 
-    public init(courseworkList: [Coursework]) {
+    public init(courseworkList: [Coursework], isLoggedIn: Bool = true) {
         self.courseworkList = courseworkList
+        self.isLoggedIn = isLoggedIn
     }
 
     private var sectionHeaderTitle: String {
         let pending = courseworkList.filter { !$0.isCompleted }
-        let hasOverdue = pending.contains(where: \.isOverdue)
         let hasToday = pending.contains(where: \.isDueToday)
         let hasTomorrow = pending.contains(where: \.isDueTomorrow)
 
-        if hasOverdue && !hasToday && !hasTomorrow {
-            return "QUÁ HẠN"
-        } else if hasToday && hasTomorrow {
+        if hasToday && hasTomorrow {
             return "HÔM NAY & MAI"
         } else if hasToday {
             return "HÔM NAY"
         } else if hasTomorrow {
             return "NGÀY MAI"
-        } else if hasOverdue {
-            return "QUÁ HẠN"
         } else if !pending.isEmpty {
             return "SẮP TỚI"
         } else if courseworkList.contains(where: \.isDueToday) {
@@ -71,71 +68,108 @@ public struct SmallWidgetView: View {
             ChunkyTheme.skyGradient
                 .ignoresSafeArea()
 
-            VStack(spacing: 5) {
-                HStack(alignment: .center, spacing: 6) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text("\(activeItems.count)")
-                                .font(WidgetFontSystem.counter(size: 25))
-                                .foregroundStyle(Color.white)
-                                .shadow(color: Color.black.opacity(0.14), radius: 0, x: 0, y: 1)
-
-                            Text(activeItems.isEmpty && !courseworkList.isEmpty ? "HOÀN TẤT" : "CẦN NỘP")
-                                .font(WidgetFontSystem.sectionHeader(size: 8.5))
-                                .tracking(0.0)
-                                .foregroundStyle(ChunkyTheme.butterYellow)
-                        }
-
-                        HStack(spacing: 4) {
-                            Text(sectionHeaderTitle)
-                                .font(WidgetFontSystem.meta(size: 7.5))
-                                .tracking(0.0)
-                                .foregroundStyle(Color.white.opacity(0.95))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(Color.white.opacity(0.22))
-                                .clipShape(Capsule())
-
-                            if extraCount > 0 {
-                                Text("+\(extraCount)")
-                                    .font(WidgetFontSystem.statusTag(size: 7.5))
+            if !isLoggedIn {
+                loggedOutSmallView
+            } else {
+                VStack(spacing: 5) {
+                    HStack(alignment: .center, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                Text("\(activeItems.count)")
+                                    .font(WidgetFontSystem.counter(size: 25))
                                     .foregroundStyle(Color.white)
-                                    .padding(.horizontal, 4.5)
+                                    .shadow(color: Color.black.opacity(0.14), radius: 0, x: 0, y: 1)
+
+                                Text(activeItems.isEmpty && !courseworkList.isEmpty ? "HOÀN TẤT" : "CẦN NỘP")
+                                    .font(WidgetFontSystem.sectionHeader(size: 8.5))
+                                    .tracking(0.0)
+                                    .foregroundStyle(ChunkyTheme.butterYellow)
+                            }
+
+                            HStack(spacing: 4) {
+                                Text(sectionHeaderTitle)
+                                    .font(WidgetFontSystem.meta(size: 7.5))
+                                    .tracking(0.0)
+                                    .foregroundStyle(Color.white.opacity(0.95))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
+                                    .padding(.horizontal, 5)
                                     .padding(.vertical, 2)
-                                    .background(ChunkyTheme.urgentAccent)
+                                    .background(Color.white.opacity(0.22))
                                     .clipShape(Capsule())
+
+                                if extraCount > 0 {
+                                    Text("+\(extraCount)")
+                                        .font(WidgetFontSystem.statusTag(size: 7.5))
+                                        .foregroundStyle(Color.white)
+                                        .padding(.horizontal, 4.5)
+                                        .padding(.vertical, 2)
+                                        .background(ChunkyTheme.urgentAccent)
+                                        .clipShape(Capsule())
+                                }
                             }
                         }
+
+                        Spacer(minLength: 2)
+
+                        ChunkyEmberCharacterView(emotion: characterEmotion, size: 42)
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.top, 7)
 
-                    Spacer(minLength: 2)
+                    ZStack(alignment: .center) {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(ChunkyTheme.sheetBg)
+                            .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 5, x: 0, y: 2)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
+                            )
 
-                    ChunkyEmberCharacterView(emotion: characterEmotion, size: 42)
+                        cardContent
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 8)
                 }
-                .padding(.horizontal, 10)
-                .padding(.top, 7)
-
-                ZStack(alignment: .center) {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(ChunkyTheme.sheetBg)
-                        .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 5, x: 0, y: 2)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
-                        )
-
-                    cardContent
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
-                }
-                .padding(.horizontal, 8)
-                .padding(.bottom, 8)
             }
         }
         .widgetURL(primaryItem?.destinationURL)
         .unredacted()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var loggedOutSmallView: some View {
+        VStack(spacing: 6) {
+            ChunkyEmberCharacterView(emotion: .normal, size: 44)
+
+            ZStack(alignment: .center) {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(ChunkyTheme.sheetBg)
+                    .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 5, x: 0, y: 2)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
+                    )
+
+                VStack(spacing: 3) {
+                    Text("Chưa đăng nhập")
+                        .font(WidgetFontSystem.courseTitle(size: 10))
+                        .foregroundStyle(ChunkyTheme.textPrimary)
+                        .lineLimit(1)
+
+                    Text("Chạm để đăng nhập")
+                        .font(WidgetFontSystem.meta(size: 8))
+                        .foregroundStyle(ChunkyTheme.pillBlue)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 6)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -152,10 +186,15 @@ public struct SmallWidgetView: View {
 
     private var emptyStateView: some View {
         VStack(spacing: 3) {
-            Text("✦ Rảnh rồi!")
-                .font(WidgetFontSystem.sectionHeader(size: 11.5))
-                .tracking(0.0)
-                .foregroundStyle(ChunkyTheme.textPrimary)
+            HStack(spacing: 4) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
+                Text("Rảnh rồi!")
+                    .font(WidgetFontSystem.sectionHeader(size: 11.5))
+                    .tracking(0.0)
+                    .foregroundStyle(ChunkyTheme.textPrimary)
+            }
             Text("Nghỉ ngơi nhé")
                 .font(WidgetFontSystem.meta(size: 9))
                 .tracking(0.0)
@@ -241,7 +280,7 @@ public struct SmallWidgetView: View {
 
                             Text(dueLabel(for: subItem))
                                 .font(WidgetFontSystem.meta(size: 7.8))
-                                .foregroundStyle(subItem.isOverdue ? ChunkyTheme.urgentAccent : (subItem.isCompleted ? Color.green : ChunkyTheme.textMuted))
+                                .foregroundStyle(subItem.isUrgent ? ChunkyTheme.urgentAccent : (subItem.isCompleted ? Color.green : ChunkyTheme.textMuted))
                                 .lineLimit(1)
                         }
                     }
@@ -252,10 +291,6 @@ public struct SmallWidgetView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(Color.green)
-                    } else if subItem.isOverdue {
-                        Circle()
-                            .fill(ChunkyTheme.urgentAccent)
-                            .frame(width: 5, height: 5)
                     }
                 }
                 .frame(maxHeight: .infinity)
@@ -272,10 +307,8 @@ public struct SmallWidgetView: View {
     private func dueLabel(for item: Coursework) -> String {
         if item.isCompleted {
             return "Đã nộp"
-        } else if item.isOverdue {
-            return "Quá hạn"
         } else if item.isDueToday {
-            return item.timeOnlyString == "Cuối ngày" ? "23:59" : item.timeOnlyString
+            return item.timeOnlyString
         } else if item.isDueTomorrow {
             return item.timeOnlyString == "Cuối ngày" ? "Mai" : "Mai \(item.timeOnlyString)"
         } else if item.dueDate == nil {
@@ -291,22 +324,14 @@ public struct SmallWidgetView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: fontSize + 4, weight: .bold))
                 .foregroundStyle(Color.green)
-        } else if item.isOverdue {
-            Text("Quá hạn")
-                .font(WidgetFontSystem.statusTag(size: fontSize))
-                .foregroundStyle(Color.white)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 1.5)
-                .background(ChunkyTheme.urgentAccent)
-                .clipShape(Capsule())
         } else {
-            let labelText = item.timeOnlyString == "Cuối ngày" ? "23:59" : item.timeOnlyString
+            let labelText = item.timeOnlyString
             Text(labelText)
                 .font(WidgetFontSystem.statusTag(size: fontSize))
-                .foregroundStyle(ChunkyTheme.textMuted)
+                .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
                 .padding(.horizontal, 4)
                 .padding(.vertical, 1.5)
-                .background(Color.black.opacity(0.04))
+                .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.04))
                 .clipShape(Capsule())
         }
     }

@@ -866,7 +866,6 @@ public struct Glossy3DBookVectorArtView: View {
             let w = size.width
             let h = size.height
 
-            // 1. Soft Ground Ambient Drop Shadow
             let shadowRect = CGRect(x: w * 0.20, y: h * 0.74, width: w * 0.60, height: h * 0.15)
             context.fill(
                 Ellipse().path(in: shadowRect),
@@ -878,7 +877,6 @@ public struct Glossy3DBookVectorArtView: View {
                 )
             )
 
-            // 2. White Paper Thickness (Underneath Back Layer, offset down & right)
             let pageCorner = min(w, h) * 0.20
             let pageRect = CGRect(x: w * 0.24, y: h * 0.27, width: w * 0.52, height: h * 0.48)
             let pagePath = RoundedRectangle(cornerRadius: pageCorner, style: .continuous).path(in: pageRect)
@@ -896,7 +894,6 @@ public struct Glossy3DBookVectorArtView: View {
             )
             context.stroke(pagePath, with: .color(Color(red: 0.82, green: 0.86, blue: 0.92)), lineWidth: 1.0)
 
-            // 3. Main Blue Book Cover (Vibrant Squircle with Specular Sheen)
             let coverCorner = min(w, h) * 0.22
             let coverRect = CGRect(x: w * 0.18, y: h * 0.23, width: w * 0.54, height: h * 0.48)
             let coverPath = RoundedRectangle(cornerRadius: coverCorner, style: .continuous).path(in: coverRect)
@@ -905,16 +902,15 @@ public struct Glossy3DBookVectorArtView: View {
                 coverPath,
                 with: .linearGradient(
                     Gradient(colors: [
-                        Color(red: 0.18, green: 0.74, blue: 0.98), // Sky Cyan top-left
-                        Color(red: 0.08, green: 0.52, blue: 0.94), // Rich Azure center
-                        Color(red: 0.03, green: 0.38, blue: 0.86)  // Cobalt bottom-right
+                        Color(red: 0.18, green: 0.74, blue: 0.98),
+                        Color(red: 0.08, green: 0.52, blue: 0.94),
+                        Color(red: 0.03, green: 0.38, blue: 0.86)
                     ]),
                     startPoint: CGPoint(x: coverRect.minX, y: coverRect.minY),
                     endPoint: CGPoint(x: coverRect.maxX, y: coverRect.maxY)
                 )
             )
 
-            // Top-left glossy specular rim stroke
             context.stroke(
                 coverPath,
                 with: .linearGradient(
@@ -929,7 +925,6 @@ public struct Glossy3DBookVectorArtView: View {
                 lineWidth: 1.6
             )
 
-            // Bottom subtle reflection curve
             var bottomReflect = Path()
             let bY = coverRect.maxY - coverCorner * 0.45
             bottomReflect.move(to: CGPoint(x: coverRect.minX + coverCorner * 0.8, y: bY))
@@ -943,14 +938,12 @@ public struct Glossy3DBookVectorArtView: View {
                 lineWidth: 1.5
             )
 
-            // 4. Red Bookmark Ribbon with V-Notch (Swallowtail Cut)
             let ribbonW = coverRect.width * 0.23
             let rx = coverRect.maxX - ribbonW - coverRect.width * 0.08
             let ry = coverRect.minY - 1
             let rBottomY = coverRect.maxY + coverRect.height * 0.10
             let notchH = ribbonW * 0.45
 
-            // Ribbon drop shadow on cover
             var ribbonShadow = Path()
             ribbonShadow.move(to: CGPoint(x: rx - 3, y: ry))
             ribbonShadow.addLine(to: CGPoint(x: rx, y: ry))
@@ -980,18 +973,15 @@ public struct Glossy3DBookVectorArtView: View {
                 )
             )
 
-            // Subtle highlight on right edge of ribbon
             var ribbonEdge = Path()
             ribbonEdge.move(to: CGPoint(x: rx + 1, y: ry))
             ribbonEdge.addLine(to: CGPoint(x: rx + 1, y: rBottomY - 2))
             context.stroke(ribbonEdge, with: .color(Color.white.opacity(0.25)), lineWidth: 0.8)
 
-            // 5. Four-Point Sparkle Star Emblem in Center
             let starCenter = CGPoint(x: coverRect.minX + coverRect.width * 0.42, y: coverRect.midY)
             let outerRadius = coverRect.width * 0.26
             let innerRadius = outerRadius * 0.52
 
-            // Outer Golden Sparkle Star
             let goldStarPath = Self.fourPointSparklePath(center: starCenter, radius: outerRadius, pinch: 0.23)
             context.fill(
                 goldStarPath,
@@ -1006,24 +996,19 @@ public struct Glossy3DBookVectorArtView: View {
                 )
             )
 
-            // Inner White Gleam Star
             let innerStarPath = Self.fourPointSparklePath(center: starCenter, radius: innerRadius, pinch: 0.23)
             context.fill(
                 innerStarPath,
                 with: .color(Color.white)
             )
 
-            // Specular center glint
             let glintRect = CGRect(x: starCenter.x - 2, y: starCenter.y - 2, width: 4, height: 4)
             context.fill(Circle().path(in: glintRect), with: .color(Color.white))
 
-            // 6. Surrounding Floating Sparkle Stars
-            // Top-right white sparkle
             let trCenter = CGPoint(x: w * 0.76, y: h * 0.20)
             let trPath = Self.fourPointSparklePath(center: trCenter, radius: w * 0.082, pinch: 0.20)
             context.fill(trPath, with: .color(Color.white.opacity(0.96)))
 
-            // Left golden sparkle
             let lCenter = CGPoint(x: w * 0.14, y: h * 0.33)
             let lPath = Self.fourPointSparklePath(center: lCenter, radius: w * 0.055, pinch: 0.20)
             context.fill(

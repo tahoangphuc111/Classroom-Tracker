@@ -97,11 +97,10 @@ fun AssignmentCard(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Dedicated Completion Checkbox touch area (isolated from card click)
             Box(
                 modifier = Modifier
-                    .padding(start = 6.dp, top = 4.dp, bottom = 4.dp)
-                    .size(44.dp)
+                    .padding(start = 4.dp, top = 2.dp, bottom = 2.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .clickable(
                         role = Role.Checkbox,
@@ -141,7 +140,6 @@ fun AssignmentCard(
                 }
             }
 
-            // Card details click area (clicking anywhere here opens bottom sheet)
             Row(
                 modifier = Modifier
                     .weight(1f)
@@ -150,7 +148,6 @@ fun AssignmentCard(
                     .padding(start = 4.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Subject Pill
                 SubjectBadgePill(
                     courseName = coursework.courseName,
                     title = coursework.title
@@ -158,7 +155,6 @@ fun AssignmentCard(
 
                 Spacer(modifier = Modifier.width(10.dp))
 
-                // Title & Course
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
@@ -167,7 +163,7 @@ fun AssignmentCard(
                         color = if (isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
                         modifier = Modifier.graphicsLayer { alpha = titleAlpha }
@@ -184,15 +180,10 @@ fun AssignmentCard(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Due Time Badge / Status with high contrast
                 val (badgeBg, badgeTextColor) = when {
                     isCompleted -> Pair(
                         ChunkyColor.SuccessGreen.copy(alpha = 0.12f),
                         Color(0xFF2E7D32)
-                    )
-                    isOverdue -> Pair(
-                        ChunkyColor.UrgentAccent.copy(alpha = 0.12f),
-                        Color(0xFFD32F2F)
                     )
                     coursework.isDueToday -> Pair(
                         ChunkyColor.EmberTop.copy(alpha = 0.15f),

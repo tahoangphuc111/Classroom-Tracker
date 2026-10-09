@@ -19,8 +19,15 @@ data class Coursework(
     val timeOnlyString: String = ClassroomDateUtils.buildTimeOnlyString(dueEpochMillis)
     val formattedFullDueDate: String = ClassroomDateUtils.buildFormattedFullDueDate(dueEpochMillis)
 
+    /**
+     * Triết lý ứng dụng: Cứ hết hạn thì tính là đã hoàn thành.
+     * Mọi bài tập có hạn nộp trong quá khứ (dueEpochMillis < now) đều được tính là đã hoàn thành.
+     */
     val isCompleted: Boolean
-        get() = status == SubmissionStatus.TURNED_IN || status == SubmissionStatus.RETURNED || isManuallyCompleted
+        get() = status == SubmissionStatus.TURNED_IN ||
+                status == SubmissionStatus.RETURNED ||
+                isManuallyCompleted ||
+                (dueEpochMillis != null && dueEpochMillis < System.currentTimeMillis())
 
     val destinationURL: String
         get() = alternateLink ?: "https://classroom.google.com"
@@ -33,7 +40,7 @@ data class Coursework(
         }
 
     val isOverdue: Boolean
-        get() = ClassroomDateUtils.isOverdue(dueEpochMillis, isCompleted)
+        get() = false
 
     val isPast: Boolean
         get() = ClassroomDateUtils.isPast(dueEpochMillis)
@@ -79,7 +86,6 @@ data class Coursework(
         get() = when {
             status == SubmissionStatus.RETURNED -> "Đã chấm điểm"
             isCompleted || status == SubmissionStatus.TURNED_IN -> "Đã nộp"
-            isOverdue || status == SubmissionStatus.LATE -> "Quá hạn"
             else -> "Chưa nộp"
         }
 

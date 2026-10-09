@@ -93,8 +93,16 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         try container.encodeIfPresent(maxPoints, forKey: .maxPoints)
     }
 
+    /// Triết lý ứng dụng: Cứ hết hạn thì tính là đã hoàn thành.
+    /// Mọi bài tập có hạn nộp trong quá khứ (dueDate < now) đều được tính là đã hoàn thành.
     public var isCompleted: Bool {
-        status == .turnedIn || status == .returned
+        if status == .turnedIn || status == .returned {
+            return true
+        }
+        if let dueDate, dueDate < Date() {
+            return true
+        }
+        return false
     }
 
     public var destinationURL: URL {
@@ -111,8 +119,8 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     }
 
     public var isOverdue: Bool {
-        guard let dueDate else { return false }
-        return dueDate < Date() && !isCompleted
+        // Triết lý: Cứ hết hạn thì tính là đã hoàn thành => Không còn bài tập quá hạn
+        false
     }
 
     public var isPast: Bool {
@@ -181,11 +189,8 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         let time = timeOnlyString
         let isEndOfDay = (time == "Cuối ngày")
 
-        if isOverdue {
-            if isDueToday {
-                return isEndOfDay ? "Quá hạn" : "Trễ \(time)"
-            }
-            return "Quá hạn"
+        if isCompleted {
+            return "Đã xong"
         } else if isDueToday {
             return isEndOfDay ? "Hết hôm nay" : time
         } else if isDueTomorrow {
@@ -211,17 +216,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         let interval = dueDate.timeIntervalSince(now)
 
         if interval < 0 {
-            let absSecs = abs(interval)
-            if absSecs < 3600 {
-                let mins = max(1, Int(absSecs / 60))
-                return "Quá hạn \(mins) phút"
-            } else if absSecs < 86400 {
-                let hours = Int(absSecs / 3600)
-                return "Quá hạn \(hours) giờ"
-            } else {
-                let absDays = max(1, Int(absSecs / 86400))
-                return absDays == 1 ? "Quá hạn 1 ngày" : "Quá hạn \(absDays) ngày"
-            }
+            return "Đã hoàn thành"
         } else if interval < 3600 {
             let mins = max(1, Int(interval / 60))
             return "Còn \(mins) phút"
@@ -246,9 +241,6 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     public var urgencyColor: Color {
         if isCompleted {
             return .green
-        }
-        if isOverdue {
-            return .red
         } else if isDueToday {
             return .orange
         } else if isDueTomorrow {
@@ -260,10 +252,10 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
 
     public var statusTitle: String {
         switch status {
-        case .pending: return isOverdue ? "Quá hạn" : "Chưa nộp"
-        case .late: return "Quá hạn"
         case .turnedIn: return "Đã nộp"
         case .returned: return "Đã chấm điểm"
+        case .late: return "Đã hoàn thành"
+        case .pending: return isCompleted ? "Đã hoàn thành" : "Chưa nộp"
         }
     }
 
@@ -289,12 +281,14 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
+private let vietnameseSearchLocale = Locale(identifier: "vi_VN")
+
 public extension String {
     func normalizedForVietnameseSearch() -> String {
         self.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "đ", with: "d")
             .replacingOccurrences(of: "Đ", with: "d")
-            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "vi_VN"))
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: vietnameseSearchLocale)
             .lowercased()
     }
 }

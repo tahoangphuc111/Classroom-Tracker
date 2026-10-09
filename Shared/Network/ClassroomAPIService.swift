@@ -46,7 +46,7 @@ public final class ClassroomAPIService: ObservableObject {
             var allCoursework: [Coursework] = []
             let existingCoursework = ClassroomStorage.shared.loadCoursework()
 
-            // Chunk requests to avoid Google's 10 QPS quota (Quota Shield)
+            // Chunk requests to stay under Google's 10 req/s rate limit
             let chunkSize = 2
             for startIndex in stride(from: 0, to: selectedCourses.count, by: chunkSize) {
                 guard GoogleOAuthService.shared.isAuthenticated, !Task.isCancelled else { return }
@@ -75,7 +75,7 @@ public final class ClassroomAPIService: ObservableObject {
                     }
                 }
 
-                // Adaptive delay between batches to stay safely within Google's 10 QPS limit
+                // Delay between batches to respect rate limits
                 if startIndex + chunkSize < selectedCourses.count {
                     try? await Task.sleep(nanoseconds: 350_000_000)
                 }
@@ -87,8 +87,7 @@ public final class ClassroomAPIService: ObservableObject {
             let preservedItems = existingCoursework.filter { unselectedIds.contains($0.courseId) }
             allCoursework.append(contentsOf: preservedItems)
 
-            // Keep manual checklist completion if not yet turned in on Google
-            // Reload fresh local completion states right before saving to prevent TOCTOU sync overwrite
+            // Keep local completions if not yet marked turned in on Classroom
             let freshCoursework = ClassroomStorage.shared.loadCoursework()
             let freshStatusMap = Dictionary(freshCoursework.map { ($0.id, $0.status) }, uniquingKeysWith: { _, new in new })
             let finalCoursework = allCoursework.map { item -> Coursework in
@@ -109,19 +108,19 @@ public final class ClassroomAPIService: ObservableObject {
     private func fetchActiveCourses(accessToken: String) async throws -> [Course] {
         var coursesMap: [String: Course] = [:]
 
-        // 1. Fetch courses where user is enrolled as a student (required by Classroom API for student accounts)
+        // Student courses
         let studentCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: "studentId", filterValue: "me", courseState: "ACTIVE")
         for course in studentCourses {
             coursesMap[course.id] = course
         }
 
-        // 2. Fetch courses where user is a teacher (for teacher accounts)
+        // Teacher courses
         let teacherCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: "teacherId", filterValue: "me", courseState: "ACTIVE")
         for course in teacherCourses {
             coursesMap[course.id] = course
         }
 
-        // 3. Fallback: if empty, try fetching without role filter (for domain admins / creators)
+        // Fallback for admins/creators without a specific role filter
         if coursesMap.isEmpty {
             let adminCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: nil, filterValue: nil, courseState: "ACTIVE")
             for course in adminCourses {
@@ -129,7 +128,7 @@ public final class ClassroomAPIService: ObservableObject {
             }
         }
 
-        // 4. Fallback 2: if still empty, try without courseStates=ACTIVE constraint in case courses have other states
+        // Fallback if courses have other states than ACTIVE
         if coursesMap.isEmpty {
             let studentAllStateCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: "studentId", filterValue: "me", courseState: nil)
             for course in studentAllStateCourses {
@@ -290,7 +289,7 @@ public final class ClassroomAPIService: ObservableObject {
             pageCount += 1
         } while pageToken != nil && pageCount < 10
 
-        // Fallback: If courseWorkStates=PUBLISHED returned nothing, retry without courseWorkStates filter
+        // Retry without PUBLISHED filter if nothing came back
         if allItems.isEmpty {
             guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses/\(courseId)/courseWork") else { return allItems }
             components.queryItems = [URLQueryItem(name: "pageSize", value: "50")]
@@ -378,7 +377,9 @@ public final class ClassroomAPIService: ObservableObject {
             dateComponents.hour = 23
             dateComponents.minute = 59
             dateComponents.second = 59
-            return Calendar.current.date(from: dateComponents)
+            var localCalendar = Calendar(identifier: .gregorian)
+            localCalendar.timeZone = .current
+            return localCalendar.date(from: dateComponents)
         }
     }
 }

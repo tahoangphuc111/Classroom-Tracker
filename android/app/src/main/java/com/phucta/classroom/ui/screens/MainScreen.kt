@@ -83,6 +83,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.Role
 import com.phucta.classroom.ClassroomApplication
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.domain.BaoBaiBucketingUtils
@@ -104,13 +111,12 @@ fun MainScreen() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var selectedCoursework by remember { mutableStateOf<Coursework?>(null) }
     var isDemoMode by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Reactive State Flows
     val courses by repository.coursesFlow.collectAsState(initial = emptyList())
     val allCoursework by repository.courseworkFlow.collectAsState(initial = emptyList())
     val isSyncing by repository.isSyncing.collectAsState()
@@ -138,11 +144,37 @@ fun MainScreen() {
         BaoBaiBucketingUtils.getTomorrowCoursework(allCoursework, courses)
     }
 
-    val completedItems = remember(allCoursework, courses) {
-        BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses).filter { it.isCompleted }
+    val tomorrowIncompleteCount = remember(tomorrowItems) { tomorrowItems.count { !it.isCompleted } }
+    val upcomingIncompleteCount = remember(allCoursework, courses) {
+        BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses).count { !it.isCompleted }
     }
 
-    // On-demand rotation animation only active while syncing
+    val pullToRefreshState = rememberPullToRefreshState()
+    if (pullToRefreshState.isRefreshing) {
+        LaunchedEffect(true) {
+            val result = repository.syncAll()
+            pullToRefreshState.endRefresh()
+            if (result.isSuccess) {
+                snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+            }
+        }
+    }
+
+    val completedItems = remember(allCoursework, courses) {
+        val filtered = BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses).filter { it.isCompleted }
+        filtered.sortedWith { first, second ->
+            when {
+                first.dueEpochMillis != null && second.dueEpochMillis != null -> {
+                    second.dueEpochMillis.compareTo(first.dueEpochMillis)
+                }
+                first.dueEpochMillis != null -> -1
+                second.dueEpochMillis != null -> 1
+                else -> first.title.compareTo(second.title, ignoreCase = true)
+            }
+        }
+    }
+
+    // Keep spinning while syncing, then snap to nearest full turn
     val syncRotation = remember { Animatable(0f) }
     LaunchedEffect(isSyncing) {
         if (isSyncing) {
@@ -186,42 +218,57 @@ fun MainScreen() {
                     HorizontalDivider(color = ChunkyColor.Hairline)
                 }
 
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(courses, key = { it.id }) { course ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    scope.launch {
-                                        repository.updateCourseWidgetSelection(
-                                            course.id,
-                                            !course.isSelectedForWidget
-                                        )
-                                    }
-                                }
-                                .padding(horizontal = 20.dp, vertical = 10.dp)
-                        ) {
-                            SubjectBadgePill(courseName = course.name)
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = course.name,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.5.sp,
-                                color = ChunkyColor.TextPrimary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Checkbox(
-                                checked = course.isSelectedForWidget,
-                                onCheckedChange = { checked ->
-                                    scope.launch {
-                                        repository.updateCourseWidgetSelection(course.id, checked)
-                                    }
-                                },
-                                colors = CheckboxDefaults.colors(checkedColor = ChunkyColor.SkyBottom)
-                            )
+                if (courses.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Chưa có môn học nào được đồng bộ.",
+                            fontSize = 13.sp,
+                            color = ChunkyColor.TextMuted,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(courses, key = { it.id }) { course ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(
+                                        role = Role.Checkbox,
+                                        onClick = {
+                                            scope.launch {
+                                                repository.updateCourseWidgetSelection(
+                                                    course.id,
+                                                    !course.isSelectedForWidget
+                                                )
+                                            }
+                                        }
+                                    )
+                                    .padding(horizontal = 20.dp, vertical = 10.dp)
+                            ) {
+                                SubjectBadgePill(courseName = course.name)
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = course.name,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.5.sp,
+                                    color = ChunkyColor.TextPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Checkbox(
+                                    checked = course.isSelectedForWidget,
+                                    onCheckedChange = null,
+                                    colors = CheckboxDefaults.colors(checkedColor = ChunkyColor.SkyBottom)
+                                )
+                            }
                         }
                     }
                 }
@@ -248,7 +295,14 @@ fun MainScreen() {
                     },
                     actions = {
                         IconButton(
-                            onClick = { scope.launch { repository.syncAll() } },
+                            onClick = {
+                                scope.launch {
+                                    val result = repository.syncAll()
+                                    if (result.isSuccess) {
+                                        snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+                                    }
+                                }
+                            },
                             enabled = !isSyncing
                         ) {
                             Icon(
@@ -274,7 +328,22 @@ fun MainScreen() {
                     NavigationBarItem(
                         selected = selectedTabIndex == 0,
                         onClick = { selectedTabIndex = 0 },
-                        icon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+                        icon = {
+                            BadgedBox(
+                                badge = {
+                                    if (tomorrowIncompleteCount > 0) {
+                                        Badge(
+                                            containerColor = ChunkyColor.SkyBottom,
+                                            contentColor = Color.White
+                                        ) {
+                                            Text("$tomorrowIncompleteCount", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = null)
+                            }
+                        },
                         label = { Text("Báo bài Ngày mai", fontWeight = FontWeight.SemiBold, fontSize = 11.sp) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = ChunkyColor.SkyBottom,
@@ -285,7 +354,22 @@ fun MainScreen() {
                     NavigationBarItem(
                         selected = selectedTabIndex == 1,
                         onClick = { selectedTabIndex = 1 },
-                        icon = { Icon(Icons.Default.Upcoming, contentDescription = null) },
+                        icon = {
+                            BadgedBox(
+                                badge = {
+                                    if (upcomingIncompleteCount > 0) {
+                                        Badge(
+                                            containerColor = ChunkyColor.SkyBottom,
+                                            contentColor = Color.White
+                                        ) {
+                                            Text("$upcomingIncompleteCount", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.Upcoming, contentDescription = null)
+                            }
+                        },
                         label = { Text("Tất cả sắp tới", fontWeight = FontWeight.SemiBold, fontSize = 11.sp) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = ChunkyColor.SkyBottom,
@@ -307,56 +391,68 @@ fun MainScreen() {
                 }
             }
         ) { paddingValues ->
-            AnimatedContent(
-                targetState = selectedTabIndex,
-                transitionSpec = {
-                    if (targetState > initialState) {
-                        (slideInHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> (width * 0.15f).toInt() } + fadeIn(animationSpec = tween(200)))
-                            .togetherWith(
-                                slideOutHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> -(width * 0.15f).toInt() } + fadeOut(animationSpec = tween(160))
-                            )
-                    } else {
-                        (slideInHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> -(width * 0.15f).toInt() } + fadeIn(animationSpec = tween(200)))
-                            .togetherWith(
-                                slideOutHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> (width * 0.15f).toInt() } + fadeOut(animationSpec = tween(160))
-                            )
-                    }
-                },
-                label = "tabTransition",
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-            ) { tabIndex ->
-                when (tabIndex) {
-                    0 -> TomorrowHomeworkScreen(
-                        tomorrowItems = tomorrowItems,
-                        onToggleCompletion = { id, completed ->
-                            scope.launch { repository.toggleTaskCompletion(id, completed) }
-                        },
-                        onSelectAssignment = { coursework ->
-                            selectedCoursework = coursework
+                    .nestedScroll(pullToRefreshState.nestedScrollConnection)
+            ) {
+                AnimatedContent(
+                    targetState = selectedTabIndex,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            (slideInHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> (width * 0.15f).toInt() } + fadeIn(animationSpec = tween(200)))
+                                .togetherWith(
+                                    slideOutHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> -(width * 0.15f).toInt() } + fadeOut(animationSpec = tween(160))
+                                )
+                        } else {
+                            (slideInHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> -(width * 0.15f).toInt() } + fadeIn(animationSpec = tween(200)))
+                                .togetherWith(
+                                    slideOutHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> (width * 0.15f).toInt() } + fadeOut(animationSpec = tween(160))
+                                )
                         }
-                    )
-                    1 -> AllUpcomingScreen(
-                        allCoursework = allCoursework,
-                        courses = courses,
-                        onToggleCompletion = { id, completed ->
-                            scope.launch { repository.toggleTaskCompletion(id, completed) }
-                        },
-                        onSelectAssignment = { coursework ->
-                            selectedCoursework = coursework
-                        }
-                    )
-                    2 -> CompletedHomeworkScreen(
-                        completedItems = completedItems,
-                        onToggleCompletion = { id, completed ->
-                            scope.launch { repository.toggleTaskCompletion(id, completed) }
-                        },
-                        onSelectAssignment = { coursework ->
-                            selectedCoursework = coursework
-                        }
-                    )
+                    },
+                    label = "tabTransition",
+                    modifier = Modifier.fillMaxSize()
+                ) { tabIndex ->
+                    when (tabIndex) {
+                        0 -> TomorrowHomeworkScreen(
+                            tomorrowItems = tomorrowItems,
+                            onToggleCompletion = { id, completed ->
+                                scope.launch { repository.toggleTaskCompletion(id, completed) }
+                            },
+                            onSelectAssignment = { coursework ->
+                                selectedCoursework = coursework
+                            }
+                        )
+                        1 -> AllUpcomingScreen(
+                            allCoursework = allCoursework,
+                            courses = courses,
+                            onToggleCompletion = { id, completed ->
+                                scope.launch { repository.toggleTaskCompletion(id, completed) }
+                            },
+                            onSelectAssignment = { coursework ->
+                                selectedCoursework = coursework
+                            }
+                        )
+                        2 -> CompletedHomeworkScreen(
+                            completedItems = completedItems,
+                            onToggleCompletion = { id, completed ->
+                                scope.launch { repository.toggleTaskCompletion(id, completed) }
+                            },
+                            onSelectAssignment = { coursework ->
+                                selectedCoursework = coursework
+                            }
+                        )
+                    }
                 }
+
+                PullToRefreshContainer(
+                    state = pullToRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    containerColor = ChunkyColor.SurfaceWhite,
+                    contentColor = ChunkyColor.SkyBottom
+                )
             }
         }
         }
@@ -373,7 +469,6 @@ fun MainScreen() {
         )
     }
 
-    // Detail Bottom Sheet
     val activeSelectedCoursework = selectedCoursework?.let { current ->
         allCoursework.find { it.id == current.id } ?: current
     }
@@ -395,7 +490,6 @@ fun MainScreen() {
         )
     }
 
-    // Settings Dialog
     if (showSettingsDialog) {
         SettingsDialog(
             isAuthenticated = isAuthenticated,
@@ -466,7 +560,6 @@ private fun WelcomeLoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // App Branding Icon with smooth floating animation
             Box(
                 modifier = Modifier
                     .graphicsLayer { translationY = floatOffset }
@@ -499,7 +592,6 @@ private fun WelcomeLoginScreen(
                 modifier = Modifier.padding(top = 4.dp, bottom = 32.dp)
             )
 
-            // Primary Google Sign-in Button
             androidx.compose.material3.Button(
                 onClick = onSignIn,
                 modifier = Modifier
@@ -520,7 +612,6 @@ private fun WelcomeLoginScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Demo Mode
             androidx.compose.material3.TextButton(onClick = onDemoMode) {
                 Text(
                     text = "Xem thử dữ liệu mẫu",

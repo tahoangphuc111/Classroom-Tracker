@@ -67,7 +67,6 @@ fun HomeworkDetailBottomSheet(
                 .padding(bottom = 32.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Header: Subject Badge & Course Name
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -86,7 +85,6 @@ fun HomeworkDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Title
             Text(
                 text = coursework.title,
                 color = ChunkyColor.TextPrimary,
@@ -97,15 +95,10 @@ fun HomeworkDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Due Date & Countdown Badge
             val (badgeBg, badgeTextColor) = when {
                 coursework.isCompleted -> Pair(
                     ChunkyColor.SuccessGreen.copy(alpha = 0.12f),
                     Color(0xFF2E7D32)
-                )
-                coursework.isOverdue -> Pair(
-                    ChunkyColor.UrgentAccent.copy(alpha = 0.12f),
-                    Color(0xFFD32F2F)
                 )
                 coursework.isDueToday -> Pair(
                     ChunkyColor.EmberTop.copy(alpha = 0.15f),
@@ -140,6 +133,11 @@ fun HomeworkDetailBottomSheet(
                 }
 
                 if (coursework.maxPoints != null) {
+                    val pointsDisplay = if (coursework.maxPoints % 1.0 == 0.0) {
+                        coursework.maxPoints.toInt().toString()
+                    } else {
+                        coursework.maxPoints.toString()
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
@@ -148,7 +146,7 @@ fun HomeworkDetailBottomSheet(
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "Thang điểm: ${coursework.maxPoints.toInt()}",
+                            text = "Thang điểm: $pointsDisplay",
                             color = ChunkyColor.TextMuted,
                             fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.SemiBold,
@@ -170,7 +168,6 @@ fun HomeworkDetailBottomSheet(
             HorizontalDivider(color = ChunkyColor.Hairline)
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Description
             Text(
                 text = "HƯỚNG DẪN BÀI TẬP",
                 color = ChunkyColor.TextMuted,
@@ -207,12 +204,10 @@ fun HomeworkDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Action Buttons in Daylight Palette
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Toggle Completion Button
                 Button(
                     onClick = {
                         onToggleCompletion(coursework.id, !coursework.isCompleted)
@@ -241,13 +236,20 @@ fun HomeworkDetailBottomSheet(
 
                 Spacer(modifier = Modifier.width(10.dp))
 
-                // Open in Classroom Web Button
                 OutlinedButton(
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(coursework.destinationURL)).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(coursework.destinationURL)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Không thể mở liên kết: ${e.localizedMessage ?: "Lỗi không xác định"}",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
                         }
-                        context.startActivity(intent)
                     },
                     modifier = Modifier.height(48.dp),
                     border = BorderStroke(1.dp, ChunkyColor.SkyBottom.copy(alpha = 0.5f)),
