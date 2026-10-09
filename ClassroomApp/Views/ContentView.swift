@@ -88,7 +88,6 @@ public struct ContentView: View {
     @FocusState private var isSearchFocused: Bool
     @State private var activeToast: ToastMessage? = nil
     @State private var toastDismissTask: Task<Void, Never>? = nil
-    @State private var syncRotationAngle: Double = 0
     @State private var hasInitialLoadHappened: Bool = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @Environment(\.colorScheme) private var colorScheme
@@ -1111,22 +1110,31 @@ public struct ContentView: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 5) {
+                    #if os(iOS)
+                    if #available(iOS 18, *) {
                         Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 11, weight: .semibold))
-                            .rotationEffect(.degrees(syncRotationAngle))
-                        Text(apiService.isSyncing ? "Đang đồng bộ..." : "Đồng bộ")
+                            .font(.system(size: 16, weight: .semibold))
+                            .symbolEffect(.rotate, isActive: apiService.isSyncing)
+                    } else {
+                        if apiService.isSyncing {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
                     }
+                    #else
+                    if #available(macOS 15, *) {
+                        Label("Đồng bộ", systemImage: "arrow.triangle.2.circlepath")
+                            .symbolEffect(.rotate, isActive: apiService.isSyncing)
+                    } else {
+                        Label("Đồng bộ", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    #endif
                 }
                 .onChange(of: apiService.isSyncing) {
-                    if apiService.isSyncing {
-                        withAnimation(.linear(duration: 0.85).repeatForever(autoreverses: false)) {
-                            syncRotationAngle = 360
-                        }
-                    } else {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            syncRotationAngle = 0
-                        }
+                    if !apiService.isSyncing {
                         withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
                             refreshData()
                         }
