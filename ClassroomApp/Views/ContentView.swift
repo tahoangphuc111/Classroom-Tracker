@@ -3414,66 +3414,118 @@ public struct LiquidGlassBottomNavigationBar: View {
     #if os(iOS)
     @available(iOS 26, *)
     private var nativeGlassBar: some View {
-        GlassEffectContainer(spacing: 4) {
-            HStack(spacing: 4) {
-                ForEach(tabs) { tab in
-                    tabButton(for: tab, isNative: true)
+        GeometryReader { geometry in
+            let tabWidth = geometry.size.width / CGFloat(max(1, tabs.count))
+
+            GlassEffectContainer(spacing: 0) {
+                HStack(spacing: 0) {
+                    ForEach(tabs) { tab in
+                        tabSlot(for: tab, isNative: true)
+                    }
                 }
+                .padding(4)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .glassEffect(.regular, in: .capsule)
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 7)
+                .shadow(color: Color.primary.opacity(0.04), radius: 2, x: 0, y: 1)
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
-            .glassEffect(.regular, in: .capsule)
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 7)
-            .shadow(color: Color.primary.opacity(0.04), radius: 2, x: 0, y: 1)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        handleDrag(at: value.location.x, tabWidth: tabWidth)
+                    }
+            )
         }
+        .frame(height: 54)
     }
     #endif
 
     private var fallbackGlassBar: some View {
-        HStack(spacing: 4) {
-            ForEach(tabs) { tab in
-                tabButton(for: tab, isNative: false)
-            }
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .background {
-            Capsule()
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    Capsule()
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(colorScheme == .dark ? 0.35 : 0.85),
-                                    Color.white.opacity(colorScheme == .dark ? 0.12 : 0.30),
-                                    Color.clear
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
+        GeometryReader { geometry in
+            let tabWidth = geometry.size.width / CGFloat(max(1, tabs.count))
+
+            HStack(spacing: 0) {
+                ForEach(tabs) { tab in
+                    tabSlot(for: tab, isNative: false)
                 }
-                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 7)
-                .shadow(color: Color.primary.opacity(0.04), radius: 2, x: 0, y: 1)
+            }
+            .padding(4)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .overlay {
+                        Capsule()
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(colorScheme == .dark ? 0.35 : 0.85),
+                                        Color.white.opacity(colorScheme == .dark ? 0.12 : 0.30),
+                                        Color.clear
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                    }
+                    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 7)
+                    .shadow(color: Color.primary.opacity(0.04), radius: 2, x: 0, y: 1)
+            }
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        handleDrag(at: value.location.x, tabWidth: tabWidth)
+                    }
+            )
+        }
+        .frame(height: 54)
+    }
+
+    private func handleDrag(at xLocation: CGFloat, tabWidth: CGFloat) {
+        guard tabWidth > 0, !tabs.isEmpty else { return }
+        let index = Int(xLocation / tabWidth)
+        let clampedIndex = max(0, min(tabs.count - 1, index))
+        let targetCategory = tabs[clampedIndex].category
+        if selectedFilter != targetCategory {
+            triggerFeedback()
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                selectedFilter = targetCategory
+                onSelect(targetCategory)
+            }
         }
     }
 
     @ViewBuilder
-    private func tabButton(for tab: TabItem, isNative: Bool) -> some View {
+    private func tabSlot(for tab: TabItem, isNative: Bool) -> some View {
         let isSelected = (selectedFilter == tab.category)
         let tabColor = categoryColor(tab.category)
 
-        Button {
-            selectTab(tab.category)
-        } label: {
+        ZStack {
+            if isSelected {
+                if isNative {
+                    #if os(iOS)
+                    if #available(iOS 26, *) {
+                        Capsule()
+                            .glassEffect(.regular.tint(tabColor.opacity(0.35)).interactive(), in: .capsule)
+                            .matchedGeometryEffect(id: "nativeGlassSlider", in: glassNamespace)
+                    } else {
+                        fallbackSlider(tabColor: tabColor)
+                    }
+                    #else
+                    fallbackSlider(tabColor: tabColor)
+                    #endif
+                } else {
+                    fallbackSlider(tabColor: tabColor)
+                }
+            }
+
             ZStack(alignment: .topTrailing) {
                 Image(systemName: isSelected ? tab.activeIcon : tab.icon)
-                    .font(.system(size: 20, weight: isSelected ? .bold : .medium))
+                    .font(.system(size: 21, weight: isSelected ? .bold : .medium))
                     .foregroundStyle(isSelected ? tabColor : Color.secondary.opacity(0.85))
                     .scaleEffect(isSelected ? 1.08 : 1.0)
-                    .frame(width: 48, height: 42)
+                    .frame(width: 32, height: 32)
 
                 if let count = tab.count, count > 0 {
                     Text(count > 99 ? "99+" : "\(count)")
@@ -3482,32 +3534,12 @@ public struct LiquidGlassBottomNavigationBar: View {
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
                         .background(Capsule().fill(tabColor))
-                        .offset(x: 2, y: 2)
+                        .offset(x: 10, y: -6)
                 }
             }
-            .frame(width: 48, height: 42)
-            .background {
-                if isSelected {
-                    if isNative {
-                        #if os(iOS)
-                        if #available(iOS 26, *) {
-                            Capsule()
-                                .glassEffect(.regular.tint(tabColor.opacity(0.32)).interactive(), in: .capsule)
-                                .matchedGeometryEffect(id: "nativeGlassSlider", in: glassNamespace)
-                        } else {
-                            fallbackSlider(tabColor: tabColor)
-                        }
-                        #else
-                        fallbackSlider(tabColor: tabColor)
-                        #endif
-                    } else {
-                        fallbackSlider(tabColor: tabColor)
-                    }
-                }
-            }
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
         .accessibilityLabel(Text(tab.category.rawValue))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
@@ -3520,15 +3552,6 @@ public struct LiquidGlassBottomNavigationBar: View {
                     .stroke(tabColor.opacity(colorScheme == .dark ? 0.50 : 0.35), lineWidth: 1)
             }
             .matchedGeometryEffect(id: "nativeGlassSlider", in: glassNamespace)
-    }
-
-    private func selectTab(_ category: ContentView.AppFilterCategory) {
-        guard selectedFilter != category else { return }
-        triggerFeedback()
-        withAnimation(.spring(response: 0.30, dampingFraction: 0.74)) {
-            selectedFilter = category
-            onSelect(category)
-        }
     }
 
     private func triggerFeedback() {
