@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,7 +28,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.ui.theme.ChunkyColor
@@ -42,6 +49,42 @@ fun AssignmentCard(
 ) {
     val isCompleted = coursework.isCompleted
     val isOverdue = coursework.isOverdue
+
+    val checkScale by animateFloatAsState(
+        targetValue = if (isCompleted) 1.0f else 0.88f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "checkScale"
+    )
+
+    val iconScale by animateFloatAsState(
+        targetValue = if (isCompleted) 1.0f else 0.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "iconScale"
+    )
+
+    val checkBgColor by animateColorAsState(
+        targetValue = if (isCompleted) ChunkyColor.SuccessGreen else Color.Transparent,
+        animationSpec = tween(durationMillis = 200),
+        label = "checkBgColor"
+    )
+
+    val checkBorderColor by animateColorAsState(
+        targetValue = if (isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted.copy(alpha = 0.5f),
+        animationSpec = tween(durationMillis = 200),
+        label = "checkBorderColor"
+    )
+
+    val titleAlpha by animateFloatAsState(
+        targetValue = if (isCompleted) 0.60f else 1.0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "titleAlpha"
+    )
 
     Box(
         modifier = modifier
@@ -69,23 +112,30 @@ fun AssignmentCard(
                 Box(
                     modifier = Modifier
                         .size(22.dp)
+                        .graphicsLayer {
+                            scaleX = checkScale
+                            scaleY = checkScale
+                        }
                         .clip(CircleShape)
-                        .background(
-                            if (isCompleted) ChunkyColor.SuccessGreen else Color.Transparent
-                        )
+                        .background(color = checkBgColor)
                         .border(
                             width = 1.75.dp,
-                            color = if (isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted.copy(alpha = 0.5f),
+                            color = checkBorderColor,
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isCompleted) {
+                    if (iconScale > 0.01f) {
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = "Completed",
                             tint = Color.White,
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier
+                                .size(15.dp)
+                                .graphicsLayer {
+                                    scaleX = iconScale
+                                    scaleY = iconScale
+                                }
                         )
                     }
                 }
@@ -119,7 +169,8 @@ fun AssignmentCard(
                         fontSize = 14.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+                        modifier = Modifier.graphicsLayer { alpha = titleAlpha }
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(

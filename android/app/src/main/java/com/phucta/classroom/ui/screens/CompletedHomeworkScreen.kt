@@ -32,6 +32,7 @@ import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.ui.components.AssignmentCard
 import com.phucta.classroom.ui.theme.ChunkyColor
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun CompletedHomeworkScreen(
     completedItems: List<Coursework>,
@@ -111,7 +112,10 @@ fun CompletedHomeworkScreen(
                 AssignmentCard(
                     coursework = item,
                     onToggleCompletion = { onToggleCompletion(item.id, it) },
-                    onClick = { onSelectAssignment(item) }
+                    onClick = { onSelectAssignment(item) },
+                    modifier = Modifier.animateItemPlacement(
+                        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                    )
                 )
             }
         }

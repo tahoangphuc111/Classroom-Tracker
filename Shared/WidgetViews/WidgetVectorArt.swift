@@ -837,86 +837,210 @@ public struct DuolingoFlameArtView: View {
     }
 }
 
-public struct DuolingoStudyBookArtView: View {
+public struct Glossy3DBookVectorArtView: View {
     public init() {}
+
+    private static func fourPointSparklePath(center: CGPoint, radius: CGFloat, pinch: CGFloat = 0.22) -> Path {
+        var p = Path()
+        let top = CGPoint(x: center.x, y: center.y - radius)
+        let right = CGPoint(x: center.x + radius, y: center.y)
+        let bottom = CGPoint(x: center.x, y: center.y + radius)
+        let left = CGPoint(x: center.x - radius, y: center.y)
+
+        let trCtrl = CGPoint(x: center.x + radius * pinch, y: center.y - radius * pinch)
+        let brCtrl = CGPoint(x: center.x + radius * pinch, y: center.y + radius * pinch)
+        let blCtrl = CGPoint(x: center.x - radius * pinch, y: center.y + radius * pinch)
+        let tlCtrl = CGPoint(x: center.x - radius * pinch, y: center.y - radius * pinch)
+
+        p.move(to: top)
+        p.addQuadCurve(to: right, control: trCtrl)
+        p.addQuadCurve(to: bottom, control: brCtrl)
+        p.addQuadCurve(to: left, control: blCtrl)
+        p.addQuadCurve(to: top, control: tlCtrl)
+        p.closeSubpath()
+        return p
+    }
 
     public var body: some View {
         Canvas { context, size in
             let w = size.width
             let h = size.height
 
-            let shadowRect = CGRect(x: w * 0.16, y: h * 0.76, width: w * 0.68, height: h * 0.15)
+            // 1. Soft Ground Ambient Drop Shadow
+            let shadowRect = CGRect(x: w * 0.20, y: h * 0.74, width: w * 0.60, height: h * 0.15)
             context.fill(
                 Ellipse().path(in: shadowRect),
                 with: .radialGradient(
-                    Gradient(colors: [Color.black.opacity(0.28), Color.black.opacity(0.0)]),
+                    Gradient(colors: [Color.black.opacity(0.32), Color.black.opacity(0.0)]),
                     center: CGPoint(x: shadowRect.midX, y: shadowRect.midY),
                     startRadius: 2,
-                    endRadius: shadowRect.width * 0.45
+                    endRadius: shadowRect.width * 0.44
                 )
             )
 
-            let pageRect = CGRect(x: w * 0.22, y: h * 0.28, width: w * 0.56, height: h * 0.52)
-            let pagePath = RoundedRectangle(cornerRadius: 12, style: .continuous).path(in: pageRect)
+            // 2. White Paper Thickness (Underneath Back Layer, offset down & right)
+            let pageCorner = min(w, h) * 0.20
+            let pageRect = CGRect(x: w * 0.24, y: h * 0.27, width: w * 0.52, height: h * 0.48)
+            let pagePath = RoundedRectangle(cornerRadius: pageCorner, style: .continuous).path(in: pageRect)
             context.fill(
                 pagePath,
                 with: .linearGradient(
-                    Gradient(colors: [Color.white, Color(red: 0.92, green: 0.94, blue: 0.98)]),
+                    Gradient(colors: [
+                        Color.white,
+                        Color(red: 0.94, green: 0.96, blue: 0.99),
+                        Color(red: 0.88, green: 0.91, blue: 0.96)
+                    ]),
                     startPoint: CGPoint(x: pageRect.minX, y: pageRect.minY),
                     endPoint: CGPoint(x: pageRect.maxX, y: pageRect.maxY)
                 )
             )
+            context.stroke(pagePath, with: .color(Color(red: 0.82, green: 0.86, blue: 0.92)), lineWidth: 1.0)
 
-            let coverW = w * 0.58
-            let coverH = h * 0.54
-            let coverRect = CGRect(x: w * 0.18, y: h * 0.22, width: coverW, height: coverH)
+            // 3. Main Blue Book Cover (Vibrant Squircle with Specular Sheen)
+            let coverCorner = min(w, h) * 0.22
+            let coverRect = CGRect(x: w * 0.18, y: h * 0.23, width: w * 0.54, height: h * 0.48)
+            let coverPath = RoundedRectangle(cornerRadius: coverCorner, style: .continuous).path(in: coverRect)
 
-            var coverContext = context
-            coverContext.translateBy(x: coverRect.midX, y: coverRect.midY)
-            coverContext.rotate(by: .degrees(-6))
-            coverContext.translateBy(x: -coverRect.midX, y: -coverRect.midY)
-
-            let coverPath = RoundedRectangle(cornerRadius: 14, style: .continuous).path(in: coverRect)
-            coverContext.fill(
+            context.fill(
                 coverPath,
                 with: .linearGradient(
                     Gradient(colors: [
-                        Color(red: 0.18, green: 0.78, blue: 0.98),
-                        Color(red: 0.08, green: 0.52, blue: 0.88),
-                        Color(red: 0.05, green: 0.38, blue: 0.72)
+                        Color(red: 0.18, green: 0.74, blue: 0.98), // Sky Cyan top-left
+                        Color(red: 0.08, green: 0.52, blue: 0.94), // Rich Azure center
+                        Color(red: 0.03, green: 0.38, blue: 0.86)  // Cobalt bottom-right
                     ]),
                     startPoint: CGPoint(x: coverRect.minX, y: coverRect.minY),
                     endPoint: CGPoint(x: coverRect.maxX, y: coverRect.maxY)
                 )
             )
-            coverContext.stroke(coverPath, with: .color(Color.white.opacity(0.35)), lineWidth: 1.5)
 
-            drawSparkle(in: coverContext, center: CGPoint(x: coverRect.midX, y: coverRect.midY), radius: 13.0, color: Color(red: 1.0, green: 0.82, blue: 0.12))
-            drawSparkle(in: coverContext, center: CGPoint(x: coverRect.midX, y: coverRect.midY), radius: 6.5, color: Color.white)
+            // Top-left glossy specular rim stroke
+            context.stroke(
+                coverPath,
+                with: .linearGradient(
+                    Gradient(colors: [
+                        Color.white.opacity(0.85),
+                        Color.white.opacity(0.35),
+                        Color.white.opacity(0.08)
+                    ]),
+                    startPoint: CGPoint(x: coverRect.minX, y: coverRect.minY),
+                    endPoint: CGPoint(x: coverRect.maxX, y: coverRect.maxY)
+                ),
+                lineWidth: 1.6
+            )
+
+            // Bottom subtle reflection curve
+            var bottomReflect = Path()
+            let bY = coverRect.maxY - coverCorner * 0.45
+            bottomReflect.move(to: CGPoint(x: coverRect.minX + coverCorner * 0.8, y: bY))
+            bottomReflect.addQuadCurve(
+                to: CGPoint(x: coverRect.maxX - coverCorner * 0.8, y: bY),
+                control: CGPoint(x: coverRect.midX, y: coverRect.maxY - 2)
+            )
+            context.stroke(
+                bottomReflect,
+                with: .color(Color(red: 0.58, green: 0.88, blue: 1.0).opacity(0.45)),
+                lineWidth: 1.5
+            )
+
+            // 4. Red Bookmark Ribbon with V-Notch (Swallowtail Cut)
+            let ribbonW = coverRect.width * 0.23
+            let rx = coverRect.maxX - ribbonW - coverRect.width * 0.08
+            let ry = coverRect.minY - 1
+            let rBottomY = coverRect.maxY + coverRect.height * 0.10
+            let notchH = ribbonW * 0.45
+
+            // Ribbon drop shadow on cover
+            var ribbonShadow = Path()
+            ribbonShadow.move(to: CGPoint(x: rx - 3, y: ry))
+            ribbonShadow.addLine(to: CGPoint(x: rx, y: ry))
+            ribbonShadow.addLine(to: CGPoint(x: rx, y: coverRect.maxY))
+            ribbonShadow.addLine(to: CGPoint(x: rx - 3, y: coverRect.maxY))
+            ribbonShadow.closeSubpath()
+            context.fill(ribbonShadow, with: .color(Color.black.opacity(0.14)))
 
             var ribbon = Path()
-            let rx = w * 0.62
-            let ry = h * 0.20
             ribbon.move(to: CGPoint(x: rx, y: ry))
-            ribbon.addLine(to: CGPoint(x: rx + 11, y: ry))
-            ribbon.addLine(to: CGPoint(x: rx + 11, y: ry + h * 0.54))
-            ribbon.addLine(to: CGPoint(x: rx + 5.5, y: ry + h * 0.48))
-            ribbon.addLine(to: CGPoint(x: rx, y: ry + h * 0.54))
+            ribbon.addLine(to: CGPoint(x: rx + ribbonW, y: ry))
+            ribbon.addLine(to: CGPoint(x: rx + ribbonW, y: rBottomY))
+            ribbon.addLine(to: CGPoint(x: rx + ribbonW * 0.5, y: rBottomY - notchH))
+            ribbon.addLine(to: CGPoint(x: rx, y: rBottomY))
             ribbon.closeSubpath()
 
             context.fill(
                 ribbon,
                 with: .linearGradient(
-                    Gradient(colors: [Color(red: 1.0, green: 0.32, blue: 0.32), Color(red: 0.85, green: 0.12, blue: 0.18)]),
+                    Gradient(colors: [
+                        Color(red: 0.98, green: 0.30, blue: 0.30),
+                        Color(red: 0.92, green: 0.20, blue: 0.22),
+                        Color(red: 0.82, green: 0.12, blue: 0.16)
+                    ]),
                     startPoint: CGPoint(x: rx, y: ry),
-                    endPoint: CGPoint(x: rx, y: ry + h * 0.54)
+                    endPoint: CGPoint(x: rx, y: rBottomY)
                 )
             )
 
-            drawSparkle(in: context, center: CGPoint(x: w * 0.82, y: h * 0.18), radius: 6.5, color: Color.white.opacity(0.95))
-            drawSparkle(in: context, center: CGPoint(x: w * 0.14, y: h * 0.32), radius: 4.5, color: Color(red: 1.0, green: 0.84, blue: 0.25))
+            // Subtle highlight on right edge of ribbon
+            var ribbonEdge = Path()
+            ribbonEdge.move(to: CGPoint(x: rx + 1, y: ry))
+            ribbonEdge.addLine(to: CGPoint(x: rx + 1, y: rBottomY - 2))
+            context.stroke(ribbonEdge, with: .color(Color.white.opacity(0.25)), lineWidth: 0.8)
+
+            // 5. Four-Point Sparkle Star Emblem in Center
+            let starCenter = CGPoint(x: coverRect.minX + coverRect.width * 0.42, y: coverRect.midY)
+            let outerRadius = coverRect.width * 0.26
+            let innerRadius = outerRadius * 0.52
+
+            // Outer Golden Sparkle Star
+            let goldStarPath = Self.fourPointSparklePath(center: starCenter, radius: outerRadius, pinch: 0.23)
+            context.fill(
+                goldStarPath,
+                with: .linearGradient(
+                    Gradient(colors: [
+                        Color(red: 1.0, green: 0.88, blue: 0.12),
+                        Color(red: 0.98, green: 0.74, blue: 0.02),
+                        Color(red: 0.92, green: 0.62, blue: 0.0)
+                    ]),
+                    startPoint: CGPoint(x: starCenter.x, y: starCenter.y - outerRadius),
+                    endPoint: CGPoint(x: starCenter.x, y: starCenter.y + outerRadius)
+                )
+            )
+
+            // Inner White Gleam Star
+            let innerStarPath = Self.fourPointSparklePath(center: starCenter, radius: innerRadius, pinch: 0.23)
+            context.fill(
+                innerStarPath,
+                with: .color(Color.white)
+            )
+
+            // Specular center glint
+            let glintRect = CGRect(x: starCenter.x - 2, y: starCenter.y - 2, width: 4, height: 4)
+            context.fill(Circle().path(in: glintRect), with: .color(Color.white))
+
+            // 6. Surrounding Floating Sparkle Stars
+            // Top-right white sparkle
+            let trCenter = CGPoint(x: w * 0.76, y: h * 0.20)
+            let trPath = Self.fourPointSparklePath(center: trCenter, radius: w * 0.082, pinch: 0.20)
+            context.fill(trPath, with: .color(Color.white.opacity(0.96)))
+
+            // Left golden sparkle
+            let lCenter = CGPoint(x: w * 0.14, y: h * 0.33)
+            let lPath = Self.fourPointSparklePath(center: lCenter, radius: w * 0.055, pinch: 0.20)
+            context.fill(
+                lPath,
+                with: .linearGradient(
+                    Gradient(colors: [
+                        Color(red: 1.0, green: 0.88, blue: 0.18),
+                        Color(red: 0.98, green: 0.72, blue: 0.04)
+                    ]),
+                    startPoint: CGPoint(x: lCenter.x, y: lCenter.y - w * 0.055),
+                    endPoint: CGPoint(x: lCenter.x, y: lCenter.y + w * 0.055)
+                )
+            )
         }
     }
 }
 
+public typealias DuolingoStudyBookArtView = Glossy3DBookVectorArtView
 public typealias DuolingoMascotView = DuolingoFlameArtView
+

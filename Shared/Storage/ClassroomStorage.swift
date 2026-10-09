@@ -328,17 +328,33 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
     }
 
+    private func getLatestUserDefaultsTimestamp(forKey key: String) -> Double {
+        var maxTime: Double = 0
+        for ud in allUserDefaults {
+            let t = ud.double(forKey: key)
+            if t > maxTime { maxTime = t }
+        }
+        return maxTime
+    }
+
     public func loadCourses() -> [Course] {
         lock.lock()
         let memoryCached = cachedCourses
         let memoryTimestamp = cachedCoursesTimestamp
         lock.unlock()
 
-        let latestTimestamp = allUserDefaults.map { $0.double(forKey: coursesTimestampKey) }.max() ?? 0
-
-        if let memoryCached, memoryTimestamp > 0, memoryTimestamp >= latestTimestamp {
-            return memoryCached
+        if let memoryCached, memoryTimestamp > 0 {
+            let primaryTime = userDefaults.double(forKey: coursesTimestampKey)
+            if primaryTime <= memoryTimestamp {
+                return memoryCached
+            }
+            let latestTimestamp = getLatestUserDefaultsTimestamp(forKey: coursesTimestampKey)
+            if memoryTimestamp >= latestTimestamp {
+                return memoryCached
+            }
         }
+
+        let latestTimestamp = getLatestUserDefaultsTimestamp(forKey: coursesTimestampKey)
 
         var loaded: [Course]?
         if let data = readDataFromDirectories(fileName: "cached_classroom_courses.json") {
@@ -410,11 +426,18 @@ public final class ClassroomStorage: @unchecked Sendable {
         let memoryTimestamp = cachedCourseworkTimestamp
         lock.unlock()
 
-        let latestTimestamp = allUserDefaults.map { $0.double(forKey: courseworkTimestampKey) }.max() ?? 0
-
-        if let memoryCached, memoryTimestamp > 0, memoryTimestamp >= latestTimestamp {
-            return memoryCached
+        if let memoryCached, memoryTimestamp > 0 {
+            let primaryTime = userDefaults.double(forKey: courseworkTimestampKey)
+            if primaryTime <= memoryTimestamp {
+                return memoryCached
+            }
+            let latestTimestamp = getLatestUserDefaultsTimestamp(forKey: courseworkTimestampKey)
+            if memoryTimestamp >= latestTimestamp {
+                return memoryCached
+            }
         }
+
+        let latestTimestamp = getLatestUserDefaultsTimestamp(forKey: courseworkTimestampKey)
 
         var loaded: [Coursework]?
         if let data = readDataFromDirectories(fileName: "cached_classroom_coursework.json") {
@@ -542,60 +565,41 @@ public final class ClassroomStorage: @unchecked Sendable {
             return []
         }
 
-        // 1. Due tomorrow (The primary target for Báo bài)
-        let tomorrowFiltered = relevant
-            .filter { includeCompleted ? true : !$0.isCompleted }
-            .filter { item in
-                guard let dueDate = item.dueDate else { return false }
-                return dueDate >= startOfTomorrow && dueDate < startOfDayAfter
+        var tomorrowFiltered: [Coursework] = []
+        var overdue: [Coursework] = []
+        var todayIncomplete: [Coursework] = []
+        var laterUpcoming: [Coursework] = []
+        var undated: [Coursework] = []
+
+        for item in relevant {
+            let isEligible = includeCompleted ? true : !item.isCompleted
+            guard let dueDate = item.dueDate else {
+                if isEligible { undated.append(item) }
+                continue
             }
 
-        if !tomorrowFiltered.isEmpty {
-            return sortCoursework(tomorrowFiltered)
-        }
-
-        // Fallback 1: Overdue incomplete tasks (missed deadlines)
-        let overdue = relevant
-            .filter { !$0.isCompleted }
-            .filter { item in
-                guard let dueDate = item.dueDate else { return false }
-                return dueDate < now
+            if dueDate >= startOfTomorrow && dueDate < startOfDayAfter {
+                if isEligible { tomorrowFiltered.append(item) }
+            } else if !item.isCompleted {
+                if dueDate < now {
+                    overdue.append(item)
+                } else if dueDate >= now && dueDate < startOfTomorrow {
+                    todayIncomplete.append(item)
+                } else if isEligible && dueDate >= startOfDayAfter {
+                    laterUpcoming.append(item)
+                }
+            } else if isEligible && dueDate >= startOfDayAfter {
+                laterUpcoming.append(item)
             }
-
-        if !overdue.isEmpty {
-            return sortCoursework(overdue)
         }
 
-        // Fallback 2: Incomplete tasks due today that are still unsubmitted
-        let todayIncomplete = relevant
-            .filter { !$0.isCompleted }
-            .filter { item in
-                guard let dueDate = item.dueDate else { return false }
-                return dueDate >= now && dueDate < startOfTomorrow
-            }
+        if !tomorrowFiltered.isEmpty { return sortCoursework(tomorrowFiltered) }
+        if !overdue.isEmpty { return sortCoursework(overdue) }
+        if !todayIncomplete.isEmpty { return sortCoursework(todayIncomplete) }
+        if !laterUpcoming.isEmpty { return sortCoursework(laterUpcoming) }
+        if !undated.isEmpty { return sortCoursework(undated) }
 
-        if !todayIncomplete.isEmpty {
-            return sortCoursework(todayIncomplete)
-        }
-
-        // Fallback 3: Next upcoming tasks in 2+ days
-        let laterUpcoming = relevant
-            .filter { includeCompleted ? true : !$0.isCompleted }
-            .filter { item in
-                guard let dueDate = item.dueDate else { return false }
-                return dueDate >= startOfDayAfter
-            }
-
-        if !laterUpcoming.isEmpty {
-            return sortCoursework(laterUpcoming)
-        }
-
-        // Fallback 4: Undated tasks
-        let undated = relevant
-            .filter { includeCompleted ? true : !$0.isCompleted }
-            .filter { $0.dueDate == nil }
-
-        return sortCoursework(undated)
+        return []
     }
 
     public func clearAllData() {

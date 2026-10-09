@@ -1,6 +1,15 @@
 package com.phucta.classroom.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,21 +27,23 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.border
-import androidx.compose.ui.text.style.TextAlign
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.ui.components.AssignmentCard
 import com.phucta.classroom.ui.components.EmberEmotion
 import com.phucta.classroom.ui.components.EmberFlameCanvas
 import com.phucta.classroom.ui.theme.ChunkyColor
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TomorrowHomeworkScreen(
     tomorrowItems: List<Coursework>,
@@ -48,6 +59,17 @@ fun TomorrowHomeworkScreen(
         incompleteCount >= 3 -> EmberEmotion.STRESSED
         else -> EmberEmotion.NORMAL
     }
+
+    val emberTransition = rememberInfiniteTransition(label = "emberFloating")
+    val emberFloatOffset by emberTransition.animateFloat(
+        initialValue = -3f,
+        targetValue = 3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "emberFloat"
+    )
 
     LazyColumn(
         modifier = modifier
@@ -72,7 +94,10 @@ fun TomorrowHomeworkScreen(
                     EmberFlameCanvas(
                         size = 72.dp,
                         emotion = emotion,
-                        isUrgent = incompleteCount >= 3
+                        isUrgent = incompleteCount >= 3,
+                        modifier = Modifier.graphicsLayer {
+                            translationY = emberFloatOffset
+                        }
                     )
 
                     Spacer(modifier = Modifier.width(16.dp))
@@ -209,7 +234,13 @@ fun TomorrowHomeworkScreen(
                 AssignmentCard(
                     coursework = item,
                     onToggleCompletion = { completed -> onToggleCompletion(item.id, completed) },
-                    onClick = { onSelectAssignment(item) }
+                    onClick = { onSelectAssignment(item) },
+                    modifier = Modifier.animateItemPlacement(
+                        animationSpec = spring(
+                            dampingRatio = 0.82f,
+                            stiffness = 380f
+                        )
+                    )
                 )
             }
         }

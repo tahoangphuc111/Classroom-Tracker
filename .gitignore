@@ -33,3 +33,6 @@ local.properties
 *.iml
 
 
+
+.gemini/
+.agmux/

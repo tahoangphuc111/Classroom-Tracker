@@ -14,8 +14,8 @@ object BaoBaiBucketingUtils {
         val noDueDate: List<Coursework> = emptyList(),
         val completed: List<Coursework> = emptyList()
     ) {
-        val todayAndTomorrow: List<Coursework> get() = today + tomorrow
-        val allUpcoming: List<Coursework> get() = today + tomorrow + laterUpcoming + noDueDate
+        val todayAndTomorrow: List<Coursework> = today + tomorrow
+        val allUpcoming: List<Coursework> = today + tomorrow + laterUpcoming + noDueDate
         val widgetItems: List<Coursework> get() = tomorrow
     }
 
@@ -40,13 +40,17 @@ object BaoBaiBucketingUtils {
     }
 
     fun filterByActiveCourses(items: List<Coursework>, courses: List<Course>): List<Coursework> {
-        if (courses.isEmpty()) return items
-        val allCourseIds = courses.map { it.id }.toSet()
+        if (courses.isEmpty() || items.isEmpty()) return items
+        val allCourseIds = HashSet<String>(courses.size)
+        val activeCourseIds = HashSet<String>(courses.size)
+        for (course in courses) {
+            allCourseIds.add(course.id)
+            if (course.isSelectedForWidget) {
+                activeCourseIds.add(course.id)
+            }
+        }
         val itemsMatchCourses = items.any { allCourseIds.contains(it.courseId) }
-        if (!itemsMatchCourses) return items
-
-        val activeCourseIds = courses.filter { it.isSelectedForWidget }.map { it.id }.toSet()
-        if (activeCourseIds.isEmpty()) return items
+        if (!itemsMatchCourses || activeCourseIds.isEmpty()) return items
         return items.filter { activeCourseIds.contains(it.courseId) }
     }
 
@@ -69,6 +73,8 @@ object BaoBaiBucketingUtils {
         includeCompleted: Boolean = true
     ): List<Coursework> {
         val relevant = filterByActiveCourses(items, courses)
+        if (relevant.isEmpty()) return emptyList()
+
         val now = System.currentTimeMillis()
 
         val cal = Calendar.getInstance().apply {
@@ -84,57 +90,40 @@ object BaoBaiBucketingUtils {
         cal.add(Calendar.DAY_OF_YEAR, 1)
         val startOfDayAfter = cal.timeInMillis
 
-        // 1. Due tomorrow (The primary target for Báo bài)
-        val tomorrowFiltered = relevant
-            .filter { if (includeCompleted) true else !it.isCompleted }
-            .filter {
-                val due = it.dueEpochMillis
-                due != null && due in startOfTomorrow until startOfDayAfter
+        val tomorrowFiltered = ArrayList<Coursework>()
+        val overdue = ArrayList<Coursework>()
+        val todayIncomplete = ArrayList<Coursework>()
+        val upcomingFiltered = ArrayList<Coursework>()
+        val undatedFiltered = ArrayList<Coursework>()
+
+        for (item in relevant) {
+            val isEligible = includeCompleted || !item.isCompleted
+            val due = item.dueEpochMillis
+
+            if (due != null) {
+                if (due in startOfTomorrow until startOfDayAfter) {
+                    if (isEligible) tomorrowFiltered.add(item)
+                } else if (!item.isCompleted) {
+                    if (due < now) {
+                        overdue.add(item)
+                    } else if (due < startOfTomorrow) {
+                        todayIncomplete.add(item)
+                    } else if (isEligible && due >= startOfDayAfter) {
+                        upcomingFiltered.add(item)
+                    }
+                } else if (isEligible && due >= startOfDayAfter) {
+                    upcomingFiltered.add(item)
+                }
+            } else {
+                if (isEligible) undatedFiltered.add(item)
             }
-
-        // If tomorrow has assignments, present tomorrow's agenda directly!
-        if (tomorrowFiltered.isNotEmpty()) {
-            return sortCoursework(tomorrowFiltered)
         }
 
-        // Fallback 1: Overdue incomplete tasks (stuff that was missed)
-        val overdue = relevant
-            .filter { !it.isCompleted }
-            .filter { (it.dueEpochMillis ?: Long.MAX_VALUE) < now }
-
-        if (overdue.isNotEmpty()) {
-            return sortCoursework(overdue)
-        }
-
-        // Fallback 2: Any incomplete tasks from today that are still unsubmitted
-        val todayIncomplete = relevant
-            .filter { !it.isCompleted }
-            .filter {
-                val due = it.dueEpochMillis
-                due != null && due in now until startOfTomorrow
-            }
-
-        if (todayIncomplete.isNotEmpty()) {
-            return sortCoursework(todayIncomplete)
-        }
-
-        // Fallback 3: Next upcoming tasks (2+ days ahead)
-        val upcomingFiltered = relevant
-            .filter { if (includeCompleted) true else !it.isCompleted }
-            .filter { (it.dueEpochMillis ?: 0L) >= startOfDayAfter }
-
-        if (upcomingFiltered.isNotEmpty()) {
-            return sortCoursework(upcomingFiltered)
-        }
-
-        // Fallback 4: Undated tasks
-        val undatedFiltered = relevant
-            .filter { if (includeCompleted) true else !it.isCompleted }
-            .filter { it.dueEpochMillis == null }
-
-        if (undatedFiltered.isNotEmpty()) {
-            return sortCoursework(undatedFiltered)
-        }
+        if (tomorrowFiltered.isNotEmpty()) return sortCoursework(tomorrowFiltered)
+        if (overdue.isNotEmpty()) return sortCoursework(overdue)
+        if (todayIncomplete.isNotEmpty()) return sortCoursework(todayIncomplete)
+        if (upcomingFiltered.isNotEmpty()) return sortCoursework(upcomingFiltered)
+        if (undatedFiltered.isNotEmpty()) return sortCoursework(undatedFiltered)
 
         return emptyList()
     }

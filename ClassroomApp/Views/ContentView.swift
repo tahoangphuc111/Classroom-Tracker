@@ -53,19 +53,8 @@ public struct AppLogoView: View {
     }
 
     private var fallbackIcon: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.223, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.22, green: 0.58, blue: 0.98), Color(red: 0.08, green: 0.42, blue: 0.92)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            Image(systemName: "checklist")
-                .font(.system(size: size * 0.45, weight: .semibold))
-                .foregroundStyle(.white)
-        }
+        Glossy3DBookVectorArtView()
+            .frame(width: size, height: size)
     }
 }
 
@@ -102,10 +91,12 @@ public struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
+    @Namespace private var liquidGlassNamespace
+    @State private var showCompactCourseFilterSheet: Bool = false
+    @State private var showMobileDetailSheet: Bool = false
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
-    @State private var showMobileDetailSheet: Bool = false
     @State private var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
 
     private var isLandscapePhone: Bool {
@@ -143,16 +134,34 @@ public struct ContentView: View {
     }
 
     public struct CourseworkBuckets {
-        public var tomorrow: [Coursework] = []
-        public var today: [Coursework] = []
-        public var laterUpcoming: [Coursework] = []
-        public var past: [Coursework] = []
-        public var noDueDate: [Coursework] = []
-        public var completed: [Coursework] = []
+        public var tomorrow: [Coursework]
+        public var today: [Coursework]
+        public var laterUpcoming: [Coursework]
+        public var past: [Coursework]
+        public var noDueDate: [Coursework]
+        public var completed: [Coursework]
 
-        public var todayAndTomorrow: [Coursework] { today + tomorrow }
-        public var allUpcoming: [Coursework] { today + tomorrow + laterUpcoming + noDueDate }
+        public let todayAndTomorrow: [Coursework]
+        public let allUpcoming: [Coursework]
         public var widgetItems: [Coursework] { tomorrow }
+
+        public init(
+            tomorrow: [Coursework] = [],
+            today: [Coursework] = [],
+            laterUpcoming: [Coursework] = [],
+            past: [Coursework] = [],
+            noDueDate: [Coursework] = [],
+            completed: [Coursework] = []
+        ) {
+            self.tomorrow = tomorrow
+            self.today = today
+            self.laterUpcoming = laterUpcoming
+            self.past = past
+            self.noDueDate = noDueDate
+            self.completed = completed
+            self.todayAndTomorrow = today + tomorrow
+            self.allUpcoming = today + tomorrow + laterUpcoming + noDueDate
+        }
     }
 
     public init() {}
@@ -295,40 +304,12 @@ public struct ContentView: View {
                 noDueDates: selectedFilter == .allUpcoming ? buckets.noDueDate : []
             )
         } else {
-            let calendar = Calendar.current
-            let now = Date()
-            let startOfToday = calendar.startOfDay(for: now)
-            guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
-                  let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday) else {
-                return ([], [], [], [])
-            }
-
-            var todays: [Coursework] = []
-            var tomorrows: [Coursework] = []
-            var laters: [Coursework] = []
-            var noDates: [Coursework] = []
-
-            for item in list {
-                guard let dueDate = item.dueDate else {
-                    if selectedFilter == .allUpcoming {
-                        noDates.append(item)
-                    }
-                    continue
-                }
-                if dueDate >= now && dueDate < startOfTomorrow {
-                    todays.append(item)
-                } else if dueDate >= startOfTomorrow && dueDate < startOfDayAfter {
-                    tomorrows.append(item)
-                } else if dueDate >= startOfDayAfter && selectedFilter == .allUpcoming {
-                    laters.append(item)
-                }
-            }
-
+            let listIds = Set(list.map(\.id))
             return (
-                todays: todays,
-                tomorrows: tomorrows,
-                laters: laters,
-                noDueDates: noDates
+                todays: buckets.today.filter { listIds.contains($0.id) },
+                tomorrows: buckets.tomorrow.filter { listIds.contains($0.id) },
+                laters: selectedFilter == .allUpcoming ? buckets.laterUpcoming.filter { listIds.contains($0.id) } : [],
+                noDueDates: selectedFilter == .allUpcoming ? buckets.noDueDate.filter { listIds.contains($0.id) } : []
             )
         }
     }
@@ -336,7 +317,7 @@ public struct ContentView: View {
     public var body: some View {
         Group {
             if authService.isAuthenticated || isDemoMode {
-                splitViewContainer
+                mainAppContainer
             } else {
                 welcomeLoginView
             }
@@ -614,19 +595,103 @@ public struct ContentView: View {
     }
 
     @ViewBuilder
+    private var mainAppContainer: some View {
+        #if os(iOS)
+        GeometryReader { outerGeometry in
+            let isCompact = (horizontalSizeClass == .compact) || (outerGeometry.size.width < 660)
+            if isCompact {
+                compactAppView
+            } else {
+                splitViewContainer
+            }
+        }
+        #else
+        splitViewContainer
+        #endif
+    }
+
+    #if os(iOS)
+    @ViewBuilder
+    private var compactAppView: some View {
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                detailMasterView(isCompact: true)
+                    .padding(.bottom, 66)
+
+                LiquidGlassBottomNavigationBar(
+                    selectedFilter: $selectedFilter,
+                    buckets: buckets,
+                    glassNamespace: liquidGlassNamespace,
+                    onSelect: { _ in
+                        autoSelectFirstItem()
+                    }
+                )
+                .padding(.horizontal, 14)
+                .padding(.bottom, 10)
+                .zIndex(50)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .sheet(isPresented: $showCompactCourseFilterSheet) {
+            compactCourseFilterSheetView
+        }
+    }
+
+    private var compactCourseFilterSheetView: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(courses) { course in
+                        CourseSelectionRow(
+                            course: course,
+                            onToggle: {
+                                toggleCourse(courseId: course.id)
+                            }
+                        )
+                        .equatable()
+                    }
+                } header: {
+                    HStack {
+                        Text("Lớp hiển thị (\(courses.filter(\.isSelectedForWidget).count)/\(courses.count))")
+                        Spacer()
+                        let allSelected = courses.allSatisfy(\.isSelectedForWidget)
+                        Button(allSelected ? "Bỏ chọn hết" : "Tất cả") {
+                            toggleAllCourses()
+                        }
+                        .buttonStyle(.plain)
+                        .font(.caption2)
+                        .foregroundStyle(.blue)
+                    }
+                }
+            }
+            .navigationTitle("Lọc môn học")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Xong") {
+                        showCompactCourseFilterSheet = false
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                }
+            }
+        }
+    }
+    #endif
+
+    @ViewBuilder
     private var splitViewContainer: some View {
         #if os(iOS)
         NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: $preferredCompactColumn) {
             sidebarView
         } detail: {
-            detailMasterView
+            detailMasterView(isCompact: false)
         }
         .navigationSplitViewStyle(.balanced)
         #else
         NavigationSplitView(columnVisibility: $columnVisibility) {
             sidebarView
         } detail: {
-            detailMasterView
+            detailMasterView(isCompact: false)
                 .frame(minWidth: 480)
         }
         .navigationSplitViewStyle(.balanced)
@@ -732,7 +797,9 @@ public struct ContentView: View {
         sidebarCategoryRowContent(for: category, count: count, isSelected: isSelected)
             .contentShape(Rectangle())
             .onTapGesture {
-                selectedFilter = category
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.72)) {
+                    selectedFilter = category
+                }
                 #if os(iOS)
                 preferredCompactColumn = .detail
                 if isLandscapePhone {
@@ -747,17 +814,18 @@ public struct ContentView: View {
         HStack(spacing: 9) {
             ZStack {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(isSelected ? categoryIconColor(category) : categoryIconColor(category).opacity(0.12))
+                    .fill(isSelected ? Color.white.opacity(0.24) : categoryIconColor(category).opacity(0.12))
                     .frame(width: 24, height: 24)
 
                 Image(systemName: category.icon)
                     .font(.system(size: 11.5, weight: .semibold))
                     .foregroundStyle(isSelected ? Color.white : categoryIconColor(category))
+                    .scaleEffect(isSelected ? 1.08 : 1.0)
             }
 
             Text(category.rawValue)
-                .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
-                .foregroundStyle(Color.primary)
+                .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                .foregroundStyle(isSelected ? Color.white : Color.primary)
                 .lineLimit(1)
 
             Spacer()
@@ -770,12 +838,15 @@ public struct ContentView: View {
                     .padding(.vertical, 2)
                     .background(
                         Capsule()
-                            .fill(isSelected ? categoryIconColor(category) : categoryBadgeBg(category))
+                            .fill(isSelected ? Color.white : categoryBadgeBg(category))
+                            .shadow(color: isSelected ? Color.black.opacity(0.12) : Color.clear, radius: 2, x: 0, y: 1)
                     )
-                    .foregroundStyle(isSelected ? Color.white : categoryBadgeFg(category))
+                    .foregroundStyle(isSelected ? categoryIconColor(category) : categoryBadgeFg(category))
+                    .scaleEffect(isSelected ? 1.06 : 1.0)
             }
         }
         .padding(.vertical, 2)
+        .animation(.spring(response: 0.30, dampingFraction: 0.75), value: isSelected)
     }
 
     private func categoryIconColor(_ category: AppFilterCategory) -> Color {
@@ -798,7 +869,7 @@ public struct ContentView: View {
     }
 
     @ViewBuilder
-    private var detailMasterView: some View {
+    private func detailMasterView(isCompact: Bool) -> some View {
         VStack(spacing: 0) {
             headerBarView
 
@@ -851,16 +922,34 @@ public struct ContentView: View {
                 }
                 #else
                 GeometryReader { geometry in
-                    let listWidth = min(360, max(280, geometry.size.width * 0.38))
-                    HStack(spacing: 0) {
-                        assignmentListPane()
-                            .frame(width: listWidth)
+                    let isWide = geometry.size.width >= 560
+                    if isWide {
+                        let listWidth = min(360, max(280, geometry.size.width * 0.38))
+                        HStack(spacing: 0) {
+                            assignmentListPane(isWide: true)
+                                .frame(width: listWidth)
 
-                        Divider()
+                            Divider()
 
-                        homeworkReaderPane
+                            homeworkReaderPane
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                    } else {
+                        assignmentListPane(isWide: false)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+                }
+                .sheet(isPresented: $showMobileDetailSheet) {
+                    NavigationStack {
+                        homeworkReaderPane
+                            .navigationTitle("Chi tiết bài tập")
+                            .toolbar {
+                                ToolbarItem(placement: .confirmationAction) {
+                                    Button("Xong") { showMobileDetailSheet = false }
+                                }
+                            }
+                    }
+                    .frame(minWidth: 420, minHeight: 460)
                 }
                 #endif
             }
@@ -914,7 +1003,7 @@ public struct ContentView: View {
         .toolbar {
             #if os(iOS)
             ToolbarItem(placement: .topBarLeading) {
-                if horizontalSizeClass == .compact || isLandscapePhone {
+                if !isCompact && (horizontalSizeClass == .compact || isLandscapePhone) {
                     Button {
                         if isLandscapePhone {
                             columnVisibility = .all
@@ -1022,6 +1111,23 @@ public struct ContentView: View {
             }
 
             Spacer()
+
+            Button {
+                showCompactCourseFilterSheet = true
+            } label: {
+                HStack(spacing: 3.5) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("Lớp (\(courses.filter(\.isSelectedForWidget).count)/\(courses.count))")
+                        .font(.system(size: 10.5, weight: .medium))
+                }
+                .foregroundStyle(Color.platformTextSecondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3.5)
+                .background(Color.platformControlBackground)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
 
             if selectedFilter == .widgetPreview {
                 HStack(spacing: 4) {
@@ -2267,13 +2373,11 @@ public struct ContentView: View {
 
     private func handleItemTap(_ item: Coursework, commandPressed: Bool = false, isWide: Bool = true) {
         triggerHapticFeedback()
-        #if os(iOS)
         if !isWide {
             showMobileDetailSheet = true
         } else {
             showMobileDetailSheet = false
         }
-        #endif
         withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
             if commandPressed {
                 if selectedCourseworkIds.contains(item.id) {
@@ -3133,6 +3237,171 @@ private struct GuideStepRow: View {
             Text(text)
                 .font(.subheadline)
                 .foregroundStyle(Color.platformTextPrimary)
+        }
+    }
+}
+
+// MARK: - Liquid Glass Bottom Navigation Bar (OS 27 SDK)
+
+public struct LiquidGlassBottomNavigationBar: View {
+    @Binding var selectedFilter: ContentView.AppFilterCategory
+    let buckets: ContentView.CourseworkBuckets
+    var glassNamespace: Namespace.ID
+    let onSelect: (ContentView.AppFilterCategory) -> Void
+
+    private struct TabItem: Identifiable {
+        let category: ContentView.AppFilterCategory
+        let shortTitle: String
+        let icon: String
+        let count: Int?
+
+        var id: String { category.rawValue }
+    }
+
+    private var tabs: [TabItem] {
+        var items: [TabItem] = [
+            TabItem(category: .tomorrow, shortTitle: "Báo bài", icon: ContentView.AppFilterCategory.tomorrow.icon, count: buckets.tomorrow.count),
+            TabItem(category: .todayAndTomorrow, shortTitle: "Hôm nay", icon: ContentView.AppFilterCategory.todayAndTomorrow.icon, count: buckets.todayAndTomorrow.count),
+            TabItem(category: .allUpcoming, shortTitle: "Sắp tới", icon: ContentView.AppFilterCategory.allUpcoming.icon, count: buckets.allUpcoming.count),
+        ]
+        if buckets.past.count > 0 {
+            items.append(TabItem(category: .past, shortTitle: "Quá hạn", icon: ContentView.AppFilterCategory.past.icon, count: buckets.past.count))
+        }
+        items.append(TabItem(category: .completed, shortTitle: "Đã xong", icon: ContentView.AppFilterCategory.completed.icon, count: buckets.completed.count))
+        if buckets.past.count == 0 {
+            items.append(TabItem(category: .widgetPreview, shortTitle: "Widget", icon: ContentView.AppFilterCategory.widgetPreview.icon, count: nil))
+        }
+        return items
+    }
+
+    public init(
+        selectedFilter: Binding<ContentView.AppFilterCategory>,
+        buckets: ContentView.CourseworkBuckets,
+        glassNamespace: Namespace.ID,
+        onSelect: @escaping (ContentView.AppFilterCategory) -> Void
+    ) {
+        self._selectedFilter = selectedFilter
+        self.buckets = buckets
+        self.glassNamespace = glassNamespace
+        self.onSelect = onSelect
+    }
+
+    public var body: some View {
+        if #available(iOS 26, macOS 26, *) {
+            GlassEffectContainer(spacing: 4) {
+                HStack(spacing: 4) {
+                    ForEach(tabs) { tab in
+                        liquidGlassTabButton(for: tab)
+                    }
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 5)
+            }
+            .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 5)
+        } else {
+            HStack(spacing: 4) {
+                ForEach(tabs) { tab in
+                    materialTabButton(for: tab)
+                }
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 5)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
+            .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 5)
+        }
+    }
+
+    @available(iOS 26, macOS 26, *)
+    @ViewBuilder
+    private func liquidGlassTabButton(for tab: TabItem) -> some View {
+        let isSelected = (selectedFilter == tab.category)
+        let tabColor = categoryColor(tab.category)
+
+        Button {
+            triggerFeedback()
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.72)) {
+                selectedFilter = tab.category
+                onSelect(tab.category)
+            }
+        } label: {
+            tabLabel(for: tab, isSelected: isSelected, tabColor: tabColor)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(
+            isSelected
+                ? .regular.tint(tabColor.opacity(0.32)).interactive()
+                : .regular.interactive(),
+            in: .capsule
+        )
+        .glassEffectID(tab.id, in: glassNamespace)
+    }
+
+    @ViewBuilder
+    private func materialTabButton(for tab: TabItem) -> some View {
+        let isSelected = (selectedFilter == tab.category)
+        let tabColor = categoryColor(tab.category)
+
+        Button {
+            triggerFeedback()
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.72)) {
+                selectedFilter = tab.category
+                onSelect(tab.category)
+            }
+        } label: {
+            tabLabel(for: tab, isSelected: isSelected, tabColor: tabColor)
+                .background(
+                    Capsule()
+                        .fill(isSelected ? tabColor.opacity(0.20) : Color.clear)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func tabLabel(for tab: TabItem, isSelected: Bool, tabColor: Color) -> some View {
+        VStack(spacing: 2) {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 13, weight: isSelected ? .bold : .semibold))
+                    .foregroundStyle(isSelected ? tabColor : Color.primary.opacity(0.72))
+                    .frame(width: 22, height: 18)
+
+                if let count = tab.count, count > 0 {
+                    Text("\(count)")
+                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 3.5)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(tabColor))
+                        .offset(x: 9, y: -5)
+                }
+            }
+
+            Text(tab.shortTitle)
+                .font(.system(size: 9.5, weight: isSelected ? .bold : .medium))
+                .foregroundStyle(isSelected ? tabColor : Color.secondary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
+        .contentShape(Capsule())
+    }
+
+    private func triggerFeedback() {
+        #if os(iOS)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        #endif
+    }
+
+    private func categoryColor(_ category: ContentView.AppFilterCategory) -> Color {
+        switch category {
+        case .tomorrow: return Color(red: 0.12, green: 0.52, blue: 0.95)
+        case .todayAndTomorrow: return Color(red: 0.88, green: 0.48, blue: 0.06)
+        case .allUpcoming: return Color(red: 0.38, green: 0.42, blue: 0.82)
+        case .past: return Color(red: 0.86, green: 0.24, blue: 0.26)
+        case .completed: return Color(red: 0.12, green: 0.62, blue: 0.35)
+        case .widgetPreview: return Color(red: 0.55, green: 0.35, blue: 0.85)
         }
     }
 }

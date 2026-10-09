@@ -1,13 +1,22 @@
 package com.phucta.classroom.ui.screens
 
 import android.content.Context
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -133,16 +142,25 @@ fun MainScreen() {
         BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses).filter { it.isCompleted }
     }
 
-    // Infinite rotation animation when syncing
-    val infiniteTransition = rememberInfiniteTransition(label = "syncRotation")
-    val syncRotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing)
-        ),
-        label = "syncAngle"
-    )
+    // On-demand rotation animation only active while syncing
+    val syncRotation = remember { Animatable(0f) }
+    LaunchedEffect(isSyncing) {
+        if (isSyncing) {
+            while (true) {
+                syncRotation.animateTo(
+                    targetValue = syncRotation.value + 360f,
+                    animationSpec = tween(900, easing = LinearEasing)
+                )
+            }
+        } else if (syncRotation.value != 0f) {
+            val nearestFullTurn = kotlin.math.ceil(syncRotation.value / 360f) * 360f
+            syncRotation.animateTo(
+                targetValue = nearestFullTurn,
+                animationSpec = tween(250, easing = FastOutSlowInEasing)
+            )
+            syncRotation.snapTo(0f)
+        }
+    }
 
     if (isAuthenticated || isDemoMode) {
         ModalNavigationDrawer(
@@ -238,7 +256,7 @@ fun MainScreen() {
                                 contentDescription = "Sync",
                                 tint = ChunkyColor.SkyBottom,
                                 modifier = Modifier.graphicsLayer {
-                                    rotationZ = if (isSyncing) syncRotation else 0f
+                                    rotationZ = syncRotation.value
                                 }
                             )
                         }
@@ -289,12 +307,27 @@ fun MainScreen() {
                 }
             }
         ) { paddingValues ->
-            Box(
+            AnimatedContent(
+                targetState = selectedTabIndex,
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        (slideInHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> (width * 0.15f).toInt() } + fadeIn(animationSpec = tween(200)))
+                            .togetherWith(
+                                slideOutHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> -(width * 0.15f).toInt() } + fadeOut(animationSpec = tween(160))
+                            )
+                    } else {
+                        (slideInHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> -(width * 0.15f).toInt() } + fadeIn(animationSpec = tween(200)))
+                            .togetherWith(
+                                slideOutHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> (width * 0.15f).toInt() } + fadeOut(animationSpec = tween(160))
+                            )
+                    }
+                },
+                label = "tabTransition",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-            ) {
-                when (selectedTabIndex) {
+            ) { tabIndex ->
+                when (tabIndex) {
                     0 -> TomorrowHomeworkScreen(
                         tomorrowItems = tomorrowItems,
                         onToggleCompletion = { id, completed ->
@@ -325,6 +358,7 @@ fun MainScreen() {
                     )
                 }
             }
+        }
         }
     } else {
         WelcomeLoginScreen(
