@@ -3400,6 +3400,37 @@ public struct LiquidGlassBottomNavigationBar: View {
     }
 
     public var body: some View {
+        #if os(iOS)
+        if #available(iOS 26, *) {
+            nativeGlassBar
+        } else {
+            fallbackGlassBar
+        }
+        #else
+        fallbackGlassBar
+        #endif
+    }
+
+    #if os(iOS)
+    @available(iOS 26, *)
+    private var nativeGlassBar: some View {
+        GlassEffectContainer(spacing: 3) {
+            HStack(spacing: 3) {
+                ForEach(tabs) { tab in
+                    tabButton(for: tab)
+                }
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 5)
+            .frame(maxWidth: 520)
+            .glassEffect(.regular, in: .capsule)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 7)
+            .shadow(color: Color.primary.opacity(0.04), radius: 2, x: 0, y: 1)
+        }
+    }
+    #endif
+
+    private var fallbackGlassBar: some View {
         HStack(spacing: 3) {
             ForEach(tabs) { tab in
                 tabButton(for: tab)
