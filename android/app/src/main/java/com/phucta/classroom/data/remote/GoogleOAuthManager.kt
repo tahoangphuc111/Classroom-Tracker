@@ -99,7 +99,7 @@ class GoogleOAuthManager(
             .appendQueryParameter("code_challenge", challenge)
             .appendQueryParameter("code_challenge_method", "S256")
             .appendQueryParameter("access_type", "offline")
-            .appendQueryParameter("prompt", "consent")
+            .appendQueryParameter("prompt", "select_account consent")
             .build()
 
         val customTabsIntent = CustomTabsIntent.Builder().setShowTitle(true).build()

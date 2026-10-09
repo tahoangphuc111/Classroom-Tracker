@@ -274,7 +274,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             URLQueryItem(name: "code_challenge", value: challenge),
             URLQueryItem(name: "code_challenge_method", value: "S256"),
             URLQueryItem(name: "access_type", value: "offline"),
-            URLQueryItem(name: "prompt", value: "consent")
+            URLQueryItem(name: "prompt", value: "select_account consent")
         ]
 
         guard let authURL = components.url else {
@@ -363,7 +363,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             URLQueryItem(name: "code_challenge", value: challenge),
             URLQueryItem(name: "code_challenge_method", value: "S256"),
             URLQueryItem(name: "access_type", value: "offline"),
-            URLQueryItem(name: "prompt", value: "consent")
+            URLQueryItem(name: "prompt", value: "select_account consent")
         ]
 
         guard let authURL = components.url else {

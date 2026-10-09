@@ -65,6 +65,7 @@ public struct ContentView: View {
     @StateObject private var authService = GoogleOAuthService.shared
     @StateObject private var apiService = ClassroomAPIService.shared
     @StateObject private var updateService = AppUpdateService.shared
+    @StateObject private var reminderService = EveningReminderService.shared
 
     @State private var courses: [Course] = []
     @State private var allCoursework: [Coursework] = []
@@ -75,6 +76,7 @@ public struct ContentView: View {
     @State private var selectedPreviewFamily: WidgetPreviewFamily = .medium
     @State private var useSampleDataForPreview: Bool = false
     @State private var showSettingsModal: Bool = false
+    @State private var showLogoutConfirmation: Bool = false
     @State private var clientIdInput: String = ""
     @State private var clientSecretInput: String = ""
     @State private var isSigningIn: Bool = false
@@ -386,6 +388,10 @@ public struct ContentView: View {
                 guard !Task.isCancelled else { return }
                 await updateService.checkForUpdates()
             }
+            Task {
+                await reminderService.checkAuthorizationStatus()
+                reminderService.updateReminderContent()
+            }
         }
         .onChange(of: selectedFilter) {
             if selectedFilter == .past && buckets.past.isEmpty {
@@ -424,6 +430,9 @@ public struct ContentView: View {
         }
         #endif
         .onChange(of: scenePhase) {
+            if scenePhase == .background || scenePhase == .active {
+                reminderService.updateReminderContent()
+            }
             guard hasInitialLoadHappened, scenePhase == .active else { return }
             refreshData()
             if authService.isAuthenticated {
@@ -656,16 +665,19 @@ public struct ContentView: View {
         }
     }
 
+    #if os(iOS)
+    private var isCompactLayout: Bool {
+        horizontalSizeClass == .compact || isLandscapePhone
+    }
+    #endif
+
     @ViewBuilder
     private var mainAppContainer: some View {
         #if os(iOS)
-        GeometryReader { outerGeometry in
-            let isCompact = (horizontalSizeClass == .compact) || (outerGeometry.size.width < 660)
-            if isCompact {
-                compactAppView
-            } else {
-                splitViewContainer
-            }
+        if isCompactLayout {
+            compactAppView
+        } else {
+            splitViewContainer
         }
         #else
         splitViewContainer
@@ -948,34 +960,51 @@ public struct ContentView: View {
                 }
             } else {
                 #if os(iOS)
-                GeometryReader { geometry in
-                    let isWide = geometry.size.width >= 560
-                    if isWide {
-                        let listWidth = min(350, max(260, geometry.size.width * 0.38))
-                        HStack(spacing: 0) {
-                            assignmentListPane(isWide: true)
-                                .frame(width: listWidth)
+                if isCompact {
+                    assignmentListPane(isWide: false)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .sheet(isPresented: $showMobileDetailSheet) {
+                            NavigationStack {
+                                homeworkReaderPane
+                                    .navigationTitle("Chi tiết bài tập")
+                                    .navigationBarTitleDisplayMode(.inline)
+                                    .toolbar {
+                                        ToolbarItem(placement: .confirmationAction) {
+                                            Button("Xong") { showMobileDetailSheet = false }
+                                        }
+                                    }
+                            }
+                        }
+                } else {
+                    GeometryReader { geometry in
+                        let isWide = geometry.size.width >= 560
+                        if isWide {
+                            let listWidth = min(350, max(260, geometry.size.width * 0.38))
+                            HStack(spacing: 0) {
+                                assignmentListPane(isWide: true)
+                                    .frame(width: listWidth)
 
-                            Divider()
+                                Divider()
 
-                            homeworkReaderPane
+                                homeworkReaderPane
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            }
+                        } else {
+                            assignmentListPane(isWide: false)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
-                    } else {
-                        assignmentListPane(isWide: false)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                }
-                .sheet(isPresented: $showMobileDetailSheet) {
-                    NavigationStack {
-                        homeworkReaderPane
-                            .navigationTitle("Chi tiết bài tập")
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                ToolbarItem(placement: .confirmationAction) {
-                                    Button("Xong") { showMobileDetailSheet = false }
+                    .sheet(isPresented: $showMobileDetailSheet) {
+                        NavigationStack {
+                            homeworkReaderPane
+                                .navigationTitle("Chi tiết bài tập")
+                                .navigationBarTitleDisplayMode(.inline)
+                                .toolbar {
+                                    ToolbarItem(placement: .confirmationAction) {
+                                        Button("Xong") { showMobileDetailSheet = false }
+                                    }
                                 }
-                            }
+                        }
                     }
                 }
                 #else
@@ -1066,8 +1095,8 @@ public struct ContentView: View {
         }
         .toolbar {
             #if os(iOS)
-            ToolbarItem(placement: .topBarLeading) {
-                if !isCompact && (horizontalSizeClass == .compact || isLandscapePhone) {
+            if !isCompact && (horizontalSizeClass == .compact || isLandscapePhone) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button {
                         if isLandscapePhone {
                             columnVisibility = .all
@@ -1111,23 +1140,17 @@ public struct ContentView: View {
                     }
                 } label: {
                     #if os(iOS)
-                    if #available(iOS 18, *) {
+                    if apiService.isSyncing {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.system(size: 16, weight: .semibold))
-                            .symbolEffect(.rotate, isActive: apiService.isSyncing)
-                    } else {
-                        if apiService.isSyncing {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .font(.system(size: 16, weight: .semibold))
-                        }
                     }
                     #else
-                    if #available(macOS 15, *) {
-                        Label("Đồng bộ", systemImage: "arrow.triangle.2.circlepath")
-                            .symbolEffect(.rotate, isActive: apiService.isSyncing)
+                    if apiService.isSyncing {
+                        ProgressView()
+                            .controlSize(.small)
                     } else {
                         Label("Đồng bộ", systemImage: "arrow.triangle.2.circlepath")
                     }
@@ -2249,6 +2272,69 @@ public struct ContentView: View {
                     Label("Cập nhật ứng dụng", systemImage: "arrow.triangle.2.circlepath")
                 }
 
+                Section {
+                    Toggle("Nhắc nhở mỗi tối", isOn: Binding(
+                        get: { reminderService.isEnabled },
+                        set: { newValue in
+                            if newValue {
+                                Task {
+                                    let granted = await reminderService.requestAuthorization()
+                                    if granted {
+                                        reminderService.isEnabled = true
+                                    } else {
+                                        reminderService.isEnabled = false
+                                        showToast(
+                                            title: "Chưa cấp quyền thông báo",
+                                            subtitle: "Vui lòng bật quyền Thông báo trong Cài đặt hệ thống để nhận báo bài",
+                                            icon: "bell.slash",
+                                            tint: .orange
+                                        )
+                                    }
+                                }
+                            } else {
+                                reminderService.isEnabled = false
+                            }
+                        }
+                    ))
+
+                    if reminderService.isEnabled {
+                        DatePicker(
+                            "Giờ báo bài",
+                            selection: Binding(
+                                get: {
+                                    var c = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+                                    c.hour = reminderService.reminderHour
+                                    c.minute = reminderService.reminderMinute
+                                    return Calendar.current.date(from: c) ?? Date()
+                                },
+                                set: { newDate in
+                                    let comps = Calendar.current.dateComponents([.hour, .minute], from: newDate)
+                                    reminderService.setReminderTime(hour: comps.hour ?? 20, minute: comps.minute ?? 0)
+                                }
+                            ),
+                            displayedComponents: .hourAndMinute
+                        )
+
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("Xem trước thông báo:")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                            Text(reminderService.previewNotificationText())
+                                .font(.system(size: 12.5))
+                                .foregroundStyle(.primary)
+                                .padding(9)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.platformSubtleFill)
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        }
+                        .padding(.vertical, 2)
+                    }
+                } header: {
+                    Label("Báo bài buổi tối", systemImage: "moon.stars.fill")
+                } footer: {
+                    Text("Ứng dụng tự động thông báo tóm tắt các bài tập cần nộp vào ngày mai để bạn chuẩn bị tập vở và soạn cặp.")
+                }
+
                 if authService.isAuthenticated {
                     Section {
                         HStack {
@@ -2259,11 +2345,7 @@ public struct ContentView: View {
                         }
 
                         Button("Đăng xuất", role: .destructive) {
-                            authService.signOut()
-                            isDemoMode = false
-                            refreshData()
-                            autoSelectFirstItem()
-                            showSettingsModal = false
+                            showLogoutConfirmation = true
                         }
                     } header: {
                         Label("Tài khoản hiện tại", systemImage: "person.crop.circle")
@@ -2272,6 +2354,22 @@ public struct ContentView: View {
             }
             .formStyle(.grouped)
             .navigationTitle("Cài đặt & Tài khoản")
+            .confirmationDialog(
+                "Đăng xuất khỏi Google?",
+                isPresented: $showLogoutConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Đăng xuất và xóa cache", role: .destructive) {
+                    authService.signOut()
+                    isDemoMode = false
+                    refreshData()
+                    autoSelectFirstItem()
+                    showSettingsModal = false
+                }
+                Button("Hủy", role: .cancel) {}
+            } message: {
+                Text("Bạn có chắc chắn muốn đăng xuất tài khoản Google? Dữ liệu bài tập offline trên thiết bị sẽ được xóa.")
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Đóng") { showSettingsModal = false }
@@ -2477,11 +2575,24 @@ public struct ContentView: View {
     private func batchToggleCompletion(for ids: Set<String>) {
         guard !ids.isEmpty else { return }
         triggerHapticFeedback()
-        ClassroomStorage.shared.updateCourseworkStatuses(ids: ids, newStatus: .turnedIn)
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-            refreshData()
-            selectedCourseworkIds.removeAll()
+
+        for id in ids {
+            if let index = allCoursework.firstIndex(where: { $0.id == id }) {
+                allCoursework[index].status = .turnedIn
+            }
         }
+
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+            recomputeBuckets()
+            selectedCourseworkIds.removeAll()
+            if let current = selectedCoursework, ids.contains(current.id) {
+                selectedCoursework = allCoursework.first(where: { $0.id == current.id })
+            }
+        }
+
+        ClassroomStorage.shared.saveCoursework(allCoursework)
+        reminderService.updateReminderContent()
+
         showToast(
             title: "Đã hoàn thành \(ids.count) bài tập!",
             icon: "checkmark.circle.fill",
@@ -2490,23 +2601,27 @@ public struct ContentView: View {
     }
 
     private func toggleCompletion(for item: Coursework) {
-        var all = ClassroomStorage.shared.loadCoursework()
-        if let index = all.firstIndex(where: { $0.id == item.id }) {
-            let wasCompleted = all[index].isCompleted
-            let isOverdue = all[index].dueDate != nil && all[index].dueDate! < Date()
+        triggerHapticFeedback()
+
+        if let index = allCoursework.firstIndex(where: { $0.id == item.id }) {
+            let wasCompleted = allCoursework[index].isCompleted
+            let isOverdue = allCoursework[index].dueDate != nil && allCoursework[index].dueDate! < Date()
             let newStatus: SubmissionStatus = wasCompleted ? (isOverdue ? .late : .pending) : .turnedIn
-            all[index].status = newStatus
-            ClassroomStorage.shared.saveCoursework(all)
+            allCoursework[index].status = newStatus
 
-            triggerHapticFeedback()
+            let currentItem = allCoursework[index]
+            let itemCourse = currentItem.courseName
+            let itemTitle = currentItem.title
 
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                refreshData()
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                recomputeBuckets()
+                if selectedCoursework?.id == item.id {
+                    selectedCoursework = currentItem
+                }
             }
 
-            let itemCourse = all[index].courseName
-            let itemTitle = all[index].title
-            let currentItem = all[index]
+            ClassroomStorage.shared.saveCoursework(allCoursework)
+            reminderService.updateReminderContent()
 
             if newStatus == .turnedIn {
                 showToast(
@@ -2860,6 +2975,19 @@ private struct BatchSelectedSummaryView: View {
     }
 }
 
+#if os(iOS)
+private struct RowSelectedShadowModifier: ViewModifier {
+    let isSelected: Bool
+    func body(content: Content) -> some View {
+        if isSelected {
+            content.shadow(color: Color.black.opacity(0.04), radius: 3, x: 0, y: 1)
+        } else {
+            content
+        }
+    }
+}
+#endif
+
 private struct AssignmentListRow: View, Equatable {
     let item: Coursework
     let isSelected: Bool
@@ -2879,6 +3007,8 @@ private struct AssignmentListRow: View, Equatable {
     }
 
     var body: some View {
+        let themeColor = SubjectArtHelper.themeColor(for: item.courseName, title: item.title)
+
         HStack(alignment: .center, spacing: 9) {
             Capsule()
                 .fill(isSelected ? Color.blue : Color.clear)
@@ -2886,63 +3016,64 @@ private struct AssignmentListRow: View, Equatable {
                 .animation(.easeInOut(duration: 0.15), value: isSelected)
 
             Button {
-                    withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) {
-                        checkmarkBounce = true
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        checkmarkBounce = false
-                    }
-                    onToggleCompletion()
-                } label: {
-                    ZStack(alignment: .bottomTrailing) {
-                        SubjectArtBadgeView(courseName: item.courseName, title: item.title, size: 32)
-
-                        if isTurnedIn {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
-                                .background(Circle().fill(Color.white).padding(1))
-                                .offset(x: 3, y: 3)
-                                .scaleEffect(checkmarkBounce ? 1.3 : 1.0)
-                                .transition(.scale.combined(with: .opacity))
-                        } else {
-                            Circle()
-                                .strokeBorder(Color.secondary.opacity(0.35), lineWidth: 1.3)
-                                .background(Circle().fill(Color.platformControlBackground.opacity(0.85)))
-                                .frame(width: 13, height: 13)
-                                .offset(x: 2, y: 2)
-                        }
-                    }
-                    .scaleEffect(checkmarkBounce ? 1.15 : 1.0)
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) {
+                    checkmarkBounce = true
                 }
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-                .buttonStyle(.plain)
-                .help(isTurnedIn ? "Đã nộp bài (Space hoặc bấm để hoàn tác)" : "Chưa nộp bài (Space hoặc bấm để đánh dấu hoàn thành)")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    checkmarkBounce = false
+                }
+                onToggleCompletion()
+            } label: {
+                ZStack(alignment: .bottomTrailing) {
+                    SubjectArtBadgeView(courseName: item.courseName, title: item.title, size: 32)
+                        .equatable()
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(item.title)
-                        .font(.system(size: 15.5, weight: isSelected ? .bold : .semibold))
-                        .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
-                        .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .animation(.easeInOut(duration: 0.2), value: isTurnedIn)
-
-                    HStack(spacing: 5) {
+                    if isTurnedIn {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
+                            .background(Circle().fill(Color.white).padding(1))
+                            .offset(x: 3, y: 3)
+                            .scaleEffect(checkmarkBounce ? 1.3 : 1.0)
+                            .transition(.scale.combined(with: .opacity))
+                    } else {
                         Circle()
-                            .fill(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
-                            .frame(width: 6, height: 6)
-                        Text(item.courseName)
-                            .font(.system(size: 12.5, weight: .semibold))
-                            .foregroundStyle(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
-                            .lineLimit(1)
+                            .strokeBorder(Color.secondary.opacity(0.35), lineWidth: 1.3)
+                            .background(Circle().fill(Color.platformControlBackground.opacity(0.85)))
+                            .frame(width: 13, height: 13)
+                            .offset(x: 2, y: 2)
                     }
                 }
+                .scaleEffect(checkmarkBounce ? 1.15 : 1.0)
+            }
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .help(isTurnedIn ? "Đã nộp bài (Space hoặc bấm để hoàn tác)" : "Chưa nộp bài (Space hoặc bấm để đánh dấu hoàn thành)")
 
-                Spacer(minLength: 4)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.title)
+                    .font(.system(size: 15.5, weight: isSelected ? .bold : .semibold))
+                    .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
+                    .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
+                    .lineLimit(2)
+                    .animation(.easeInOut(duration: 0.2), value: isTurnedIn)
 
-                DueBadgeView(item: item, compact: true)
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(themeColor)
+                        .frame(width: 6, height: 6)
+                    Text(item.courseName)
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(themeColor)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 4)
+
+            DueBadgeView(item: item, compact: true)
+                .equatable()
         }
         .padding(.horizontal, 10)
         #if os(iOS)
@@ -2974,12 +3105,7 @@ private struct AssignmentListRow: View, Equatable {
             isHovered = hovering
         }
         #else
-        .shadow(
-            color: Color.black.opacity(isSelected ? 0.04 : 0.015),
-            radius: isSelected ? 4 : 2,
-            x: 0,
-            y: 1
-        )
+        .modifier(RowSelectedShadowModifier(isSelected: isSelected))
         #endif
         .contentShape(Rectangle())
         .onTapGesture {
@@ -3408,53 +3534,12 @@ public struct LiquidGlassBottomNavigationBar: View {
     }
 
     public var body: some View {
-        #if os(iOS)
-        if #available(iOS 26, *) {
-            nativeGlassBar
-        } else {
-            fallbackGlassBar
-        }
-        #else
-        fallbackGlassBar
-        #endif
-    }
-
-    #if os(iOS)
-    @available(iOS 26, *)
-    private var nativeGlassBar: some View {
-        GeometryReader { geometry in
-            let tabWidth = geometry.size.width / CGFloat(max(1, tabs.count))
-
-            GlassEffectContainer(spacing: 0) {
-                HStack(spacing: 0) {
-                    ForEach(tabs) { tab in
-                        tabSlot(for: tab, isNative: true)
-                    }
-                }
-                .padding(4)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .glassEffect(.regular, in: .capsule)
-                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 7)
-                .shadow(color: Color.primary.opacity(0.04), radius: 2, x: 0, y: 1)
-            }
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        handleDrag(at: value.location.x, tabWidth: tabWidth)
-                    }
-            )
-        }
-        .frame(height: 54)
-    }
-    #endif
-
-    private var fallbackGlassBar: some View {
         GeometryReader { geometry in
             let tabWidth = geometry.size.width / CGFloat(max(1, tabs.count))
 
             HStack(spacing: 0) {
                 ForEach(tabs) { tab in
-                    tabSlot(for: tab, isNative: false)
+                    tabSlot(for: tab)
                 }
             }
             .padding(4)
@@ -3481,7 +3566,7 @@ public struct LiquidGlassBottomNavigationBar: View {
                     .shadow(color: Color.primary.opacity(0.04), radius: 2, x: 0, y: 1)
             }
             .gesture(
-                DragGesture(minimumDistance: 0)
+                DragGesture(minimumDistance: 12)
                     .onChanged { value in
                         handleDrag(at: value.location.x, tabWidth: tabWidth)
                     }
@@ -3505,27 +3590,13 @@ public struct LiquidGlassBottomNavigationBar: View {
     }
 
     @ViewBuilder
-    private func tabSlot(for tab: TabItem, isNative: Bool) -> some View {
+    private func tabSlot(for tab: TabItem) -> some View {
         let isSelected = (selectedFilter == tab.category)
         let tabColor = categoryColor(tab.category)
 
         ZStack {
             if isSelected {
-                if isNative {
-                    #if os(iOS)
-                    if #available(iOS 26, *) {
-                        Capsule()
-                            .glassEffect(.regular.tint(tabColor.opacity(0.35)).interactive(), in: .capsule)
-                            .matchedGeometryEffect(id: "nativeGlassSlider", in: glassNamespace)
-                    } else {
-                        fallbackSlider(tabColor: tabColor)
-                    }
-                    #else
-                    fallbackSlider(tabColor: tabColor)
-                    #endif
-                } else {
-                    fallbackSlider(tabColor: tabColor)
-                }
+                fallbackSlider(tabColor: tabColor)
             }
 
             ZStack(alignment: .topTrailing) {
@@ -3548,6 +3619,15 @@ public struct LiquidGlassBottomNavigationBar: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
+        .onTapGesture {
+            if selectedFilter != tab.category {
+                triggerFeedback()
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                    selectedFilter = tab.category
+                    onSelect(tab.category)
+                }
+            }
+        }
         .accessibilityLabel(Text(tab.category.rawValue))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }

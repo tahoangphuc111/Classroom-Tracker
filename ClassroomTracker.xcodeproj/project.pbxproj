@@ -38,6 +38,7 @@
 		5A8BDBC5102357F31F06BAA7 /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
 		5B00F034FE2B8F6DBBD0413E /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
 		5C4423BBF792AD9417E76A07 /* WidgetVectorArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD22FBD16D58EFBCBCC5EBD /* WidgetVectorArt.swift */; };
+		5D1F4B06D5109641AAEFCDD6 /* EveningReminderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74DF3B3C4B88510916B56233 /* EveningReminderService.swift */; };
 		647B4D125CBFD0082422D82B /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
 		671D466371D14585CBE67293 /* Course.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4508EBDBFF6D0212A21C01 /* Course.swift */; };
 		6CF1ED97794083A88871588E /* PlusJakartaSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */; };
@@ -77,6 +78,7 @@
 		C768A49C57F6329018704CFD /* Outfit.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2B5B470280F43B64B25B5B3B /* Outfit.ttf */; };
 		C8A7644A05A0EC9B89276B58 /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
 		CD98A7F27D77B3B825A6EF9F /* BeVietnamPro-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */; };
+		CDE9B0D0654FD9B94E4D9295 /* EveningReminderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74DF3B3C4B88510916B56233 /* EveningReminderService.swift */; };
 		CFFD98A3CE699E345D3F36BF /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
 		D13D21E5F66F6BFFFA509A06 /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
 		D14BCF37E58AB8E37A787F4A /* ember_normal.svg in Resources */ = {isa = PBXBuildFile; fileRef = 0E71BB535F5533E7E10B9C14 /* ember_normal.svg */; };
@@ -165,6 +167,7 @@
 		6DF031DF29F1D5BDA325C422 /* ember_stressed.svg */ = {isa = PBXFileReference; path = ember_stressed.svg; sourceTree = "<group>"; };
 		7067B66E7A83A695915BD2CF /* ClassroomWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomWidget.swift; sourceTree = "<group>"; };
 		728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BeVietnamPro-Bold.ttf"; sourceTree = "<group>"; };
+		74DF3B3C4B88510916B56233 /* EveningReminderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EveningReminderService.swift; sourceTree = "<group>"; };
 		74F6B7930F668D92B55266E8 /* AppUpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdateService.swift; sourceTree = "<group>"; };
 		76246EB4C2B91BE0D7817282 /* ClassroomAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomAPIService.swift; sourceTree = "<group>"; };
 		774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BeVietnamPro-ExtraBold.ttf"; sourceTree = "<group>"; };
@@ -229,6 +232,14 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
+		8938E7683BE3DB6642C32E02 /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				74DF3B3C4B88510916B56233 /* EveningReminderService.swift */,
+			);
+			path = Notifications;
+			sourceTree = "<group>";
+		};
 		919DAD834318B2221C8EE505 /* ClassroomApp */ = {
 			isa = PBXGroup;
 			children = (
@@ -289,6 +300,7 @@
 				F15399D68049716C6F10836A /* Fonts */,
 				47EC5A281BA1C8A789AC9A79 /* Models */,
 				E57DAD4DA83C74F333A2F04E /* Network */,
+				8938E7683BE3DB6642C32E02 /* Notifications */,
 				A58FC65C345F60C93BD82EF0 /* Storage */,
 				3F886A7FA7446B999B9FAB35 /* WidgetViews */,
 			);
@@ -536,6 +548,7 @@
 				221955AC320833CDCC19C27F /* ContentView.swift in Sources */,
 				DA384E556B37E0B3BA7231BF /* Course.swift in Sources */,
 				A7395D60908C5BBBFE75E740 /* Coursework.swift in Sources */,
+				CDE9B0D0654FD9B94E4D9295 /* EveningReminderService.swift in Sources */,
 				D750CB748227403E3F7FCA33 /* GoogleOAuthService.swift in Sources */,
 				90E3828D44E83C72AC8358D0 /* LargeWidgetView.swift in Sources */,
 				B2C84037AA5318BA266BBB45 /* LoopbackOAuthServer.swift in Sources */,
@@ -576,6 +589,7 @@
 				A387480E11C4AFA7D4D074AD /* ContentView.swift in Sources */,
 				7F26CC1E72F68F52045C561C /* Course.swift in Sources */,
 				7BC77EFAB7F1BFCBF6A5906D /* Coursework.swift in Sources */,
+				5D1F4B06D5109641AAEFCDD6 /* EveningReminderService.swift in Sources */,
 				F97AC4CD49F0EC1A19375DCF /* GoogleOAuthService.swift in Sources */,
 				00E5BD8166F74D4B2C9D65FC /* LargeWidgetView.swift in Sources */,
 				1C5FE8D79B4A254B96E23B45 /* LoopbackOAuthServer.swift in Sources */,

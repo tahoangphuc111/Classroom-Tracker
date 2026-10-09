@@ -1,0 +1,172 @@
+import Foundation
+import UserNotifications
+import Combine
+
+public final class EveningReminderService: ObservableObject, @unchecked Sendable {
+    public static let shared = EveningReminderService()
+
+    public static let notificationIdentifier = "com.phucta.classroom.evening_bao_bai_reminder"
+    private let enabledKey = "classroom_evening_reminder_enabled"
+    private let hourKey = "classroom_evening_reminder_hour"
+    private let minuteKey = "classroom_evening_reminder_minute"
+
+    @Published public var isEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(isEnabled, forKey: enabledKey)
+            if isEnabled {
+                scheduleReminder()
+            } else {
+                cancelReminder()
+            }
+        }
+    }
+
+    @Published public var reminderHour: Int {
+        didSet {
+            UserDefaults.standard.set(reminderHour, forKey: hourKey)
+            if isEnabled {
+                scheduleReminder()
+            }
+        }
+    }
+
+    @Published public var reminderMinute: Int {
+        didSet {
+            UserDefaults.standard.set(reminderMinute, forKey: minuteKey)
+            if isEnabled {
+                scheduleReminder()
+            }
+        }
+    }
+
+    @Published public var isAuthorized: Bool = false
+
+    private init() {
+        let hasConfigured = UserDefaults.standard.object(forKey: enabledKey) != nil
+        self.isEnabled = hasConfigured ? UserDefaults.standard.bool(forKey: enabledKey) : true
+        self.reminderHour = UserDefaults.standard.object(forKey: hourKey) != nil ? UserDefaults.standard.integer(forKey: hourKey) : 20
+        self.reminderMinute = UserDefaults.standard.object(forKey: minuteKey) != nil ? UserDefaults.standard.integer(forKey: minuteKey) : 0
+
+        Task {
+            await checkAuthorizationStatus()
+        }
+    }
+
+    @MainActor
+    public func checkAuthorizationStatus() async -> Bool {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        let authorized = (settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional)
+        self.isAuthorized = authorized
+        return authorized
+    }
+
+    @MainActor
+    public func requestAuthorization() async -> Bool {
+        do {
+            let center = UNUserNotificationCenter.current()
+            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+            self.isAuthorized = granted
+            if granted && isEnabled {
+                scheduleReminder()
+            }
+            return granted
+        } catch {
+            self.isAuthorized = false
+            return false
+        }
+    }
+
+    public func setReminderTime(hour: Int, minute: Int) {
+        self.reminderHour = max(0, min(23, hour))
+        self.reminderMinute = max(0, min(59, minute))
+    }
+
+    public func scheduleReminder() {
+        guard isEnabled else {
+            cancelReminder()
+            return
+        }
+
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { [weak self] settings in
+            guard let self = self else { return }
+            guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
+                return
+            }
+
+            let content = self.buildNotificationContent()
+
+            var dateComponents = DateComponents()
+            dateComponents.hour = self.reminderHour
+            dateComponents.minute = self.reminderMinute
+
+            let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+            let request = UNNotificationRequest(
+                identifier: Self.notificationIdentifier,
+                content: content,
+                trigger: trigger
+            )
+
+            center.add(request) { error in
+                if let error = error {
+                    print("Lỗi lên lịch thông báo Báo bài buổi tối: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    public func updateReminderContent() {
+        guard isEnabled else { return }
+        scheduleReminder()
+    }
+
+    public func cancelReminder() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.notificationIdentifier])
+    }
+
+    public func previewNotificationText() -> String {
+        let (title, body) = generateMessageData()
+        return "\(title): \(body)"
+    }
+
+    private func generateMessageData() -> (title: String, body: String) {
+        let tomorrowItems = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
+        let pendingItems = tomorrowItems.filter { !$0.isCompleted }
+
+        if pendingItems.isEmpty {
+            if tomorrowItems.isEmpty {
+                return (
+                    title: "Ngày mai rảnh rồi!",
+                    body: "Không có bài tập nào cần nộp ngày mai. Nghỉ ngơi thật tốt nhé!"
+                )
+            } else {
+                return (
+                    title: "Đã xong hết bài ngày mai!",
+                    body: "Tất cả \(tomorrowItems.count) bài tập ngày mai đều đã hoàn thành. Nhớ kiểm tra cặp sách nhé!"
+                )
+            }
+        } else {
+            var subjectSet: [String] = []
+            for item in pendingItems {
+                let code = SubjectArtHelper.badgeCode(for: item.courseName)
+                if !subjectSet.contains(code) {
+                    subjectSet.append(code)
+                }
+            }
+            let subjectsStr = subjectSet.isEmpty ? "" : " (\(subjectSet.joined(separator: ", ")))"
+            return (
+                title: "Báo bài Ngày mai",
+                body: "Bạn còn \(pendingItems.count) bài tập cần chuẩn bị cho ngày mai\(subjectsStr). Soạn tập vở thôi nào!"
+            )
+        }
+    }
+
+    private func buildNotificationContent() -> UNMutableNotificationContent {
+        let (title, body) = generateMessageData()
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        return content
+    }
+}

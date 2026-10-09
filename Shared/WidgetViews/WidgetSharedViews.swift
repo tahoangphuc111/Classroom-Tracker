@@ -213,7 +213,7 @@ public struct CourseColorHelper {
     }
 }
 
-public struct SubjectArtBadgeView: View {
+public struct SubjectArtBadgeView: View, Equatable {
     let courseName: String
     var title: String? = nil
     var size: CGFloat = 20
@@ -223,6 +223,10 @@ public struct SubjectArtBadgeView: View {
         self.courseName = courseName
         self.title = title
         self.size = size
+    }
+
+    public static func == (lhs: SubjectArtBadgeView, rhs: SubjectArtBadgeView) -> Bool {
+        lhs.courseName == rhs.courseName && lhs.title == rhs.title && lhs.size == rhs.size
     }
 
     public var body: some View {
@@ -526,13 +530,20 @@ public struct CourseTagView: View {
     }
 }
 
-public struct DueBadgeView: View {
+public struct DueBadgeView: View, Equatable {
     let item: Coursework
     var compact: Bool = false
 
     public init(item: Coursework, compact: Bool = false) {
         self.item = item
         self.compact = compact
+    }
+
+    public static func == (lhs: DueBadgeView, rhs: DueBadgeView) -> Bool {
+        lhs.item.id == rhs.item.id &&
+        lhs.item.status == rhs.item.status &&
+        lhs.item.dueDate == rhs.item.dueDate &&
+        lhs.compact == rhs.compact
     }
 
     private var badgeColor: Color {
