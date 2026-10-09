@@ -3414,15 +3414,14 @@ public struct LiquidGlassBottomNavigationBar: View {
     #if os(iOS)
     @available(iOS 26, *)
     private var nativeGlassBar: some View {
-        GlassEffectContainer(spacing: 3) {
-            HStack(spacing: 3) {
+        GlassEffectContainer(spacing: 4) {
+            HStack(spacing: 4) {
                 ForEach(tabs) { tab in
-                    tabButton(for: tab)
+                    tabButton(for: tab, isNative: true)
                 }
             }
             .padding(.horizontal, 6)
-            .padding(.vertical, 5)
-            .frame(maxWidth: 520)
+            .padding(.vertical, 4)
             .glassEffect(.regular, in: .capsule)
             .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 7)
             .shadow(color: Color.primary.opacity(0.04), radius: 2, x: 0, y: 1)
@@ -3431,14 +3430,13 @@ public struct LiquidGlassBottomNavigationBar: View {
     #endif
 
     private var fallbackGlassBar: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 4) {
             ForEach(tabs) { tab in
-                tabButton(for: tab)
+                tabButton(for: tab, isNative: false)
             }
         }
         .padding(.horizontal, 6)
-        .padding(.vertical, 5)
-        .frame(maxWidth: 520)
+        .padding(.vertical, 4)
         .background {
             Capsule()
                 .fill(.ultraThinMaterial)
@@ -3463,78 +3461,71 @@ public struct LiquidGlassBottomNavigationBar: View {
     }
 
     @ViewBuilder
-    private func tabButton(for tab: TabItem) -> some View {
+    private func tabButton(for tab: TabItem, isNative: Bool) -> some View {
         let isSelected = (selectedFilter == tab.category)
         let tabColor = categoryColor(tab.category)
 
         Button {
             selectTab(tab.category)
         } label: {
-            Group {
-                if isSelected {
-                    HStack(spacing: 6) {
-                        Image(systemName: tab.activeIcon)
-                            .font(.system(size: 16.5, weight: .bold))
-                            .foregroundStyle(tabColor)
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: isSelected ? tab.activeIcon : tab.icon)
+                    .font(.system(size: 20, weight: isSelected ? .bold : .medium))
+                    .foregroundStyle(isSelected ? tabColor : Color.secondary.opacity(0.85))
+                    .scaleEffect(isSelected ? 1.08 : 1.0)
+                    .frame(width: 48, height: 42)
 
-                        Text(tab.shortTitle)
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(tabColor)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-
-                        if let count = tab.count, count > 0 {
-                            Text(count > 99 ? "99+" : "\(count)")
-                                .font(.system(size: 10, weight: .heavy, design: .rounded))
-                                .foregroundStyle(Color.white)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1.5)
-                                .background(Capsule().fill(tabColor))
-                        }
-                    }
-                    .padding(.horizontal, 13)
-                    .frame(height: 38)
-                    .background {
-                        Capsule()
-                            .fill(tabColor.opacity(colorScheme == .dark ? 0.24 : 0.14))
-                            .overlay {
-                                Capsule()
-                                    .stroke(tabColor.opacity(colorScheme == .dark ? 0.45 : 0.28), lineWidth: 1)
-                            }
-                            .matchedGeometryEffect(id: "liquidGlassActivePill", in: glassNamespace)
-                    }
-                } else {
-                    ZStack(alignment: .topTrailing) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 19, weight: .medium))
-                            .foregroundStyle(Color.secondary.opacity(0.85))
-                            .frame(width: 26, height: 26)
-
-                        if let count = tab.count, count > 0 {
-                            Text(count > 99 ? "99+" : "\(count)")
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
-                                .foregroundStyle(Color.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(Capsule().fill(tabColor.opacity(0.88)))
-                                .offset(x: 10, y: -7)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 38)
-                    .contentShape(Rectangle())
+                if let count = tab.count, count > 0 {
+                    Text(count > 99 ? "99+" : "\(count)")
+                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(tabColor))
+                        .offset(x: 2, y: 2)
                 }
             }
+            .frame(width: 48, height: 42)
+            .background {
+                if isSelected {
+                    if isNative {
+                        #if os(iOS)
+                        if #available(iOS 26, *) {
+                            Capsule()
+                                .glassEffect(.regular.tint(tabColor.opacity(0.32)).interactive(), in: .capsule)
+                                .matchedGeometryEffect(id: "nativeGlassSlider", in: glassNamespace)
+                        } else {
+                            fallbackSlider(tabColor: tabColor)
+                        }
+                        #else
+                        fallbackSlider(tabColor: tabColor)
+                        #endif
+                    } else {
+                        fallbackSlider(tabColor: tabColor)
+                    }
+                }
+            }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(tab.category.rawValue))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
+    private func fallbackSlider(tabColor: Color) -> some View {
+        Capsule()
+            .fill(tabColor.opacity(colorScheme == .dark ? 0.25 : 0.16))
+            .overlay {
+                Capsule()
+                    .stroke(tabColor.opacity(colorScheme == .dark ? 0.50 : 0.35), lineWidth: 1)
+            }
+            .matchedGeometryEffect(id: "nativeGlassSlider", in: glassNamespace)
+    }
+
     private func selectTab(_ category: ContentView.AppFilterCategory) {
         guard selectedFilter != category else { return }
         triggerFeedback()
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.76)) {
+        withAnimation(.spring(response: 0.30, dampingFraction: 0.74)) {
             selectedFilter = category
             onSelect(category)
         }
@@ -3542,7 +3533,7 @@ public struct LiquidGlassBottomNavigationBar: View {
 
     private func triggerFeedback() {
         #if os(iOS)
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        UISelectionFeedbackGenerator().selectionChanged()
         #endif
     }
 
