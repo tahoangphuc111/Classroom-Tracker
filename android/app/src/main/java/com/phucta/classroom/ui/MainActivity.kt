@@ -20,11 +20,10 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var app: ClassroomApplication
+    private val app: ClassroomApplication by lazy { applicationContext as ClassroomApplication }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        app = applicationContext as ClassroomApplication
 
         handleOAuthIntent(intent)
 

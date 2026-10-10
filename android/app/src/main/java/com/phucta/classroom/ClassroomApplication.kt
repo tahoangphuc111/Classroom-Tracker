@@ -47,18 +47,22 @@ class ClassroomApplication : Application() {
     }
 
     private fun setupPeriodicBackgroundSync() {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+        try {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
 
-        val syncRequest = PeriodicWorkRequestBuilder<ClassroomSyncWorker>(15, TimeUnit.MINUTES)
-            .setConstraints(constraints)
-            .build()
+            val syncRequest = PeriodicWorkRequestBuilder<ClassroomSyncWorker>(15, TimeUnit.MINUTES)
+                .setConstraints(constraints)
+                .build()
 
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "classroom_periodic_sync",
-            ExistingPeriodicWorkPolicy.KEEP,
-            syncRequest
-        )
+            WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                "classroom_periodic_sync",
+                ExistingPeriodicWorkPolicy.KEEP,
+                syncRequest
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

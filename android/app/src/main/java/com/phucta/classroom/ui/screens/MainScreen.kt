@@ -17,7 +17,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,9 +29,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import com.phucta.classroom.R
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -93,6 +90,8 @@ import androidx.compose.ui.semantics.Role
 import com.phucta.classroom.ClassroomApplication
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.domain.BaoBaiBucketingUtils
+import com.phucta.classroom.ui.components.EmberEmotion
+import com.phucta.classroom.ui.components.EmberFlameCanvas
 import com.phucta.classroom.ui.components.HomeworkDetailBottomSheet
 import com.phucta.classroom.ui.components.SubjectBadgePill
 import com.phucta.classroom.ui.theme.ChunkyColor
@@ -568,10 +567,9 @@ private fun WelcomeLoginScreen(
                     .background(ChunkyColor.SkyGradient),
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = R.mipmap.ic_launcher),
-                    contentDescription = "Classroom Tracker",
-                    modifier = Modifier.fillMaxSize()
+                EmberFlameCanvas(
+                    size = 64.dp,
+                    emotion = EmberEmotion.NORMAL
                 )
             }
 

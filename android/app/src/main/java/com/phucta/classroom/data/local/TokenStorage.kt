@@ -46,46 +46,75 @@ class TokenStorage(context: Context) {
     }
 
     fun saveAuthFlowState(verifier: String, redirectUri: String) {
-        prefs.edit()
-            .putString(KEY_AUTH_VERIFIER, verifier)
-            .putString(KEY_AUTH_REDIRECT_URI, redirectUri)
-            .apply()
+        try {
+            prefs.edit()
+                .putString(KEY_AUTH_VERIFIER, verifier)
+                .putString(KEY_AUTH_REDIRECT_URI, redirectUri)
+                .apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
-    fun loadAuthFlowVerifier(): String? = prefs.getString(KEY_AUTH_VERIFIER, null)
-    fun loadAuthFlowRedirectUri(): String? = prefs.getString(KEY_AUTH_REDIRECT_URI, null)
+    fun loadAuthFlowVerifier(): String? = try {
+        prefs.getString(KEY_AUTH_VERIFIER, null)
+    } catch (e: Exception) {
+        null
+    }
+
+    fun loadAuthFlowRedirectUri(): String? = try {
+        prefs.getString(KEY_AUTH_REDIRECT_URI, null)
+    } catch (e: Exception) {
+        null
+    }
 
     fun clearAuthFlowState() {
-        prefs.edit()
-            .remove(KEY_AUTH_VERIFIER)
-            .remove(KEY_AUTH_REDIRECT_URI)
-            .apply()
+        try {
+            prefs.edit()
+                .remove(KEY_AUTH_VERIFIER)
+                .remove(KEY_AUTH_REDIRECT_URI)
+                .apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun saveTokens(tokens: OAuthTokens) {
-        prefs.edit()
-            .putString(KEY_ACCESS_TOKEN, tokens.accessToken)
-            .putString(KEY_REFRESH_TOKEN, tokens.refreshToken)
-            .putInt(KEY_EXPIRES_IN, tokens.expiresIn)
-            .putLong(KEY_EXPIRES_AT, tokens.expiresAt)
-            .apply()
+        try {
+            prefs.edit()
+                .putString(KEY_ACCESS_TOKEN, tokens.accessToken)
+                .putString(KEY_REFRESH_TOKEN, tokens.refreshToken)
+                .putInt(KEY_EXPIRES_IN, tokens.expiresIn)
+                .putLong(KEY_EXPIRES_AT, tokens.expiresAt)
+                .apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun loadTokens(): OAuthTokens? {
-        val accessToken = prefs.getString(KEY_ACCESS_TOKEN, null) ?: return null
-        val refreshToken = prefs.getString(KEY_REFRESH_TOKEN, null)
-        val expiresIn = prefs.getInt(KEY_EXPIRES_IN, 3600)
-        val expiresAt = prefs.getLong(KEY_EXPIRES_AT, 0L)
-        return OAuthTokens(
-            accessToken = accessToken,
-            refreshToken = refreshToken,
-            expiresIn = expiresIn,
-            expiresAt = expiresAt
-        )
+        return try {
+            val accessToken = prefs.getString(KEY_ACCESS_TOKEN, null) ?: return null
+            val refreshToken = prefs.getString(KEY_REFRESH_TOKEN, null)
+            val expiresIn = prefs.getInt(KEY_EXPIRES_IN, 3600)
+            val expiresAt = prefs.getLong(KEY_EXPIRES_AT, 0L)
+            OAuthTokens(
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+                expiresIn = expiresIn,
+                expiresAt = expiresAt
+            )
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun clearTokens() {
-        prefs.edit().clear().apply()
+        try {
+            prefs.edit().clear().apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun hasValidTokens(): Boolean {

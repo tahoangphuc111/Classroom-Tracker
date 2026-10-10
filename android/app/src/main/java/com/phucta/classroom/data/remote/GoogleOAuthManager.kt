@@ -102,9 +102,20 @@ class GoogleOAuthManager(
             .appendQueryParameter("prompt", "select_account consent")
             .build()
 
-        val customTabsIntent = CustomTabsIntent.Builder().setShowTitle(true).build()
-        customTabsIntent.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        customTabsIntent.launchUrl(context, authUri)
+        try {
+            val customTabsIntent = CustomTabsIntent.Builder().setShowTitle(true).build()
+            customTabsIntent.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            customTabsIntent.launchUrl(context, authUri)
+        } catch (e: Exception) {
+            try {
+                val browserIntent = Intent(Intent.ACTION_VIEW, authUri).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(browserIntent)
+            } catch (ex: Exception) {
+                _authErrorMessage.value = "Không thể mở trình duyệt đăng nhập: ${ex.localizedMessage ?: "Lỗi không xác định"}"
+            }
+        }
     }
 
     suspend fun handleRedirectUri(uri: Uri): Boolean = withContext(Dispatchers.IO) {

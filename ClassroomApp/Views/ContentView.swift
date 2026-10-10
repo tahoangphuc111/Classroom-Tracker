@@ -95,7 +95,6 @@ public struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
-    @Namespace private var liquidGlassNamespace
     @State private var showCompactCourseFilterSheet: Bool = false
     @State private var showMobileDetailSheet: Bool = false
     #if os(iOS)
@@ -292,8 +291,8 @@ public struct ContentView: View {
         return RisoMockData.fourTasks
     }
 
-    private var baseFilteredList: [Coursework] {
-        switch selectedFilter {
+    private func baseFilteredList(for category: AppFilterCategory) -> [Coursework] {
+        switch category {
         case .tomorrow:
             return buckets.tomorrow
         case .todayAndTomorrow:
@@ -309,8 +308,8 @@ public struct ContentView: View {
         }
     }
 
-    private var currentFilteredList: [Coursework] {
-        let baseList = baseFilteredList
+    private func currentFilteredList(for category: AppFilterCategory) -> [Coursework] {
+        let baseList = baseFilteredList(for: category)
         let query = searchText.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return baseList }
 
@@ -320,13 +319,22 @@ public struct ContentView: View {
         }
     }
 
-    private func categorizedSections(for list: [Coursework]) -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
+    private var baseFilteredList: [Coursework] {
+        baseFilteredList(for: selectedFilter)
+    }
+
+    private var currentFilteredList: [Coursework] {
+        currentFilteredList(for: selectedFilter)
+    }
+
+    private func categorizedSections(for list: [Coursework], category: AppFilterCategory? = nil) -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
+        let targetCategory = category ?? selectedFilter
         if searchText.trimmingCharacters(in: .whitespaces).isEmpty {
             return (
                 todays: buckets.today,
                 tomorrows: buckets.tomorrow,
-                laters: selectedFilter == .allUpcoming ? buckets.laterUpcoming : [],
-                noDueDates: selectedFilter == .allUpcoming ? buckets.noDueDate : []
+                laters: targetCategory == .allUpcoming ? buckets.laterUpcoming : [],
+                noDueDates: targetCategory == .allUpcoming ? buckets.noDueDate : []
             )
         } else {
             let calendar = Calendar.current
@@ -344,14 +352,14 @@ public struct ContentView: View {
 
             for item in list {
                 guard let dueDate = item.dueDate else {
-                    if selectedFilter == .allUpcoming { noDueDates.append(item) }
+                    if targetCategory == .allUpcoming { noDueDates.append(item) }
                     continue
                 }
                 if dueDate < startOfTomorrow {
                     todays.append(item)
                 } else if dueDate < startOfDayAfter {
                     tomorrows.append(item)
-                } else if selectedFilter == .allUpcoming {
+                } else if targetCategory == .allUpcoming {
                     laters.append(item)
                 }
             }
@@ -685,22 +693,80 @@ public struct ContentView: View {
     }
 
     #if os(iOS)
+    private struct CompactTabDefinition: Identifiable {
+        let category: AppFilterCategory
+        let shortTitle: String
+        let icon: String
+        let badgeCount: Int?
+
+        var id: String { category.rawValue }
+    }
+
+    private var compactTabs: [CompactTabDefinition] {
+        var items: [CompactTabDefinition] = [
+            CompactTabDefinition(
+                category: .tomorrow,
+                shortTitle: "Báo bài",
+                icon: "calendar.badge.clock",
+                badgeCount: buckets.tomorrowPendingCount > 0 ? buckets.tomorrowPendingCount : nil
+            ),
+            CompactTabDefinition(
+                category: .todayAndTomorrow,
+                shortTitle: "Hôm nay",
+                icon: "clock",
+                badgeCount: buckets.todayAndTomorrowPendingCount > 0 ? buckets.todayAndTomorrowPendingCount : nil
+            ),
+            CompactTabDefinition(
+                category: .allUpcoming,
+                shortTitle: "Sắp tới",
+                icon: "tray",
+                badgeCount: buckets.allUpcomingPendingCount > 0 ? buckets.allUpcomingPendingCount : nil
+            ),
+        ]
+        if buckets.past.count > 0 {
+            items.append(
+                CompactTabDefinition(
+                    category: .past,
+                    shortTitle: "Quá hạn",
+                    icon: "clock.badge.exclamationmark",
+                    badgeCount: buckets.past.count
+                )
+            )
+        }
+        items.append(
+            CompactTabDefinition(
+                category: .completed,
+                shortTitle: "Đã xong",
+                icon: "checkmark.seal",
+                badgeCount: buckets.completed.count > 0 ? buckets.completed.count : nil
+            )
+        )
+        if buckets.past.count == 0 {
+            items.append(
+                CompactTabDefinition(
+                    category: .widgetPreview,
+                    shortTitle: "Widget",
+                    icon: "macwindow",
+                    badgeCount: nil
+                )
+            )
+        }
+        return items
+    }
+
     @ViewBuilder
     private var compactAppView: some View {
-        NavigationStack {
-            detailMasterView(isCompact: true)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    LiquidGlassBottomNavigationBar(
-                        selectedFilter: $selectedFilter,
-                        buckets: buckets,
-                        glassNamespace: liquidGlassNamespace,
-                        onSelect: { _ in
-                            autoSelectFirstItem()
-                        }
-                    )
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 6)
+        TabView(selection: $selectedFilter) {
+            ForEach(compactTabs) { tab in
+                NavigationStack {
+                    detailMasterView(isCompact: true, tabCategory: tab.category)
                 }
+                .tabItem {
+                    Label(tab.shortTitle, systemImage: tab.icon)
+                }
+                .badge(tab.badgeCount ?? 0)
+                .tag(tab.category)
+            }
         }
         .sheet(isPresented: $showCompactCourseFilterSheet) {
             compactCourseFilterSheetView
@@ -939,9 +1005,10 @@ public struct ContentView: View {
     }
 
     @ViewBuilder
-    private func detailMasterView(isCompact: Bool) -> some View {
+    private func detailMasterView(isCompact: Bool, tabCategory: AppFilterCategory? = nil) -> some View {
+        let activeCategory = tabCategory ?? selectedFilter
         VStack(spacing: 0) {
-            headerBarView
+            headerBarView(category: activeCategory)
 
             if updateService.updateAvailable {
                 updateBannerView
@@ -949,7 +1016,7 @@ public struct ContentView: View {
 
             Divider()
 
-            if selectedFilter == .widgetPreview {
+            if activeCategory == .widgetPreview {
                 ScrollView {
                     widgetPreviewSection
                         #if os(iOS)
@@ -961,7 +1028,7 @@ public struct ContentView: View {
             } else {
                 #if os(iOS)
                 if isCompact {
-                    assignmentListPane(isWide: false)
+                    assignmentListPane(isWide: false, category: activeCategory)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .sheet(isPresented: $showMobileDetailSheet) {
                             NavigationStack {
@@ -981,7 +1048,7 @@ public struct ContentView: View {
                         if isWide {
                             let listWidth = min(350, max(260, geometry.size.width * 0.38))
                             HStack(spacing: 0) {
-                                assignmentListPane(isWide: true)
+                                assignmentListPane(isWide: true, category: activeCategory)
                                     .frame(width: listWidth)
 
                                 Divider()
@@ -990,7 +1057,7 @@ public struct ContentView: View {
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                             }
                         } else {
-                            assignmentListPane(isWide: false)
+                            assignmentListPane(isWide: false, category: activeCategory)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     }
@@ -1013,7 +1080,7 @@ public struct ContentView: View {
                     if isWide {
                         let listWidth = min(360, max(280, geometry.size.width * 0.38))
                         HStack(spacing: 0) {
-                            assignmentListPane(isWide: true)
+                            assignmentListPane(isWide: true, category: activeCategory)
                                 .frame(width: listWidth)
 
                             Divider()
@@ -1022,7 +1089,7 @@ public struct ContentView: View {
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     } else {
-                        assignmentListPane(isWide: false)
+                        assignmentListPane(isWide: false, category: activeCategory)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
@@ -1042,7 +1109,7 @@ public struct ContentView: View {
             }
         }
         #if os(iOS)
-        .navigationTitle(selectedFilter.rawValue)
+        .navigationTitle(activeCategory.rawValue)
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .overlay(alignment: .bottom) {
@@ -1182,20 +1249,21 @@ public struct ContentView: View {
     }
 
     @ViewBuilder
-    private var headerBarView: some View {
+    private func headerBarView(category: AppFilterCategory? = nil) -> some View {
+        let activeCategory = category ?? selectedFilter
         #if os(iOS)
         if horizontalSizeClass == .compact || isLandscapePhone {
-            mobileCompactHeaderBar
+            mobileCompactHeaderBar(category: activeCategory)
         } else {
-            regularHeaderBar
+            regularHeaderBar(category: activeCategory)
         }
         #else
-        regularHeaderBar
+        regularHeaderBar(category: activeCategory)
         #endif
     }
 
     #if os(iOS)
-    private var mobileCompactHeaderBar: some View {
+    private func mobileCompactHeaderBar(category: AppFilterCategory) -> some View {
         HStack(alignment: .center, spacing: 8) {
             HStack(spacing: 5) {
                 Image(systemName: "calendar")
@@ -1227,7 +1295,7 @@ public struct ContentView: View {
             }
             .buttonStyle(.plain)
 
-            if selectedFilter == .widgetPreview {
+            if category == .widgetPreview {
                 HStack(spacing: 4) {
                     Image(systemName: "macwindow.on.rectangle")
                         .font(.system(size: 11, weight: .semibold))
@@ -1240,21 +1308,21 @@ public struct ContentView: View {
                 .background(Color.purple.opacity(0.08))
                 .clipShape(Capsule())
             } else {
-                let pendingCount = currentFilteredList.filter { !$0.isCompleted }.count
+                let pendingCount = currentFilteredList(for: category).filter { !$0.isCompleted }.count
                 if pendingCount > 0 {
                     HStack(spacing: 5) {
                         Circle()
-                            .fill(categoryIconColor(selectedFilter))
+                            .fill(categoryIconColor(category))
                             .frame(width: 6, height: 6)
                         Text("\(pendingCount) bài cần nộp")
                             .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(categoryIconColor(selectedFilter))
+                            .foregroundStyle(categoryIconColor(category))
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 4.5)
-                    .background(categoryIconColor(selectedFilter).opacity(0.09))
+                    .background(categoryIconColor(category).opacity(0.09))
                     .clipShape(Capsule())
-                } else if !currentFilteredList.isEmpty {
+                } else if !currentFilteredList(for: category).isEmpty {
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark")
                             .font(.system(size: 10, weight: .bold))
@@ -1275,21 +1343,21 @@ public struct ContentView: View {
     }
     #endif
 
-    private var regularHeaderBar: some View {
+    private func regularHeaderBar(category: AppFilterCategory) -> some View {
         HStack(alignment: .center, spacing: 14) {
             HStack(spacing: 10) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(categoryIconColor(selectedFilter).opacity(0.12))
+                        .fill(categoryIconColor(category).opacity(0.12))
                         .frame(width: 32, height: 32)
 
-                    Image(systemName: selectedFilter.icon)
+                    Image(systemName: category.icon)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(categoryIconColor(selectedFilter))
+                        .foregroundStyle(categoryIconColor(category))
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(selectedFilter.rawValue)
+                    Text(category.rawValue)
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.platformTextPrimary)
 
@@ -1306,11 +1374,10 @@ public struct ContentView: View {
 
             Spacer()
 
-            if selectedFilter == .widgetPreview {
+            if category == .widgetPreview {
                 HStack(spacing: 6) {
                     Image(systemName: "macwindow.on.rectangle")
                         .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundStyle(.purple)
                     Text("Cấu hình & Xem trước Widget")
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundStyle(.purple)
@@ -1320,21 +1387,21 @@ public struct ContentView: View {
                 .background(Color.purple.opacity(0.08))
                 .clipShape(Capsule())
             } else {
-                let pendingCount = currentFilteredList.filter { !$0.isCompleted }.count
+                let pendingCount = currentFilteredList(for: category).filter { !$0.isCompleted }.count
                 if pendingCount > 0 {
                     HStack(spacing: 5) {
                         Circle()
-                            .fill(categoryIconColor(selectedFilter))
+                            .fill(categoryIconColor(category))
                             .frame(width: 6, height: 6)
                         Text("\(pendingCount) bài cần nộp")
                             .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(categoryIconColor(selectedFilter))
+                            .foregroundStyle(categoryIconColor(category))
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 4)
-                    .background(categoryIconColor(selectedFilter).opacity(0.09))
+                    .background(categoryIconColor(category).opacity(0.09))
                     .clipShape(Capsule())
-                } else if !currentFilteredList.isEmpty {
+                } else if !currentFilteredList(for: category).isEmpty {
                     HStack(spacing: 5) {
                         Image(systemName: "checkmark")
                             .font(.system(size: 9.5, weight: .bold))
@@ -1413,8 +1480,9 @@ public struct ContentView: View {
         #endif
     }
 
-    private func assignmentListPane(isWide: Bool = true) -> some View {
-        let list = currentFilteredList
+    private func assignmentListPane(isWide: Bool = true, category: AppFilterCategory? = nil) -> some View {
+        let activeCategory = category ?? selectedFilter
+        let list = currentFilteredList(for: activeCategory)
         return VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
@@ -1539,7 +1607,7 @@ public struct ContentView: View {
 
             if list.isEmpty {
                 AssignmentListEmptyView(
-                    filter: selectedFilter,
+                    filter: activeCategory,
                     isSearching: !searchText.trimmingCharacters(in: .whitespaces).isEmpty,
                     searchText: searchText,
                     onClearSearch: {
@@ -1554,7 +1622,7 @@ public struct ContentView: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
-                        if selectedFilter == .tomorrow {
+                        if activeCategory == .tomorrow {
                             ForEach(list) { item in
                                 AssignmentListRow(
                                     item: item,
@@ -1568,8 +1636,8 @@ public struct ContentView: View {
                                 )
                                 .equatable()
                             }
-                        } else if selectedFilter == .todayAndTomorrow || selectedFilter == .allUpcoming {
-                            let sections = categorizedSections(for: list)
+                        } else if activeCategory == .todayAndTomorrow || activeCategory == .allUpcoming {
+                            let sections = categorizedSections(for: list, category: activeCategory)
 
                             if !sections.todays.isEmpty {
                                 SectionHeaderPill(title: "HÔM NAY", count: sections.todays.count, icon: "clock.fill", color: Color(red: 0.95, green: 0.55, blue: 0.10))
@@ -3435,227 +3503,6 @@ private struct GuideStepRow: View {
             Text(text)
                 .font(.subheadline)
                 .foregroundStyle(Color.platformTextPrimary)
-        }
-    }
-}
-
-// MARK: - Bottom Navigation Bar
-
-public struct LiquidGlassBottomNavigationBar: View {
-    @Binding var selectedFilter: ContentView.AppFilterCategory
-    let buckets: ContentView.CourseworkBuckets
-    var glassNamespace: Namespace.ID
-    let onSelect: (ContentView.AppFilterCategory) -> Void
-
-    @Environment(\.colorScheme) private var colorScheme
-
-    private struct TabItem: Identifiable, Equatable {
-        let category: ContentView.AppFilterCategory
-        let shortTitle: String
-        let icon: String
-        let activeIcon: String
-        let count: Int?
-
-        var id: String { category.rawValue }
-
-        static func == (lhs: TabItem, rhs: TabItem) -> Bool {
-            lhs.category == rhs.category && lhs.count == rhs.count
-        }
-    }
-
-    private var tabs: [TabItem] {
-        var items: [TabItem] = [
-            TabItem(
-                category: .tomorrow,
-                shortTitle: "Báo bài",
-                icon: "calendar.badge.clock",
-                activeIcon: "calendar.badge.clock",
-                count: buckets.tomorrowPendingCount
-            ),
-            TabItem(
-                category: .todayAndTomorrow,
-                shortTitle: "Hôm nay",
-                icon: "clock",
-                activeIcon: "clock.fill",
-                count: buckets.todayAndTomorrowPendingCount
-            ),
-            TabItem(
-                category: .allUpcoming,
-                shortTitle: "Sắp tới",
-                icon: "tray",
-                activeIcon: "tray.fill",
-                count: buckets.allUpcomingPendingCount
-            ),
-        ]
-        if buckets.past.count > 0 {
-            items.append(
-                TabItem(
-                    category: .past,
-                    shortTitle: "Quá hạn",
-                    icon: "clock.badge.exclamationmark",
-                    activeIcon: "clock.badge.exclamationmark.fill",
-                    count: buckets.past.count
-                )
-            )
-        }
-        items.append(
-            TabItem(
-                category: .completed,
-                shortTitle: "Đã xong",
-                icon: "checkmark.seal",
-                activeIcon: "checkmark.seal.fill",
-                count: buckets.completed.count
-            )
-        )
-        if buckets.past.count == 0 {
-            items.append(
-                TabItem(
-                    category: .widgetPreview,
-                    shortTitle: "Widget",
-                    icon: "macwindow",
-                    activeIcon: "macwindow.on.rectangle",
-                    count: nil
-                )
-            )
-        }
-        return items
-    }
-
-    public init(
-        selectedFilter: Binding<ContentView.AppFilterCategory>,
-        buckets: ContentView.CourseworkBuckets,
-        glassNamespace: Namespace.ID,
-        onSelect: @escaping (ContentView.AppFilterCategory) -> Void
-    ) {
-        self._selectedFilter = selectedFilter
-        self.buckets = buckets
-        self.glassNamespace = glassNamespace
-        self.onSelect = onSelect
-    }
-
-    public var body: some View {
-        GeometryReader { geometry in
-            let tabWidth = geometry.size.width / CGFloat(max(1, tabs.count))
-
-            HStack(spacing: 0) {
-                ForEach(tabs) { tab in
-                    tabSlot(for: tab)
-                }
-            }
-            .padding(4)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background {
-                Capsule()
-                    .fill(.ultraThinMaterial)
-                    .overlay {
-                        Capsule()
-                            .stroke(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(colorScheme == .dark ? 0.35 : 0.85),
-                                        Color.white.opacity(colorScheme == .dark ? 0.12 : 0.30),
-                                        Color.clear
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    }
-                    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.35 : 0.10), radius: 18, x: 0, y: 7)
-                    .shadow(color: Color.primary.opacity(0.04), radius: 2, x: 0, y: 1)
-            }
-            .gesture(
-                DragGesture(minimumDistance: 12)
-                    .onChanged { value in
-                        handleDrag(at: value.location.x, tabWidth: tabWidth)
-                    }
-            )
-        }
-        .frame(height: 54)
-    }
-
-    private func handleDrag(at xLocation: CGFloat, tabWidth: CGFloat) {
-        guard tabWidth > 0, !tabs.isEmpty else { return }
-        let index = Int(xLocation / tabWidth)
-        let clampedIndex = max(0, min(tabs.count - 1, index))
-        let targetCategory = tabs[clampedIndex].category
-        if selectedFilter != targetCategory {
-            triggerFeedback()
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
-                selectedFilter = targetCategory
-                onSelect(targetCategory)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func tabSlot(for tab: TabItem) -> some View {
-        let isSelected = (selectedFilter == tab.category)
-        let tabColor = categoryColor(tab.category)
-
-        ZStack {
-            if isSelected {
-                fallbackSlider(tabColor: tabColor)
-            }
-
-            ZStack(alignment: .topTrailing) {
-                Image(systemName: isSelected ? tab.activeIcon : tab.icon)
-                    .font(.system(size: 21, weight: isSelected ? .bold : .medium))
-                    .foregroundStyle(isSelected ? tabColor : Color.secondary.opacity(0.85))
-                    .scaleEffect(isSelected ? 1.08 : 1.0)
-                    .frame(width: 32, height: 32)
-
-                if let count = tab.count, count > 0 {
-                    Text(count > 99 ? "99+" : "\(count)")
-                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.white)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Capsule().fill(tabColor))
-                        .offset(x: 10, y: -6)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if selectedFilter != tab.category {
-                triggerFeedback()
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
-                    selectedFilter = tab.category
-                    onSelect(tab.category)
-                }
-            }
-        }
-        .accessibilityLabel(Text(tab.category.rawValue))
-        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-    }
-
-    private func fallbackSlider(tabColor: Color) -> some View {
-        Capsule()
-            .fill(tabColor.opacity(colorScheme == .dark ? 0.25 : 0.16))
-            .overlay {
-                Capsule()
-                    .stroke(tabColor.opacity(colorScheme == .dark ? 0.50 : 0.35), lineWidth: 1)
-            }
-            .matchedGeometryEffect(id: "nativeGlassSlider", in: glassNamespace)
-    }
-
-    private func triggerFeedback() {
-        #if os(iOS)
-        UISelectionFeedbackGenerator().selectionChanged()
-        #endif
-    }
-
-    private func categoryColor(_ category: ContentView.AppFilterCategory) -> Color {
-        switch category {
-        case .tomorrow: return Color(red: 0.12, green: 0.52, blue: 0.95)
-        case .todayAndTomorrow: return Color(red: 0.88, green: 0.48, blue: 0.06)
-        case .allUpcoming: return Color(red: 0.38, green: 0.42, blue: 0.82)
-        case .past: return Color(red: 0.86, green: 0.24, blue: 0.26)
-        case .completed: return Color(red: 0.12, green: 0.62, blue: 0.35)
-        case .widgetPreview: return Color(red: 0.55, green: 0.35, blue: 0.85)
         }
     }
 }

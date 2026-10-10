@@ -53,31 +53,35 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val (isAuthenticated, tomorrowItems) = withContext(Dispatchers.IO) {
-            val tokenStorage = TokenStorage(context)
-            val database = ClassroomDatabase.getInstance(context)
+            try {
+                val tokenStorage = TokenStorage(context)
+                val database = ClassroomDatabase.getInstance(context)
 
-            val authed = tokenStorage.hasValidTokens()
-            val courses = if (authed) {
-                database.courseDao().getAllCourses()
-                    .map { it.toDomain() }
-                    .filter { !MockDataProvider.isMockCourse(it.id) }
-            } else {
-                emptyList()
-            }
-            val allCoursework = if (authed) {
-                database.courseworkDao().getAllCoursework()
-                    .map { it.toDomain() }
-                    .filter { !MockDataProvider.isMockCourseworkId(it.id) }
-            } else {
-                emptyList()
-            }
+                val authed = tokenStorage.hasValidTokens()
+                val courses = if (authed) {
+                    database.courseDao().getAllCourses()
+                        .map { it.toDomain() }
+                        .filter { !MockDataProvider.isMockCourse(it.id) }
+                } else {
+                    emptyList()
+                }
+                val allCoursework = if (authed) {
+                    database.courseworkDao().getAllCoursework()
+                        .map { it.toDomain() }
+                        .filter { !MockDataProvider.isMockCourseworkId(it.id) }
+                } else {
+                    emptyList()
+                }
 
-            val items = if (authed) {
-                BaoBaiBucketingUtils.getTomorrowCoursework(allCoursework, courses)
-            } else {
-                emptyList()
+                val items = if (authed) {
+                    BaoBaiBucketingUtils.getTomorrowCoursework(allCoursework, courses)
+                } else {
+                    emptyList()
+                }
+                Pair(authed, items)
+            } catch (e: Exception) {
+                Pair(false, emptyList())
             }
-            Pair(authed, items)
         }
 
         provideContent {
