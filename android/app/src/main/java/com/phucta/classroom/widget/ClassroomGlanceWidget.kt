@@ -72,9 +72,19 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 } else {
                     emptyList()
                 }
+                val personalNotes = if (authed) {
+                    database.personalNoteDao().getAllNotes()
+                        .map { it.toDomain() }
+                } else {
+                    emptyList()
+                }
 
                 val items = if (authed) {
-                    BaoBaiBucketingUtils.getTomorrowCoursework(allCoursework, courses)
+                    BaoBaiBucketingUtils.getTomorrowCoursework(
+                        items = allCoursework,
+                        courses = courses,
+                        personalNotes = personalNotes
+                    )
                 } else {
                     emptyList()
                 }

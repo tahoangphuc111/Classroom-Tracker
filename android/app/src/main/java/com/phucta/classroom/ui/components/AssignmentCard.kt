@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,7 +46,8 @@ fun AssignmentCard(
     coursework: Coursework,
     onToggleCompletion: (Boolean) -> Unit,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hasNote: Boolean = false
 ) {
     val isCompleted = coursework.isCompleted
     val isOverdue = coursework.isOverdue
@@ -166,13 +168,25 @@ fun AssignmentCard(
                         modifier = Modifier.graphicsLayer { alpha = titleAlpha }
                     )
                     Spacer(modifier = Modifier.height(2.5.dp))
-                    Text(
-                        text = coursework.courseName,
-                        color = ChunkyColor.TextMuted,
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = coursework.courseName,
+                            color = ChunkyColor.TextMuted,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (hasNote) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.EditNote,
+                                contentDescription = "Có ghi chú",
+                                tint = ChunkyColor.SkyBottom,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))

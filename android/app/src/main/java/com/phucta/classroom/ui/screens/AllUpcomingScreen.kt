@@ -56,7 +56,8 @@ fun AllUpcomingScreen(
     courses: List<Course>,
     onToggleCompletion: (String, Boolean) -> Unit,
     onSelectAssignment: (Coursework) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    courseworkIdsWithNotes: Set<String> = emptySet()
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForVietnameseSearch() }
@@ -239,6 +240,7 @@ fun AllUpcomingScreen(
                     items(buckets.overdue, key = { it.id }) { item ->
                         AssignmentCard(
                             coursework = item,
+                            hasNote = courseworkIdsWithNotes.contains(item.id),
                             onToggleCompletion = { onToggleCompletion(item.id, it) },
                             onClick = { onSelectAssignment(item) },
                             modifier = Modifier.animateItemPlacement(
@@ -256,6 +258,7 @@ fun AllUpcomingScreen(
                     items(buckets.today, key = { it.id }) { item ->
                         AssignmentCard(
                             coursework = item,
+                            hasNote = courseworkIdsWithNotes.contains(item.id),
                             onToggleCompletion = { onToggleCompletion(item.id, it) },
                             onClick = { onSelectAssignment(item) },
                             modifier = Modifier.animateItemPlacement(
@@ -273,6 +276,7 @@ fun AllUpcomingScreen(
                     items(buckets.tomorrow, key = { it.id }) { item ->
                         AssignmentCard(
                             coursework = item,
+                            hasNote = courseworkIdsWithNotes.contains(item.id),
                             onToggleCompletion = { onToggleCompletion(item.id, it) },
                             onClick = { onSelectAssignment(item) },
                             modifier = Modifier.animateItemPlacement(
@@ -290,6 +294,7 @@ fun AllUpcomingScreen(
                     items(buckets.laterUpcoming, key = { it.id }) { item ->
                         AssignmentCard(
                             coursework = item,
+                            hasNote = courseworkIdsWithNotes.contains(item.id),
                             onToggleCompletion = { onToggleCompletion(item.id, it) },
                             onClick = { onSelectAssignment(item) },
                             modifier = Modifier.animateItemPlacement(
@@ -307,6 +312,7 @@ fun AllUpcomingScreen(
                     items(buckets.noDueDate, key = { it.id }) { item ->
                         AssignmentCard(
                             coursework = item,
+                            hasNote = courseworkIdsWithNotes.contains(item.id),
                             onToggleCompletion = { onToggleCompletion(item.id, it) },
                             onClick = { onSelectAssignment(item) },
                             modifier = Modifier.animateItemPlacement(
@@ -324,6 +330,7 @@ fun AllUpcomingScreen(
                     items(buckets.completed, key = { it.id }) { item ->
                         AssignmentCard(
                             coursework = item,
+                            hasNote = courseworkIdsWithNotes.contains(item.id),
                             onToggleCompletion = { onToggleCompletion(item.id, it) },
                             onClick = { onSelectAssignment(item) },
                             modifier = Modifier.animateItemPlacement(

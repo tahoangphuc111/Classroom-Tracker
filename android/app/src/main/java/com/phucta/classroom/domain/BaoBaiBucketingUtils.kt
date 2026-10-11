@@ -2,6 +2,8 @@ package com.phucta.classroom.domain
 
 import com.phucta.classroom.data.model.Course
 import com.phucta.classroom.data.model.Coursework
+import com.phucta.classroom.data.model.PersonalNote
+import com.phucta.classroom.data.model.SubmissionStatus
 import java.util.Calendar
 
 object BaoBaiBucketingUtils {
@@ -81,10 +83,12 @@ object BaoBaiBucketingUtils {
     fun getTomorrowCoursework(
         items: List<Coursework>,
         courses: List<Course> = emptyList(),
-        includeCompleted: Boolean = true
+        includeCompleted: Boolean = true,
+        personalNotes: List<PersonalNote> = emptyList(),
+        includeNotes: Boolean = true
     ): List<Coursework> {
         val relevant = filterByActiveCourses(items, courses)
-        if (relevant.isEmpty()) return emptyList()
+        if (relevant.isEmpty() && (!includeNotes || personalNotes.isEmpty())) return emptyList()
 
         val now = System.currentTimeMillis()
 
@@ -126,6 +130,35 @@ object BaoBaiBucketingUtils {
                 }
             } else {
                 if (isEligible) undatedFiltered.add(item)
+            }
+        }
+
+        if (includeNotes && personalNotes.isNotEmpty()) {
+            for (note in personalNotes) {
+                if (note.courseworkId == null) {
+                    val isEligible = includeCompleted || !note.isCompleted
+                    if (isEligible && note.isDueTomorrow) {
+                        val matchesCourse = if (note.courseId != null && courses.isNotEmpty()) {
+                            val activeIds = courses.filter { it.isSelectedForWidget }.map { it.id }.toSet()
+                            activeIds.isEmpty() || activeIds.contains(note.courseId)
+                        } else {
+                            true
+                        }
+                        if (matchesCourse) {
+                            val noteCoursework = Coursework(
+                                id = "note_${note.id}",
+                                courseId = note.courseId ?: "personal_note",
+                                courseName = note.courseName ?: "Ghi chú",
+                                title = note.title,
+                                description = note.content,
+                                dueEpochMillis = note.dueEpochMillis,
+                                status = if (note.isCompleted) SubmissionStatus.TURNED_IN else SubmissionStatus.PENDING,
+                                isManuallyCompleted = note.isCompleted
+                            )
+                            tomorrowFiltered.add(noteCoursework)
+                        }
+                    }
+                }
             }
         }
 

@@ -8,8 +8,10 @@ import com.phucta.classroom.data.local.ClassroomPreferences
 import com.phucta.classroom.data.local.CourseEntity
 import com.phucta.classroom.data.local.CourseworkEntity
 import com.phucta.classroom.data.local.MockDataProvider
+import com.phucta.classroom.data.local.PersonalNoteEntity
 import com.phucta.classroom.data.model.Course
 import com.phucta.classroom.data.model.Coursework
+import com.phucta.classroom.data.model.PersonalNote
 import com.phucta.classroom.data.model.SubmissionStatus
 import com.phucta.classroom.data.remote.ClassroomApiService
 import com.phucta.classroom.data.remote.GoogleOAuthManager
@@ -40,6 +42,7 @@ class ClassroomRepository(
 ) {
     private val courseDao = database.courseDao()
     private val courseworkDao = database.courseworkDao()
+    private val personalNoteDao = database.personalNoteDao()
     private val syncMutex = Mutex()
 
     private val _isSyncing = MutableStateFlow(false)
@@ -53,6 +56,10 @@ class ClassroomRepository(
     }
 
     val courseworkFlow: Flow<List<Coursework>> = courseworkDao.observeAllCoursework().map { entities ->
+        entities.map { it.toDomain() }
+    }
+
+    val personalNotesFlow: Flow<List<PersonalNote>> = personalNoteDao.observeAllNotes().map { entities ->
         entities.map { it.toDomain() }
     }
 
@@ -205,6 +212,64 @@ class ClassroomRepository(
         preferences.clear()
         oauthManager.signOut()
         ensureInitialData()
+        notifyWidgetReload()
+    }
+
+    fun observeNoteForCoursework(courseworkId: String): Flow<PersonalNote?> {
+        return personalNoteDao.observeNoteForCoursework(courseworkId).map { it?.toDomain() }
+    }
+
+    suspend fun getNoteForCoursework(courseworkId: String): PersonalNote? = withContext(Dispatchers.IO) {
+        personalNoteDao.getNoteForCoursework(courseworkId)?.toDomain()
+    }
+
+    suspend fun savePersonalNote(note: PersonalNote) = withContext(Dispatchers.IO) {
+        personalNoteDao.upsertNote(PersonalNoteEntity.fromDomain(note))
+        notifyWidgetReload()
+    }
+
+    suspend fun saveNoteForCoursework(
+        courseworkId: String,
+        courseId: String? = null,
+        courseName: String? = null,
+        title: String,
+        content: String
+    ) = withContext(Dispatchers.IO) {
+        val trimmed = content.trim()
+        val existing = personalNoteDao.getNoteForCoursework(courseworkId)
+        if (existing != null) {
+            if (trimmed.isEmpty() && existing.title.isEmpty()) {
+                personalNoteDao.deleteNoteById(existing.id)
+            } else {
+                val updated = existing.copy(
+                    content = trimmed,
+                    courseId = courseId ?: existing.courseId,
+                    courseName = courseName ?: existing.courseName,
+                    updatedAt = System.currentTimeMillis(),
+                    searchIndex = PersonalNote.buildSearchIndex(existing.title, trimmed, courseName ?: existing.courseName)
+                )
+                personalNoteDao.upsertNote(updated)
+            }
+        } else if (trimmed.isNotEmpty()) {
+            val newNote = PersonalNote(
+                courseworkId = courseworkId,
+                courseId = courseId,
+                courseName = courseName,
+                title = title,
+                content = trimmed
+            )
+            personalNoteDao.upsertNote(PersonalNoteEntity.fromDomain(newNote))
+        }
+        notifyWidgetReload()
+    }
+
+    suspend fun togglePersonalNoteCompletion(id: String, isCompleted: Boolean) = withContext(Dispatchers.IO) {
+        personalNoteDao.updateCompletionStatus(id, isCompleted)
+        notifyWidgetReload()
+    }
+
+    suspend fun deletePersonalNote(id: String) = withContext(Dispatchers.IO) {
+        personalNoteDao.deleteNoteById(id)
         notifyWidgetReload()
     }
 

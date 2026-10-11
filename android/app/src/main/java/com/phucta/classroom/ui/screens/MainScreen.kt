@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.filled.Upcoming
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -122,6 +123,7 @@ fun MainScreen() {
 
     val courses by repository.coursesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val allCoursework by repository.courseworkFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val personalNotes by repository.personalNotesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val isSyncing by repository.isSyncing.collectAsStateWithLifecycle()
     val syncErrorMessage by repository.syncErrorMessage.collectAsStateWithLifecycle()
     val authErrorMessage by oauthManager.authErrorMessage.collectAsStateWithLifecycle()
@@ -143,13 +145,25 @@ fun MainScreen() {
         }
     }
 
-    val tomorrowItems = remember(allCoursework, courses) {
-        BaoBaiBucketingUtils.getTomorrowCoursework(allCoursework, courses)
+    val tomorrowItems = remember(allCoursework, courses, personalNotes) {
+        BaoBaiBucketingUtils.getTomorrowCoursework(
+            items = allCoursework,
+            courses = courses,
+            personalNotes = personalNotes
+        )
     }
 
     val tomorrowIncompleteCount = remember(tomorrowItems) { tomorrowItems.count { !it.isCompleted } }
     val upcomingIncompleteCount = remember(allCoursework, courses) {
         BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses).count { !it.isCompleted }
+    }
+    val incompleteNotesCount = remember(personalNotes) {
+        personalNotes.count { it.courseworkId == null && !it.isCompleted }
+    }
+    val courseworkIdsWithNotes = remember(personalNotes) {
+        personalNotes.filter { it.courseworkId != null && it.content.isNotBlank() }
+            .mapNotNull { it.courseworkId }
+            .toSet()
     }
 
     val pullToRefreshState = rememberPullToRefreshState()
@@ -413,6 +427,40 @@ fun MainScreen() {
                             indicatorColor = ChunkyColor.SuccessGreen.copy(alpha = 0.12f)
                         )
                     )
+                    NavigationBarItem(
+                        selected = selectedTabIndex == 3,
+                        onClick = { selectedTabIndex = 3 },
+                        icon = {
+                            BadgedBox(
+                                badge = {
+                                    if (incompleteNotesCount > 0) {
+                                        Badge(
+                                            containerColor = ChunkyColor.SkyBottom,
+                                            contentColor = Color.White
+                                        ) {
+                                            Text("$incompleteNotesCount", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.StickyNote2, contentDescription = null)
+                            }
+                        },
+                        label = {
+                            Text(
+                                text = "Ghi chú",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = ChunkyColor.SkyBottom,
+                            selectedTextColor = ChunkyColor.SkyBottom,
+                            indicatorColor = ChunkyColor.SkyBottom.copy(alpha = 0.12f)
+                        )
+                    )
                 }
             }
         ) { paddingValues ->
@@ -443,16 +491,27 @@ fun MainScreen() {
                     when (tabIndex) {
                         0 -> TomorrowHomeworkScreen(
                             tomorrowItems = tomorrowItems,
+                            courseworkIdsWithNotes = courseworkIdsWithNotes,
                             onToggleCompletion = { id, completed ->
-                                scope.launch { repository.toggleTaskCompletion(id, completed) }
+                                if (id.startsWith("note_")) {
+                                    val noteId = id.removePrefix("note_")
+                                    scope.launch { repository.togglePersonalNoteCompletion(noteId, completed) }
+                                } else {
+                                    scope.launch { repository.toggleTaskCompletion(id, completed) }
+                                }
                             },
                             onSelectAssignment = { coursework ->
-                                selectedCourseworkId = coursework.id
+                                if (coursework.id.startsWith("note_")) {
+                                    selectedTabIndex = 3
+                                } else {
+                                    selectedCourseworkId = coursework.id
+                                }
                             }
                         )
                         1 -> AllUpcomingScreen(
                             allCoursework = allCoursework,
                             courses = courses,
+                            courseworkIdsWithNotes = courseworkIdsWithNotes,
                             onToggleCompletion = { id, completed ->
                                 scope.launch { repository.toggleTaskCompletion(id, completed) }
                             },
@@ -462,11 +521,25 @@ fun MainScreen() {
                         )
                         2 -> CompletedHomeworkScreen(
                             completedItems = completedItems,
+                            courseworkIdsWithNotes = courseworkIdsWithNotes,
                             onToggleCompletion = { id, completed ->
                                 scope.launch { repository.toggleTaskCompletion(id, completed) }
                             },
                             onSelectAssignment = { coursework ->
                                 selectedCourseworkId = coursework.id
+                            }
+                        )
+                        3 -> PersonalNotesScreen(
+                            notes = personalNotes,
+                            courses = courses,
+                            onToggleCompletion = { noteId, completed ->
+                                scope.launch { repository.togglePersonalNoteCompletion(noteId, completed) }
+                            },
+                            onSaveNote = { note ->
+                                scope.launch { repository.savePersonalNote(note) }
+                            },
+                            onDeleteNote = { noteId ->
+                                scope.launch { repository.deletePersonalNote(noteId) }
                             }
                         )
                     }
@@ -499,8 +572,12 @@ fun MainScreen() {
     }
 
     if (activeSelectedCoursework != null) {
+        val attachedNote = remember(personalNotes, activeSelectedCoursework.id) {
+            personalNotes.find { it.courseworkId == activeSelectedCoursework.id }
+        }
         HomeworkDetailBottomSheet(
             coursework = activeSelectedCoursework,
+            initialNoteContent = attachedNote?.content,
             onDismiss = { selectedCourseworkId = null },
             onToggleCompletion = { id, completed ->
                 scope.launch {
@@ -508,6 +585,21 @@ fun MainScreen() {
                         repository.toggleTaskCompletion(id, completed)
                     } catch (e: Exception) {
                         snackbarHostState.showSnackbar("Không thể cập nhật trạng thái bài tập: ${e.localizedMessage}")
+                    }
+                }
+            },
+            onSaveNote = { content ->
+                scope.launch {
+                    try {
+                        repository.saveNoteForCoursework(
+                            courseworkId = activeSelectedCoursework.id,
+                            courseId = activeSelectedCoursework.courseId,
+                            courseName = activeSelectedCoursework.courseName,
+                            title = activeSelectedCoursework.title,
+                            content = content
+                        )
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Không thể lưu ghi chú: ${e.localizedMessage}")
                     }
                 }
             }

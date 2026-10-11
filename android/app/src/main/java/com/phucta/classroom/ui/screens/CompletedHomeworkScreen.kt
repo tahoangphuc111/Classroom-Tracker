@@ -38,7 +38,8 @@ fun CompletedHomeworkScreen(
     completedItems: List<Coursework>,
     onToggleCompletion: (String, Boolean) -> Unit,
     onSelectAssignment: (Coursework) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    courseworkIdsWithNotes: Set<String> = emptySet()
 ) {
     if (completedItems.isEmpty()) {
         Box(
@@ -111,6 +112,7 @@ fun CompletedHomeworkScreen(
             items(completedItems, key = { it.id }) { item ->
                 AssignmentCard(
                     coursework = item,
+                    hasNote = courseworkIdsWithNotes.contains(item.id),
                     onToggleCompletion = { onToggleCompletion(item.id, it) },
                     onClick = { onSelectAssignment(item) },
                     modifier = Modifier.animateItemPlacement(

@@ -53,7 +53,8 @@ fun TomorrowHomeworkScreen(
     tomorrowItems: List<Coursework>,
     onToggleCompletion: (String, Boolean) -> Unit,
     onSelectAssignment: (Coursework) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    courseworkIdsWithNotes: Set<String> = emptySet()
 ) {
     val incompleteCount = remember(tomorrowItems) { tomorrowItems.count { !it.isCompleted } }
     val isAllDone = remember(tomorrowItems, incompleteCount) { tomorrowItems.isNotEmpty() && incompleteCount == 0 }
@@ -264,6 +265,7 @@ fun TomorrowHomeworkScreen(
             items(tomorrowItems, key = { it.id }) { item ->
                 AssignmentCard(
                     coursework = item,
+                    hasNote = courseworkIdsWithNotes.contains(item.id),
                     onToggleCompletion = { completed -> onToggleCompletion(item.id, completed) },
                     onClick = { onSelectAssignment(item) },
                     modifier = Modifier.animateItemPlacement(
