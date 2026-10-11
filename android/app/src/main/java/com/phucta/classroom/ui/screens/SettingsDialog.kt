@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -76,6 +77,7 @@ fun SettingsDialog(
             color = ChunkyColor.SurfaceWhite,
             modifier = Modifier
                 .fillMaxWidth(0.92f)
+                .heightIn(max = 620.dp)
                 .padding(vertical = 24.dp)
                 .imePadding()
         ) {
@@ -300,6 +302,7 @@ fun SettingsDialog(
                     onClick = {
                         showLogoutConfirmation = false
                         onSignOut()
+                        onDismiss()
                     }
                 ) {
                     Text("Đăng xuất", color = ChunkyColor.UrgentAccent, fontWeight = FontWeight.Bold)

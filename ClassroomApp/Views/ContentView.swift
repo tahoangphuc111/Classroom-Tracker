@@ -5,6 +5,9 @@ import AppKit
 #elseif os(iOS)
 import UIKit
 #endif
+#if canImport(AuthenticationServices)
+import AuthenticationServices
+#endif
 
 public struct SpringPressButtonStyle: ButtonStyle {
     public init() {}
@@ -26,12 +29,12 @@ public struct AppLogoView: View {
     public var body: some View {
         Group {
             #if os(macOS)
-            if let nsImg = NSApplication.shared.applicationIconImage {
-                Image(nsImage: nsImg)
+            if let assetImg = NSImage(named: "AppLogo") ?? NSImage(named: "AppIcon") {
+                Image(nsImage: assetImg)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-            } else if let assetImg = NSImage(named: "AppLogo") {
-                Image(nsImage: assetImg)
+            } else if let nsImg = NSApplication.shared.applicationIconImage {
+                Image(nsImage: nsImg)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
             } else {
@@ -138,6 +141,7 @@ public struct ContentView: View {
 
     public struct CourseworkBuckets {
         public var tomorrow: [Coursework]
+        public var tomorrowStrict: [Coursework]
         public var today: [Coursework]
         public var laterUpcoming: [Coursework]
         public var past: [Coursework]
@@ -156,6 +160,7 @@ public struct ContentView: View {
 
         public init(
             tomorrow: [Coursework] = [],
+            tomorrowStrict: [Coursework] = [],
             today: [Coursework] = [],
             laterUpcoming: [Coursework] = [],
             past: [Coursework] = [],
@@ -163,13 +168,14 @@ public struct ContentView: View {
             completed: [Coursework] = []
         ) {
             self.tomorrow = tomorrow
+            self.tomorrowStrict = tomorrowStrict.isEmpty ? tomorrow : tomorrowStrict
             self.today = today
             self.laterUpcoming = laterUpcoming
             self.past = past
             self.noDueDate = noDueDate
             self.completed = completed
-            self.todayAndTomorrow = today + tomorrow
-            self.allUpcoming = today + tomorrow + laterUpcoming + noDueDate
+            self.todayAndTomorrow = today + (tomorrowStrict.isEmpty ? tomorrow : tomorrowStrict)
+            self.allUpcoming = today + (tomorrowStrict.isEmpty ? tomorrow : tomorrowStrict) + laterUpcoming + noDueDate
 
             let tomorrowPending = tomorrow.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
             let todayPending = today.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
@@ -177,21 +183,35 @@ public struct ContentView: View {
             let noDuePending = noDueDate.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
 
             self.tomorrowPendingCount = tomorrowPending
-            self.todayAndTomorrowPendingCount = todayPending + tomorrowPending
-            self.allUpcomingPendingCount = todayPending + tomorrowPending + laterPending + noDuePending
+            self.todayAndTomorrowPendingCount = todayPending + (tomorrowStrict.isEmpty ? tomorrowPending : tomorrowStrict.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) })
+            self.allUpcomingPendingCount = todayPending + (tomorrowStrict.isEmpty ? tomorrowPending : tomorrowStrict.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }) + laterPending + noDuePending
             self.pastPendingCount = past.count
             self.completedCount = completed.count
         }
     }
 
-    public init() {}
+    public init() {
+        #if os(iOS)
+        let tabBarAppearance = UITabBarAppearance()
+        tabBarAppearance.configureWithDefaultBackground()
+        tabBarAppearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+
+        let itemAppearance = UITabBarItemAppearance()
+        tabBarAppearance.stackedLayoutAppearance = itemAppearance
+        tabBarAppearance.inlineLayoutAppearance = itemAppearance
+        tabBarAppearance.compactInlineLayoutAppearance = itemAppearance
+
+        UITabBar.appearance().standardAppearance = tabBarAppearance
+        UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
+        #endif
+    }
 
     private func recomputeBuckets() {
         let activeCourseIds = Set(courses.filter(\.isSelectedForWidget).map(\.id))
         let allCourseIds = Set(courses.map(\.id))
         let itemsMatchCourses = allCoursework.contains { allCourseIds.contains($0.courseId) }
 
-        var tomorrows: [Coursework] = []
+        var tomorrowsStrict: [Coursework] = []
         var todays: [Coursework] = []
         var laters: [Coursework] = []
         var pasts: [Coursework] = []
@@ -213,6 +233,7 @@ public struct ContentView: View {
 
             if item.isCompleted {
                 comp.append(item)
+                continue
             }
 
             guard let dueDate = item.dueDate else {
@@ -221,13 +242,11 @@ public struct ContentView: View {
             }
 
             if dueDate < now {
-                if !item.isCompleted {
-                    pasts.append(item)
-                }
+                pasts.append(item)
             } else if dueDate < startOfTomorrow {
                 todays.append(item)
             } else if dueDate < startOfDayAfter {
-                tomorrows.append(item)
+                tomorrowsStrict.append(item)
             } else {
                 laters.append(item)
             }
@@ -240,11 +259,15 @@ public struct ContentView: View {
             switch ($0.dueDate, $1.dueDate) {
             case let (d1?, d2?):
                 if d1 != d2 { return d1 < d2 }
-                return $0.title.localizedStandardCompare($1.title) == .orderedAscending
+                let titleOrder = $0.title.localizedStandardCompare($1.title)
+                if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
+                return $0.id < $1.id
             case (_?, nil): return true
             case (nil, _?): return false
             case (nil, nil):
-                return $0.title.localizedStandardCompare($1.title) == .orderedAscending
+                let titleOrder = $0.title.localizedStandardCompare($1.title)
+                if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
+                return $0.id < $1.id
             }
         }
 
@@ -252,23 +275,30 @@ public struct ContentView: View {
             switch ($0.dueDate, $1.dueDate) {
             case let (d1?, d2?):
                 if d1 != d2 { return d1 > d2 }
-                return $0.title.localizedStandardCompare($1.title) == .orderedAscending
+                let titleOrder = $0.title.localizedStandardCompare($1.title)
+                if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
+                return $0.id < $1.id
             case (_?, nil): return true
             case (nil, _?): return false
             case (nil, nil):
-                return $0.title.localizedStandardCompare($1.title) == .orderedAscending
+                let titleOrder = $0.title.localizedStandardCompare($1.title)
+                if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
+                return $0.id < $1.id
             }
         }
 
-        tomorrows.sort(by: sortWithPendingFirstAscending)
+        tomorrowsStrict.sort(by: sortWithPendingFirstAscending)
         todays.sort(by: sortWithPendingFirstAscending)
         laters.sort(by: sortWithPendingFirstAscending)
         pasts.sort(by: sortWithPendingFirstAscending)
         comp.sort(by: dueDateDescending)
         noDates.sort(by: sortWithPendingFirstAscending)
 
+        let baoBaiItems = ClassroomStorage.shared.getTomorrowCoursework(items: allCoursework, courses: courses, includeCompleted: true)
+
         self.buckets = CourseworkBuckets(
-            tomorrow: tomorrows,
+            tomorrow: baoBaiItems,
+            tomorrowStrict: tomorrowsStrict,
             today: todays,
             laterUpcoming: laters,
             past: pasts,
@@ -314,8 +344,11 @@ public struct ContentView: View {
         guard !query.isEmpty else { return baseList }
 
         let cleanQuery = query.normalizedForVietnameseSearch()
+        let tokens = cleanQuery.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        guard !tokens.isEmpty else { return baseList }
+
         return baseList.filter { item in
-            item.searchIndex.contains(cleanQuery)
+            tokens.allSatisfy { item.searchIndex.contains($0) }
         }
     }
 
@@ -332,7 +365,7 @@ public struct ContentView: View {
         if searchText.trimmingCharacters(in: .whitespaces).isEmpty {
             return (
                 todays: buckets.today,
-                tomorrows: buckets.tomorrow,
+                tomorrows: buckets.tomorrowStrict,
                 laters: targetCategory == .allUpcoming ? buckets.laterUpcoming : [],
                 noDueDates: targetCategory == .allUpcoming ? buckets.noDueDate : []
             )
@@ -397,7 +430,7 @@ public struct ContentView: View {
                 await updateService.checkForUpdates()
             }
             Task {
-                await reminderService.checkAuthorizationStatus()
+                _ = await reminderService.checkAuthorizationStatus()
                 reminderService.updateReminderContent()
             }
         }
@@ -768,6 +801,8 @@ public struct ContentView: View {
                 .tag(tab.category)
             }
         }
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarBackground(Color.platformWindowBackground, for: .tabBar)
         .sheet(isPresented: $showCompactCourseFilterSheet) {
             compactCourseFilterSheetView
         }
@@ -948,6 +983,40 @@ public struct ContentView: View {
 
     private func sidebarCategoryRowContent(for category: AppFilterCategory, count: Int?, isSelected: Bool) -> some View {
         HStack(spacing: 9) {
+            #if os(macOS)
+            ZStack {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(categoryIconColor(category).opacity(0.12))
+                    .frame(width: 24, height: 24)
+
+                Image(systemName: category.icon)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(categoryIconColor(category))
+                    .scaleEffect(isSelected ? 1.08 : 1.0)
+            }
+
+            Text(category.rawValue)
+                .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                .foregroundStyle(Color.platformTextPrimary)
+                .lineLimit(1)
+
+            Spacer()
+
+            if let count, count > 0 {
+                Text("\(count)")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .contentTransition(.numericText())
+                    .padding(.horizontal, 6.5)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule()
+                            .fill(categoryBadgeBg(category))
+                            .shadow(color: isSelected ? Color.black.opacity(0.08) : Color.clear, radius: 2, x: 0, y: 1)
+                    )
+                    .foregroundStyle(categoryBadgeFg(category))
+                    .scaleEffect(isSelected ? 1.06 : 1.0)
+            }
+            #else
             ZStack {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(isSelected ? Color.white.opacity(0.24) : categoryIconColor(category).opacity(0.12))
@@ -980,6 +1049,7 @@ public struct ContentView: View {
                     .foregroundStyle(isSelected ? categoryIconColor(category) : categoryBadgeFg(category))
                     .scaleEffect(isSelected ? 1.06 : 1.0)
             }
+            #endif
         }
         .padding(.vertical, 2)
         .animation(.spring(response: 0.30, dampingFraction: 0.75), value: isSelected)
@@ -1132,6 +1202,12 @@ public struct ContentView: View {
         .background {
             if !showSettingsModal {
                 Group {
+                    if !isSearchFocused {
+                        Button("") { selectNextItem() }
+                            .keyboardShortcut(.downArrow, modifiers: [])
+                        Button("") { selectPreviousItem() }
+                            .keyboardShortcut(.upArrow, modifiers: [])
+                    }
                     Button("") { selectNextItem() }
                         .keyboardShortcut(.downArrow, modifiers: [.option])
                     Button("") { selectPreviousItem() }
@@ -1153,6 +1229,13 @@ public struct ContentView: View {
                         }
                     }
                     .keyboardShortcut("d", modifiers: [.command])
+                    Button("") {
+                        if let item = selectedCoursework {
+                            triggerHapticFeedback()
+                            openURL(item.destinationURL)
+                        }
+                    }
+                    .keyboardShortcut("o", modifiers: [.command])
                     #endif
                 }
                 .opacity(0)
@@ -1216,8 +1299,11 @@ public struct ContentView: View {
                     }
                     #else
                     if apiService.isSyncing {
-                        ProgressView()
-                            .controlSize(.small)
+                        HStack(spacing: 5) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Đang đồng bộ...")
+                        }
                     } else {
                         Label("Đồng bộ", systemImage: "arrow.triangle.2.circlepath")
                     }
@@ -1267,10 +1353,10 @@ public struct ContentView: View {
         HStack(alignment: .center, spacing: 8) {
             HStack(spacing: 5) {
                 Image(systemName: "calendar")
-                    .font(.system(size: 12.5, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color.platformTextTertiary)
                 Text(formattedCurrentDate())
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.platformTextSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -1283,9 +1369,9 @@ public struct ContentView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "line.3.horizontal.decrease.circle")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 12.5, weight: .semibold))
                     Text("Lớp (\(courses.filter(\.isSelectedForWidget).count)/\(courses.count))")
-                        .font(.system(size: 12.5, weight: .medium))
+                        .font(.system(size: 13.5, weight: .medium))
                 }
                 .foregroundStyle(Color.platformTextSecondary)
                 .padding(.horizontal, 9)
@@ -1298,9 +1384,9 @@ public struct ContentView: View {
             if category == .widgetPreview {
                 HStack(spacing: 4) {
                     Image(systemName: "macwindow.on.rectangle")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 11.5, weight: .semibold))
                     Text("Xem trước")
-                        .font(.system(size: 12.5, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                 }
                 .foregroundStyle(.purple)
                 .padding(.horizontal, 9)
@@ -1314,8 +1400,8 @@ public struct ContentView: View {
                         Circle()
                             .fill(categoryIconColor(category))
                             .frame(width: 6, height: 6)
-                        Text("\(pendingCount) bài cần nộp")
-                            .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                        Text("\(pendingCount) cần nộp")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
                             .foregroundStyle(categoryIconColor(category))
                     }
                     .padding(.horizontal, 9)
@@ -1325,9 +1411,9 @@ public struct ContentView: View {
                 } else if !currentFilteredList(for: category).isEmpty {
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 10, weight: .bold))
-                        Text("Đã nộp tất cả")
-                            .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                            .font(.system(size: 10.5, weight: .bold))
+                        Text("Đã nộp hết")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
                     .padding(.horizontal, 9)
@@ -1338,7 +1424,7 @@ public struct ContentView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 9)
+        .padding(.vertical, isLandscapePhone ? 4 : 8)
         .background(Color.platformWindowBackground)
     }
     #endif
@@ -1474,9 +1560,9 @@ public struct ContentView: View {
 
     private var searchPlaceholder: String {
         #if os(macOS)
-        return "Tìm kiếm bài tập... (⌘F)"
+        return "Tìm bài tập... (⌘F)"
         #else
-        return "Tìm kiếm bài tập..."
+        return "Tìm bài tập..."
         #endif
     }
 
@@ -1486,12 +1572,12 @@ public struct ContentView: View {
         return VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 13.5, weight: .medium))
+                    .font(.system(size: 14.5, weight: .medium))
                     .foregroundStyle(isSearchFocused ? .blue : Color.platformTextTertiary)
 
                 TextField(searchPlaceholder, text: $searchText)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 14))
+                    .font(.system(size: 15))
                     .autocorrectionDisabled()
                     #if os(iOS)
                     .textInputAutocapitalization(.never)
@@ -1530,7 +1616,11 @@ public struct ContentView: View {
                 }
             }
             .padding(.horizontal, 11)
+            #if os(iOS)
+            .padding(.vertical, isLandscapePhone ? 5.5 : 8.5)
+            #else
             .padding(.vertical, 8.5)
+            #endif
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(Color.platformControlBackground)
@@ -1541,14 +1631,33 @@ public struct ContentView: View {
             )
             .shadow(color: Color.black.opacity(isSearchFocused ? 0.04 : 0.015), radius: 3, x: 0, y: 1)
             .padding(.horizontal, 12)
+            #if os(iOS)
+            .padding(.top, isLandscapePhone ? 4 : 10)
+            .padding(.bottom, isLandscapePhone ? 3 : 6)
+            #else
             .padding(.top, 10)
             .padding(.bottom, 6)
+            #endif
             .animation(.easeInOut(duration: 0.15), value: isSearchFocused)
 
             if !searchText.isEmpty {
                 HStack {
                     Text("Tìm thấy \(list.count) bài tập")
                         .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.platformTextSecondary)
+                        .contentTransition(.numericText())
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 6)
+                .transition(.opacity)
+            } else if activeCategory == .completed && !list.isEmpty {
+                HStack(spacing: 5) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
+                    Text("\(list.count) bài đã hoàn thành")
+                        .font(.system(size: 11.5, weight: .semibold))
                         .foregroundStyle(Color.platformTextSecondary)
                         .contentTransition(.numericText())
                     Spacer()
@@ -1707,6 +1816,9 @@ public struct ContentView: View {
                         }
                     }
                     .padding(12)
+                    #if os(iOS)
+                    .padding(.bottom, isLandscapePhone ? 24 : 8)
+                    #endif
                 }
                 .refreshable {
                     if authService.isAuthenticated {
@@ -1757,10 +1869,10 @@ public struct ContentView: View {
                             HStack {
                                 HStack(spacing: 6) {
                                     Image(systemName: "doc.text.fill")
-                                        .font(.system(size: 13.5, weight: .semibold))
+                                        .font(.system(size: 14, weight: .semibold))
                                         .foregroundStyle(Color.blue)
-                                    Text("NỘI DUNG & HƯỚNG DẪN BÀI TẬP")
-                                        .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                                    Text("HƯỚNG DẪN BÀI TẬP")
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
                                         .foregroundStyle(Color.platformTextSecondary)
                                 }
 
@@ -1772,10 +1884,10 @@ public struct ContentView: View {
                                     } label: {
                                         HStack(spacing: 4) {
                                             Image(systemName: copyFeedbackMessage != nil ? "checkmark" : "doc.on.doc")
-                                                .font(.system(size: 11))
+                                                .font(.system(size: 11.5))
                                                 .foregroundStyle(copyFeedbackMessage != nil ? Color.green : Color.blue)
-                                            Text(copyFeedbackMessage ?? "Sao chép nội dung")
-                                                .font(.system(size: 12.5, weight: .medium))
+                                            Text(copyFeedbackMessage ?? "Sao chép")
+                                                .font(.system(size: 13, weight: .medium))
                                         }
                                     }
                                     .buttonStyle(.plain)
@@ -1786,7 +1898,7 @@ public struct ContentView: View {
 
                             if let desc = item.description, !desc.isEmpty {
                                 Text(desc)
-                                    .font(.system(size: 15.5, weight: .regular))
+                                    .font(.system(size: 16, weight: .regular))
                                     .lineSpacing(6.5)
                                     .foregroundStyle(Color.platformTextPrimary)
                                     .textSelection(.enabled)
@@ -1803,8 +1915,8 @@ public struct ContentView: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: "info.circle")
                                         .foregroundStyle(Color.platformTextTertiary)
-                                    Text("Bài tập này không có phần mô tả chi tiết từ giáo viên.")
-                                        .font(.system(size: 14))
+                                    Text("Không có mô tả chi tiết.")
+                                        .font(.system(size: 14.5))
                                         .foregroundStyle(Color.platformTextSecondary)
                                 }
                                 .padding(16)
@@ -1814,7 +1926,7 @@ public struct ContentView: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                                         .stroke(Color.platformCardBorder, lineWidth: 1)
-                                )
+                                    )
                             }
                         }
 
@@ -1826,9 +1938,9 @@ public struct ContentView: View {
                         } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "arrow.up.right.square.fill")
-                                    .font(.system(size: 15, weight: .bold))
-                                Text("Mở bài tập trên Google Classroom để nộp bài")
-                                    .font(.system(size: 15, weight: .bold))
+                                    .font(.system(size: 15.5, weight: .bold))
+                                Text("Mở bài tập trên Classroom")
+                                    .font(.system(size: 16, weight: .bold))
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.85)
                                 #if os(macOS)
@@ -2283,7 +2395,7 @@ public struct ContentView: View {
                     HStack {
                         Text("Phiên bản hiện tại:")
                         Spacer()
-                        Text("v\(updateService.latestVersion)")
+                        Text("v\(updateService.currentVersion)")
                             .foregroundStyle(.secondary)
                     }
 
@@ -2508,7 +2620,14 @@ public struct ContentView: View {
     }
 
     private func handleEscape() {
-        if !searchText.isEmpty {
+        if isSearchFocused {
+            isSearchFocused = false
+            if !searchText.isEmpty {
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                    searchText = ""
+                }
+            }
+        } else if !searchText.isEmpty {
             withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
                 searchText = ""
             }
@@ -2759,6 +2878,17 @@ public struct ContentView: View {
                     )
                 }
             } catch {
+                #if canImport(AuthenticationServices)
+                if let authError = error as? ASWebAuthenticationSessionError, authError.code == .canceledLogin {
+                    isSigningIn = false
+                    return
+                }
+                #endif
+                let nsError = error as NSError
+                if (nsError.domain == "com.apple.AuthenticationServices.WebAuthenticationSession" && nsError.code == 1) || nsError.code == 499 {
+                    isSigningIn = false
+                    return
+                }
                 errorMessage = error.localizedDescription
                 showToast(
                     title: "Đăng nhập Google thất bại",
@@ -2918,19 +3048,19 @@ private struct SectionHeaderPill: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(color)
 
             Text(title)
-                .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                .font(.system(size: 13.5, weight: .bold, design: .rounded))
                 .foregroundStyle(color)
 
             Spacer()
 
             Text("\(count) bài")
-                .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                .font(.system(size: 12.5, weight: .bold, design: .rounded))
                 .foregroundStyle(color)
-                .padding(.horizontal, 7)
+                .padding(.horizontal, 7.5)
                 .padding(.vertical, 2.5)
                 .background(color.opacity(0.14))
                 .clipShape(Capsule())
@@ -3119,9 +3249,9 @@ private struct AssignmentListRow: View, Equatable {
             .buttonStyle(.plain)
             .help(isTurnedIn ? "Đã nộp bài (Space hoặc bấm để hoàn tác)" : "Chưa nộp bài (Space hoặc bấm để đánh dấu hoàn thành)")
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 3.5) {
                 Text(item.title)
-                    .font(.system(size: 15.5, weight: isSelected ? .bold : .semibold))
+                    .font(.system(size: 16.5, weight: isSelected ? .bold : .semibold))
                     .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
                     .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
                     .lineLimit(2)
@@ -3132,7 +3262,7 @@ private struct AssignmentListRow: View, Equatable {
                         .fill(themeColor)
                         .frame(width: 6, height: 6)
                     Text(item.courseName)
-                        .font(.system(size: 12.5, weight: .semibold))
+                        .font(.system(size: 13.5, weight: .semibold))
                         .foregroundStyle(themeColor)
                         .lineLimit(1)
                 }
@@ -3143,10 +3273,10 @@ private struct AssignmentListRow: View, Equatable {
             DueBadgeView(item: item, compact: true)
                 .equatable()
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 11)
         #if os(iOS)
         .padding(.vertical, 10)
-        .frame(minHeight: 58)
+        .frame(minHeight: 62)
         #else
         .padding(.vertical, 8)
         #endif
@@ -3235,28 +3365,28 @@ private struct MetaInfoCard: View {
                             RoundedRectangle(cornerRadius: 7, style: .continuous)
                                 .stroke(tint.opacity(0.22), lineWidth: 0.5)
                         )
-                        .frame(width: 26, height: 26)
+                        .frame(width: 28, height: 28)
 
                     Image(systemName: icon)
-                        .font(.system(size: 12.5, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(tint)
                 }
 
                 Text(label)
-                    .font(.system(size: 12.5, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Color.platformTextSecondary)
                     .lineLimit(1)
             }
 
             Text(value)
-                .font(.system(size: 14.5, weight: .bold, design: .rounded))
+                .font(.system(size: 15.5, weight: .bold, design: .rounded))
                 .foregroundStyle(Color.platformTextPrimary)
                 .lineLimit(2)
                 .minimumScaleFactor(0.85)
                 .contentTransition(.numericText())
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 13)
+        .padding(.vertical, 11)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.platformControlBackground)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))

@@ -771,7 +771,16 @@ private final class WebAuthPresentationContextProvider: NSObject, ASWebAuthentic
     #elseif os(macOS)
     @MainActor
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        return NSApplication.shared.windows.first { $0.isKeyWindow } ?? NSApplication.shared.windows.first ?? ASPresentationAnchor()
+        if let keyWindow = NSApplication.shared.keyWindow {
+            return keyWindow
+        }
+        if let mainWindow = NSApplication.shared.mainWindow {
+            return mainWindow
+        }
+        if let visibleWindow = NSApplication.shared.windows.first(where: { $0.isVisible && $0.canBecomeKey }) {
+            return visibleWindow
+        }
+        return NSApplication.shared.windows.first ?? ASPresentationAnchor()
     }
     #endif
 }

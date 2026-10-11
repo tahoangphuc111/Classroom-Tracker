@@ -18,8 +18,8 @@ import com.phucta.classroom.ui.theme.OutfitFontFamily
 @Composable
 fun SubjectBadgePill(
     courseName: String,
-    title: String? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    title: String? = null
 ) {
     val theme = SubjectArtHelper.theme(courseName, title)
 
@@ -27,7 +27,7 @@ fun SubjectBadgePill(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
             .background(theme.color)
-            .padding(horizontal = 7.dp, vertical = 3.dp),
+            .padding(horizontal = 8.dp, vertical = 3.5.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -35,8 +35,10 @@ fun SubjectBadgePill(
             color = Color.White,
             fontFamily = OutfitFontFamily,
             fontWeight = FontWeight.Bold,
-            fontSize = 10.sp,
-            letterSpacing = 0.5.sp
+            fontSize = 11.sp,
+            letterSpacing = 0.5.sp,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }

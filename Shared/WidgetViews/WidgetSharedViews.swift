@@ -58,14 +58,15 @@ public struct SubjectArtHelper {
         )
     }
 
-    public static func badgeCode(for category: SubjectCategory, courseName: String) -> String {
+    public static func badgeCode(for category: SubjectCategory, courseName: String, title: String? = nil) -> String {
         switch category {
         case .math: return "TOÁ"
         case .physics: return "LÝ"
         case .chemistry: return "HOÁ"
         case .biology: return "SINH"
         case .historyOrGeography:
-            return courseName.localizedCaseInsensitiveContains("địa") ? "ĐỊA" : "SỬ"
+            let isDia = courseName.localizedCaseInsensitiveContains("địa") || (title?.localizedCaseInsensitiveContains("địa") == true)
+            return isDia ? "ĐỊA" : "SỬ"
         case .literature: return "VĂN"
         case .english: return "ANH"
         case .civicsOrPhilosophy: return "GDCD"
@@ -79,13 +80,19 @@ public struct SubjectArtHelper {
             if cleaned.count >= 3 {
                 return String(cleaned.prefix(3)).uppercased()
             }
-            return "MÔN"
+            if let title, !title.isEmpty {
+                let titleCleaned = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                if titleCleaned.count >= 3 {
+                    return String(titleCleaned.prefix(3)).uppercased()
+                }
+            }
+            return cleaned.isEmpty ? "MÔN" : cleaned.uppercased()
         }
     }
 
     public static func badgeCode(for courseName: String, title: String? = nil) -> String {
         let cat = category(for: courseName, title: title)
-        return badgeCode(for: cat, courseName: courseName)
+        return badgeCode(for: cat, courseName: courseName, title: title)
     }
 
     private static func computeCategory(for courseName: String, title: String? = nil) -> SubjectCategory {
@@ -104,7 +111,7 @@ public struct SubjectArtHelper {
                 return .chemistry
             } else if text.contains("sinh học") || text.contains("môn sinh") || tokens.contains("biology") || tokens.contains("bio") || text.contains("y học") || (tokens.contains("sinh") && !text.contains("học sinh") && !text.contains("sinh viên") && !text.contains("sinh hoạt")) {
                 return .biology
-            } else if text.contains("lịch sử") || tokens.contains("history") || (tokens.contains("sử") && !text.contains("sử dụng")) {
+            } else if text.contains("lịch sử") || tokens.contains("history") || (tokens.contains("sử") && !text.contains("sử dụng") && !text.contains("lịch sự")) {
                 return .historyOrGeography
             } else if text.contains("địa lý") || text.contains("địa lí") || tokens.contains("geography") || (tokens.contains("địa") && !text.contains("địa chỉ") && !text.contains("địa điểm")) {
                 return .historyOrGeography
@@ -120,7 +127,7 @@ public struct SubjectArtHelper {
                 return .artAndDesign
             } else if text.contains("an ninh mạng") || text.contains("mạng máy tính") || (tokens.contains("mạng") && !text.contains("mạng xã hội")) || tokens.contains("network") || tokens.contains("networking") || tokens.contains("tcp") || tokens.contains("socket") || (tokens.contains("cloud") && !tokens.contains("soundcloud")) {
                 return .networking
-            } else if text.contains("lập trình") || text.contains("tin học") || text.contains("di động") || tokens.contains("ios") || tokens.contains("swift") || tokens.contains("python") || tokens.contains("java") || tokens.contains("cntt") || text.contains("công nghệ thông tin") || tokens.contains("it") || text.contains("thuật toán") || text.contains("cơ sở dữ liệu") || text.contains("khoa học máy tính") || (tokens.contains("tin") && !text.contains("thông tin liên lạc") && !tokens.contains("tự")) {
+            } else if text.contains("lập trình") || text.contains("tin học") || text.contains("di động") || tokens.contains("android") || tokens.contains("ios") || tokens.contains("swift") || tokens.contains("python") || tokens.contains("java") || tokens.contains("cntt") || text.contains("công nghệ thông tin") || tokens.contains("it") || text.contains("thuật toán") || text.contains("cơ sở dữ liệu") || text.contains("khoa học máy tính") || (tokens.contains("tin") && !text.contains("thông tin") && !text.contains("bản tin") && !text.contains("tin tức") && !text.contains("niềm tin") && !tokens.contains("tự")) {
                 return .computerScience
             } else if text.contains("nhiệm vụ") || tokens.contains("lab") || text.contains("thực hành") || text.contains("bài tập") || tokens.contains("project") || text.contains("dự án") {
                 return .generalAssignment
@@ -415,14 +422,14 @@ public struct ClassroomSubjectBanner: View {
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
-                        SubjectArtBadgeView(courseName: item.courseName, size: 22)
+                        SubjectArtBadgeView(courseName: item.courseName, size: 24)
                         Text(item.courseName)
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(.white.opacity(0.95))
                     }
 
                     Text(item.title)
-                        .font(.system(size: 17.5, weight: .bold))
+                        .font(.system(size: 19.5, weight: .bold))
                         .foregroundStyle(.white)
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
@@ -430,9 +437,9 @@ public struct ClassroomSubjectBanner: View {
 
                     HStack(spacing: 5) {
                         Image(systemName: "calendar")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 11.5, weight: .semibold))
                         Text(item.formattedFullDueDate)
-                            .font(.system(size: 12.5, weight: .semibold))
+                            .font(.system(size: 13.5, weight: .semibold))
                     }
                     .foregroundStyle(.white.opacity(0.92))
                     .padding(.horizontal, 9)
@@ -563,14 +570,14 @@ public struct DueBadgeView: View, Equatable {
             if item.isCompleted {
                 return "Đã xong"
             } else if item.isDueToday {
-                return item.timeOnlyString == "Cuối ngày" ? "Hết hôm nay" : "Hôm nay \(item.timeOnlyString)"
+                return item.timeOnlyString == "Cuối ngày" ? "Hôm nay" : "Hôm nay \(item.timeOnlyString)"
             } else if item.isDueTomorrow {
-                return item.timeOnlyString == "Cuối ngày" ? "Hết ngày mai" : "Mai \(item.timeOnlyString)"
+                return item.timeOnlyString == "Cuối ngày" ? "Ngày mai" : "Mai \(item.timeOnlyString)"
             }
             if item.dueDate == nil {
                 return "Không hạn"
             }
-            return item.timeOnlyString
+            return item.compactDueString
         } else {
             return item.friendlyDueString
         }
@@ -580,18 +587,18 @@ public struct DueBadgeView: View, Equatable {
         HStack(spacing: 4) {
             if item.isCompleted {
                 Image(systemName: "checkmark")
-                    .font(.system(size: compact ? 9.5 : 11, weight: .bold))
+                    .font(.system(size: compact ? 10.5 : 11.5, weight: .bold))
             } else {
                 Image(systemName: "clock")
-                    .font(.system(size: compact ? 9.5 : 11, weight: .semibold))
+                    .font(.system(size: compact ? 10.5 : 11.5, weight: .semibold))
             }
 
             Text(badgeText)
-                .font(.system(size: compact ? 11.5 : 12.5, weight: .semibold, design: .rounded))
+                .font(.system(size: compact ? 12.5 : 13.5, weight: .semibold, design: .rounded))
         }
         .foregroundStyle(badgeColor)
-        .padding(.horizontal, compact ? 7.5 : 9.5)
-        .padding(.vertical, compact ? 3.5 : 4.5)
+        .padding(.horizontal, compact ? 8 : 10)
+        .padding(.vertical, compact ? 4 : 5)
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(badgeColor.opacity(0.12))

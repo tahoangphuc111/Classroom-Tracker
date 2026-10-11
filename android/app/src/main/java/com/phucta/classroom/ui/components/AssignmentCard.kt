@@ -86,68 +86,65 @@ fun AssignmentCard(
         label = "titleAlpha"
     )
 
-    Box(
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(ChunkyColor.SurfaceWhite)
-            .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(12.dp))
+            .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(12.dp)),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier
+                .padding(start = 4.dp, top = 2.dp, bottom = 2.dp)
+                .size(48.dp)
+                .clip(CircleShape)
+                .clickable(
+                    role = Role.Checkbox,
+                    onClick = { onToggleCompletion(!isCompleted) }
+                ),
+            contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
-                    .padding(start = 4.dp, top = 2.dp, bottom = 2.dp)
-                    .size(48.dp)
+                    .size(22.dp)
+                    .graphicsLayer {
+                        scaleX = checkScale
+                        scaleY = checkScale
+                    }
                     .clip(CircleShape)
-                    .clickable(
-                        role = Role.Checkbox,
-                        onClick = { onToggleCompletion(!isCompleted) }
+                    .background(color = checkBgColor)
+                    .border(
+                        width = 1.75.dp,
+                        color = checkBorderColor,
+                        shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .graphicsLayer {
-                            scaleX = checkScale
-                            scaleY = checkScale
-                        }
-                        .clip(CircleShape)
-                        .background(color = checkBgColor)
-                        .border(
-                            width = 1.75.dp,
-                            color = checkBorderColor,
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (iconScale > 0.01f) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Completed",
-                            tint = Color.White,
-                            modifier = Modifier
-                                .size(15.dp)
-                                .graphicsLayer {
-                                    scaleX = iconScale
-                                    scaleY = iconScale
-                                }
-                        )
-                    }
+                if (iconScale > 0.01f) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Completed",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(15.dp)
+                            .graphicsLayer {
+                                scaleX = iconScale
+                                scaleY = iconScale
+                            }
+                    )
                 }
             }
+        }
 
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
-                    .clickable(onClick = onClick)
-                    .padding(start = 4.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
+                .clickable(onClick = onClick)
+                .padding(start = 4.dp, end = 14.dp, top = 13.dp, bottom = 13.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
                 SubjectBadgePill(
                     courseName = coursework.courseName,
                     title = coursework.title
@@ -162,17 +159,17 @@ fun AssignmentCard(
                         text = coursework.title,
                         color = if (isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary,
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
+                        fontSize = 15.5.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
                         modifier = Modifier.graphicsLayer { alpha = titleAlpha }
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(2.5.dp))
                     Text(
                         text = coursework.courseName,
                         color = ChunkyColor.TextMuted,
-                        fontSize = 12.sp,
+                        fontSize = 13.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -184,6 +181,10 @@ fun AssignmentCard(
                     isCompleted -> Pair(
                         ChunkyColor.SuccessGreen.copy(alpha = 0.12f),
                         Color(0xFF2E7D32)
+                    )
+                    isOverdue || coursework.isPast -> Pair(
+                        ChunkyColor.UrgentAccent.copy(alpha = 0.15f),
+                        ChunkyColor.UrgentAccent
                     )
                     coursework.isDueToday -> Pair(
                         ChunkyColor.EmberTop.copy(alpha = 0.15f),
@@ -203,7 +204,7 @@ fun AssignmentCard(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(badgeBg)
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 8.5.dp, vertical = 4.5.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -211,10 +212,10 @@ fun AssignmentCard(
                         color = badgeTextColor,
                         fontFamily = OutfitFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                        fontSize = 12.sp,
+                        maxLines = 1
                     )
                 }
-            }
         }
     }
 }

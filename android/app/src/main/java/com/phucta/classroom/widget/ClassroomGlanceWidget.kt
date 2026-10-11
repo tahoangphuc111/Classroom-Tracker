@@ -10,7 +10,7 @@ import androidx.glance.GlanceTheme
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
@@ -87,22 +87,23 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         provideContent {
             GlanceTheme {
                 val currentSize = androidx.glance.LocalSize.current
-                Box(
-                    modifier = GlanceModifier
-                        .fillMaxSize()
-                        .cornerRadius(16.dp)
-                        .background(ChunkyColor.SkyBottom)
-                        .clickable(actionStartActivity(android.content.Intent(context, MainActivity::class.java)))
-                        .padding(10.dp)
-                ) {
-                    if (!isAuthenticated) {
-                        UnauthenticatedWidgetView()
-                    } else if (currentSize.width < 180.dp) {
-                        SmallChunkyWidgetContent(tomorrowItems)
-                    } else {
-                        MediumChunkyWidgetContent(tomorrowItems)
+                    Box(
+                        modifier = GlanceModifier
+                            .fillMaxSize()
+                            .cornerRadius(16.dp)
+                            .background(ChunkyColor.SkyBottom)
+                            .clickable(actionStartActivity<MainActivity>())
+                            .padding(10.dp)
+                    ) {
+                        if (!isAuthenticated) {
+                            UnauthenticatedWidgetView()
+                        } else if (currentSize.width < 180.dp) {
+                            SmallChunkyWidgetContent(tomorrowItems)
+                        } else {
+                            val maxItems = if (currentSize.height >= 160.dp) 6 else 3
+                            MediumChunkyWidgetContent(tomorrowItems, maxItems)
+                        }
                     }
-                }
             }
         }
     }
@@ -137,7 +138,9 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
     @androidx.compose.runtime.Composable
     private fun SmallChunkyWidgetContent(items: List<Coursework>) {
         val incomplete = items.filter { !it.isCompleted }
-        val isAllDone = items.isEmpty() || incomplete.isEmpty()
+        val hasCompletedAll = items.isNotEmpty() && incomplete.isEmpty()
+        val isEmptyTomorrow = items.isEmpty()
+        val isAllDone = hasCompletedAll || isEmptyTomorrow
 
         Column(
             modifier = GlanceModifier.fillMaxSize(),
@@ -149,7 +152,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 style = TextStyle(
                     color = ColorProvider(ChunkyColor.ButterYellow),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp
+                    fontSize = 12.sp
                 )
             )
             Spacer(modifier = GlanceModifier.height(2.dp))
@@ -158,36 +161,42 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 style = TextStyle(
                     color = ColorProvider(androidx.compose.ui.graphics.Color.White),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp
+                    fontSize = 26.sp
                 )
             )
             Spacer(modifier = GlanceModifier.height(2.dp))
             Text(
-                text = if (isAllDone) "Đã xong hết" else "bài cần nộp",
+                text = when {
+                    hasCompletedAll -> "Đã xong hết"
+                    isEmptyTomorrow -> "Không có bài"
+                    else -> "bài cần nộp"
+                },
                 style = TextStyle(
-                    color = ColorProvider(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f)),
+                    color = ColorProvider(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.95f)),
                     fontWeight = FontWeight.Medium,
-                    fontSize = 10.sp
+                    fontSize = 11.5.sp
                 )
             )
         }
     }
 
     @androidx.compose.runtime.Composable
-    private fun MediumChunkyWidgetContent(items: List<Coursework>) {
+    private fun MediumChunkyWidgetContent(items: List<Coursework>, maxItems: Int = 3) {
         val incomplete = items.filter { !it.isCompleted }
-        val displayItems = incomplete.take(3)
-        val isAllDone = items.isEmpty() || incomplete.isEmpty()
+        val displayItems = incomplete.take(maxItems)
+        val hasCompletedAll = items.isNotEmpty() && incomplete.isEmpty()
+        val isEmptyTomorrow = items.isEmpty()
 
         val headerTitle = when {
-            isAllDone -> "RẢNH RỒI"
+            hasCompletedAll || isEmptyTomorrow -> "RẢNH RỒI"
             incomplete.any { it.isDueTomorrow } -> "NGÀY MAI"
             incomplete.all { it.isDueToday } -> "HÔM NAY"
             else -> "SẮP TỚI"
         }
 
         val subTitle = when {
-            isAllDone -> "Tất cả bài tập\nđã xong!"
+            hasCompletedAll -> "Tất cả bài tập\nđã xong!"
+            isEmptyTomorrow -> "Không có bài\ntập ngày mai"
             else -> "Còn ${incomplete.size}\nbài cần nộp"
         }
 
@@ -196,7 +205,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
-                modifier = GlanceModifier.width(90.dp).padding(end = 8.dp),
+                modifier = GlanceModifier.width(92.dp).padding(end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -205,7 +214,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     style = TextStyle(
                         color = ColorProvider(ChunkyColor.ButterYellow),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                        fontSize = 12.sp
                     )
                 )
                 Spacer(modifier = GlanceModifier.height(4.dp))
@@ -214,7 +223,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     style = TextStyle(
                         color = ColorProvider(androidx.compose.ui.graphics.Color.White),
                         fontWeight = FontWeight.Medium,
-                        fontSize = 11.5.sp
+                        fontSize = 12.5.sp
                     )
                 )
             }
@@ -230,22 +239,96 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
             ) {
                 if (displayItems.isEmpty()) {
                     Text(
-                        text = if (items.isNotEmpty()) "Tất cả bài tập đã xong xuôi." else "Không có bài tập nào cho ngày mai.",
+                        text = if (hasCompletedAll) "Tất cả bài tập đã xong xuôi." else "Không có bài tập nào cho ngày mai.",
                         style = TextStyle(
                             color = ColorProvider(ChunkyColor.TextMuted),
                             fontWeight = FontWeight.Medium,
-                            fontSize = 11.5.sp
+                            fontSize = 12.sp
                         )
                     )
+                } else if (displayItems.size == 1) {
+                    WidgetSingleHeroTask(displayItems.first())
                 } else {
                     displayItems.forEachIndexed { index, item ->
                         WidgetTaskRow(item)
                         if (index < displayItems.size - 1) {
-                            Spacer(modifier = GlanceModifier.height(4.dp))
+                            Spacer(modifier = GlanceModifier.height(6.dp))
                         }
                     }
                 }
             }
+        }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun WidgetSingleHeroTask(item: Coursework) {
+        val theme = SubjectArtHelper.theme(item.courseName, item.title)
+
+        Column(
+            modifier = GlanceModifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = GlanceModifier
+                        .cornerRadius(3.5.dp)
+                        .background(theme.color)
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = theme.badgeCode,
+                        style = TextStyle(
+                            color = ColorProvider(androidx.compose.ui.graphics.Color.White),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 9.sp
+                        )
+                    )
+                }
+
+                Spacer(modifier = GlanceModifier.width(6.dp))
+
+                Text(
+                    text = item.courseName.ifEmpty { item.title },
+                    maxLines = 1,
+                    modifier = GlanceModifier.defaultWeight(),
+                    style = TextStyle(
+                        color = ColorProvider(ChunkyColor.TextMuted),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 11.sp
+                    )
+                )
+
+                Spacer(modifier = GlanceModifier.width(4.dp))
+
+                val dueText = if (item.isDueTomorrow) {
+                    if (item.timeOnlyString == "Cuối ngày") "Mai" else "Mai " + item.timeOnlyString
+                } else {
+                    item.compactDueString
+                }
+                Text(
+                    text = dueText,
+                    style = TextStyle(
+                        color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else ChunkyColor.TextMuted),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
+                )
+            }
+
+            Spacer(modifier = GlanceModifier.height(5.dp))
+
+            Text(
+                text = item.title,
+                maxLines = 2,
+                style = TextStyle(
+                    color = ColorProvider(ChunkyColor.TextPrimary),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.5.sp
+                )
+            )
         }
     }
 
@@ -259,16 +342,16 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         ) {
             Box(
                 modifier = GlanceModifier
-                    .cornerRadius(3.dp)
+                    .cornerRadius(3.5.dp)
                     .background(theme.color)
-                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                    .padding(horizontal = 5.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = theme.badgeCode,
                     style = TextStyle(
                         color = ColorProvider(androidx.compose.ui.graphics.Color.White),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 8.sp
+                        fontSize = 9.sp
                     )
                 )
             }
@@ -281,19 +364,19 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.defaultWeight(),
                 style = TextStyle(
                     color = ColorProvider(ChunkyColor.TextPrimary),
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 10.5.sp
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
                 )
             )
 
             Spacer(modifier = GlanceModifier.width(4.dp))
 
             Text(
-                text = item.timeOnlyString,
+                text = if (item.isDueTomorrow) item.timeOnlyString else item.compactDueString,
                 style = TextStyle(
                     color = ColorProvider(ChunkyColor.TextMuted),
                     fontWeight = FontWeight.Medium,
-                    fontSize = 9.sp
+                    fontSize = 10.sp
                 )
             )
         }

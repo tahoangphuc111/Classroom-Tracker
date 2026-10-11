@@ -109,14 +109,12 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public func isMockCoursesData(_ data: Data) -> Bool {
-        guard let courses = try? JSONDecoder().decode([Course].self, from: data) else { return false }
-        if courses.isEmpty { return true }
+        guard let courses = try? JSONDecoder().decode([Course].self, from: data), !courses.isEmpty else { return false }
         return courses.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
     }
 
     public func isMockCourseworkData(_ data: Data) -> Bool {
-        guard let items = try? JSONDecoder().decode([Coursework].self, from: data) else { return false }
-        if items.isEmpty { return true }
+        guard let items = try? JSONDecoder().decode([Coursework].self, from: data), !items.isEmpty else { return false }
         return items.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
     }
 
@@ -364,8 +362,8 @@ public final class ClassroomStorage: @unchecked Sendable {
             if let data = ud.data(forKey: coursesKey),
                let decoded = try? JSONDecoder().decode([Course].self, from: data),
                !decoded.isEmpty {
-                let currentIsMock = loaded.map { items in items.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil } } ?? true
-                let newIsMock = decoded.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
+                let currentIsMock = loaded.map { items in !items.isEmpty && items.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil } } ?? true
+                let newIsMock = !decoded.isEmpty && decoded.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
                 if loaded == nil || loaded?.isEmpty == true || (currentIsMock && !newIsMock) {
                     loaded = decoded
                 }
@@ -374,7 +372,7 @@ public final class ClassroomStorage: @unchecked Sendable {
 
         // Never show mock data in widget extensions
         if isAppExtension, let loadedItems = loaded {
-            let allMock = loadedItems.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
+            let allMock = !loadedItems.isEmpty && loadedItems.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
             if allMock {
                 loaded = nil
             }
@@ -403,7 +401,6 @@ public final class ClassroomStorage: @unchecked Sendable {
         cachedCourseworkTimestamp = timestamp
         lock.unlock()
 
-        let syncDate = Date()
         ioQueue.async { [weak self] in
             guard let self else { return }
             guard let encoded = try? JSONEncoder().encode(items) else { return }
@@ -415,7 +412,6 @@ public final class ClassroomStorage: @unchecked Sendable {
                 ud.set(timestamp, forKey: self.courseworkTimestampKey)
             }
 
-            self.saveLastSyncTime(syncDate)
             self.notifyWidgetReload()
         }
     }
@@ -447,8 +443,8 @@ public final class ClassroomStorage: @unchecked Sendable {
             if let data = ud.data(forKey: courseworkKey),
                let decoded = try? JSONDecoder().decode([Coursework].self, from: data),
                !decoded.isEmpty {
-                let currentIsMock = loaded.map { items in items.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil } } ?? true
-                let newIsMock = decoded.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
+                let currentIsMock = loaded.map { items in !items.isEmpty && items.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil } } ?? true
+                let newIsMock = !decoded.isEmpty && decoded.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
                 if loaded == nil || loaded?.isEmpty == true || (currentIsMock && !newIsMock) {
                     loaded = decoded
                 }
@@ -457,7 +453,7 @@ public final class ClassroomStorage: @unchecked Sendable {
 
         // Never show mock data in widget extensions
         if isAppExtension, let loadedItems = loaded {
-            let allMock = loadedItems.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
+            let allMock = !loadedItems.isEmpty && loadedItems.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
             if allMock {
                 loaded = nil
             }
@@ -479,22 +475,41 @@ public final class ClassroomStorage: @unchecked Sendable {
         return result
     }
 
-    private func filterItemsByActiveCourses(_ items: [Coursework]) -> [Coursework] {
-        let loadedCourses = loadCourses()
-        guard !loadedCourses.isEmpty else { return items }
+    public func filterItemsByActiveCourses(_ items: [Coursework], courses: [Course]? = nil) -> [Coursework] {
+        let loadedCourses = courses ?? loadCourses()
+        guard !loadedCourses.isEmpty, !items.isEmpty else { return items }
 
-        let allCourseIds = Set(loadedCourses.map(\.id))
-        let itemsBelongToLoadedCourses = items.contains { allCourseIds.contains($0.courseId) }
-
-        if itemsBelongToLoadedCourses {
-            let activeCourseIds = Set(loadedCourses.filter(\.isSelectedForWidget).map(\.id))
-            return items.filter { activeCourseIds.contains($0.courseId) }
+        var hasUnselected = false
+        var allCourseIds = Set<String>()
+        var activeCourseIds = Set<String>()
+        for course in loadedCourses {
+            allCourseIds.insert(course.id)
+            if course.isSelectedForWidget {
+                activeCourseIds.insert(course.id)
+            } else {
+                hasUnselected = true
+            }
         }
 
-        return items
+        if !hasUnselected || activeCourseIds.isEmpty { return items }
+
+        var result: [Coursework] = []
+        var anyMatchesLoadedCourses = false
+        for item in items {
+            if allCourseIds.contains(item.courseId) {
+                anyMatchesLoadedCourses = true
+                if activeCourseIds.contains(item.courseId) {
+                    result.append(item)
+                }
+            } else {
+                result.append(item)
+            }
+        }
+
+        return anyMatchesLoadedCourses ? result : items
     }
 
-    private func sortCoursework(_ items: [Coursework]) -> [Coursework] {
+    public func sortCoursework(_ items: [Coursework]) -> [Coursework] {
         items.sorted { (first, second) -> Bool in
             if first.isCompleted != second.isCompleted {
                 return !first.isCompleted
@@ -502,13 +517,21 @@ public final class ClassroomStorage: @unchecked Sendable {
             switch (first.dueDate, second.dueDate) {
             case let (d1?, d2?):
                 if d1 != d2 { return d1 < d2 }
-                return first.title.localizedStandardCompare(second.title) == .orderedAscending
+                let titleOrder = first.title.localizedStandardCompare(second.title)
+                if titleOrder != .orderedSame {
+                    return titleOrder == .orderedAscending
+                }
+                return first.id < second.id
             case (_?, nil):
                 return true
             case (nil, _?):
                 return false
             case (nil, nil):
-                return first.title.localizedStandardCompare(second.title) == .orderedAscending
+                let titleOrder = first.title.localizedStandardCompare(second.title)
+                if titleOrder != .orderedSame {
+                    return titleOrder == .orderedAscending
+                }
+                return first.id < second.id
             }
         }
     }
@@ -523,13 +546,21 @@ public final class ClassroomStorage: @unchecked Sendable {
                 switch (first.dueDate, second.dueDate) {
                 case let (d1?, d2?):
                     if d1 != d2 { return d1 < d2 }
-                    return first.title.localizedStandardCompare(second.title) == .orderedAscending
+                    let titleOrder = first.title.localizedStandardCompare(second.title)
+                    if titleOrder != .orderedSame {
+                        return titleOrder == .orderedAscending
+                    }
+                    return first.id < second.id
                 case (_?, nil):
                     return true
                 case (nil, _?):
                     return false
                 case (nil, nil):
-                    return first.title.localizedStandardCompare(second.title) == .orderedAscending
+                    let titleOrder = first.title.localizedStandardCompare(second.title)
+                    if titleOrder != .orderedSame {
+                        return titleOrder == .orderedAscending
+                    }
+                    return first.id < second.id
                 }
             }
     }
@@ -554,9 +585,9 @@ public final class ClassroomStorage: @unchecked Sendable {
         return sortCoursework(filtered)
     }
 
-    public func getTomorrowCoursework(includeCompleted: Bool = true) -> [Coursework] {
-        let allItems = loadCoursework()
-        let relevant = filterItemsByActiveCourses(allItems)
+    public func getTomorrowCoursework(items: [Coursework]? = nil, courses: [Course]? = nil, includeCompleted: Bool = true) -> [Coursework] {
+        let allItems = items ?? loadCoursework()
+        let relevant = filterItemsByActiveCourses(allItems, courses: courses)
         let calendar = Calendar.current
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
@@ -679,13 +710,15 @@ public final class ClassroomStorage: @unchecked Sendable {
         lock.unlock()
         var metadata = loadSharedMetadata() ?? ClassroomSharedMetadata()
         metadata.userEmail = email
-        if isPresent {
-            metadata.hasUserLoggedIn = true
-        }
+        metadata.hasUserLoggedIn = isPresent
         saveSharedMetadata(metadata)
 
         for ud in allUserDefaults {
-            ud.set(email, forKey: userEmailKey)
+            if let email {
+                ud.set(email, forKey: userEmailKey)
+            } else {
+                ud.removeObject(forKey: userEmailKey)
+            }
         }
     }
 

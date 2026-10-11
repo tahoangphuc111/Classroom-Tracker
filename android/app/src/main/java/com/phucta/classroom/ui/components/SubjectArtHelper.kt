@@ -43,7 +43,7 @@ object SubjectArtHelper {
         return SubjectTheme(
             category = cat,
             color = themeColor(cat),
-            badgeCode = badgeCode(cat, courseName)
+            badgeCode = badgeCode(cat, courseName, title)
         )
     }
 
@@ -117,7 +117,7 @@ object SubjectArtHelper {
                         tokens.contains("python") || tokens.contains("java") || tokens.contains("cntt") ||
                         text.contains("công nghệ thông tin") || tokens.contains("it") || text.contains("thuật toán") ||
                         text.contains("cơ sở dữ liệu") || text.contains("khoa học máy tính") ||
-                        (tokens.contains("tin") && !text.contains("thông tin liên lạc") && !tokens.contains("tự")) -> SubjectCategory.COMPUTER_SCIENCE
+                        (tokens.contains("tin") && !text.contains("thông tin") && !text.contains("bản tin") && !text.contains("tin tức") && !text.contains("niềm tin") && !tokens.contains("tự")) -> SubjectCategory.COMPUTER_SCIENCE
 
                 text.contains("an ninh mạng") || text.contains("mạng máy tính") ||
                         tokens.contains("network") || tokens.contains("networking") ||
@@ -157,13 +157,13 @@ object SubjectArtHelper {
         }
     }
 
-    private fun badgeCode(category: SubjectCategory, courseName: String): String {
+    private fun badgeCode(category: SubjectCategory, courseName: String, title: String? = null): String {
         return when (category) {
             SubjectCategory.MATH -> "TOÁ"
             SubjectCategory.PHYSICS -> "LÝ"
             SubjectCategory.CHEMISTRY -> "HOÁ"
             SubjectCategory.BIOLOGY -> "SINH"
-            SubjectCategory.HISTORY_OR_GEOGRAPHY -> if (courseName.contains("địa", ignoreCase = true)) "ĐỊA" else "SỬ"
+            SubjectCategory.HISTORY_OR_GEOGRAPHY -> if (courseName.contains("địa", ignoreCase = true) || title?.contains("địa", ignoreCase = true) == true) "ĐỊA" else "SỬ"
             SubjectCategory.LITERATURE -> "VĂN"
             SubjectCategory.ENGLISH -> "ANH"
             SubjectCategory.CIVICS_OR_PHILOSOPHY -> "GDCD"
@@ -174,7 +174,16 @@ object SubjectArtHelper {
             SubjectCategory.GENERAL_ASSIGNMENT -> "BTH"
             SubjectCategory.OTHER -> {
                 val cleaned = courseName.trim()
-                if (cleaned.length >= 3) cleaned.take(3).uppercase() else "MÔN"
+                if (cleaned.length >= 3) {
+                    cleaned.take(3).uppercase()
+                } else {
+                    val titleCleaned = title?.trim().orEmpty()
+                    if (titleCleaned.length >= 3) {
+                        titleCleaned.take(3).uppercase()
+                    } else {
+                        "MÔN"
+                    }
+                }
             }
         }
     }

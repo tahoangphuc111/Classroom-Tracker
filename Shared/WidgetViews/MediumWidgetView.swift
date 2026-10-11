@@ -902,6 +902,8 @@ public struct MediumWidgetView: View {
                                 emptyStateView
                                     .padding(.horizontal, 11)
                                     .frame(maxHeight: .infinity, alignment: .center)
+                            } else if displayItems.count == 1, let singleItem = displayItems.first {
+                                singleHeroTaskView(item: singleItem)
                             } else {
                                 pureTaskListRows
                                     .padding(.horizontal, 10)
@@ -1000,10 +1002,102 @@ public struct MediumWidgetView: View {
         }
     }
 
+    private func singleHeroTaskView(item: Coursework) -> some View {
+        let themeColor = SubjectArtHelper.themeColor(for: item.courseName, title: item.title)
+        let mainHeadline = item.title.isEmpty ? item.courseName : item.title
+        let subHeadline = item.courseName
+        let descSnippet: String = {
+            if let desc = item.description, !desc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return desc.components(separatedBy: .newlines)
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .first(where: { !$0.isEmpty }) ?? ""
+            }
+            return ""
+        }()
+
+        return Link(destination: item.destinationURL) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(alignment: .center, spacing: 8) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(themeColor)
+                            .frame(width: 30, height: 30)
+
+                        Image(systemName: SubjectArtHelper.icon(for: item.courseName, title: item.title))
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Color.white)
+                    }
+
+                    Text(subHeadline)
+                        .font(WidgetFontSystem.courseTitle(size: 13.5))
+                        .foregroundStyle(themeColor)
+                        .lineLimit(1)
+
+                    Spacer(minLength: 4)
+
+                    if item.isCompleted {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 13, weight: .bold))
+                            Text("Đã xong")
+                                .font(WidgetFontSystem.statusTag(size: 10.5))
+                        }
+                        .foregroundStyle(Color.green)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(Color.green.opacity(0.12))
+                        .clipShape(Capsule())
+                    } else {
+                        HStack(spacing: 3.5) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 9.5, weight: .semibold))
+                            Text(item.isDueTomorrow ? item.timeOnlyString : item.compactDueString)
+                                .font(WidgetFontSystem.statusTag(size: 10.5))
+                        }
+                        .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textPrimary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3.5)
+                        .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.06))
+                        .clipShape(Capsule())
+                    }
+                }
+
+                Text(mainHeadline)
+                    .font(WidgetFontSystem.courseTitle(size: 15.5))
+                    .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !descSnippet.isEmpty && descSnippet != mainHeadline {
+                    Text(descSnippet)
+                        .font(WidgetFontSystem.meta(size: 11))
+                        .foregroundStyle(ChunkyTheme.textMuted)
+                        .lineLimit(2)
+                        .lineSpacing(1.5)
+                } else {
+                    HStack(spacing: 4) {
+                        Image(systemName: item.isCompleted ? "checkmark" : "exclamationmark.circle")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text(item.isCompleted ? "Bài tập đã được đánh dấu hoàn thành" : (item.isUrgent ? "Hạn nộp sắp tới, hãy hoàn thành sớm" : "Chạm để xem chi tiết bài tập"))
+                            .font(WidgetFontSystem.meta(size: 10.5))
+                    }
+                    .foregroundStyle(ChunkyTheme.textMuted)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 11)
+            .padding(.top, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .buttonStyle(.plain)
+    }
+
     @ViewBuilder
     private var pureTaskListRows: some View {
         let itemsToShow = Array(displayItems.prefix(3))
-        let rowHeight: CGFloat = displayItems.count <= 2 ? 40 : 34
+        let rowHeight: CGFloat = displayItems.count <= 2 ? 46 : 38
 
         VStack(spacing: 0) {
             ForEach(Array(itemsToShow.enumerated()), id: \.element.id) { index, item in
@@ -1011,12 +1105,12 @@ public struct MediumWidgetView: View {
                     VStack(spacing: 0) {
                         HStack(alignment: .center, spacing: 9) {
                             ZStack {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                RoundedRectangle(cornerRadius: 6.5, style: .continuous)
                                     .fill(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
-                                    .frame(width: 24, height: 24)
+                                    .frame(width: displayItems.count <= 2 ? 28 : 25, height: displayItems.count <= 2 ? 28 : 25)
 
                                 Image(systemName: SubjectArtHelper.icon(for: item.courseName, title: item.title))
-                                    .font(.system(size: 11.5, weight: .bold))
+                                    .font(.system(size: displayItems.count <= 2 ? 13 : 12, weight: .bold))
                                     .foregroundStyle(Color.white)
                             }
 
@@ -1025,14 +1119,14 @@ public struct MediumWidgetView: View {
                                 let subHeadline = item.title.isEmpty ? (item.description?.components(separatedBy: .newlines).first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) ?? "") : item.courseName
 
                                 Text(mainHeadline)
-                                    .font(WidgetFontSystem.courseTitle(size: displayItems.count <= 2 ? 12.5 : 11.5))
+                                    .font(WidgetFontSystem.courseTitle(size: displayItems.count <= 2 ? 13.5 : 12.5))
                                     .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.82)
 
                                 if !subHeadline.isEmpty {
                                     Text(subHeadline)
-                                        .font(WidgetFontSystem.meta(size: displayItems.count <= 2 ? 9.8 : 8.8))
+                                        .font(WidgetFontSystem.meta(size: displayItems.count <= 2 ? 10.5 : 9.5))
                                         .foregroundStyle(ChunkyTheme.textMuted)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.82)
@@ -1046,11 +1140,11 @@ public struct MediumWidgetView: View {
                                     .font(.system(size: 13, weight: .bold))
                                     .foregroundStyle(Color.green)
                             } else {
-                                Text(item.timeOnlyString)
-                                    .font(WidgetFontSystem.statusTag(size: 8.5))
+                                Text(item.isDueTomorrow ? (item.timeOnlyString == "Cuối ngày" ? "Mai" : item.timeOnlyString) : item.compactDueString)
+                                    .font(WidgetFontSystem.statusTag(size: displayItems.count <= 2 ? 10 : 9))
                                     .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
-                                    .padding(.horizontal, 5.5)
-                                    .padding(.vertical, 2)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2.5)
                                     .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.04))
                                     .clipShape(Capsule())
                             }

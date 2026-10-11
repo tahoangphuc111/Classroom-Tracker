@@ -76,13 +76,13 @@ fun CompletedHomeworkScreen(
                     Text(
                         text = "Chưa có bài tập hoàn thành",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
+                        fontSize = 17.5.sp,
                         color = ChunkyColor.TextPrimary
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Chạm vào ô tròn bên cạnh bài tập ở danh sách Báo bài để đánh dấu hoàn thành.",
-                        fontSize = 13.sp,
+                        text = "Đánh dấu bài tập đã hoàn thành từ danh sách Báo bài để xem lại tại đây.",
+                        fontSize = 13.5.sp,
                         color = ChunkyColor.TextMuted,
                         textAlign = TextAlign.Center,
                         lineHeight = 18.sp
@@ -95,7 +95,7 @@ fun CompletedHomeworkScreen(
             modifier = modifier
                 .fillMaxSize()
                 .background(ChunkyColor.WindowBackground),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
@@ -103,7 +103,7 @@ fun CompletedHomeworkScreen(
                     text = "ĐÃ HOÀN THÀNH (${completedItems.size})",
                     color = ChunkyColor.SuccessGreen,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 11.5.sp,
+                    fontSize = 13.sp,
                     letterSpacing = 0.5.sp,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )

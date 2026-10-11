@@ -51,4 +51,16 @@ class SubjectArtHelperTest {
         assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Lịch sử Việt Nam"))
         assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Sử 12"))
     }
+
+    @Test
+    fun testBadgeCodeFallback_OtherCategory() {
+        val theme1 = SubjectArtHelper.theme("Kỹ năng mềm")
+        assertEquals("KỸ ", theme1.badgeCode)
+
+        val theme2 = SubjectArtHelper.theme("", "Khảo sát đầu năm")
+        assertEquals("KHẢ", theme2.badgeCode)
+
+        val theme3 = SubjectArtHelper.theme("", "")
+        assertEquals("MÔN", theme3.badgeCode)
+    }
 }

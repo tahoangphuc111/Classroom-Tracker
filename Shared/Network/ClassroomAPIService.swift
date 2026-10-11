@@ -1,5 +1,22 @@
 import Foundation
 
+public enum ClassroomAPIError: LocalizedError {
+    case httpError(statusCode: Int)
+    case invalidResponse
+    case invalidURL
+
+    public var errorDescription: String? {
+        switch self {
+        case .httpError(let code):
+            return "Máy chủ phản hồi mã lỗi \(code)"
+        case .invalidResponse:
+            return "Phản hồi từ máy chủ không hợp lệ"
+        case .invalidURL:
+            return "Đường dẫn không hợp lệ"
+        }
+    }
+}
+
 @MainActor
 public final class ClassroomAPIService: ObservableObject {
     public static let shared = ClassroomAPIService()
@@ -87,10 +104,20 @@ public final class ClassroomAPIService: ObservableObject {
             let preservedItems = existingCoursework.filter { unselectedIds.contains($0.courseId) }
             allCoursework.append(contentsOf: preservedItems)
 
+            // Deduplicate allCoursework by ID while preserving encounter order
+            var seenCourseworkIds = Set<String>()
+            var uniqueCoursework: [Coursework] = []
+            for item in allCoursework {
+                if !seenCourseworkIds.contains(item.id) {
+                    seenCourseworkIds.insert(item.id)
+                    uniqueCoursework.append(item)
+                }
+            }
+
             // Keep local completions if not yet marked turned in on Classroom
             let freshCoursework = ClassroomStorage.shared.loadCoursework()
             let freshStatusMap = Dictionary(freshCoursework.map { ($0.id, $0.status) }, uniquingKeysWith: { _, new in new })
-            let finalCoursework = allCoursework.map { item -> Coursework in
+            let finalCoursework = uniqueCoursework.map { item -> Coursework in
                 var updated = item
                 if let freshStatus = freshStatusMap[item.id], freshStatus == .turnedIn, !updated.isCompleted {
                     updated.status = .turnedIn
@@ -101,43 +128,66 @@ public final class ClassroomAPIService: ObservableObject {
             ClassroomStorage.shared.saveCoursework(finalCoursework)
             ClassroomStorage.shared.saveLastSyncTime(Date())
         } catch {
+            if Task.isCancelled || (error as? URLError)?.code == .cancelled {
+                return
+            }
             syncErrorMessage = "Lỗi đồng bộ: \(error.localizedDescription)"
         }
     }
 
     private func fetchActiveCourses(accessToken: String) async throws -> [Course] {
         var coursesMap: [String: Course] = [:]
+        var lastError: Error?
 
         // Student courses
-        let studentCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: "studentId", filterValue: "me", courseState: "ACTIVE")
-        for course in studentCourses {
-            coursesMap[course.id] = course
+        do {
+            let studentCourses = try await fetchCoursesPage(accessToken: accessToken, filterKey: "studentId", filterValue: "me", courseState: "ACTIVE")
+            for course in studentCourses {
+                coursesMap[course.id] = course
+            }
+        } catch {
+            if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw error }
+            lastError = error
         }
 
         // Teacher courses
-        let teacherCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: "teacherId", filterValue: "me", courseState: "ACTIVE")
-        for course in teacherCourses {
-            coursesMap[course.id] = course
+        do {
+            let teacherCourses = try await fetchCoursesPage(accessToken: accessToken, filterKey: "teacherId", filterValue: "me", courseState: "ACTIVE")
+            for course in teacherCourses {
+                coursesMap[course.id] = course
+            }
+        } catch {
+            if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw error }
+            if lastError == nil { lastError = error }
         }
 
         // Fallback for admins/creators without a specific role filter
         if coursesMap.isEmpty {
-            let adminCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: nil, filterValue: nil, courseState: "ACTIVE")
-            for course in adminCourses {
-                coursesMap[course.id] = course
+            do {
+                let adminCourses = try await fetchCoursesPage(accessToken: accessToken, filterKey: nil, filterValue: nil, courseState: "ACTIVE")
+                for course in adminCourses {
+                    coursesMap[course.id] = course
+                }
+            } catch {
+                if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw error }
+                if lastError == nil { lastError = error }
             }
         }
 
         // Fallback if courses have other states than ACTIVE
-        if coursesMap.isEmpty {
-            let studentAllStateCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: "studentId", filterValue: "me", courseState: nil)
+        if coursesMap.isEmpty && lastError == nil {
+            let studentAllStateCourses = (try? await fetchCoursesPage(accessToken: accessToken, filterKey: "studentId", filterValue: "me", courseState: nil)) ?? []
             for course in studentAllStateCourses {
                 coursesMap[course.id] = course
             }
-            let teacherAllStateCourses = await fetchCoursesPage(accessToken: accessToken, filterKey: "teacherId", filterValue: "me", courseState: nil)
+            let teacherAllStateCourses = (try? await fetchCoursesPage(accessToken: accessToken, filterKey: "teacherId", filterValue: "me", courseState: nil)) ?? []
             for course in teacherAllStateCourses {
                 coursesMap[course.id] = course
             }
+        }
+
+        if coursesMap.isEmpty, let lastError {
+            throw lastError
         }
 
         return Array(coursesMap.values)
@@ -148,13 +198,15 @@ public final class ClassroomAPIService: ObservableObject {
         filterKey: String?,
         filterValue: String?,
         courseState: String? = "ACTIVE"
-    ) async -> [Course] {
+    ) async throws -> [Course] {
         var courses: [Course] = []
         var pageToken: String? = nil
         var pageCount = 0
 
         repeat {
-            guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses") else { break }
+            guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses") else {
+                throw ClassroomAPIError.invalidURL
+            }
             var queryItems = [
                 URLQueryItem(name: "pageSize", value: "50")
             ]
@@ -168,39 +220,59 @@ public final class ClassroomAPIService: ObservableObject {
                 queryItems.append(URLQueryItem(name: "pageToken", value: token))
             }
             components.queryItems = queryItems
-            guard let url = components.url else { break }
+            guard let url = components.url else {
+                throw ClassroomAPIError.invalidURL
+            }
 
             var request = URLRequest(url: url)
             request.timeoutInterval = 15
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
+            let (data, response): (Data, URLResponse)
             do {
-                let (data, response) = try await URLSession.shared.data(for: request)
-                guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                (data, response) = try await URLSession.shared.data(for: request)
+            } catch {
+                if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw error }
+                if courses.isEmpty {
+                    throw error
+                } else {
                     break
                 }
-
-                let decoded = try JSONDecoder().decode(GoogleCoursesListResponse.self, from: data)
-                if let items = decoded.courses {
-                    let mapped = items.compactMap { item -> Course? in
-                        guard let id = item.id, !id.isEmpty, let name = item.name, !name.isEmpty else { return nil }
-                        return Course(
-                            id: id,
-                            name: name,
-                            section: item.section,
-                            descriptionHeading: item.descriptionHeading,
-                            room: item.room,
-                            alternateLink: item.alternateLink,
-                            isSelectedForWidget: true
-                        )
-                    }
-                    courses.append(contentsOf: mapped)
-                }
-                pageToken = decoded.nextPageToken
-                pageCount += 1
-            } catch {
-                break
             }
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                if courses.isEmpty {
+                    throw ClassroomAPIError.invalidResponse
+                } else {
+                    break
+                }
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                if courses.isEmpty {
+                    throw ClassroomAPIError.httpError(statusCode: httpResponse.statusCode)
+                } else {
+                    break
+                }
+            }
+
+            let decoded = try JSONDecoder().decode(GoogleCoursesListResponse.self, from: data)
+            if let items = decoded.courses {
+                let mapped = items.compactMap { item -> Course? in
+                    guard let id = item.id, !id.isEmpty, let name = item.name, !name.isEmpty else { return nil }
+                    return Course(
+                        id: id,
+                        name: name,
+                        section: item.section,
+                        descriptionHeading: item.descriptionHeading,
+                        room: item.room,
+                        alternateLink: item.alternateLink,
+                        isSelectedForWidget: true
+                    )
+                }
+                courses.append(contentsOf: mapped)
+            }
+            pageToken = decoded.nextPageToken
+            pageCount += 1
         } while pageToken != nil && pageCount < 10
 
         return courses

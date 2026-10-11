@@ -22,6 +22,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -114,7 +117,6 @@ fun MainScreen() {
     var showSettingsDialog by remember { mutableStateOf(false) }
     var selectedCoursework by remember { mutableStateOf<Coursework?>(null) }
     var isDemoMode by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val courses by repository.coursesFlow.collectAsState(initial = emptyList())
     val allCoursework by repository.courseworkFlow.collectAsState(initial = emptyList())
@@ -151,10 +153,13 @@ fun MainScreen() {
     val pullToRefreshState = rememberPullToRefreshState()
     if (pullToRefreshState.isRefreshing) {
         LaunchedEffect(true) {
-            val result = repository.syncAll()
-            pullToRefreshState.endRefresh()
-            if (result.isSuccess) {
-                snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+            try {
+                val result = repository.syncAll()
+                if (result.isSuccess) {
+                    snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+                }
+            } finally {
+                pullToRefreshState.endRefresh()
             }
         }
     }
@@ -232,7 +237,10 @@ fun MainScreen() {
                         )
                     }
                 } else {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 24.dp)
+                    ) {
                         items(courses, key = { it.id }) { course ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -282,7 +290,7 @@ fun MainScreen() {
                         Text(
                             text = "Classroom Tracker",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
+                            fontSize = 19.sp,
                             color = ChunkyColor.TextPrimary
                         )
                     },
@@ -335,7 +343,7 @@ fun MainScreen() {
                                             containerColor = ChunkyColor.SkyBottom,
                                             contentColor = Color.White
                                         ) {
-                                            Text("$tomorrowIncompleteCount", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            Text("$tomorrowIncompleteCount", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }
@@ -343,7 +351,15 @@ fun MainScreen() {
                                 Icon(Icons.Default.CalendarToday, contentDescription = null)
                             }
                         },
-                        label = { Text("Báo bài Ngày mai", fontWeight = FontWeight.SemiBold, fontSize = 11.sp) },
+                        label = {
+                            Text(
+                                text = "Báo bài",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = ChunkyColor.SkyBottom,
                             selectedTextColor = ChunkyColor.SkyBottom,
@@ -361,7 +377,7 @@ fun MainScreen() {
                                             containerColor = ChunkyColor.SkyBottom,
                                             contentColor = Color.White
                                         ) {
-                                            Text("$upcomingIncompleteCount", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            Text("$upcomingIncompleteCount", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }
@@ -369,7 +385,15 @@ fun MainScreen() {
                                 Icon(Icons.Default.Upcoming, contentDescription = null)
                             }
                         },
-                        label = { Text("Tất cả sắp tới", fontWeight = FontWeight.SemiBold, fontSize = 11.sp) },
+                        label = {
+                            Text(
+                                text = "Sắp tới",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = ChunkyColor.SkyBottom,
                             selectedTextColor = ChunkyColor.SkyBottom,
@@ -380,7 +404,15 @@ fun MainScreen() {
                         selected = selectedTabIndex == 2,
                         onClick = { selectedTabIndex = 2 },
                         icon = { Icon(Icons.Default.CheckCircle, contentDescription = null) },
-                        label = { Text("Đã hoàn thành", fontWeight = FontWeight.SemiBold, fontSize = 11.sp) },
+                        label = {
+                            Text(
+                                text = "Đã xong",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = ChunkyColor.SuccessGreen,
                             selectedTextColor = ChunkyColor.SuccessGreen,
@@ -475,7 +507,6 @@ fun MainScreen() {
     if (activeSelectedCoursework != null) {
         HomeworkDetailBottomSheet(
             coursework = activeSelectedCoursework,
-            sheetState = sheetState,
             onDismiss = { selectedCoursework = null },
             onToggleCompletion = { id, completed ->
                 scope.launch {
@@ -523,7 +554,7 @@ private fun WelcomeLoginScreen(
     onOpenSettings: () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "floating")
-    val floatOffset by infiniteTransition.animateFloat(
+    val floatOffset = infiniteTransition.animateFloat(
         initialValue = -5f,
         targetValue = 5f,
         animationSpec = infiniteRepeatable(
@@ -555,13 +586,14 @@ private fun WelcomeLoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 28.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 28.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
-                    .graphicsLayer { translationY = floatOffset }
+                    .graphicsLayer { translationY = floatOffset.value }
                     .size(88.dp)
                     .clip(RoundedCornerShape(22.dp))
                     .background(ChunkyColor.SkyGradient),

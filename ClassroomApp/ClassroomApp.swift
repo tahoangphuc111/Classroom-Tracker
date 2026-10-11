@@ -43,6 +43,18 @@ final class ClassroomAppDelegate: NSObject, NSApplicationDelegate {
         backgroundSyncTimer?.invalidate()
         backgroundSyncTimer = nil
     }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            for window in sender.windows {
+                if window.canBecomeKey {
+                    window.makeKeyAndOrderFront(nil)
+                    return true
+                }
+            }
+        }
+        return true
+    }
 }
 #endif
 
@@ -78,6 +90,17 @@ struct ClassroomApp: App {
         .windowResizability(.contentMinSize)
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
+        .commands {
+            CommandGroup(replacing: .newItem) {}
+            CommandGroup(after: .appInfo) {
+                Divider()
+                Button("Kiểm tra bản cập nhật...") {
+                    Task { @MainActor in
+                        await AppUpdateService.shared.checkForUpdates(isUserInitiated: true)
+                    }
+                }
+            }
+        }
         #endif
     }
 }

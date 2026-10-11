@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handleOAuthIntent(intent)
     }
 
@@ -60,6 +61,8 @@ class MainActivity : ComponentActivity() {
         val scheme = uri.scheme ?: return
 
         if (scheme.contains("googleusercontent") || scheme == "com.phucta.classroom") {
+            // Clear intent data to avoid re-triggering one-time auth code on rotation/recreation
+            intent.data = null
             lifecycleScope.launch {
                 val success = app.oauthManager.handleRedirectUri(uri)
                 if (success) {

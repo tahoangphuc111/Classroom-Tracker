@@ -14,6 +14,7 @@ import com.phucta.classroom.data.model.SubmissionStatus
 import com.phucta.classroom.data.remote.ClassroomApiService
 import com.phucta.classroom.data.remote.GoogleOAuthManager
 import com.phucta.classroom.widget.ClassroomGlanceWidget
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -118,6 +119,7 @@ class ClassroomRepository(
                             try {
                                 apiService.fetchCourseworkForCourse(course, accessToken)
                             } catch (e: Exception) {
+                                if (e is CancellationException) throw e
                                 // Preserve cached coursework if individual course fetch fails
                                 existingCoursework.filter { it.courseId == course.id }
                             }
@@ -140,10 +142,11 @@ class ClassroomRepository(
                     courseworkDao.deleteAllCoursework()
                 }
 
-                courseDao.upsertCourses(mergedCourses.map { CourseEntity.fromDomain(it) })
+                val uniqueCourses = mergedCourses.distinctBy { it.id }
+                courseDao.upsertCourses(uniqueCourses.map { CourseEntity.fromDomain(it) })
 
                 // Remove deleted or archived courses
-                val activeCourseIds = mergedCourses.map { it.id }
+                val activeCourseIds = uniqueCourses.map { it.id }
                 if (activeCourseIds.isNotEmpty()) {
                     courseDao.deleteCoursesNotIn(activeCourseIds)
                 }
@@ -152,7 +155,7 @@ class ClassroomRepository(
                 val latestCoursework = courseworkDao.getAllCoursework().map { it.toDomain() }
                 val latestStatusMap = latestCoursework.associateBy { it.id }
 
-                val finalCoursework = allCoursework.map { incoming ->
+                val finalCoursework = allCoursework.distinctBy { it.id }.map { incoming ->
                     val latest = latestStatusMap[incoming.id]
                     // Keep local completion if not yet turned in on Classroom
                     val wasManuallyCompleted = !incoming.isCompleted &&
@@ -181,6 +184,7 @@ class ClassroomRepository(
             notifyWidgetReload()
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             _syncErrorMessage.value = "Lỗi đồng bộ: ${e.localizedMessage}"
             Result.failure(e)
         } finally {

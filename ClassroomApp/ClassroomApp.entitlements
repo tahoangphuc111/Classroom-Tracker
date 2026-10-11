@@ -8,6 +8,8 @@
     <true/>
     <key>com.apple.security.network.server</key>
     <true/>
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
     <key>com.apple.security.application-groups</key>
     <array>
         <string>4J32CASZVT.group.com.phucta.classroom</string>

@@ -22,17 +22,20 @@ object BaoBaiBucketingUtils {
     val COURSEWORK_COMPARATOR = Comparator<Coursework> { first, second ->
         if (first.isCompleted != second.isCompleted) {
             if (!first.isCompleted) -1 else 1
-        } else when {
-            first.dueEpochMillis != null && second.dueEpochMillis != null -> {
-                if (first.dueEpochMillis != second.dueEpochMillis) {
-                    first.dueEpochMillis.compareTo(second.dueEpochMillis)
-                } else {
-                    first.title.compareTo(second.title, ignoreCase = true)
+        } else {
+            val primaryDiff = when {
+                first.dueEpochMillis != null && second.dueEpochMillis != null -> {
+                    if (first.dueEpochMillis != second.dueEpochMillis) {
+                        first.dueEpochMillis.compareTo(second.dueEpochMillis)
+                    } else {
+                        first.title.compareTo(second.title, ignoreCase = true)
+                    }
                 }
+                first.dueEpochMillis != null && second.dueEpochMillis == null -> -1
+                first.dueEpochMillis == null && second.dueEpochMillis != null -> 1
+                else -> first.title.compareTo(second.title, ignoreCase = true)
             }
-            first.dueEpochMillis != null && second.dueEpochMillis == null -> -1
-            first.dueEpochMillis == null && second.dueEpochMillis != null -> 1
-            else -> first.title.compareTo(second.title, ignoreCase = true)
+            if (primaryDiff != 0) primaryDiff else first.id.compareTo(second.id)
         }
     }
 

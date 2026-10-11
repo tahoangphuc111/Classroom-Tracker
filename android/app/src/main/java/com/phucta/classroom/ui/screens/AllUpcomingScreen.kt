@@ -62,11 +62,21 @@ fun AllUpcomingScreen(
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForVietnameseSearch() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    val filteredItems = remember(allCoursework, normalizedQuery) {
-        if (normalizedQuery.isBlank()) {
-            allCoursework
+    val activeCoursework = remember(allCoursework, courses) {
+        BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses)
+    }
+
+    val searchTokens = remember(normalizedQuery) {
+        normalizedQuery.split("\\s+".toRegex()).filter { it.isNotBlank() }
+    }
+
+    val filteredItems = remember(activeCoursework, searchTokens) {
+        if (searchTokens.isEmpty()) {
+            activeCoursework
         } else {
-            allCoursework.filter { it.searchIndex.contains(normalizedQuery) }
+            activeCoursework.filter { item ->
+                searchTokens.all { token -> item.searchIndex.contains(token) }
+            }
         }
     }
 
@@ -82,7 +92,7 @@ fun AllUpcomingScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Tìm kiếm bài tập, môn học...", fontSize = 13.5.sp) },
+            placeholder = { Text("Tìm bài tập...", fontSize = 14.5.sp) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = ChunkyColor.TextMuted) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
@@ -106,7 +116,8 @@ fun AllUpcomingScreen(
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         )
 
-        val hasAnyUpcoming = buckets.today.isNotEmpty() ||
+        val hasAnyUpcoming = buckets.overdue.isNotEmpty() ||
+                buckets.today.isNotEmpty() ||
                 buckets.tomorrow.isNotEmpty() ||
                 buckets.laterUpcoming.isNotEmpty() ||
                 buckets.noDueDate.isNotEmpty()
@@ -221,6 +232,23 @@ fun AllUpcomingScreen(
                 contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                if (buckets.overdue.isNotEmpty()) {
+                    item {
+                        SectionHeader(title = "QUÁ HẠN (${buckets.overdue.size})", color = ChunkyColor.EmberTop)
+                    }
+                    items(buckets.overdue, key = { it.id }) { item ->
+                        AssignmentCard(
+                            coursework = item,
+                            onToggleCompletion = { onToggleCompletion(item.id, it) },
+                            onClick = { onSelectAssignment(item) },
+                            modifier = Modifier.animateItemPlacement(
+                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            )
+                        )
+                    }
+                    item { Spacer(modifier = Modifier.height(6.dp)) }
+                }
+
                 if (buckets.today.isNotEmpty()) {
                     item {
                         SectionHeader(title = "HÔM NAY (${buckets.today.size})", color = ChunkyColor.EmberTop)
@@ -315,7 +343,7 @@ private fun SectionHeader(title: String, color: androidx.compose.ui.graphics.Col
         text = title,
         color = color,
         fontWeight = FontWeight.Bold,
-        fontSize = 11.5.sp,
+        fontSize = 13.sp,
         letterSpacing = 0.5.sp,
         modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
     )

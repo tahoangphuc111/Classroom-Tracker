@@ -29,9 +29,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,18 +48,12 @@ import com.phucta.classroom.ui.theme.OutfitFontFamily
 @Composable
 fun HomeworkDetailBottomSheet(
     coursework: Coursework?,
-    sheetState: SheetState,
     onDismiss: () -> Unit,
     onToggleCompletion: (String, Boolean) -> Unit
 ) {
     if (coursework == null) return
     val context = LocalContext.current
-
-    LaunchedEffect(coursework.id) {
-        if (!sheetState.isVisible) {
-            sheetState.show()
-        }
-    }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -86,7 +80,7 @@ fun HomeworkDetailBottomSheet(
                     text = coursework.courseName,
                     color = ChunkyColor.TextMuted,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 13.5.sp
+                    fontSize = 14.5.sp
                 )
             }
 
@@ -96,8 +90,8 @@ fun HomeworkDetailBottomSheet(
                 text = coursework.title,
                 color = ChunkyColor.TextPrimary,
                 fontWeight = FontWeight.Bold,
-                fontSize = 18.5.sp,
-                lineHeight = 24.sp
+                fontSize = 20.5.sp,
+                lineHeight = 26.sp
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -106,6 +100,10 @@ fun HomeworkDetailBottomSheet(
                 coursework.isCompleted -> Pair(
                     ChunkyColor.SuccessGreen.copy(alpha = 0.12f),
                     Color(0xFF2E7D32)
+                )
+                coursework.isOverdue || coursework.isPast -> Pair(
+                    ChunkyColor.UrgentAccent.copy(alpha = 0.15f),
+                    ChunkyColor.UrgentAccent
                 )
                 coursework.isDueToday -> Pair(
                     ChunkyColor.EmberTop.copy(alpha = 0.15f),
@@ -128,18 +126,18 @@ fun HomeworkDetailBottomSheet(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(badgeBg)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .padding(horizontal = 8.5.dp, vertical = 4.5.dp)
                 ) {
                     Text(
                         text = coursework.countdownBadgeString,
                         color = badgeTextColor,
                         fontFamily = OutfitFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.5.sp
+                        fontSize = 12.5.sp
                     )
                 }
 
-                if (coursework.maxPoints != null) {
+                if (coursework.maxPoints != null && coursework.maxPoints > 0.0) {
                     val pointsDisplay = if (coursework.maxPoints % 1.0 == 0.0) {
                         coursework.maxPoints.toInt().toString()
                     } else {
@@ -150,14 +148,14 @@ fun HomeworkDetailBottomSheet(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .background(Color.Black.copy(alpha = 0.05f))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(horizontal = 8.5.dp, vertical = 4.5.dp)
                     ) {
                         Text(
                             text = "Thang điểm: $pointsDisplay",
                             color = ChunkyColor.TextMuted,
                             fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 11.sp
+                            fontSize = 12.sp
                         )
                     }
                 }
@@ -168,7 +166,7 @@ fun HomeworkDetailBottomSheet(
             Text(
                 text = coursework.formattedFullDueDate,
                 color = ChunkyColor.TextMuted,
-                fontSize = 12.5.sp
+                fontSize = 13.5.sp
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -179,7 +177,7 @@ fun HomeworkDetailBottomSheet(
                 text = "HƯỚNG DẪN BÀI TẬP",
                 color = ChunkyColor.TextMuted,
                 fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 letterSpacing = 0.5.sp
             )
 
@@ -197,14 +195,14 @@ fun HomeworkDetailBottomSheet(
                     Text(
                         text = description,
                         color = ChunkyColor.TextPrimary,
-                        fontSize = 13.5.sp,
-                        lineHeight = 20.sp
+                        fontSize = 14.5.sp,
+                        lineHeight = 21.sp
                     )
                 } else {
                     Text(
-                        text = "Không có mô tả chi tiết cho bài tập này.",
+                        text = "Không có mô tả chi tiết.",
                         color = ChunkyColor.TextMuted,
-                        fontSize = 13.sp
+                        fontSize = 14.sp
                     )
                 }
             }
@@ -230,14 +228,14 @@ fun HomeworkDetailBottomSheet(
                     Icon(
                         imageVector = if (coursework.isCompleted) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .padding(end = 6.dp)
+                        modifier = Modifier.size(18.dp)
                     )
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (coursework.isCompleted) "Đã hoàn thành" else "Đánh dấu đã nộp",
+                        text = if (coursework.isCompleted) "Đã làm xong" else "Đánh dấu đã nộp",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        fontSize = 14.5.sp,
+                        maxLines = 1
                     )
                 }
 
@@ -274,10 +272,10 @@ fun HomeworkDetailBottomSheet(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Mở link",
+                        text = "Mở Classroom",
                         color = ChunkyColor.SkyBottom,
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp
+                        fontSize = 14.sp
                     )
                 }
             }

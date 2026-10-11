@@ -200,4 +200,33 @@ class BaoBaiBucketingUtilsTest {
         assertEquals(1, batch.size)
         assertEquals("tomorrow_task", batch.first().id)
     }
+
+    @Test
+    fun testSorting_DeterministicTieBreakerById() {
+        val now = System.currentTimeMillis()
+        val itemA = Coursework(
+            id = "task_a",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "Cùng tiêu đề",
+            dueEpochMillis = now + 10000,
+            status = SubmissionStatus.PENDING
+        )
+        val itemB = Coursework(
+            id = "task_b",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "Cùng tiêu đề",
+            dueEpochMillis = now + 10000,
+            status = SubmissionStatus.PENDING
+        )
+
+        val sorted1 = BaoBaiBucketingUtils.sortCoursework(listOf(itemB, itemA))
+        assertEquals("task_a", sorted1[0].id)
+        assertEquals("task_b", sorted1[1].id)
+
+        val sorted2 = BaoBaiBucketingUtils.sortCoursework(listOf(itemA, itemB))
+        assertEquals("task_a", sorted2[0].id)
+        assertEquals("task_b", sorted2[1].id)
+    }
 }

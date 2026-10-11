@@ -130,11 +130,12 @@ public final class EveningReminderService: ObservableObject, @unchecked Sendable
     }
 
     private func generateMessageData() -> (title: String, body: String) {
-        let tomorrowItems = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
-        let pendingItems = tomorrowItems.filter { !$0.isCompleted }
+        let allItems = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
+        let strictlyTomorrowItems = allItems.filter { $0.isDueTomorrow || $0.isDueToday }
+        let pendingItems = strictlyTomorrowItems.filter { !$0.isCompleted }
 
         if pendingItems.isEmpty {
-            if tomorrowItems.isEmpty {
+            if strictlyTomorrowItems.isEmpty {
                 return (
                     title: "Ngày mai rảnh rồi!",
                     body: "Không có bài tập nào cần nộp ngày mai. Nghỉ ngơi thật tốt nhé!"
@@ -142,13 +143,13 @@ public final class EveningReminderService: ObservableObject, @unchecked Sendable
             } else {
                 return (
                     title: "Đã xong hết bài ngày mai!",
-                    body: "Tất cả \(tomorrowItems.count) bài tập ngày mai đều đã hoàn thành. Nhớ kiểm tra cặp sách nhé!"
+                    body: "Tất cả \(strictlyTomorrowItems.count) bài tập ngày mai đều đã hoàn thành. Nhớ kiểm tra cặp sách nhé!"
                 )
             }
         } else {
             var subjectSet: [String] = []
             for item in pendingItems {
-                let code = SubjectArtHelper.badgeCode(for: item.courseName)
+                let code = SubjectArtHelper.badgeCode(for: item.courseName, title: item.title)
                 if !subjectSet.contains(code) {
                     subjectSet.append(code)
                 }

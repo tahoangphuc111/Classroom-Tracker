@@ -22,8 +22,8 @@ private data class GoogleCoursesResponse(
 
 @Serializable
 private data class GoogleCourseItem(
-    val id: String,
-    val name: String,
+    val id: String = "",
+    val name: String = "",
     val section: String? = null,
     val descriptionHeading: String? = null,
     val room: String? = null,
@@ -38,8 +38,8 @@ private data class GoogleCourseworkResponse(
 
 @Serializable
 private data class GoogleCourseworkRawItem(
-    val id: String,
-    val title: String,
+    val id: String = "",
+    val title: String = "",
     val description: String? = null,
     val alternateLink: String? = null,
     val dueDate: GoogleDateItem? = null,
@@ -69,8 +69,8 @@ private data class GoogleSubmissionsResponse(
 
 @Serializable
 private data class GoogleSubmissionItem(
-    val id: String,
-    val courseWorkId: String,
+    val id: String = "",
+    val courseWorkId: String = "",
     val state: String? = null,
     val late: Boolean? = null
 )

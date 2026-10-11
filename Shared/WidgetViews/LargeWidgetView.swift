@@ -141,52 +141,54 @@ public struct LargeWidgetView: View {
 
                         if allItems.isEmpty {
                             emptyStateView
+                        } else if allItems.count == 1, let singleItem = allItems.first {
+                            singleHeroLargeView(item: singleItem)
                         } else {
                             let itemsToShow = Array(allItems.prefix(5))
                             let count = itemsToShow.count
 
                             let rowHeight: CGFloat = {
                                 switch count {
-                                case 1, 2: return 66
-                                case 3: return 56
-                                case 4: return 48
-                                default: return 40
+                                case 2: return 74
+                                case 3: return 62
+                                case 4: return 52
+                                default: return 44
                                 }
                             }()
 
                             let badgeSize: CGFloat = {
                                 switch count {
-                                case 1, 2: return 44
-                                case 3: return 40
+                                case 2: return 46
+                                case 3: return 42
                                 case 4: return 36
-                                default: return 30
+                                default: return 32
                                 }
                             }()
 
                             let iconSize: CGFloat = {
                                 switch count {
-                                case 1, 2: return 21
-                                case 3: return 19
-                                case 4: return 17
-                                default: return 14
+                                case 2: return 22
+                                case 3: return 20
+                                case 4: return 18
+                                default: return 15
                                 }
                             }()
 
                             let titleFontSize: CGFloat = {
                                 switch count {
-                                case 1, 2: return 17
-                                case 3: return 15.5
-                                case 4: return 14.5
-                                default: return 13.5
+                                case 2: return 18
+                                case 3: return 16.5
+                                case 4: return 15
+                                default: return 14
                                 }
                             }()
 
                             let tagFontSize: CGFloat = {
                                 switch count {
-                                case 1, 2: return 11
-                                case 3: return 10.5
-                                case 4: return 10
-                                default: return 9.5
+                                case 2: return 12
+                                case 3: return 11
+                                case 4: return 10.5
+                                default: return 10
                                 }
                             }()
 
@@ -321,6 +323,88 @@ public struct LargeWidgetView: View {
         .allowsHitTesting(false)
     }
 
+    private func singleHeroLargeView(item: Coursework) -> some View {
+        let themeColor = SubjectArtHelper.themeColor(for: item.courseName, title: item.title)
+        let mainHeadline = item.title.isEmpty ? item.courseName : item.title
+        let subHeadline = item.courseName
+        let descSnippet: String = {
+            if let desc = item.description, !desc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return desc.components(separatedBy: .newlines)
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .first(where: { !$0.isEmpty }) ?? ""
+            }
+            return ""
+        }()
+
+        return Link(destination: item.destinationURL) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center, spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .fill(themeColor)
+                            .frame(width: 48, height: 48)
+
+                        Image(systemName: SubjectArtHelper.icon(for: item.courseName, title: item.title))
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundStyle(Color.white)
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(subHeadline)
+                            .font(WidgetFontSystem.courseTitle(size: 16.5))
+                            .foregroundStyle(themeColor)
+                            .lineLimit(1)
+
+                        HStack(spacing: 5) {
+                            Image(systemName: "calendar.badge.clock")
+                                .font(.system(size: 10, weight: .semibold))
+                            Text(item.dayAndTimeString)
+                                .font(WidgetFontSystem.meta(size: 11))
+                        }
+                        .foregroundStyle(ChunkyTheme.textMuted)
+                    }
+
+                    Spacer(minLength: 6)
+
+                    statusTag(for: item, fontSize: 12)
+                }
+
+                Rectangle()
+                    .fill(ChunkyTheme.editorialHairline)
+                    .frame(height: 0.8)
+
+                Text(mainHeadline)
+                    .font(WidgetFontSystem.courseTitle(size: 19.5))
+                    .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
+                    .lineLimit(3)
+                    .lineSpacing(3)
+                    .minimumScaleFactor(0.85)
+
+                if !descSnippet.isEmpty && descSnippet != mainHeadline {
+                    Text(descSnippet)
+                        .font(WidgetFontSystem.meta(size: 13))
+                        .foregroundStyle(ChunkyTheme.textMuted)
+                        .lineLimit(4)
+                        .lineSpacing(2.5)
+                } else {
+                    HStack(spacing: 6) {
+                        Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "info.circle.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(item.isCompleted ? "Bài tập đã được đánh dấu hoàn thành" : "Chạm để xem chi tiết bài tập và nộp bài")
+                            .font(WidgetFontSystem.meta(size: 12.5))
+                    }
+                    .foregroundStyle(ChunkyTheme.textMuted)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 14)
+            .padding(.bottom, 12)
+        }
+        .buttonStyle(.plain)
+    }
+
     @ViewBuilder
     private var emptyStateView: some View {
         VStack(spacing: 6) {
@@ -353,7 +437,7 @@ public struct LargeWidgetView: View {
                 .font(.system(size: fontSize + 5, weight: .bold))
                 .foregroundStyle(Color.green)
         } else {
-            Text(item.timeOnlyString)
+            Text(item.isDueTomorrow ? item.timeOnlyString : item.compactDueString)
                 .font(WidgetFontSystem.statusTag(size: fontSize))
                 .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
                 .padding(.horizontal, 7)

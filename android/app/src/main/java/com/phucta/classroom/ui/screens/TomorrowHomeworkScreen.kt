@@ -57,6 +57,8 @@ fun TomorrowHomeworkScreen(
 ) {
     val incompleteCount = remember(tomorrowItems) { tomorrowItems.count { !it.isCompleted } }
     val isAllDone = remember(tomorrowItems, incompleteCount) { tomorrowItems.isNotEmpty() && incompleteCount == 0 }
+    val hasTomorrowTasks = remember(tomorrowItems) { tomorrowItems.any { it.isDueTomorrow } }
+    val hasTodayTasks = remember(tomorrowItems) { tomorrowItems.isNotEmpty() && tomorrowItems.all { it.isDueToday } }
 
     val emotion = remember(tomorrowItems.isEmpty(), isAllDone, incompleteCount) {
         when {
@@ -68,7 +70,7 @@ fun TomorrowHomeworkScreen(
     }
 
     val emberTransition = rememberInfiniteTransition(label = "emberFloating")
-    val emberFloatOffset by emberTransition.animateFloat(
+    val emberFloatOffset = emberTransition.animateFloat(
         initialValue = -3f,
         targetValue = 3f,
         animationSpec = infiniteRepeatable(
@@ -102,7 +104,7 @@ fun TomorrowHomeworkScreen(
                         emotion = emotion,
                         isUrgent = incompleteCount >= 3,
                         modifier = Modifier.graphicsLayer {
-                            translationY = emberFloatOffset
+                            translationY = emberFloatOffset.value
                         }
                     )
 
@@ -116,42 +118,52 @@ fun TomorrowHomeworkScreen(
                                 text = "Ngày mai rảnh rồi!",
                                 color = Color.White,
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 18.sp
+                                fontSize = 20.sp
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Không có bài tập nào cần chuẩn bị cho ngày mai. Nghỉ ngơi nhé.",
+                                text = "Không có bài tập cho ngày mai. Nghỉ ngơi nhé!",
                                 color = Color.White.copy(alpha = 0.95f),
-                                fontSize = 12.5.sp,
-                                lineHeight = 17.sp
+                                fontSize = 13.5.sp,
+                                lineHeight = 18.sp
                             )
                         } else if (isAllDone) {
+                            val doneMessage = when {
+                                hasTomorrowTasks -> "Đã hoàn thành toàn bộ bài tập ngày mai."
+                                hasTodayTasks -> "Đã hoàn thành toàn bộ bài tập hôm nay."
+                                else -> "Đã hoàn thành toàn bộ bài tập sắp tới."
+                            }
                             Text(
-                                text = "Xuất sắc! Đã hoàn thành!",
+                                text = "Xuất sắc! Đã xong hết",
                                 color = Color.White,
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 18.sp
+                                fontSize = 20.sp
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Tất cả bài tập ngày mai đã được giải quyết xong xuôi.",
+                                text = doneMessage,
                                 color = Color.White.copy(alpha = 0.95f),
-                                fontSize = 12.5.sp,
-                                lineHeight = 17.sp
+                                fontSize = 13.5.sp,
+                                lineHeight = 18.sp
                             )
                         } else {
+                            val headerTitle = when {
+                                hasTomorrowTasks -> "Báo bài ngày mai"
+                                hasTodayTasks -> "Báo bài hôm nay"
+                                else -> "Báo bài sắp tới"
+                            }
                             Text(
-                                text = "Báo bài Ngày mai",
+                                text = headerTitle,
                                 color = Color.White,
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 18.sp
+                                fontSize = 20.sp
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Còn $incompleteCount bài tập cần chuẩn bị trước khi đến lớp.",
+                                text = "Còn $incompleteCount bài tập cần nộp.",
                                 color = Color.White.copy(alpha = 0.95f),
-                                fontSize = 12.5.sp,
-                                lineHeight = 17.sp
+                                fontSize = 13.5.sp,
+                                lineHeight = 18.sp
                             )
                         }
                     }
@@ -184,16 +196,16 @@ fun TomorrowHomeworkScreen(
                         Text(
                             text = "Không có bài tập ngày mai",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.5.sp,
+                            fontSize = 17.sp,
                             color = ChunkyColor.TextPrimary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Bạn có thể dành thời gian thư giãn hoặc tự ôn tập theo lịch riêng nhé!",
-                            fontSize = 12.5.sp,
+                            text = "Bạn có thể thư giãn hoặc tự ôn tập theo lịch riêng nhé!",
+                            fontSize = 13.5.sp,
                             color = ChunkyColor.TextMuted,
                             textAlign = TextAlign.Center,
-                            lineHeight = 17.sp
+                            lineHeight = 18.sp
                         )
                     }
                 }
@@ -201,6 +213,11 @@ fun TomorrowHomeworkScreen(
         } else {
             if (isAllDone) {
                 item {
+                    val bannerText = when {
+                        hasTomorrowTasks -> "Đã hoàn thành toàn bộ bài tập ngày mai!"
+                        hasTodayTasks -> "Đã hoàn thành toàn bộ bài tập hôm nay!"
+                        else -> "Đã hoàn thành toàn bộ bài tập sắp tới!"
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -218,9 +235,9 @@ fun TomorrowHomeworkScreen(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "Bạn đã hoàn thành tất cả bài tập cho ngày mai!",
+                                text = bannerText,
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp,
+                                fontSize = 14.sp,
                                 color = ChunkyColor.SuccessGreen
                             )
                         }
@@ -229,11 +246,16 @@ fun TomorrowHomeworkScreen(
             }
 
             item {
+                val sectionHeaderTitle = when {
+                    hasTomorrowTasks -> "BÀI TẬP NGÀY MAI"
+                    hasTodayTasks -> "BÀI TẬP HÔM NAY"
+                    else -> "BÀI TẬP SẮP TỚI"
+                }
                 Text(
-                    text = "DANH SÁCH BÀI TẬP",
+                    text = sectionHeaderTitle,
                     color = ChunkyColor.TextMuted,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 11.5.sp,
+                    fontSize = 13.sp,
                     letterSpacing = 0.5.sp,
                     modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
                 )
