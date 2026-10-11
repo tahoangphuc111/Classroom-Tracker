@@ -140,20 +140,20 @@ object SubjectArtHelper {
 
     fun themeColor(category: SubjectCategory): Color {
         return when (category) {
-            SubjectCategory.MATH -> Color(0xFFD97706)
-            SubjectCategory.PHYSICS -> Color(0xFF7361E0)
-            SubjectCategory.CHEMISTRY -> Color(0xFFDC47AD)
+            SubjectCategory.MATH -> Color(0xFFB45309)
+            SubjectCategory.PHYSICS -> Color(0xFF6D28D9)
+            SubjectCategory.CHEMISTRY -> Color(0xFFBE185D)
             SubjectCategory.BIOLOGY -> Color(0xFF15803D)
-            SubjectCategory.HISTORY_OR_GEOGRAPHY -> Color(0xFFC2410C)
-            SubjectCategory.LITERATURE -> Color(0xFFEB6138)
-            SubjectCategory.ENGLISH -> Color(0xFF2694EB)
-            SubjectCategory.CIVICS_OR_PHILOSOPHY -> Color(0xFFE04752)
-            SubjectCategory.ECONOMICS -> Color(0xFFB45309)
-            SubjectCategory.ART_AND_DESIGN -> Color(0xFFE6408C)
-            SubjectCategory.COMPUTER_SCIENCE -> Color(0xFF14AD8A)
-            SubjectCategory.NETWORKING -> Color(0xFF8C66EB)
-            SubjectCategory.GENERAL_ASSIGNMENT -> Color(0xFF7A6BD6)
-            SubjectCategory.OTHER -> Color(0xFF6685A3)
+            SubjectCategory.HISTORY_OR_GEOGRAPHY -> Color(0xFF9A3412)
+            SubjectCategory.LITERATURE -> Color(0xFFE11D48)
+            SubjectCategory.ENGLISH -> Color(0xFF0369A1)
+            SubjectCategory.CIVICS_OR_PHILOSOPHY -> Color(0xFFB91C1C)
+            SubjectCategory.ECONOMICS -> Color(0xFF0F766E)
+            SubjectCategory.ART_AND_DESIGN -> Color(0xFFA21CAF)
+            SubjectCategory.COMPUTER_SCIENCE -> Color(0xFF047857)
+            SubjectCategory.NETWORKING -> Color(0xFF4338CA)
+            SubjectCategory.GENERAL_ASSIGNMENT -> Color(0xFF5B21B6)
+            SubjectCategory.OTHER -> Color(0xFF475569)
         }
     }
 

@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phucta.classroom.data.model.Course
 import com.phucta.classroom.data.model.PersonalNote
+import com.phucta.classroom.ui.components.DueDateBadge
 import com.phucta.classroom.ui.components.EmberEmotion
 import com.phucta.classroom.ui.components.EmberFlameCanvas
 import com.phucta.classroom.ui.components.SubjectBadgePill
@@ -83,7 +84,7 @@ fun PersonalNotesScreen(
     onDeleteNote: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedStatusTab by rememberSaveable { mutableIntStateOf(0) } // 0: All, 1: Pending, 2: Completed
+    var selectedStatusTab by rememberSaveable { mutableIntStateOf(0) }
     var selectedCourseId by rememberSaveable { mutableStateOf<String?>(null) }
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
     var noteToEdit by remember { mutableStateOf<PersonalNote?>(null) }
@@ -119,36 +120,61 @@ fun PersonalNotesScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Status Tab Row
+            val activeTabColor = when (selectedStatusTab) {
+                1 -> ChunkyColor.HeaderToday
+                2 -> ChunkyColor.HeaderCompleted
+                else -> ChunkyColor.SkyBottom
+            }
+
             TabRow(
                 selectedTabIndex = selectedStatusTab,
                 containerColor = ChunkyColor.SurfaceWhite,
-                contentColor = ChunkyColor.SkyBottom,
+                contentColor = activeTabColor,
                 indicator = { tabPositions ->
                     TabRowDefaults.SecondaryIndicator(
                         Modifier.tabIndicatorOffset(tabPositions[selectedStatusTab]),
-                        color = ChunkyColor.SkyBottom
+                        color = activeTabColor
                     )
                 }
             ) {
                 Tab(
                     selected = selectedStatusTab == 0,
                     onClick = { selectedStatusTab = 0 },
-                    text = { Text("Tất cả", fontWeight = FontWeight.Bold, fontSize = 13.5.sp) }
+                    text = {
+                        Text(
+                            text = "Tất cả",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp,
+                            color = if (selectedStatusTab == 0) ChunkyColor.SkyBottom else ChunkyColor.TextMuted
+                        )
+                    }
                 )
                 Tab(
                     selected = selectedStatusTab == 1,
                     onClick = { selectedStatusTab = 1 },
-                    text = { Text("Đang làm", fontWeight = FontWeight.Bold, fontSize = 13.5.sp) }
+                    text = {
+                        Text(
+                            text = "Đang làm",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp,
+                            color = if (selectedStatusTab == 1) ChunkyColor.HeaderToday else ChunkyColor.TextMuted
+                        )
+                    }
                 )
                 Tab(
                     selected = selectedStatusTab == 2,
                     onClick = { selectedStatusTab = 2 },
-                    text = { Text("Đã xong", fontWeight = FontWeight.Bold, fontSize = 13.5.sp) }
+                    text = {
+                        Text(
+                            text = "Đã xong",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp,
+                            color = if (selectedStatusTab == 2) ChunkyColor.HeaderCompleted else ChunkyColor.TextMuted
+                        )
+                    }
                 )
             }
 
-            // Subject Filter Chips (Horizontal)
             if (courses.isNotEmpty()) {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -156,33 +182,50 @@ fun PersonalNotesScreen(
                     modifier = Modifier.background(ChunkyColor.WindowBackground)
                 ) {
                     item {
+                        val isAllSelected = selectedCourseId == null
                         FilterChip(
-                            selected = selectedCourseId == null,
+                            selected = isAllSelected,
                             onClick = { selectedCourseId = null },
-                            label = { Text("Tất cả môn", fontSize = 12.5.sp) },
+                            label = { Text("Tất cả môn", fontSize = 12.5.sp, fontWeight = if (isAllSelected) FontWeight.Bold else FontWeight.Medium) },
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isAllSelected,
+                                borderColor = if (isAllSelected) Color(0xFFBAE6FD) else ChunkyColor.CardBorder,
+                                borderWidth = 1.dp
+                            ),
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = ChunkyColor.SkyBottom.copy(alpha = 0.15f),
-                                selectedLabelColor = ChunkyColor.SkyBottom
+                                containerColor = ChunkyColor.SurfaceWhite,
+                                labelColor = ChunkyColor.TextPrimary,
+                                selectedContainerColor = Color(0xFFE0F2FE),
+                                selectedLabelColor = Color(0xFF0369A1)
                             )
                         )
                     }
                     items(courses, key = { it.id }) { course ->
+                        val isSelected = selectedCourseId == course.id
                         FilterChip(
-                            selected = selectedCourseId == course.id,
+                            selected = isSelected,
                             onClick = {
                                 selectedCourseId = if (selectedCourseId == course.id) null else course.id
                             },
-                            label = { Text(course.name, fontSize = 12.5.sp) },
+                            label = { Text(course.name, fontSize = 12.5.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isSelected,
+                                borderColor = if (isSelected) Color(0xFFBAE6FD) else ChunkyColor.CardBorder,
+                                borderWidth = 1.dp
+                            ),
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = ChunkyColor.SkyBottom.copy(alpha = 0.15f),
-                                selectedLabelColor = ChunkyColor.SkyBottom
+                                containerColor = ChunkyColor.SurfaceWhite,
+                                labelColor = ChunkyColor.TextPrimary,
+                                selectedContainerColor = Color(0xFFE0F2FE),
+                                selectedLabelColor = Color(0xFF0369A1)
                             )
                         )
                     }
                 }
             }
 
-            // Content List
             if (filteredNotes.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -226,7 +269,6 @@ fun PersonalNotesScreen(
             }
         }
 
-        // Floating Action Button to add note
         FloatingActionButton(
             onClick = { showCreateDialog = true },
             modifier = Modifier
@@ -282,7 +324,6 @@ private fun PersonalNoteCard(
             .padding(14.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // Completion Checkbox
         Box(
             modifier = Modifier
                 .size(26.dp)
@@ -308,7 +349,6 @@ private fun PersonalNoteCard(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Content
         Column(modifier = Modifier.weight(1f)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -324,53 +364,25 @@ private fun PersonalNoteCard(
                 )
 
                 if (note.isDueTomorrow) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(ChunkyColor.SkyBottom.copy(alpha = 0.12f))
-                            .padding(horizontal = 6.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = "Ngày mai",
-                            color = ChunkyColor.SkyBottom,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = OutfitFontFamily
-                        )
-                    }
+                    DueDateBadge(
+                        text = "Ngày mai",
+                        isDueTomorrow = true,
+                        fontSize = 11.5.sp
+                    )
                 } else if (note.isDueToday) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(ChunkyColor.UrgentAccent.copy(alpha = 0.12f))
-                            .padding(horizontal = 6.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = "Hôm nay",
-                            color = ChunkyColor.UrgentAccent,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = OutfitFontFamily
-                        )
-                    }
+                    DueDateBadge(
+                        text = "Hôm nay",
+                        isDueToday = true,
+                        fontSize = 11.5.sp
+                    )
                 } else if (note.dueEpochMillis != null) {
                     val dateStr = remember(note.dueEpochMillis) {
                         SimpleDateFormat("d/M", Locale.getDefault()).format(Date(note.dueEpochMillis))
                     }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color.Black.copy(alpha = 0.05f))
-                            .padding(horizontal = 6.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = dateStr,
-                            color = ChunkyColor.TextMuted,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Medium,
-                            fontFamily = OutfitFontFamily
-                        )
-                    }
+                    DueDateBadge(
+                        text = dateStr,
+                        fontSize = 11.5.sp
+                    )
                 }
             }
 
@@ -391,7 +403,6 @@ private fun PersonalNoteCard(
             }
         }
 
-        // More Menu
         Box {
             IconButton(
                 onClick = { showMenu = true },

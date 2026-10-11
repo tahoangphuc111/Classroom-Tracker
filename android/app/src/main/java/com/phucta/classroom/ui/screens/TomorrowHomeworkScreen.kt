@@ -26,9 +26,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Upcoming
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import com.phucta.classroom.ui.components.SectionHeaderPill
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -247,18 +251,16 @@ fun TomorrowHomeworkScreen(
             }
 
             item {
-                val sectionHeaderTitle = when {
-                    hasTomorrowTasks -> "BÀI TẬP NGÀY MAI"
-                    hasTodayTasks -> "BÀI TẬP HÔM NAY"
-                    else -> "BÀI TẬP SẮP TỚI"
+                val (sectionTitle, sectionIcon, sectionColor) = when {
+                    hasTomorrowTasks -> Triple("BÀI TẬP NGÀY MAI", Icons.Default.CalendarToday, ChunkyColor.HeaderTomorrow)
+                    hasTodayTasks -> Triple("BÀI TẬP HÔM NAY", Icons.Default.Schedule, ChunkyColor.HeaderToday)
+                    else -> Triple("BÀI TẬP SẮP TỚI", Icons.Default.Upcoming, ChunkyColor.HeaderTomorrow)
                 }
-                Text(
-                    text = sectionHeaderTitle,
-                    color = ChunkyColor.TextMuted,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    letterSpacing = 0.5.sp,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                SectionHeaderPill(
+                    title = sectionTitle,
+                    count = tomorrowItems.size,
+                    icon = sectionIcon,
+                    color = sectionColor
                 )
             }
 

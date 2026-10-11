@@ -88,7 +88,6 @@ class ClassroomApiService(
         val coursesMap = LinkedHashMap<String, Course>()
         var lastError: Exception? = null
 
-        // 1. Student courses
         try {
             val studentCourses = fetchCoursesPage(accessToken, filterKey = "studentId", filterValue = "me", courseState = "ACTIVE")
             for (course in studentCourses) {
@@ -98,7 +97,6 @@ class ClassroomApiService(
             lastError = e
         }
 
-        // 2. Teacher courses
         try {
             val teacherCourses = fetchCoursesPage(accessToken, filterKey = "teacherId", filterValue = "me", courseState = "ACTIVE")
             for (course in teacherCourses) {
@@ -108,7 +106,7 @@ class ClassroomApiService(
             if (lastError == null) lastError = e
         }
 
-        // 3. Fallback for admins/creators without a specific role filter
+        // Fallback for admins and creators without an explicit role filter
         if (coursesMap.isEmpty()) {
             try {
                 val adminCourses = fetchCoursesPage(accessToken, filterKey = null, filterValue = null, courseState = "ACTIVE")
@@ -120,7 +118,7 @@ class ClassroomApiService(
             }
         }
 
-        // 4. Fallback if courses have other states than ACTIVE
+        // Fallback if courses have states other than ACTIVE
         if (coursesMap.isEmpty() && lastError == null) {
             try {
                 val studentAllStateCourses = fetchCoursesPage(accessToken, filterKey = "studentId", filterValue = "me", courseState = null)

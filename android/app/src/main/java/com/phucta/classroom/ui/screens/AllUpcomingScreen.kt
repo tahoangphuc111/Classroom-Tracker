@@ -17,9 +17,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Upcoming
+import androidx.compose.material.icons.filled.Warning
+import com.phucta.classroom.ui.components.SectionHeaderPill
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -235,7 +241,12 @@ fun AllUpcomingScreen(
             ) {
                 if (buckets.overdue.isNotEmpty()) {
                     item {
-                        SectionHeader(title = "QUÁ HẠN (${buckets.overdue.size})", color = ChunkyColor.EmberTop)
+                        SectionHeaderPill(
+                            title = "QUÁ HẠN",
+                            count = buckets.overdue.size,
+                            icon = Icons.Default.Warning,
+                            color = ChunkyColor.HeaderOverdue
+                        )
                     }
                     items(buckets.overdue, key = { it.id }) { item ->
                         AssignmentCard(
@@ -253,7 +264,12 @@ fun AllUpcomingScreen(
 
                 if (buckets.today.isNotEmpty()) {
                     item {
-                        SectionHeader(title = "HÔM NAY (${buckets.today.size})", color = ChunkyColor.EmberTop)
+                        SectionHeaderPill(
+                            title = "HÔM NAY",
+                            count = buckets.today.size,
+                            icon = Icons.Default.Schedule,
+                            color = ChunkyColor.HeaderToday
+                        )
                     }
                     items(buckets.today, key = { it.id }) { item ->
                         AssignmentCard(
@@ -271,7 +287,12 @@ fun AllUpcomingScreen(
 
                 if (buckets.tomorrow.isNotEmpty()) {
                     item {
-                        SectionHeader(title = "NGÀY MAI (${buckets.tomorrow.size})", color = ChunkyColor.SkyBottom)
+                        SectionHeaderPill(
+                            title = "NGÀY MAI",
+                            count = buckets.tomorrow.size,
+                            icon = Icons.Default.CalendarToday,
+                            color = ChunkyColor.HeaderTomorrow
+                        )
                     }
                     items(buckets.tomorrow, key = { it.id }) { item ->
                         AssignmentCard(
@@ -289,7 +310,12 @@ fun AllUpcomingScreen(
 
                 if (buckets.laterUpcoming.isNotEmpty()) {
                     item {
-                        SectionHeader(title = "SẮP TỚI (${buckets.laterUpcoming.size})", color = ChunkyColor.TextMuted)
+                        SectionHeaderPill(
+                            title = "SẮP TỚI",
+                            count = buckets.laterUpcoming.size,
+                            icon = Icons.Default.Upcoming,
+                            color = ChunkyColor.HeaderUpcoming
+                        )
                     }
                     items(buckets.laterUpcoming, key = { it.id }) { item ->
                         AssignmentCard(
@@ -307,7 +333,12 @@ fun AllUpcomingScreen(
 
                 if (buckets.noDueDate.isNotEmpty()) {
                     item {
-                        SectionHeader(title = "KHÔNG CÓ HẠN (${buckets.noDueDate.size})", color = ChunkyColor.TextMuted)
+                        SectionHeaderPill(
+                            title = "KHÔNG CÓ HẠN",
+                            count = buckets.noDueDate.size,
+                            icon = Icons.AutoMirrored.Filled.HelpOutline,
+                            color = ChunkyColor.HeaderUpcoming
+                        )
                     }
                     items(buckets.noDueDate, key = { it.id }) { item ->
                         AssignmentCard(
@@ -325,7 +356,12 @@ fun AllUpcomingScreen(
                 if (searchQuery.isNotBlank() && buckets.completed.isNotEmpty()) {
                     item {
                         Spacer(modifier = Modifier.height(6.dp))
-                        SectionHeader(title = "ĐÃ HOÀN THÀNH (${buckets.completed.size})", color = ChunkyColor.SuccessGreen)
+                        SectionHeaderPill(
+                            title = "ĐÃ HOÀN THÀNH",
+                            count = buckets.completed.size,
+                            icon = Icons.Default.CheckCircle,
+                            color = ChunkyColor.HeaderCompleted
+                        )
                     }
                     items(buckets.completed, key = { it.id }) { item ->
                         AssignmentCard(
@@ -342,16 +378,4 @@ fun AllUpcomingScreen(
             }
         }
     }
-}
-
-@Composable
-private fun SectionHeader(title: String, color: androidx.compose.ui.graphics.Color) {
-    Text(
-        text = title,
-        color = color,
-        fontWeight = FontWeight.Bold,
-        fontSize = 13.sp,
-        letterSpacing = 0.5.sp,
-        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
-    )
 }

@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.ui.components.AssignmentCard
+import com.phucta.classroom.ui.components.SectionHeaderPill
 import com.phucta.classroom.ui.theme.ChunkyColor
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -100,13 +101,12 @@ fun CompletedHomeworkScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
-                Text(
-                    text = "ĐÃ HOÀN THÀNH (${completedItems.size})",
-                    color = ChunkyColor.SuccessGreen,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    letterSpacing = 0.5.sp,
-                    modifier = Modifier.padding(bottom = 4.dp)
+                SectionHeaderPill(
+                    title = "ĐÃ HOÀN THÀNH",
+                    count = completedItems.size,
+                    icon = Icons.Default.CheckCircle,
+                    color = ChunkyColor.HeaderCompleted,
+                    modifier = Modifier.padding(bottom = 2.dp)
                 )
             }
             items(completedItems, key = { it.id }) { item ->

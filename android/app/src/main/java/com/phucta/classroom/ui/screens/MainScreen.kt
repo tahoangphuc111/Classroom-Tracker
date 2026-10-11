@@ -348,7 +348,7 @@ fun MainScreen() {
                                 badge = {
                                     if (tomorrowIncompleteCount > 0) {
                                         Badge(
-                                            containerColor = ChunkyColor.SkyBottom,
+                                            containerColor = if (tomorrowIncompleteCount >= 3) ChunkyColor.HeaderOverdue else ChunkyColor.HeaderToday,
                                             contentColor = Color.White
                                         ) {
                                             Text("$tomorrowIncompleteCount", fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -371,7 +371,9 @@ fun MainScreen() {
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = ChunkyColor.SkyBottom,
                             selectedTextColor = ChunkyColor.SkyBottom,
-                            indicatorColor = ChunkyColor.SkyBottom.copy(alpha = 0.12f)
+                            indicatorColor = ChunkyColor.SkyBottom.copy(alpha = 0.14f),
+                            unselectedIconColor = Color(0xFF64748B),
+                            unselectedTextColor = Color(0xFF64748B)
                         )
                     )
                     NavigationBarItem(
@@ -382,7 +384,7 @@ fun MainScreen() {
                                 badge = {
                                     if (upcomingIncompleteCount > 0) {
                                         Badge(
-                                            containerColor = ChunkyColor.SkyBottom,
+                                            containerColor = Color(0xFF2563EB),
                                             contentColor = Color.White
                                         ) {
                                             Text("$upcomingIncompleteCount", fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -403,9 +405,11 @@ fun MainScreen() {
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = ChunkyColor.SkyBottom,
-                            selectedTextColor = ChunkyColor.SkyBottom,
-                            indicatorColor = ChunkyColor.SkyBottom.copy(alpha = 0.12f)
+                            selectedIconColor = Color(0xFF2563EB),
+                            selectedTextColor = Color(0xFF2563EB),
+                            indicatorColor = Color(0xFF2563EB).copy(alpha = 0.12f),
+                            unselectedIconColor = Color(0xFF64748B),
+                            unselectedTextColor = Color(0xFF64748B)
                         )
                     )
                     NavigationBarItem(
@@ -422,9 +426,11 @@ fun MainScreen() {
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = ChunkyColor.SuccessGreen,
-                            selectedTextColor = ChunkyColor.SuccessGreen,
-                            indicatorColor = ChunkyColor.SuccessGreen.copy(alpha = 0.12f)
+                            selectedIconColor = ChunkyColor.HeaderCompleted,
+                            selectedTextColor = ChunkyColor.HeaderCompleted,
+                            indicatorColor = ChunkyColor.HeaderCompleted.copy(alpha = 0.14f),
+                            unselectedIconColor = Color(0xFF64748B),
+                            unselectedTextColor = Color(0xFF64748B)
                         )
                     )
                     NavigationBarItem(
@@ -435,7 +441,7 @@ fun MainScreen() {
                                 badge = {
                                     if (incompleteNotesCount > 0) {
                                         Badge(
-                                            containerColor = ChunkyColor.SkyBottom,
+                                            containerColor = Color(0xFFD97706),
                                             contentColor = Color.White
                                         ) {
                                             Text("$incompleteNotesCount", fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -456,9 +462,11 @@ fun MainScreen() {
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = ChunkyColor.SkyBottom,
-                            selectedTextColor = ChunkyColor.SkyBottom,
-                            indicatorColor = ChunkyColor.SkyBottom.copy(alpha = 0.12f)
+                            selectedIconColor = Color(0xFFD97706),
+                            selectedTextColor = Color(0xFFD97706),
+                            indicatorColor = Color(0xFFD97706).copy(alpha = 0.14f),
+                            unselectedIconColor = Color(0xFF64748B),
+                            unselectedTextColor = Color(0xFF64748B)
                         )
                     )
                 }

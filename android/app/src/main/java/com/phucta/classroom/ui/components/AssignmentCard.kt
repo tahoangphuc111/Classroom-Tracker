@@ -191,45 +191,14 @@ fun AssignmentCard(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                val (badgeBg, badgeTextColor) = when {
-                    isCompleted -> Pair(
-                        ChunkyColor.SuccessGreen.copy(alpha = 0.12f),
-                        Color(0xFF2E7D32)
-                    )
-                    isOverdue || coursework.isPast -> Pair(
-                        ChunkyColor.UrgentAccent.copy(alpha = 0.15f),
-                        ChunkyColor.UrgentAccent
-                    )
-                    coursework.isDueToday -> Pair(
-                        ChunkyColor.EmberTop.copy(alpha = 0.15f),
-                        Color(0xFFE65100)
-                    )
-                    coursework.isDueTomorrow -> Pair(
-                        ChunkyColor.SkyBottom.copy(alpha = 0.15f),
-                        Color(0xFF0277BD)
-                    )
-                    else -> Pair(
-                        Color(0xFFF1F3F5),
-                        Color(0xFF5A6E85)
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(badgeBg)
-                        .padding(horizontal = 8.5.dp, vertical = 4.5.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = coursework.compactDueString,
-                        color = badgeTextColor,
-                        fontFamily = OutfitFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        maxLines = 1
-                    )
-                }
+                DueDateBadge(
+                    text = coursework.compactDueString,
+                    isCompleted = isCompleted,
+                    isOverdue = isOverdue || coursework.isPast,
+                    isDueToday = coursework.isDueToday,
+                    isDueTomorrow = coursework.isDueTomorrow,
+                    fontSize = 12.sp
+                )
         }
     }
 }

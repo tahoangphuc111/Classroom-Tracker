@@ -107,46 +107,17 @@ fun HomeworkDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            val (badgeBg, badgeTextColor) = when {
-                coursework.isCompleted -> Pair(
-                    ChunkyColor.SuccessGreen.copy(alpha = 0.12f),
-                    Color(0xFF2E7D32)
-                )
-                coursework.isOverdue || coursework.isPast -> Pair(
-                    ChunkyColor.UrgentAccent.copy(alpha = 0.15f),
-                    ChunkyColor.UrgentAccent
-                )
-                coursework.isDueToday -> Pair(
-                    ChunkyColor.EmberTop.copy(alpha = 0.15f),
-                    Color(0xFFE65100)
-                )
-                coursework.isDueTomorrow -> Pair(
-                    ChunkyColor.SkyBottom.copy(alpha = 0.15f),
-                    Color(0xFF0277BD)
-                )
-                else -> Pair(
-                    Color(0xFFF1F3F5),
-                    Color(0xFF5A6E85)
-                )
-            }
-
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(badgeBg)
-                        .padding(horizontal = 8.5.dp, vertical = 4.5.dp)
-                ) {
-                    Text(
-                        text = coursework.countdownBadgeString,
-                        color = badgeTextColor,
-                        fontFamily = OutfitFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.5.sp
-                    )
-                }
+                DueDateBadge(
+                    text = coursework.countdownBadgeString,
+                    isCompleted = coursework.isCompleted,
+                    isOverdue = coursework.isOverdue || coursework.isPast,
+                    isDueToday = coursework.isDueToday,
+                    isDueTomorrow = coursework.isDueTomorrow,
+                    fontSize = 12.5.sp
+                )
 
                 if (coursework.maxPoints != null && coursework.maxPoints > 0.0) {
                     val pointsDisplay = if (coursework.maxPoints % 1.0 == 0.0) {
@@ -158,12 +129,13 @@ fun HomeworkDetailBottomSheet(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color.Black.copy(alpha = 0.05f))
-                            .padding(horizontal = 8.5.dp, vertical = 4.5.dp)
+                            .background(ChunkyColor.NeutralBadgeBackground)
+                            .border(1.dp, ChunkyColor.NeutralBadgeBorder, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 7.5.dp, vertical = 3.5.dp)
                     ) {
                         Text(
                             text = "Thang điểm: $pointsDisplay",
-                            color = ChunkyColor.TextMuted,
+                            color = ChunkyColor.NeutralBadgeText,
                             fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 12.sp
