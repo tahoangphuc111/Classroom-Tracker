@@ -186,6 +186,49 @@ struct TestRunner {
             assertCondition(filtered.contains { $0.id == "item3" }, "Uncatalogued item must be preserved")
         }
 
+        // Test 8: PersonalNote model, Codable round-trip, search index, and date bucketing
+        do {
+            let cal = Calendar.current
+            let now = Date()
+            guard let tomorrow = cal.date(byAdding: .day, value: 1, to: now) else {
+                fatalError("Cannot calculate tomorrow")
+            }
+
+            let note = PersonalNote(
+                id: "note_123",
+                courseworkId: "cw_456",
+                courseId: "c_math",
+                courseName: "Toán học 12",
+                title: "Ôn tập chương 1 Giải tích",
+                content: "Làm bài tập trang 35 và nộp bản photo",
+                dueDate: tomorrow,
+                isCompleted: false
+            )
+
+            // Search normalization test
+            let normalizedQuery = "giai tich".normalizedForVietnameseSearch()
+            assertCondition(note.searchIndex.contains(normalizedQuery), "PersonalNote search index must match diacritic-free Vietnamese query")
+
+            let queryTitle = "toan hoc".normalizedForVietnameseSearch()
+            assertCondition(note.searchIndex.contains(queryTitle), "PersonalNote search index must match course name query")
+
+            // Tomorrow date test
+            assertCondition(note.isDueTomorrow, "PersonalNote with tomorrow dueDate must return isDueTomorrow == true")
+            assertCondition(!note.isDueToday, "PersonalNote with tomorrow dueDate must return isDueToday == false")
+
+            // Codable round-trip test
+            let encoded = try JSONEncoder().encode(note)
+            let decoded = try JSONDecoder().decode(PersonalNote.self, from: encoded)
+
+            assertCondition(decoded.id == note.id, "Decoded note ID must match original")
+            assertCondition(decoded.courseworkId == "cw_456", "Decoded courseworkId must match")
+            assertCondition(decoded.title == note.title, "Decoded title must match")
+            assertCondition(decoded.content == note.content, "Decoded content must match")
+            assertCondition(decoded.isCompleted == false, "Decoded completion state must match")
+        } catch {
+            assertCondition(false, "PersonalNote test failed: \(error)")
+        }
+
         print("=== All Apple Core Logic Tests Passed Successfully! ===")
     }
 }

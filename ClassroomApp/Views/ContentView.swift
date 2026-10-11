@@ -72,6 +72,9 @@ public struct ContentView: View {
 
     @State private var courses: [Course] = []
     @State private var allCoursework: [Coursework] = []
+    @State private var personalNotes: [PersonalNote] = []
+    @State private var courseworkNoteEditingText: String = ""
+    @State private var courseworkNoteToEditCourseworkId: String? = nil
     @State private var buckets = CourseworkBuckets()
     @State private var selectedFilter: AppFilterCategory = .tomorrow
     @State private var selectedCourseworkIds: Set<String> = []
@@ -117,6 +120,7 @@ public struct ContentView: View {
         case allUpcoming = "Tất cả sắp tới"
         case past = "Đã quá hạn"
         case completed = "Đã hoàn thành"
+        case notes = "Ghi chú cá nhân"
         case widgetPreview = "Xem trước Widget"
 
         public var id: String { rawValue }
@@ -128,6 +132,7 @@ public struct ContentView: View {
             case .allUpcoming: return "tray"
             case .past: return "clock.badge.exclamationmark"
             case .completed: return "checkmark.seal"
+            case .notes: return "square.and.pencil"
             case .widgetPreview: return "macwindow"
             }
         }
@@ -334,6 +339,8 @@ public struct ContentView: View {
             return buckets.past
         case .completed:
             return buckets.completed
+        case .notes:
+            return []
         case .widgetPreview:
             return []
         }
@@ -772,6 +779,15 @@ public struct ContentView: View {
                 badgeCount: buckets.completed.count > 0 ? buckets.completed.count : nil
             )
         )
+        let pendingNotesCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
+        items.append(
+            CompactTabDefinition(
+                category: .notes,
+                shortTitle: "Ghi chú",
+                icon: "square.and.pencil",
+                badgeCount: pendingNotesCount > 0 ? pendingNotesCount : nil
+            )
+        )
         if buckets.past.count == 0 {
             items.append(
                 CompactTabDefinition(
@@ -923,6 +939,8 @@ public struct ContentView: View {
                     sidebarCategoryRow(for: .past, count: buckets.past.count)
                 }
                 sidebarCategoryRow(for: .completed, count: buckets.completed.count)
+                let pendingNotesCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
+                sidebarCategoryRow(for: .notes, count: pendingNotesCount > 0 ? pendingNotesCount : nil)
             }
 
             Section("Cấu hình Widget") {
@@ -1060,6 +1078,7 @@ public struct ContentView: View {
         case .allUpcoming: return Color(red: 0.38, green: 0.42, blue: 0.82)
         case .past: return Color(red: 0.86, green: 0.24, blue: 0.26)
         case .completed: return Color(red: 0.12, green: 0.62, blue: 0.35)
+        case .notes: return Color(red: 0.95, green: 0.55, blue: 0.10)
         case .widgetPreview: return Color(red: 0.55, green: 0.35, blue: 0.85)
         }
     }
@@ -1093,6 +1112,32 @@ public struct ContentView: View {
                         .padding(24)
                         #endif
                 }
+            } else if activeCategory == .notes {
+                PersonalNotesView(
+                    notes: personalNotes,
+                    courses: courses,
+                    searchText: searchText,
+                    onToggleCompletion: { id in
+                        ClassroomStorage.shared.togglePersonalNoteCompletion(id: id)
+                        personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                    },
+                    onSaveNote: { note in
+                        var current = personalNotes
+                        if let index = current.firstIndex(where: { $0.id == note.id }) {
+                            current[index] = note
+                        } else {
+                            current.append(note)
+                        }
+                        ClassroomStorage.shared.savePersonalNotes(current)
+                        personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        showToast(title: "Đã lưu ghi chú", icon: "checkmark.circle.fill", tint: .green)
+                    },
+                    onDeleteNote: { id in
+                        ClassroomStorage.shared.deletePersonalNote(id: id)
+                        personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        showToast(title: "Đã xoá ghi chú", icon: "trash.fill", tint: .orange)
+                    }
+                )
             } else {
                 #if os(iOS)
                 if isCompact {
@@ -1391,6 +1436,20 @@ public struct ContentView: View {
                 .padding(.vertical, 4.5)
                 .background(Color.purple.opacity(0.08))
                 .clipShape(Capsule())
+            } else if category == .notes {
+                let pendingCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(categoryIconColor(category))
+                        .frame(width: 6, height: 6)
+                    Text("\(pendingCount) việc cần làm")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(categoryIconColor(category))
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4.5)
+                .background(categoryIconColor(category).opacity(0.09))
+                .clipShape(Capsule())
             } else {
                 let pendingCount = currentFilteredList(for: category).filter { !$0.isCompleted }.count
                 if pendingCount > 0 {
@@ -1469,6 +1528,20 @@ public struct ContentView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4.5)
                 .background(Color.purple.opacity(0.08))
+                .clipShape(Capsule())
+            } else if category == .notes {
+                let pendingCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(categoryIconColor(category))
+                        .frame(width: 6, height: 6)
+                    Text("\(pendingCount) việc cần làm")
+                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(categoryIconColor(category))
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(categoryIconColor(category).opacity(0.09))
                 .clipShape(Capsule())
             } else {
                 let pendingCount = currentFilteredList(for: category).filter { !$0.isCompleted }.count
@@ -1729,11 +1802,16 @@ public struct ContentView: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
+                        let hasNoteForItem: (Coursework) -> Bool = { item in
+                            personalNotes.contains { $0.courseworkId == item.id && !$0.content.isEmpty }
+                        }
+
                         if activeCategory == .tomorrow {
                             ForEach(list) { item in
                                 AssignmentListRow(
                                     item: item,
                                     isSelected: selectedCourseworkIds.contains(item.id),
+                                    hasNote: hasNoteForItem(item),
                                     onSelect: { cmdPressed in
                                         handleItemTap(item, commandPressed: cmdPressed, isWide: isWide)
                                     },
@@ -1752,6 +1830,7 @@ public struct ContentView: View {
                                     AssignmentListRow(
                                         item: item,
                                         isSelected: selectedCourseworkIds.contains(item.id),
+                                        hasNote: hasNoteForItem(item),
                                         onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
                                         onToggleCompletion: { toggleCompletion(for: item) }
                                     )
@@ -1765,6 +1844,7 @@ public struct ContentView: View {
                                     AssignmentListRow(
                                         item: item,
                                         isSelected: selectedCourseworkIds.contains(item.id),
+                                        hasNote: hasNoteForItem(item),
                                         onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
                                         onToggleCompletion: { toggleCompletion(for: item) }
                                     )
@@ -1778,6 +1858,7 @@ public struct ContentView: View {
                                     AssignmentListRow(
                                         item: item,
                                         isSelected: selectedCourseworkIds.contains(item.id),
+                                        hasNote: hasNoteForItem(item),
                                         onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
                                         onToggleCompletion: { toggleCompletion(for: item) }
                                     )
@@ -1791,6 +1872,7 @@ public struct ContentView: View {
                                     AssignmentListRow(
                                         item: item,
                                         isSelected: selectedCourseworkIds.contains(item.id),
+                                        hasNote: hasNoteForItem(item),
                                         onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
                                         onToggleCompletion: { toggleCompletion(for: item) }
                                     )
@@ -1802,6 +1884,7 @@ public struct ContentView: View {
                                 AssignmentListRow(
                                     item: item,
                                     isSelected: selectedCourseworkIds.contains(item.id),
+                                    hasNote: hasNoteForItem(item),
                                     onSelect: { cmdPressed in
                                         handleItemTap(item, commandPressed: cmdPressed, isWide: isWide)
                                     },
@@ -1925,6 +2008,95 @@ public struct ContentView: View {
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                                         .stroke(Color.platformCardBorder, lineWidth: 1)
                                     )
+                            }
+                        }
+
+                        Divider()
+                            .overlay(Color.platformDivider)
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "square.and.pencil")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(Color.orange)
+                                    Text("GHI CHÚ CỦA BẠN")
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                        .foregroundStyle(Color.platformTextSecondary)
+                                }
+
+                                Spacer()
+
+                                if courseworkNoteToEditCourseworkId != item.id {
+                                    Button {
+                                        let currentNote = personalNotes.first { $0.courseworkId == item.id }
+                                        courseworkNoteEditingText = currentNote?.content ?? ""
+                                        courseworkNoteToEditCourseworkId = item.id
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: personalNotes.contains { $0.courseworkId == item.id && !$0.content.isEmpty } ? "pencil" : "plus")
+                                                .font(.system(size: 11.5))
+                                            Text(personalNotes.contains { $0.courseworkId == item.id && !$0.content.isEmpty } ? "Sửa" : "Thêm ghi chú")
+                                                .font(.system(size: 13, weight: .medium))
+                                        }
+                                        .foregroundStyle(Color.blue)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+
+                            if courseworkNoteToEditCourseworkId == item.id {
+                                VStack(alignment: .trailing, spacing: 8) {
+                                    TextEditor(text: $courseworkNoteEditingText)
+                                        .font(.system(size: 14.5))
+                                        .frame(minHeight: 80)
+                                        .padding(8)
+                                        .background(Color.platformControlBackground)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                                .stroke(Color.blue.opacity(0.5), lineWidth: 1.5)
+                                        )
+
+                                    HStack(spacing: 8) {
+                                        Button("Huỷ") {
+                                            courseworkNoteToEditCourseworkId = nil
+                                            courseworkNoteEditingText = ""
+                                        }
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(Color.secondary)
+
+                                        Button("Lưu ghi chú") {
+                                            saveCourseworkNote(for: item, content: courseworkNoteEditingText)
+                                            courseworkNoteToEditCourseworkId = nil
+                                            courseworkNoteEditingText = ""
+                                        }
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.blue)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                    }
+                                }
+                            } else if let note = personalNotes.first(where: { $0.courseworkId == item.id }), !note.content.isEmpty {
+                                Text(note.content)
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(Color.platformTextPrimary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(14)
+                                    .background(Color.orange.opacity(0.08))
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .stroke(Color.orange.opacity(0.2), lineWidth: 1)
+                                    )
+                            } else {
+                                Text("Chưa có ghi chú nào cho bài tập này. Nhấn 'Thêm ghi chú' để ghi lời dặn hoặc lưu ý.")
+                                    .font(.system(size: 13.5))
+                                    .foregroundStyle(Color.platformTextTertiary)
+                                    .italic()
+                                    .padding(.vertical, 4)
                             }
                         }
 
@@ -2816,6 +2988,7 @@ public struct ContentView: View {
     private func refreshData() {
         self.courses = ClassroomStorage.shared.loadCourses()
         self.allCoursework = ClassroomStorage.shared.loadCoursework()
+        self.personalNotes = ClassroomStorage.shared.loadPersonalNotes()
         recomputeBuckets()
 
         if let current = selectedCoursework, currentFilteredList.contains(where: { $0.id == current.id }) {
@@ -2825,6 +2998,18 @@ public struct ContentView: View {
         } else {
             autoSelectFirstItem()
         }
+    }
+
+    private func saveCourseworkNote(for item: Coursework, content: String) {
+        ClassroomStorage.shared.saveNoteForCoursework(
+            courseworkId: item.id,
+            courseId: item.courseId,
+            courseName: item.courseName,
+            title: item.title,
+            content: content
+        )
+        self.personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+        showToast(title: "Đã cập nhật ghi chú bài tập", icon: "checkmark.circle.fill", tint: .green)
     }
 
     private func autoSelectFirstItem() {
@@ -3313,6 +3498,7 @@ private struct RowSelectedShadowModifier: ViewModifier {
 private struct AssignmentListRow: View, Equatable {
     let item: Coursework
     let isSelected: Bool
+    var hasNote: Bool = false
     let onSelect: (Bool) -> Void
     let onToggleCompletion: () -> Void
 
@@ -3321,7 +3507,7 @@ private struct AssignmentListRow: View, Equatable {
     @Environment(\.openURL) private var openURL
 
     static func == (lhs: AssignmentListRow, rhs: AssignmentListRow) -> Bool {
-        lhs.item == rhs.item && lhs.isSelected == rhs.isSelected
+        lhs.item == rhs.item && lhs.isSelected == rhs.isSelected && lhs.hasNote == rhs.hasNote
     }
 
     var isTurnedIn: Bool {
@@ -3389,6 +3575,11 @@ private struct AssignmentListRow: View, Equatable {
                         .font(.system(size: 13.5, weight: .semibold))
                         .foregroundStyle(themeColor)
                         .lineLimit(1)
+                    if hasNote {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.blue)
+                    }
                 }
             }
 
@@ -3612,6 +3803,7 @@ private struct AssignmentListEmptyView: View {
         case .allUpcoming: return "tray"
         case .past: return "checkmark.seal.fill"
         case .completed: return "doc.text.magnifyingglass"
+        case .notes: return "square.and.pencil"
         case .widgetPreview: return "macwindow"
         }
     }
@@ -3624,6 +3816,7 @@ private struct AssignmentListEmptyView: View {
         case .allUpcoming: return .blue
         case .past: return .green
         case .completed: return .secondary
+        case .notes: return .orange
         case .widgetPreview: return .purple
         }
     }
@@ -3636,6 +3829,7 @@ private struct AssignmentListEmptyView: View {
         case .allUpcoming: return "Không có bài tập sắp tới"
         case .past: return "Không có bài tập quá hạn!"
         case .completed: return "Chưa có bài tập hoàn thành"
+        case .notes: return "Chưa có ghi chú nào"
         case .widgetPreview: return "Xem trước Widget"
         }
     }
@@ -3655,6 +3849,8 @@ private struct AssignmentListEmptyView: View {
             return "Tuyệt vời! Bạn đang duy trì tiến độ hoàn hảo, không có bài tập nào bị trễ."
         case .completed:
             return "Các bài tập bạn đã nộp hoặc đánh dấu hoàn thành sẽ xuất hiện tại đây."
+        case .notes:
+            return "Các ghi chú cá nhân của bạn sẽ hiển thị tại đây."
         case .widgetPreview:
             return "Kéo thả widget ra màn hình chính để theo dõi nhanh bài tập."
         }

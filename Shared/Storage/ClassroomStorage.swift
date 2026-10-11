@@ -33,11 +33,15 @@ public final class ClassroomStorage: @unchecked Sendable {
     private let courseworkTimestampKey = "cached_classroom_coursework_timestamp"
     private let lastSyncKey = "cached_classroom_last_sync"
     private let userEmailKey = "cached_classroom_user_email"
+    private let personalNotesKey = "cached_classroom_personal_notes"
+    private let personalNotesTimestampKey = "cached_classroom_personal_notes_timestamp"
 
     private var cachedCourses: [Course]?
     private var cachedCoursesTimestamp: Double = 0
     private var cachedCoursework: [Coursework]?
     private var cachedCourseworkTimestamp: Double = 0
+    private var cachedPersonalNotes: [PersonalNote]?
+    private var cachedPersonalNotesTimestamp: Double = 0
     private let lock = NSRecursiveLock()
     private let ioQueue = DispatchQueue(label: "com.phucta.classroom.storage.io", qos: .utility)
     private let storageInitializedKey = "cached_classroom_storage_initialized"
@@ -594,7 +598,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         return sortCoursework(filtered)
     }
 
-    public func getTomorrowCoursework(items: [Coursework]? = nil, courses: [Course]? = nil, includeCompleted: Bool = true) -> [Coursework] {
+    public func getTomorrowCoursework(items: [Coursework]? = nil, courses: [Course]? = nil, includeCompleted: Bool = true, includeNotes: Bool = true) -> [Coursework] {
         let allItems = items ?? loadCoursework()
         let relevant = filterItemsByActiveCourses(allItems, courses: courses)
         let calendar = Calendar.current
@@ -629,6 +633,25 @@ public final class ClassroomStorage: @unchecked Sendable {
                 }
             } else if isEligible && dueDate >= startOfDayAfter {
                 laterUpcoming.append(item)
+            }
+        }
+
+        if includeNotes {
+            let tomorrowNotes = getTomorrowPersonalNotes(includeCompleted: includeCompleted)
+            for note in tomorrowNotes {
+                if note.courseworkId == nil {
+                    let noteCoursework = Coursework(
+                        id: "note_\(note.id)",
+                        courseId: note.courseId ?? "personal_note",
+                        courseName: note.courseName ?? "Ghi chú",
+                        title: note.title,
+                        description: note.content,
+                        dueDate: note.dueDate,
+                        status: note.isCompleted ? .turnedIn : .pending,
+                        isManuallyCompleted: note.isCompleted
+                    )
+                    tomorrowFiltered.append(noteCoursework)
+                }
             }
         }
 
@@ -859,5 +882,143 @@ public final class ClassroomStorage: @unchecked Sendable {
                 maxPoints: 10
             )
         ]
+    }
+
+    // MARK: - Personal Notes Storage
+
+    public func savePersonalNotes(_ notes: [PersonalNote]) {
+        let timestamp = Date().timeIntervalSince1970
+        lock.lock()
+        cachedPersonalNotes = notes
+        cachedPersonalNotesTimestamp = timestamp
+        lock.unlock()
+
+        ioQueue.async { [weak self] in
+            guard let self else { return }
+            guard let encoded = try? JSONEncoder().encode(notes) else { return }
+
+            self.writeDataToAllDirectories(encoded, fileName: "cached_classroom_personal_notes.json")
+
+            for ud in self.allUserDefaults {
+                ud.set(encoded, forKey: self.personalNotesKey)
+                ud.set(timestamp, forKey: self.personalNotesTimestampKey)
+            }
+
+            self.notifyWidgetReload()
+        }
+    }
+
+    public func loadPersonalNotes() -> [PersonalNote] {
+        lock.lock()
+        let memoryCached = cachedPersonalNotes
+        let memoryTimestamp = cachedPersonalNotesTimestamp
+        lock.unlock()
+
+        if let memoryCached, memoryTimestamp > 0 {
+            let primaryTime = userDefaults.double(forKey: personalNotesTimestampKey)
+            if primaryTime <= memoryTimestamp {
+                return memoryCached
+            }
+            let latestTimestamp = getLatestUserDefaultsTimestamp(forKey: personalNotesTimestampKey)
+            if memoryTimestamp >= latestTimestamp {
+                return memoryCached
+            }
+        }
+
+        let latestTimestamp = getLatestUserDefaultsTimestamp(forKey: personalNotesTimestampKey)
+
+        var loaded: [PersonalNote]?
+        if let data = readDataFromDirectories(fileName: "cached_classroom_personal_notes.json") {
+            loaded = try? JSONDecoder().decode([PersonalNote].self, from: data)
+        }
+        for ud in allUserDefaults {
+            if let data = ud.data(forKey: personalNotesKey),
+               let decoded = try? JSONDecoder().decode([PersonalNote].self, from: data),
+               !decoded.isEmpty {
+                if loaded == nil || loaded?.isEmpty == true {
+                    loaded = decoded
+                }
+            }
+        }
+
+        let result = loaded ?? []
+        let effectiveTimestamp = latestTimestamp > 0 ? latestTimestamp : Date().timeIntervalSince1970
+
+        lock.lock()
+        cachedPersonalNotes = result
+        cachedPersonalNotesTimestamp = effectiveTimestamp
+        lock.unlock()
+
+        return result
+    }
+
+    public func getNoteForCoursework(courseworkId: String) -> PersonalNote? {
+        let allNotes = loadPersonalNotes()
+        return allNotes.first { $0.courseworkId == courseworkId }
+    }
+
+    public func saveNoteForCoursework(
+        courseworkId: String,
+        courseId: String? = nil,
+        courseName: String? = nil,
+        title: String,
+        content: String
+    ) {
+        var allNotes = loadPersonalNotes()
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let index = allNotes.firstIndex(where: { $0.courseworkId == courseworkId }) {
+            if trimmed.isEmpty && allNotes[index].title.isEmpty {
+                allNotes.remove(at: index)
+            } else {
+                allNotes[index].content = trimmed
+                allNotes[index].updatedAt = Date()
+                if let courseId { allNotes[index].courseId = courseId }
+                if let courseName { allNotes[index].courseName = courseName }
+            }
+        } else if !trimmed.isEmpty {
+            let newNote = PersonalNote(
+                courseworkId: courseworkId,
+                courseId: courseId,
+                courseName: courseName,
+                title: title,
+                content: trimmed
+            )
+            allNotes.append(newNote)
+        }
+        savePersonalNotes(allNotes)
+    }
+
+    public func deletePersonalNote(id: String) {
+        var allNotes = loadPersonalNotes()
+        allNotes.removeAll { $0.id == id }
+        savePersonalNotes(allNotes)
+    }
+
+    public func togglePersonalNoteCompletion(id: String) {
+        var allNotes = loadPersonalNotes()
+        if let index = allNotes.firstIndex(where: { $0.id == id }) {
+            allNotes[index].isCompleted.toggle()
+            allNotes[index].updatedAt = Date()
+            savePersonalNotes(allNotes)
+        }
+    }
+
+    public func getTomorrowPersonalNotes(notes: [PersonalNote]? = nil, includeCompleted: Bool = false) -> [PersonalNote] {
+        let allNotes = notes ?? loadPersonalNotes()
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfToday = calendar.startOfDay(for: now)
+        guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
+              let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday) else {
+            return []
+        }
+
+        return allNotes.filter { note in
+            if !includeCompleted && note.isCompleted {
+                return false
+            }
+            guard let dueDate = note.dueDate else { return false }
+            return dueDate >= startOfTomorrow && dueDate < startOfDayAfter
+        }
     }
 }
