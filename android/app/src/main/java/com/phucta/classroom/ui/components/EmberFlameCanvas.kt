@@ -176,13 +176,15 @@ fun EmberFlameCanvas(
                             drawPath(path = mouthPath, color = eyeColor, style = mouthStroke)
                         }
                         EmberEmotion.SLEEPING -> {
-                            leftEyePath?.let { drawPath(path = it, color = eyeColor, style = eyeStroke!!) }
-                            rightEyePath?.let { drawPath(path = it, color = eyeColor, style = eyeStroke!!) }
+                            val activeEyeStroke = eyeStroke ?: Stroke(width = w * 0.035f, cap = StrokeCap.Round)
+                            val activeZStroke = zStroke ?: Stroke(width = w * 0.025f, cap = StrokeCap.Round)
+                            leftEyePath?.let { drawPath(path = it, color = eyeColor, style = activeEyeStroke) }
+                            rightEyePath?.let { drawPath(path = it, color = eyeColor, style = activeEyeStroke) }
                             drawCircle(color = blushColor, radius = w * 0.04f, center = leftBlushCenterSleeping)
                             drawCircle(color = blushColor, radius = w * 0.04f, center = rightBlushCenterSleeping)
                             drawPath(path = mouthPath, color = eyeColor, style = mouthStroke)
-                            z1Path?.let { drawPath(path = it, color = Color.White.copy(alpha = 0.85f), style = zStroke!!) }
-                            z2Path?.let { drawPath(path = it, color = Color.White.copy(alpha = 0.95f), style = zStroke!!) }
+                            z1Path?.let { drawPath(path = it, color = Color.White.copy(alpha = 0.85f), style = activeZStroke) }
+                            z2Path?.let { drawPath(path = it, color = Color.White.copy(alpha = 0.95f), style = activeZStroke) }
                         }
                         EmberEmotion.STRESSED -> {
                             drawCircle(color = eyeColor, radius = w * 0.052f, center = stressedLeftEyeCenter)
@@ -196,8 +198,9 @@ fun EmberFlameCanvas(
                             }
                         }
                         EmberEmotion.CELEBRATING -> {
-                            leftEyePath?.let { drawPath(path = it, color = eyeColor, style = eyeStroke!!) }
-                            rightEyePath?.let { drawPath(path = it, color = eyeColor, style = eyeStroke!!) }
+                            val activeEyeStroke = eyeStroke ?: Stroke(width = w * 0.035f, cap = StrokeCap.Round)
+                            leftEyePath?.let { drawPath(path = it, color = eyeColor, style = activeEyeStroke) }
+                            rightEyePath?.let { drawPath(path = it, color = eyeColor, style = activeEyeStroke) }
                             drawCircle(color = blushColor, radius = w * 0.045f, center = leftBlushCenterCelebrating)
                             drawCircle(color = blushColor, radius = w * 0.045f, center = rightBlushCenterCelebrating)
                             drawPath(path = mouthPath, color = eyeColor, style = mouthStroke)

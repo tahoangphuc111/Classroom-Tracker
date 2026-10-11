@@ -265,7 +265,9 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
 
         let challenge = generateCodeChallenge(from: verifier)
 
-        var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
+        guard var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth") else {
+            throw NSError(domain: "GoogleOAuthService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Không thể tạo URL xác thực."])
+        }
         components.queryItems = [
             URLQueryItem(name: "client_id", value: clientId),
             URLQueryItem(name: "redirect_uri", value: redirectUri),
@@ -354,7 +356,9 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
 
         let challenge = generateCodeChallenge(from: verifier)
 
-        var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
+        guard var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth") else {
+            throw NSError(domain: "GoogleOAuthService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Không thể tạo URL xác thực."])
+        }
         components.queryItems = [
             URLQueryItem(name: "client_id", value: clientId),
             URLQueryItem(name: "redirect_uri", value: loopbackRedirectUri),
@@ -635,7 +639,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
 
         for dir in allTokenDirectories {
             let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
-            try? data.write(to: fileURL, options: .atomic)
+            try? FileManager.default.removeItem(at: fileURL)
         }
 
         deleteKeychainOnly()
@@ -706,6 +710,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
             if let data = try? Data(contentsOf: fileURL),
                let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
+                try? FileManager.default.removeItem(at: fileURL)
                 self.inMemoryTokens = decoded
                 return decoded
             }

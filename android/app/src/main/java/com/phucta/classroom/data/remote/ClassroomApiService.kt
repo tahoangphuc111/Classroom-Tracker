@@ -12,6 +12,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 @Serializable
@@ -84,15 +85,84 @@ class ClassroomApiService(
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun fetchActiveCourses(accessToken: String): List<Course> = withContext(Dispatchers.IO) {
-        val allCourses = mutableListOf<Course>()
+        val coursesMap = LinkedHashMap<String, Course>()
+        var lastError: Exception? = null
+
+        // 1. Student courses
+        try {
+            val studentCourses = fetchCoursesPage(accessToken, filterKey = "studentId", filterValue = "me", courseState = "ACTIVE")
+            for (course in studentCourses) {
+                coursesMap[course.id] = course
+            }
+        } catch (e: Exception) {
+            lastError = e
+        }
+
+        // 2. Teacher courses
+        try {
+            val teacherCourses = fetchCoursesPage(accessToken, filterKey = "teacherId", filterValue = "me", courseState = "ACTIVE")
+            for (course in teacherCourses) {
+                coursesMap[course.id] = course
+            }
+        } catch (e: Exception) {
+            if (lastError == null) lastError = e
+        }
+
+        // 3. Fallback for admins/creators without a specific role filter
+        if (coursesMap.isEmpty()) {
+            try {
+                val adminCourses = fetchCoursesPage(accessToken, filterKey = null, filterValue = null, courseState = "ACTIVE")
+                for (course in adminCourses) {
+                    coursesMap[course.id] = course
+                }
+            } catch (e: Exception) {
+                if (lastError == null) lastError = e
+            }
+        }
+
+        // 4. Fallback if courses have other states than ACTIVE
+        if (coursesMap.isEmpty() && lastError == null) {
+            try {
+                val studentAllStateCourses = fetchCoursesPage(accessToken, filterKey = "studentId", filterValue = "me", courseState = null)
+                for (course in studentAllStateCourses) {
+                    coursesMap[course.id] = course
+                }
+            } catch (_: Exception) {}
+            try {
+                val teacherAllStateCourses = fetchCoursesPage(accessToken, filterKey = "teacherId", filterValue = "me", courseState = null)
+                for (course in teacherAllStateCourses) {
+                    coursesMap[course.id] = course
+                }
+            } catch (_: Exception) {}
+        }
+
+        if (coursesMap.isEmpty() && lastError != null) {
+            throw lastError
+        }
+
+        return@withContext coursesMap.values.toList()
+    }
+
+    private fun fetchCoursesPage(
+        accessToken: String,
+        filterKey: String?,
+        filterValue: String?,
+        courseState: String? = "ACTIVE"
+    ): List<Course> {
+        val pageCourses = mutableListOf<Course>()
         var pageToken: String? = null
         var pageCount = 0
 
         do {
             val urlBuilder = "https://classroom.googleapis.com/v1/courses".toHttpUrl().newBuilder()
-                .addQueryParameter("courseStates", "ACTIVE")
                 .addQueryParameter("pageSize", "50")
 
+            if (courseState != null) {
+                urlBuilder.addQueryParameter("courseStates", courseState)
+            }
+            if (filterKey != null && filterValue != null) {
+                urlBuilder.addQueryParameter(filterKey, filterValue)
+            }
             if (!pageToken.isNullOrBlank()) {
                 urlBuilder.addQueryParameter("pageToken", pageToken)
             }
@@ -102,37 +172,44 @@ class ClassroomApiService(
                 .addHeader("Authorization", "Bearer $accessToken")
                 .build()
 
-            val (shouldContinue, newPageToken) = httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    if (allCourses.isEmpty()) {
-                        throw IllegalStateException("Không lấy được danh sách lớp học (${response.code})")
+            val (shouldContinue, newPageToken) = try {
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        if (pageCourses.isEmpty()) {
+                            throw IllegalStateException("Không lấy được danh sách lớp học (${response.code})")
+                        }
+                        return@use Pair(false, null)
                     }
-                    return@use Pair(false, null)
-                }
 
-                val body = response.body?.string() ?: return@use Pair(false, null)
-                val decoded = json.decodeFromString<GoogleCoursesResponse>(body)
-                decoded.courses?.forEach { item ->
-                    allCourses.add(
-                        Course(
-                            id = item.id,
-                            name = item.name,
-                            section = item.section,
-                            descriptionHeading = item.descriptionHeading,
-                            room = item.room,
-                            alternateLink = item.alternateLink,
-                            isSelectedForWidget = true
-                        )
-                    )
+                    val body = response.body?.string() ?: return@use Pair(false, null)
+                    val decoded = json.decodeFromString<GoogleCoursesResponse>(body)
+                    decoded.courses?.forEach { item ->
+                        if (item.id.isNotBlank() && item.name.isNotBlank()) {
+                            pageCourses.add(
+                                Course(
+                                    id = item.id,
+                                    name = item.name,
+                                    section = item.section,
+                                    descriptionHeading = item.descriptionHeading,
+                                    room = item.room,
+                                    alternateLink = item.alternateLink,
+                                    isSelectedForWidget = true
+                                )
+                            )
+                        }
+                    }
+                    Pair(true, decoded.nextPageToken)
                 }
-                Pair(true, decoded.nextPageToken)
+            } catch (e: Exception) {
+                if (pageCourses.isEmpty()) throw e
+                Pair(false, null)
             }
             if (!shouldContinue) break
             pageToken = newPageToken
             pageCount++
         } while (pageToken != null && pageCount < 10)
 
-        return@withContext allCourses
+        return pageCourses
     }
 
     suspend fun fetchCourseworkForCourse(course: Course, accessToken: String): List<Coursework> = withContext(Dispatchers.IO) {
@@ -197,17 +274,49 @@ class ClassroomApiService(
                 .addHeader("Authorization", "Bearer $accessToken")
                 .build()
 
-            val (shouldContinue, newPageToken) = httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use Pair(false, null)
-                val body = response.body?.string() ?: return@use Pair(false, null)
-                val decoded = json.decodeFromString<GoogleCourseworkResponse>(body)
-                decoded.courseWork?.let { allItems.addAll(it) }
-                Pair(true, decoded.nextPageToken)
+            val (shouldContinue, newPageToken) = try {
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        if (allItems.isEmpty()) {
+                            throw IOException("HTTP ${response.code} khi tải bài tập lớp $courseId")
+                        }
+                        return@use Pair(false, null)
+                    }
+                    val body = response.body?.string() ?: return@use Pair(false, null)
+                    val decoded = json.decodeFromString<GoogleCourseworkResponse>(body)
+                    decoded.courseWork?.let { allItems.addAll(it) }
+                    Pair(true, decoded.nextPageToken)
+                }
+            } catch (e: Exception) {
+                if (allItems.isEmpty()) throw e
+                Pair(false, null)
             }
             if (!shouldContinue) break
             pageToken = newPageToken
             pageCount++
         } while (pageToken != null && pageCount < 10)
+
+        // Retry without PUBLISHED filter if nothing came back (matching Swift implementation)
+        if (allItems.isEmpty()) {
+            try {
+                val urlBuilder = "https://classroom.googleapis.com/v1/courses/$courseId/courseWork".toHttpUrl().newBuilder()
+                    .addQueryParameter("pageSize", "50")
+
+                val request = Request.Builder()
+                    .url(urlBuilder.build())
+                    .addHeader("Authorization", "Bearer $accessToken")
+                    .build()
+
+                httpClient.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        response.body?.string()?.let { body ->
+                            val decoded = json.decodeFromString<GoogleCourseworkResponse>(body)
+                            decoded.courseWork?.let { allItems.addAll(it) }
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
 
         return allItems
     }
@@ -231,14 +340,24 @@ class ClassroomApiService(
                 .addHeader("Authorization", "Bearer $accessToken")
                 .build()
 
-            val (shouldContinue, newPageToken) = httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use Pair(false, null)
-                val body = response.body?.string() ?: return@use Pair(false, null)
-                val decoded = json.decodeFromString<GoogleSubmissionsResponse>(body)
-                decoded.studentSubmissions?.forEach { item ->
-                    map[item.courseWorkId] = item
+            val (shouldContinue, newPageToken) = try {
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        if (map.isEmpty()) {
+                            throw IOException("HTTP ${response.code} khi tải trạng thái nộp bài lớp $courseId")
+                        }
+                        return@use Pair(false, null)
+                    }
+                    val body = response.body?.string() ?: return@use Pair(false, null)
+                    val decoded = json.decodeFromString<GoogleSubmissionsResponse>(body)
+                    decoded.studentSubmissions?.forEach { item ->
+                        map[item.courseWorkId] = item
+                    }
+                    Pair(true, decoded.nextPageToken)
                 }
-                Pair(true, decoded.nextPageToken)
+            } catch (e: Exception) {
+                if (map.isEmpty()) throw e
+                Pair(false, null)
             }
             if (!shouldContinue) break
             pageToken = newPageToken

@@ -41,6 +41,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     private let lock = NSRecursiveLock()
     private let ioQueue = DispatchQueue(label: "com.phucta.classroom.storage.io", qos: .utility)
     private let storageInitializedKey = "cached_classroom_storage_initialized"
+    private var lastWidgetReloadTime: TimeInterval = 0
 
     public struct ClassroomSharedMetadata: Codable {
         public var userEmail: String?
@@ -256,12 +257,20 @@ public final class ClassroomStorage: @unchecked Sendable {
                 bestEmail = email
             }
             if let cData = ud.data(forKey: coursesKey), !cData.isEmpty {
-                if bestCoursesData == nil || (isMockCoursesData(bestCoursesData!) && !isMockCoursesData(cData)) {
+                if let currentBest = bestCoursesData {
+                    if isMockCoursesData(currentBest) && !isMockCoursesData(cData) {
+                        bestCoursesData = cData
+                    }
+                } else {
                     bestCoursesData = cData
                 }
             }
             if let cwData = ud.data(forKey: courseworkKey), !cwData.isEmpty {
-                if bestCourseworkData == nil || (isMockCourseworkData(bestCourseworkData!) && !isMockCourseworkData(cwData)) {
+                if let currentBest = bestCourseworkData {
+                    if isMockCourseworkData(currentBest) && !isMockCourseworkData(cwData) {
+                        bestCourseworkData = cwData
+                    }
+                } else {
                     bestCourseworkData = cwData
                 }
             }
@@ -293,7 +302,7 @@ public final class ClassroomStorage: @unchecked Sendable {
             writeDataToAllDirectories(bestCourseworkData, fileName: "cached_classroom_coursework.json")
         }
 
-        let isUserLogged = (bestEmail != nil && !bestEmail!.isEmpty) || hasUserLoggedIn
+        let isUserLogged = !(bestEmail?.isEmpty ?? true) || hasUserLoggedIn
         let metadata = ClassroomSharedMetadata(
             userEmail: bestEmail,
             lastSyncTimestamp: bestSyncTime > 0 ? bestSyncTime : Date().timeIntervalSince1970,
@@ -704,7 +713,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public func saveUserEmail(_ email: String?) {
-        let isPresent = (email != nil && !email!.trimmingCharacters(in: .whitespaces).isEmpty)
+        let isPresent = !(email?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
         lock.lock()
         cachedHasUserLoggedIn = isPresent
         lock.unlock()
@@ -739,6 +748,15 @@ public final class ClassroomStorage: @unchecked Sendable {
         let isAppExtension = Bundle.main.bundleURL.pathExtension == "appex"
             || (Bundle.main.bundleIdentifier?.contains("widget") == true)
         guard !isAppExtension else { return }
+
+        let now = Date().timeIntervalSince1970
+        lock.lock()
+        if now - lastWidgetReloadTime < 1.0 {
+            lock.unlock()
+            return
+        }
+        lastWidgetReloadTime = now
+        lock.unlock()
 
         DispatchQueue.main.async {
             WidgetCenter.shared.reloadAllTimelines()

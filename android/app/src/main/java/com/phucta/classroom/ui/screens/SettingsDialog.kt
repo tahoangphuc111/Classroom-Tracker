@@ -41,6 +41,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -64,6 +69,8 @@ fun SettingsDialog(
 ) {
     var customClientId by remember(initialClientId) { mutableStateOf(initialClientId ?: "") }
     var customClientSecret by remember(initialClientSecret) { mutableStateOf(initialClientSecret ?: "") }
+    var isAdvancedExpanded by remember { mutableStateOf(false) }
+    var credentialsMessage by remember { mutableStateOf<String?>(null) }
     var showLogoutConfirmation by remember { mutableStateOf(false) }
 
     Dialog(
@@ -207,66 +214,149 @@ fun SettingsDialog(
                 HorizontalDivider(color = ChunkyColor.Hairline)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "CẤU HÌNH CLIENT ID RIÊNG (TÙY CHỌN)",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                    color = ChunkyColor.TextMuted,
-                    letterSpacing = 0.5.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = customClientId,
-                    onValueChange = { customClientId = it },
-                    label = { Text("Google Client ID") },
-                    placeholder = { Text("Để trống để dùng Client ID mặc định", fontSize = 12.sp) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = ChunkyColor.SkyBottom,
-                        unfocusedBorderColor = ChunkyColor.CardBorder,
-                        focusedLabelColor = ChunkyColor.SkyBottom
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                OutlinedTextField(
-                    value = customClientSecret,
-                    onValueChange = { customClientSecret = it },
-                    label = { Text("Client Secret") },
-                    placeholder = { Text("Để trống nếu dùng mặc định", fontSize = 12.sp) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = ChunkyColor.SkyBottom,
-                        unfocusedBorderColor = ChunkyColor.CardBorder,
-                        focusedLabelColor = ChunkyColor.SkyBottom
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Button(
-                    onClick = {
-                        onSaveCustomCredentials(
-                            customClientId.ifBlank { null },
-                            customClientSecret.ifBlank { null }
-                        )
-                        onDismiss()
-                    },
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ChunkyColor.SkyBottom
-                    ),
-                    shape = RoundedCornerShape(10.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(ChunkyColor.WindowBackground)
+                        .clickable { isAdvancedExpanded = !isAdvancedExpanded }
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
-                    Text("Lưu cấu hình", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = null,
+                            tint = ChunkyColor.TextMuted,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Tùy chọn nâng cao",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.5.sp,
+                                color = ChunkyColor.TextPrimary
+                            )
+                            Text(
+                                text = "Cấu hình Google Client ID riêng",
+                                fontSize = 11.5.sp,
+                                color = ChunkyColor.TextMuted
+                            )
+                        }
+                        Icon(
+                            imageVector = if (isAdvancedExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = ChunkyColor.TextMuted,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                AnimatedVisibility(visible = isAdvancedExpanded) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(ChunkyColor.WindowBackground.copy(alpha = 0.5f))
+                            .padding(14.dp)
+                    ) {
+                        Text(
+                            text = "Ứng dụng đã có sẵn Google Client ID mặc định. Bạn chỉ cần cấu hình nếu muốn dùng Client ID riêng từ Google Cloud Console.",
+                            fontSize = 11.5.sp,
+                            color = ChunkyColor.TextMuted,
+                            lineHeight = 16.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedTextField(
+                            value = customClientId,
+                            onValueChange = {
+                                customClientId = it
+                                credentialsMessage = null
+                            },
+                            label = { Text("Google Client ID") },
+                            placeholder = { Text("Để trống để dùng Client ID mặc định", fontSize = 12.sp) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = ChunkyColor.SkyBottom,
+                                unfocusedBorderColor = ChunkyColor.CardBorder,
+                                focusedLabelColor = ChunkyColor.SkyBottom
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        OutlinedTextField(
+                            value = customClientSecret,
+                            onValueChange = {
+                                customClientSecret = it
+                                credentialsMessage = null
+                            },
+                            label = { Text("Client Secret (Tùy chọn)") },
+                            placeholder = { Text("Để trống nếu dùng mặc định", fontSize = 12.sp) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = ChunkyColor.SkyBottom,
+                                unfocusedBorderColor = ChunkyColor.CardBorder,
+                                focusedLabelColor = ChunkyColor.SkyBottom
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        credentialsMessage?.let { msg ->
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = msg,
+                                color = ChunkyColor.SkyBottom,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    customClientId = ""
+                                    customClientSecret = ""
+                                    onSaveCustomCredentials(null, null)
+                                    credentialsMessage = "Đã khôi phục Client ID mặc định"
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Mặc định", fontSize = 13.sp)
+                            }
+
+                            Spacer(modifier = Modifier.width(10.dp))
+
+                            Button(
+                                onClick = {
+                                    onSaveCustomCredentials(
+                                        customClientId.ifBlank { null },
+                                        customClientSecret.ifBlank { null }
+                                    )
+                                    credentialsMessage = "Đã lưu cấu hình Client ID"
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SkyBottom),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Lưu Client ID", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

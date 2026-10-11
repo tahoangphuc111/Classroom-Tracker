@@ -2,6 +2,7 @@ import Foundation
 import UserNotifications
 import Combine
 
+@MainActor
 public final class EveningReminderService: ObservableObject, @unchecked Sendable {
     public static let shared = EveningReminderService()
 

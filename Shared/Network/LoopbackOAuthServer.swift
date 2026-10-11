@@ -333,8 +333,13 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                     Darwin.close(clientFd)
                 }
 
+                let wasCancelled = server.handle.rawDescriptor == -1
                 server.handle.close()
-                continuation.resume(throwing: NSError(domain: "LoopbackOAuthServer", code: -4, userInfo: [NSLocalizedDescriptionKey: "Hết thời gian chờ đăng nhập (Timeout). Vui lòng thử lại."]))
+                if wasCancelled {
+                    continuation.resume(throwing: CancellationError())
+                } else {
+                    continuation.resume(throwing: NSError(domain: "LoopbackOAuthServer", code: -4, userInfo: [NSLocalizedDescriptionKey: "Hết thời gian chờ đăng nhập (Timeout). Vui lòng thử lại."]))
+                }
             }
         }
     } onCancel: {

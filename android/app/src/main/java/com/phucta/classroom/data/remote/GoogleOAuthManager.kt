@@ -84,8 +84,12 @@ class GoogleOAuthManager(
         val verifier = generateCodeVerifier()
         activeCodeVerifier = verifier
 
-        val reversedClientId = clientId.split(".").reversed().joinToString(".")
-        val redirectUri = "$reversedClientId:/oauth2redirect/google"
+        val redirectUri = if (clientId == ClassroomPreferences.BUNDLED_CLIENT_ID) {
+            val reversedClientId = clientId.split(".").reversed().joinToString(".")
+            "$reversedClientId:/oauth2redirect/google"
+        } else {
+            "com.phucta.classroom:/oauth2redirect"
+        }
         activeRedirectUri = redirectUri
         tokenStorage.saveAuthFlowState(verifier, redirectUri)
 
@@ -127,7 +131,14 @@ class GoogleOAuthManager(
 
         val code = uri.getQueryParameter("code") ?: return@withContext false
         val verifier = activeCodeVerifier ?: tokenStorage.loadAuthFlowVerifier() ?: return@withContext false
-        val redirectUri = activeRedirectUri ?: tokenStorage.loadAuthFlowRedirectUri() ?: return@withContext false
+        val redirectUri = activeRedirectUri ?: tokenStorage.loadAuthFlowRedirectUri() ?: run {
+            val scheme = uri.scheme ?: ""
+            if (scheme.startsWith("com.googleusercontent.apps.")) {
+                "$scheme:/oauth2redirect/google"
+            } else {
+                "com.phucta.classroom:/oauth2redirect"
+            }
+        }
 
         try {
             val clientId = preferences.getEffectiveClientId()
@@ -149,10 +160,11 @@ class GoogleOAuthManager(
                 .post(formBuilder.build())
                 .build()
 
-            val response = httpClient.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
+            val (isSuccess, responseBody) = httpClient.newCall(request).execute().use { response ->
+                Pair(response.isSuccessful, response.body?.string() ?: "")
+            }
 
-            if (!response.isSuccessful) {
+            if (!isSuccess) {
                 _authErrorMessage.value = "Lỗi đổi token: $responseBody"
                 return@withContext false
             }
@@ -214,16 +226,17 @@ class GoogleOAuthManager(
                 .post(formBuilder.build())
                 .build()
 
-            val response = httpClient.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
+            val (isSuccessful, statusCode, responseBody) = httpClient.newCall(request).execute().use { response ->
+                Triple(response.isSuccessful, response.code, response.body?.string() ?: "")
+            }
 
-            if (response.code == 400 || response.code == 401) {
+            if (statusCode == 400 || statusCode == 401) {
                 signOut()
                 _authErrorMessage.value = "Phiên đăng nhập đã bị thu hồi. Vui lòng đăng nhập lại."
                 throw IllegalStateException("Phiên đăng nhập đã bị thu hồi.")
             }
 
-            if (!response.isSuccessful) {
+            if (!isSuccessful) {
                 throw IllegalStateException("Lỗi làm mới token: $responseBody")
             }
 
@@ -247,11 +260,12 @@ class GoogleOAuthManager(
                 .addHeader("Authorization", "Bearer $accessToken")
                 .build()
 
-            val response = httpClient.newCall(request).execute()
-            if (response.isSuccessful) {
-                val body = response.body?.string() ?: return
-                val userInfo = json.decodeFromString<GoogleUserInfo>(body)
-                preferences.saveUserProfile(userInfo.email, userInfo.name, userInfo.picture)
+            httpClient.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val body = response.body?.string() ?: return
+                    val userInfo = json.decodeFromString<GoogleUserInfo>(body)
+                    preferences.saveUserProfile(userInfo.email, userInfo.name, userInfo.picture)
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()

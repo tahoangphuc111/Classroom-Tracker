@@ -80,6 +80,12 @@ public struct ClassroomTimelineProvider: TimelineProvider {
             nextRefresh = earliestDueDate
         }
 
+        // Enforce a minimum 5-minute floor to prevent WidgetKit timeline exhaustion and system throttling
+        let minimumRefreshDate = currentDate.addingTimeInterval(300)
+        if nextRefresh < minimumRefreshDate {
+            nextRefresh = minimumRefreshDate
+        }
+
         let timeline = Timeline(entries: [currentEntry], policy: .after(nextRefresh))
         completion(timeline)
     }

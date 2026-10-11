@@ -6,6 +6,7 @@ import UIKit
 #endif
 
 
+@MainActor
 public final class AppUpdateService: ObservableObject {
     public static let shared = AppUpdateService()
 

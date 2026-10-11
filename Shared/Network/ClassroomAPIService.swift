@@ -299,7 +299,7 @@ public final class ClassroomAPIService: ObservableObject {
                 case "RETURNED":
                     status = .returned
                 default:
-                    if submission?.late == true || (dueDate != nil && dueDate! < now) {
+                    if submission?.late == true || (dueDate.map { $0 < now } ?? false) {
                         status = .late
                     } else {
                         status = .pending
@@ -347,7 +347,12 @@ public final class ClassroomAPIService: ObservableObject {
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+            guard let httpResponse = response as? HTTPURLResponse else {
+                if allItems.isEmpty { throw ClassroomAPIError.invalidResponse }
+                break
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                if allItems.isEmpty { throw ClassroomAPIError.httpError(statusCode: httpResponse.statusCode) }
                 break
             }
 

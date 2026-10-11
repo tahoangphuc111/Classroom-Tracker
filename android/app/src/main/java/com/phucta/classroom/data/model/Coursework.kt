@@ -83,10 +83,11 @@ data class Coursework(
         }
 
     val statusTitle: String
-        get() = when {
-            status == SubmissionStatus.RETURNED -> "Đã chấm điểm"
-            isCompleted || status == SubmissionStatus.TURNED_IN -> "Đã nộp"
-            else -> "Chưa nộp"
+        get() = when (status) {
+            SubmissionStatus.TURNED_IN -> "Đã nộp"
+            SubmissionStatus.RETURNED -> "Đã chấm điểm"
+            SubmissionStatus.LATE -> "Đã hoàn thành"
+            SubmissionStatus.PENDING -> if (isCompleted) "Đã hoàn thành" else "Chưa nộp"
         }
 
     companion object {

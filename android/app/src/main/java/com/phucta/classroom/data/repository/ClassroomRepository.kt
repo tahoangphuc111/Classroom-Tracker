@@ -27,6 +27,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class ClassroomRepository(
@@ -38,6 +40,7 @@ class ClassroomRepository(
 ) {
     private val courseDao = database.courseDao()
     private val courseworkDao = database.courseworkDao()
+    private val syncMutex = Mutex()
 
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
@@ -79,116 +82,120 @@ class ClassroomRepository(
      * Preserves locally checked tasks and widget course selections.
      */
     suspend fun syncAll(): Result<Unit> = withContext(Dispatchers.IO) {
-        if (_isSyncing.value) return@withContext Result.success(Unit)
-        if (!oauthManager.isAuthenticated.value) {
-            _syncErrorMessage.value = "Chưa kết nối Google."
-            return@withContext Result.failure(IllegalStateException("Chưa kết nối Google."))
-        }
-
-        _isSyncing.value = true
-        _syncErrorMessage.value = null
-
-        try {
-            val accessToken = oauthManager.getValidAccessToken()
-
-            val fetchedCourses = apiService.fetchActiveCourses(accessToken)
-
-            val existingCourseEntities = courseDao.getAllCourses()
-            val hasOnlyMockCourses = existingCourseEntities.isNotEmpty() &&
-                    existingCourseEntities.all { MockDataProvider.isMockCourse(it.id) }
-
-            // Preserve widget selection preferences
-            val existingCourses = if (hasOnlyMockCourses) emptyList() else existingCourseEntities.map { it.toDomain() }
-            val existingSelectionMap = existingCourses.associate { it.id to it.isSelectedForWidget }
-
-            val mergedCourses = fetchedCourses.map { course ->
-                val preservedSelection = existingSelectionMap[course.id] ?: true
-                course.copy(isSelectedForWidget = preservedSelection)
+        syncMutex.withLock {
+            if (_isSyncing.value) return@withLock Result.success(Unit)
+            if (!oauthManager.isAuthenticated.value) {
+                _syncErrorMessage.value = "Chưa kết nối Google."
+                return@withLock Result.failure(IllegalStateException("Chưa kết nối Google."))
             }
 
-            // Fetch in small batches to respect Google's rate limits
-            val selectedCourses = mergedCourses.filter { it.isSelectedForWidget }
-            val existingCoursework = if (hasOnlyMockCourses) emptyList() else courseworkDao.getAllCoursework().map { it.toDomain() }
-            val allCoursework = mutableListOf<Coursework>()
+            _isSyncing.value = true
+            _syncErrorMessage.value = null
 
-            val chunkSize = 2
-            for (chunk in selectedCourses.chunked(chunkSize)) {
-                coroutineScope {
-                    val deferredResults = chunk.map { course ->
-                        async {
-                            try {
-                                apiService.fetchCourseworkForCourse(course, accessToken)
-                            } catch (e: Exception) {
-                                if (e is CancellationException) throw e
-                                // Preserve cached coursework if individual course fetch fails
-                                existingCoursework.filter { it.courseId == course.id }
+            try {
+                val accessToken = oauthManager.getValidAccessToken()
+
+                val fetchedCourses = apiService.fetchActiveCourses(accessToken)
+
+                val existingCourseEntities = courseDao.getAllCourses()
+                val hasOnlyMockCourses = existingCourseEntities.isNotEmpty() &&
+                        existingCourseEntities.all { MockDataProvider.isMockCourse(it.id) }
+
+                // Preserve widget selection preferences
+                val existingCourses = if (hasOnlyMockCourses) emptyList() else existingCourseEntities.map { it.toDomain() }
+                val existingSelectionMap = existingCourses.associate { it.id to it.isSelectedForWidget }
+
+                val mergedCourses = fetchedCourses.map { course ->
+                    val preservedSelection = existingSelectionMap[course.id] ?: true
+                    course.copy(isSelectedForWidget = preservedSelection)
+                }
+
+                // Fetch in small batches to respect Google's rate limits
+                val selectedCourses = mergedCourses.filter { it.isSelectedForWidget }
+                val existingCoursework = if (hasOnlyMockCourses) emptyList() else courseworkDao.getAllCoursework().map { it.toDomain() }
+                val allCoursework = mutableListOf<Coursework>()
+                var hasAnyFetchErrors = false
+
+                val chunkSize = 2
+                for (chunk in selectedCourses.chunked(chunkSize)) {
+                    coroutineScope {
+                        val deferredResults = chunk.map { course ->
+                            async {
+                                try {
+                                    apiService.fetchCourseworkForCourse(course, accessToken)
+                                } catch (e: Exception) {
+                                    if (e is CancellationException) throw e
+                                    hasAnyFetchErrors = true
+                                    // Preserve cached coursework if individual course fetch fails
+                                    existingCoursework.filter { it.courseId == course.id }
+                                }
                             }
                         }
+                        val results = deferredResults.awaitAll()
+                        results.forEach { allCoursework.addAll(it) }
                     }
-                    val results = deferredResults.awaitAll()
-                    results.forEach { allCoursework.addAll(it) }
-                }
-                delay(350)
-            }
-
-            // Preserve unselected courses' coursework in cache
-            val unselectedIds = mergedCourses.filter { !it.isSelectedForWidget }.map { it.id }.toSet()
-            val preservedItems = existingCoursework.filter { unselectedIds.contains(it.courseId) }
-            allCoursework.addAll(preservedItems)
-
-            database.withTransaction {
-                if (hasOnlyMockCourses) {
-                    courseDao.deleteAllCourses()
-                    courseworkDao.deleteAllCoursework()
+                    delay(350)
                 }
 
-                val uniqueCourses = mergedCourses.distinctBy { it.id }
-                courseDao.upsertCourses(uniqueCourses.map { CourseEntity.fromDomain(it) })
+                // Preserve unselected courses' coursework in cache
+                val unselectedIds = mergedCourses.filter { !it.isSelectedForWidget }.map { it.id }.toSet()
+                val preservedItems = existingCoursework.filter { unselectedIds.contains(it.courseId) }
+                allCoursework.addAll(preservedItems)
 
-                // Remove deleted or archived courses
-                val activeCourseIds = uniqueCourses.map { it.id }
-                if (activeCourseIds.isNotEmpty()) {
-                    courseDao.deleteCoursesNotIn(activeCourseIds)
-                }
+                database.withTransaction {
+                    if (hasOnlyMockCourses) {
+                        courseDao.deleteAllCourses()
+                        courseworkDao.deleteAllCoursework()
+                    }
 
-                // Re-read local status to avoid overwriting checkmarks toggled during fetch
-                val latestCoursework = courseworkDao.getAllCoursework().map { it.toDomain() }
-                val latestStatusMap = latestCoursework.associateBy { it.id }
+                    val uniqueCourses = mergedCourses.distinctBy { it.id }
+                    courseDao.upsertCourses(uniqueCourses.map { CourseEntity.fromDomain(it) })
 
-                val finalCoursework = allCoursework.distinctBy { it.id }.map { incoming ->
-                    val latest = latestStatusMap[incoming.id]
-                    // Keep local completion if not yet turned in on Classroom
-                    val wasManuallyCompleted = !incoming.isCompleted &&
-                            (latest?.isManuallyCompleted == true || latest?.status == SubmissionStatus.TURNED_IN)
+                    // Remove deleted or archived courses
+                    val activeCourseIds = uniqueCourses.map { it.id }
+                    if (activeCourseIds.isNotEmpty()) {
+                        courseDao.deleteCoursesNotIn(activeCourseIds)
+                    }
 
-                    if (wasManuallyCompleted) {
-                        incoming.copy(
-                            status = SubmissionStatus.TURNED_IN,
-                            isManuallyCompleted = true
-                        )
-                    } else {
-                        incoming
+                    // Re-read local status to avoid overwriting checkmarks toggled during fetch
+                    val latestCoursework = courseworkDao.getAllCoursework().map { it.toDomain() }
+                    val latestStatusMap = latestCoursework.associateBy { it.id }
+
+                    val finalCoursework = allCoursework.distinctBy { it.id }.map { incoming ->
+                        val latest = latestStatusMap[incoming.id]
+                        // Keep local completion if not yet turned in on Classroom
+                        val wasManuallyCompleted = !incoming.isCompleted &&
+                                (latest?.isManuallyCompleted == true || latest?.status == SubmissionStatus.TURNED_IN)
+
+                        if (wasManuallyCompleted) {
+                            incoming.copy(
+                                status = SubmissionStatus.TURNED_IN,
+                                isManuallyCompleted = true
+                            )
+                        } else {
+                            incoming
+                        }
+                    }
+
+                    courseworkDao.upsertCourseworks(finalCoursework.map { CourseworkEntity.fromDomain(it) })
+
+                    // Remove deleted assignments only if all selected courses fetched successfully without errors
+                    val validCourseworkIds = finalCoursework.map { it.id }
+                    if (validCourseworkIds.isNotEmpty() && !hasAnyFetchErrors) {
+                        courseworkDao.deleteCourseworkNotIn(validCourseworkIds)
                     }
                 }
 
-                courseworkDao.upsertCourseworks(finalCoursework.map { CourseworkEntity.fromDomain(it) })
-
-                // Remove deleted assignments
-                val validCourseworkIds = finalCoursework.map { it.id }
-                if (validCourseworkIds.isNotEmpty()) {
-                    courseworkDao.deleteCourseworkNotIn(validCourseworkIds)
-                }
+                preferences.saveLastSyncTime(System.currentTimeMillis())
+                notifyWidgetReload()
+                Result.success(Unit)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _syncErrorMessage.value = "Lỗi đồng bộ: ${e.localizedMessage}"
+                Result.failure(e)
+            } finally {
+                _isSyncing.value = false
             }
-
-            preferences.saveLastSyncTime(System.currentTimeMillis())
-            notifyWidgetReload()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            _syncErrorMessage.value = "Lỗi đồng bộ: ${e.localizedMessage}"
-            Result.failure(e)
-        } finally {
-            _isSyncing.value = false
         }
     }
 

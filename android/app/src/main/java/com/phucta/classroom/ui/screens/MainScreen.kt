@@ -18,6 +18,8 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -114,20 +116,20 @@ fun MainScreen() {
     val snackbarHostState = remember { SnackbarHostState() }
 
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
-    var selectedCoursework by remember { mutableStateOf<Coursework?>(null) }
-    var isDemoMode by remember { mutableStateOf(false) }
+    var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedCourseworkId by rememberSaveable { mutableStateOf<String?>(null) }
+    var isDemoMode by rememberSaveable { mutableStateOf(false) }
 
-    val courses by repository.coursesFlow.collectAsState(initial = emptyList())
-    val allCoursework by repository.courseworkFlow.collectAsState(initial = emptyList())
-    val isSyncing by repository.isSyncing.collectAsState()
-    val syncErrorMessage by repository.syncErrorMessage.collectAsState()
-    val authErrorMessage by oauthManager.authErrorMessage.collectAsState()
-    val isAuthenticated by oauthManager.isAuthenticated.collectAsState()
-    val userEmail by preferences.userEmailFlow.collectAsState(initial = null)
-    val userName by preferences.userNameFlow.collectAsState(initial = null)
-    val customClientId by preferences.customClientIdFlow.collectAsState(initial = null)
-    val customClientSecret by preferences.customClientSecretFlow.collectAsState(initial = null)
+    val courses by repository.coursesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val allCoursework by repository.courseworkFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val isSyncing by repository.isSyncing.collectAsStateWithLifecycle()
+    val syncErrorMessage by repository.syncErrorMessage.collectAsStateWithLifecycle()
+    val authErrorMessage by oauthManager.authErrorMessage.collectAsStateWithLifecycle()
+    val isAuthenticated by oauthManager.isAuthenticated.collectAsStateWithLifecycle()
+    val userEmail by preferences.userEmailFlow.collectAsStateWithLifecycle(initialValue = null)
+    val userName by preferences.userNameFlow.collectAsStateWithLifecycle(initialValue = null)
+    val customClientId by preferences.customClientIdFlow.collectAsStateWithLifecycle(initialValue = null)
+    val customClientSecret by preferences.customClientSecretFlow.collectAsStateWithLifecycle(initialValue = null)
 
     LaunchedEffect(syncErrorMessage) {
         syncErrorMessage?.let { message ->
@@ -178,25 +180,17 @@ fun MainScreen() {
         }
     }
 
-    // Keep spinning while syncing, then snap to nearest full turn
-    val syncRotation = remember { Animatable(0f) }
-    LaunchedEffect(isSyncing) {
-        if (isSyncing) {
-            while (true) {
-                syncRotation.animateTo(
-                    targetValue = syncRotation.value + 360f,
-                    animationSpec = tween(900, easing = LinearEasing)
-                )
-            }
-        } else if (syncRotation.value != 0f) {
-            val nearestFullTurn = kotlin.math.ceil(syncRotation.value / 360f) * 360f
-            syncRotation.animateTo(
-                targetValue = nearestFullTurn,
-                animationSpec = tween(250, easing = FastOutSlowInEasing)
-            )
-            syncRotation.snapTo(0f)
-        }
-    }
+    val infiniteTransition = rememberInfiniteTransition(label = "syncSpin")
+    val spinningRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "syncRotation"
+    )
+    val syncRotationAngle = if (isSyncing) spinningRotation else 0f
 
     if (isAuthenticated || isDemoMode) {
         ModalNavigationDrawer(
@@ -317,7 +311,7 @@ fun MainScreen() {
                                 contentDescription = "Sync",
                                 tint = ChunkyColor.SkyBottom,
                                 modifier = Modifier.graphicsLayer {
-                                    rotationZ = syncRotation.value
+                                    rotationZ = syncRotationAngle
                                 }
                             )
                         }
@@ -453,7 +447,7 @@ fun MainScreen() {
                                 scope.launch { repository.toggleTaskCompletion(id, completed) }
                             },
                             onSelectAssignment = { coursework ->
-                                selectedCoursework = coursework
+                                selectedCourseworkId = coursework.id
                             }
                         )
                         1 -> AllUpcomingScreen(
@@ -463,7 +457,7 @@ fun MainScreen() {
                                 scope.launch { repository.toggleTaskCompletion(id, completed) }
                             },
                             onSelectAssignment = { coursework ->
-                                selectedCoursework = coursework
+                                selectedCourseworkId = coursework.id
                             }
                         )
                         2 -> CompletedHomeworkScreen(
@@ -472,7 +466,7 @@ fun MainScreen() {
                                 scope.launch { repository.toggleTaskCompletion(id, completed) }
                             },
                             onSelectAssignment = { coursework ->
-                                selectedCoursework = coursework
+                                selectedCourseworkId = coursework.id
                             }
                         )
                     }
@@ -500,21 +494,21 @@ fun MainScreen() {
         )
     }
 
-    val activeSelectedCoursework = selectedCoursework?.let { current ->
-        allCoursework.find { it.id == current.id } ?: current
+    val activeSelectedCoursework = selectedCourseworkId?.let { id ->
+        allCoursework.find { it.id == id }
     }
 
     if (activeSelectedCoursework != null) {
         HomeworkDetailBottomSheet(
             coursework = activeSelectedCoursework,
-            onDismiss = { selectedCoursework = null },
+            onDismiss = { selectedCourseworkId = null },
             onToggleCompletion = { id, completed ->
                 scope.launch {
-                    repository.toggleTaskCompletion(id, completed)
-                    selectedCoursework = activeSelectedCoursework.copy(
-                        isManuallyCompleted = completed,
-                        status = if (completed) com.phucta.classroom.data.model.SubmissionStatus.TURNED_IN else com.phucta.classroom.data.model.SubmissionStatus.PENDING
-                    )
+                    try {
+                        repository.toggleTaskCompletion(id, completed)
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Không thể cập nhật trạng thái bài tập: ${e.localizedMessage}")
+                    }
                 }
             }
         )

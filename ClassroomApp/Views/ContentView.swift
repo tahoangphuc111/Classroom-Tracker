@@ -86,6 +86,7 @@ public struct ContentView: View {
     @State private var errorMessage: String? = nil
     @State private var isDemoMode: Bool = false
     @State private var showAdvancedOAuthConfig: Bool = false
+    @State private var isAdvancedSettingsExpanded: Bool = false
     @State private var welcomeAppeared: Bool = false
     @State private var floatingPhase: CGFloat = 0
     @State private var searchText: String = ""
@@ -435,9 +436,6 @@ public struct ContentView: View {
             }
         }
         .onChange(of: selectedFilter) {
-            if selectedFilter == .past && buckets.past.isEmpty {
-                selectedFilter = .tomorrow
-            }
             autoSelectFirstItem()
         }
         .onChange(of: searchText) {
@@ -2354,102 +2352,86 @@ public struct ContentView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Google Client ID", text: $clientIdInput)
-                        .textFieldStyle(.roundedBorder)
+                    if authService.isAuthenticated {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.crop.circle.fill")
+                                .font(.system(size: 38))
+                                .foregroundStyle(Color.blue)
 
-                    SecureField("Google Client Secret (Tùy chọn)", text: $clientSecretInput)
-                        .textFieldStyle(.roundedBorder)
-                } header: {
-                    Label("Cấu hình Google Cloud OAuth", systemImage: "key.fill")
-                } footer: {
-                    #if os(iOS)
-                    Text("Lấy Client ID từ Google Cloud Console (loại ứng dụng iOS hoặc Web). Ứng dụng sẽ tự động chuyển hướng xác thực an toàn.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    #else
-                    Text("Lấy Client ID từ Google Cloud Console (loại ứng dụng iOS/macOS hoặc Desktop). Ứng dụng hỗ trợ cả xác thực native an toàn và loopback.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    #endif
-                }
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(authService.currentUserName ?? "Tài khoản Google")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(.primary)
 
-                Section {
-                    Button("Nạp lại dữ liệu mẫu (Mock Data hôm nay & mai)") {
-                        ClassroomStorage.shared.saveCourses(ClassroomStorage.mockCourses)
-                        ClassroomStorage.shared.saveCoursework(ClassroomStorage.mockCoursework)
-                        refreshData()
-                        autoSelectFirstItem()
-                        showSettingsModal = false
-                        showToast(
-                            title: "Đã nạp lại dữ liệu mẫu!",
-                            subtitle: "Bao gồm các bài tập mẫu cho hôm nay & ngày mai",
-                            icon: "sparkles",
-                            tint: .purple
-                        )
-                    }
-                } header: {
-                    Label("Dữ liệu thử nghiệm", systemImage: "sparkles")
-                }
+                                Text(authService.currentUserEmail ?? "Không rõ")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                            }
 
-                Section {
-                    HStack {
-                        Text("Phiên bản hiện tại:")
-                        Spacer()
-                        Text("v\(updateService.currentVersion)")
-                            .foregroundStyle(.secondary)
-                    }
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
 
-                    #if os(macOS)
-                    TextField("GitHub Token (dành cho repo riêng tư)", text: Binding(
-                        get: { updateService.githubToken },
-                        set: { updateService.githubToken = $0 }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                    #endif
-
-                    if !updateService.statusMessage.isEmpty {
-                        Text(updateService.statusMessage)
-                            .font(.caption2)
-                            .foregroundStyle(updateService.updateAvailable ? .blue : .secondary)
-                    }
-
-                    if updateService.updateAvailable {
                         Button {
                             Task {
-                                await updateService.downloadAndInstall()
+                                triggerHapticFeedback()
+                                await apiService.syncAll()
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    refreshData()
+                                }
+                                if let error = apiService.syncErrorMessage {
+                                    showToast(
+                                        title: "Đồng bộ thất bại",
+                                        subtitle: error,
+                                        icon: "exclamationmark.triangle.fill",
+                                        tint: .red
+                                    )
+                                } else {
+                                    showToast(
+                                        title: "Đồng bộ hoàn tất!",
+                                        subtitle: "Đã cập nhật dữ liệu mới nhất từ Classroom",
+                                        icon: "checkmark.circle.fill",
+                                        tint: .green
+                                    )
+                                }
                             }
                         } label: {
                             HStack {
-                                if updateService.isDownloading {
-                                    ProgressView().controlSize(.small)
-                                    Text("Đang tải bản cập nhật...")
-                                } else {
-                                    Image(systemName: "arrow.down.circle.fill")
-                                    Text("Cập nhật lên v\(updateService.latestVersion) ngay")
-                                }
+                                Image(systemName: "arrow.clockwise")
+                                Text(apiService.isSyncing ? "Đang đồng bộ..." : "Đồng bộ bài tập ngay")
                             }
                         }
-                        .disabled(updateService.isDownloading)
+                        .disabled(apiService.isSyncing)
+
+                        Button("Đăng xuất", role: .destructive) {
+                            showLogoutConfirmation = true
+                        }
                     } else {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Chưa kết nối tài khoản Google Classroom")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.primary)
+
+                            Text("Đăng nhập để đồng bộ bài tập và hạn chót từ các lớp học của bạn.")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 4)
+
                         Button {
-                            Task {
-                                await updateService.checkForUpdates(isUserInitiated: true)
-                            }
+                            showSettingsModal = false
+                            startGoogleLogin()
                         } label: {
                             HStack {
-                                if updateService.isChecking {
-                                    ProgressView().controlSize(.small)
-                                    Text("Đang kiểm tra...")
-                                } else {
-                                    Image(systemName: "arrow.clockwise")
-                                    Text("Kiểm tra bản cập nhật mới")
-                                }
+                                Image(systemName: "person.badge.key.fill")
+                                Text("Đăng nhập bằng Google")
                             }
+                            .frame(maxWidth: .infinity)
                         }
-                        .disabled(updateService.isChecking)
+                        .buttonStyle(.borderedProminent)
                     }
                 } header: {
-                    Label("Cập nhật ứng dụng", systemImage: "arrow.triangle.2.circlepath")
+                    Label("Tài khoản", systemImage: "person.crop.circle")
                 }
 
                 Section {
@@ -2515,25 +2497,181 @@ public struct ContentView: View {
                     Text("Ứng dụng tự động thông báo tóm tắt các bài tập cần nộp vào ngày mai để bạn chuẩn bị tập vở và soạn cặp.")
                 }
 
-                if authService.isAuthenticated {
-                    Section {
-                        HStack {
-                            Text("Email:")
-                            Spacer()
-                            Text(authService.currentUserEmail ?? "Không rõ")
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Button("Đăng xuất", role: .destructive) {
-                            showLogoutConfirmation = true
-                        }
-                    } header: {
-                        Label("Tài khoản hiện tại", systemImage: "person.crop.circle")
+                Section {
+                    HStack {
+                        Text("Phiên bản hiện tại:")
+                        Spacer()
+                        Text("v\(updateService.currentVersion)")
+                            .foregroundStyle(.secondary)
                     }
+
+                    if !updateService.statusMessage.isEmpty {
+                        Text(updateService.statusMessage)
+                            .font(.caption2)
+                            .foregroundStyle(updateService.updateAvailable ? .blue : .secondary)
+                    }
+
+                    if updateService.updateAvailable {
+                        Button {
+                            Task {
+                                await updateService.downloadAndInstall()
+                            }
+                        } label: {
+                            HStack {
+                                if updateService.isDownloading {
+                                    ProgressView().controlSize(.small)
+                                    Text("Đang tải bản cập nhật...")
+                                } else {
+                                    Image(systemName: "arrow.down.circle.fill")
+                                    Text("Cập nhật lên v\(updateService.latestVersion) ngay")
+                                }
+                            }
+                        }
+                        .disabled(updateService.isDownloading)
+                    } else {
+                        Button {
+                            Task {
+                                await updateService.checkForUpdates(isUserInitiated: true)
+                            }
+                        } label: {
+                            HStack {
+                                if updateService.isChecking {
+                                    ProgressView().controlSize(.small)
+                                    Text("Đang kiểm tra...")
+                                } else {
+                                    Image(systemName: "arrow.clockwise")
+                                    Text("Kiểm tra bản cập nhật mới")
+                                }
+                            }
+                        }
+                        .disabled(updateService.isChecking)
+                    }
+                } header: {
+                    Label("Cập nhật ứng dụng", systemImage: "arrow.triangle.2.circlepath")
+                }
+
+                Section {
+                    DisclosureGroup(
+                        isExpanded: $isAdvancedSettingsExpanded,
+                        content: {
+                            VStack(alignment: .leading, spacing: 14) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Dữ liệu thử nghiệm")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(.primary)
+
+                                    Text("Dùng để kiểm tra giao diện và thẻ bài tập khi không có dữ liệu thật.")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+
+                                    Button("Nạp lại dữ liệu mẫu (Hôm nay & mai)") {
+                                        ClassroomStorage.shared.saveCourses(ClassroomStorage.mockCourses)
+                                        ClassroomStorage.shared.saveCoursework(ClassroomStorage.mockCoursework)
+                                        refreshData()
+                                        autoSelectFirstItem()
+                                        showToast(
+                                            title: "Đã nạp lại dữ liệu mẫu!",
+                                            subtitle: "Bao gồm các bài tập mẫu cho hôm nay & ngày mai",
+                                            icon: "sparkles",
+                                            tint: .purple
+                                        )
+                                    }
+                                    .font(.system(size: 12))
+                                }
+
+                                Divider()
+
+                                #if os(macOS)
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("GitHub Token (Tùy chọn)")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(.primary)
+
+                                    Text("Chỉ cần thiết nếu kiểm tra bản cập nhật từ kho lưu trữ GitHub riêng tư.")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+
+                                    TextField("GitHub Personal Access Token", text: Binding(
+                                        get: { updateService.githubToken },
+                                        set: { updateService.githubToken = $0 }
+                                    ))
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(size: 12, design: .monospaced))
+                                }
+
+                                Divider()
+                                #endif
+
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Cấu hình Google Client ID riêng")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(.primary)
+
+                                    Text("Ứng dụng đã có sẵn Google Client ID mặc định. Người dùng thông thường không cần chỉnh sửa phần này.")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Client ID:")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        TextField("Google Client ID", text: $clientIdInput)
+                                            .textFieldStyle(.roundedBorder)
+                                            .font(.system(size: 12, design: .monospaced))
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Client Secret (Tùy chọn):")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        SecureField("Google Client Secret", text: $clientSecretInput)
+                                            .textFieldStyle(.roundedBorder)
+                                            .font(.system(size: 12, design: .monospaced))
+                                    }
+
+                                    HStack {
+                                        Button("Khôi phục mặc định") {
+                                            clientIdInput = GoogleOAuthService.bundledClientId
+                                            clientSecretInput = GoogleOAuthService.bundledClientSecret
+                                            authService.configuredClientId = GoogleOAuthService.bundledClientId
+                                            authService.configuredClientSecret = GoogleOAuthService.bundledClientSecret
+                                            showToast(
+                                                title: "Đã khôi phục Client ID mặc định",
+                                                icon: "arrow.counterclockwise",
+                                                tint: .blue
+                                            )
+                                        }
+                                        .font(.system(size: 12))
+
+                                        Spacer()
+
+                                        Button("Lưu Client ID riêng") {
+                                            authService.configuredClientId = clientIdInput
+                                            authService.configuredClientSecret = clientSecretInput
+                                            showToast(
+                                                title: "Đã lưu cấu hình Client ID",
+                                                icon: "checkmark.circle.fill",
+                                                tint: .green
+                                            )
+                                        }
+                                        .font(.system(size: 12, weight: .semibold))
+                                    }
+                                    .padding(.top, 4)
+                                }
+                            }
+                            .padding(.vertical, 6)
+                        },
+                        label: {
+                            Label("Tùy chọn nâng cao", systemImage: "slider.horizontal.3")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                    )
+                } header: {
+                    Text("Dành cho nhà phát triển")
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Cài đặt & Tài khoản")
+            .navigationTitle("Cài đặt")
             .confirmationDialog(
                 "Đăng xuất khỏi Google?",
                 isPresented: $showLogoutConfirmation,
@@ -2551,29 +2689,15 @@ public struct ContentView: View {
                 Text("Bạn có chắc chắn muốn đăng xuất tài khoản Google? Dữ liệu bài tập offline trên thiết bị sẽ được xóa.")
             }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Đóng") { showSettingsModal = false }
-                }
                 ToolbarItem(placement: .confirmationAction) {
-                    if authService.isAuthenticated {
-                        Button("Lưu") {
-                            authService.configuredClientId = clientIdInput
-                            authService.configuredClientSecret = clientSecretInput
-                            showSettingsModal = false
-                        }
-                    } else {
-                        Button("Lưu & Đăng nhập") {
-                            authService.configuredClientId = clientIdInput
-                            authService.configuredClientSecret = clientSecretInput
-                            showSettingsModal = false
-                            startGoogleLogin()
-                        }
-                        .disabled(clientIdInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("Xong") {
+                        showSettingsModal = false
                     }
+                    .fontWeight(.semibold)
                 }
             }
             #if os(macOS)
-            .frame(minWidth: 460, minHeight: 340)
+            .frame(minWidth: 460, minHeight: 400)
             #endif
         }
     }
@@ -2792,9 +2916,9 @@ public struct ContentView: View {
 
         if let index = allCoursework.firstIndex(where: { $0.id == item.id }) {
             let wasCompleted = allCoursework[index].isCompleted
-            let isOverdue = allCoursework[index].dueDate != nil && allCoursework[index].dueDate! < Date()
-            let newStatus: SubmissionStatus = wasCompleted ? (isOverdue ? .late : .pending) : .turnedIn
-            allCoursework[index].status = newStatus
+            let newManuallyCompleted = !wasCompleted
+            allCoursework[index].isManuallyCompleted = newManuallyCompleted
+            allCoursework[index].status = newManuallyCompleted ? .turnedIn : .pending
 
             let currentItem = allCoursework[index]
             let itemCourse = currentItem.courseName
@@ -2810,7 +2934,7 @@ public struct ContentView: View {
             ClassroomStorage.shared.saveCoursework(allCoursework)
             reminderService.updateReminderContent()
 
-            if newStatus == .turnedIn {
+            if newManuallyCompleted {
                 showToast(
                     title: "Đã hoàn thành bài tập!",
                     subtitle: "\(itemCourse): \(itemTitle)",

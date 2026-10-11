@@ -6,6 +6,23 @@ public enum SubmissionStatus: String, Codable, Sendable {
     case turnedIn
     case returned
     case late
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = (try? container.decode(String.self))?.lowercased()
+        switch raw {
+        case "turnedin", "turned_in", "student_edited_after_turn_in":
+            self = .turnedIn
+        case "returned":
+            self = .returned
+        case "late":
+            self = .late
+        case "pending", "new", "created":
+            self = .pending
+        default:
+            self = .pending
+        }
+    }
 }
 
 public struct Coursework: Identifiable, Codable, Hashable, Sendable {
@@ -18,13 +35,14 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     public let dueDate: Date?
     public var status: SubmissionStatus
     public let maxPoints: Double?
+    public var isManuallyCompleted: Bool
 
     public let searchIndex: String
     public let timeOnlyString: String
     public let formattedFullDueDate: String
 
     private enum CodingKeys: String, CodingKey {
-        case id, courseId, courseName, title, description, alternateLink, dueDate, status, maxPoints
+        case id, courseId, courseName, title, description, alternateLink, dueDate, status, maxPoints, isManuallyCompleted
     }
 
     public init(
@@ -36,7 +54,8 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         alternateLink: String? = nil,
         dueDate: Date? = nil,
         status: SubmissionStatus = .pending,
-        maxPoints: Double? = nil
+        maxPoints: Double? = nil,
+        isManuallyCompleted: Bool = false
     ) {
         self.id = id
         self.courseId = courseId
@@ -47,6 +66,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         self.dueDate = dueDate
         self.status = status
         self.maxPoints = maxPoints
+        self.isManuallyCompleted = isManuallyCompleted
 
         self.searchIndex = Self.buildSearchIndex(title: title, courseName: courseName, description: description)
         self.timeOnlyString = Self.buildTimeOnlyString(from: dueDate)
@@ -62,8 +82,9 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         let description = try container.decodeIfPresent(String.self, forKey: .description)
         let alternateLink = try container.decodeIfPresent(String.self, forKey: .alternateLink)
         let dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
-        let status = try container.decode(SubmissionStatus.self, forKey: .status)
+        let status = (try? container.decode(SubmissionStatus.self, forKey: .status)) ?? .pending
         let maxPoints = try container.decodeIfPresent(Double.self, forKey: .maxPoints)
+        let isManuallyCompleted = try container.decodeIfPresent(Bool.self, forKey: .isManuallyCompleted) ?? false
 
         self.id = id
         self.courseId = courseId
@@ -74,6 +95,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         self.dueDate = dueDate
         self.status = status
         self.maxPoints = maxPoints
+        self.isManuallyCompleted = isManuallyCompleted
 
         self.searchIndex = Self.buildSearchIndex(title: title, courseName: courseName, description: description)
         self.timeOnlyString = Self.buildTimeOnlyString(from: dueDate)
@@ -91,12 +113,13 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         try container.encodeIfPresent(dueDate, forKey: .dueDate)
         try container.encode(status, forKey: .status)
         try container.encodeIfPresent(maxPoints, forKey: .maxPoints)
+        try container.encode(isManuallyCompleted, forKey: .isManuallyCompleted)
     }
 
     /// Triết lý ứng dụng: Cứ hết hạn thì tính là đã hoàn thành.
     /// Mọi bài tập có hạn nộp trong quá khứ (dueDate < now) đều được tính là đã hoàn thành.
     public var isCompleted: Bool {
-        if status == .turnedIn || status == .returned {
+        if status == .turnedIn || status == .returned || isManuallyCompleted {
             return true
         }
         if let dueDate, dueDate < Date() {

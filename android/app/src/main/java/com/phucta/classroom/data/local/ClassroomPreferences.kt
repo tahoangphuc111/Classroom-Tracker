@@ -8,9 +8,12 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.datastore.preferences.core.emptyPreferences
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.io.IOException
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "classroom_settings")
 
@@ -29,24 +32,33 @@ class ClassroomPreferences(private val context: Context) {
         const val BUNDLED_CLIENT_SECRET = "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"
     }
 
-    val userEmailFlow: Flow<String?> = context.dataStore.data.map { it[KEY_USER_EMAIL] }
-    val userNameFlow: Flow<String?> = context.dataStore.data.map { it[KEY_USER_NAME] }
-    val userAvatarFlow: Flow<String?> = context.dataStore.data.map { it[KEY_USER_AVATAR] }
-    val lastSyncTimestampFlow: Flow<Long?> = context.dataStore.data.map { it[KEY_LAST_SYNC_TIMESTAMP] }
-    val hasUserLoggedInFlow: Flow<Boolean> = context.dataStore.data.map { it[KEY_HAS_USER_LOGGED_IN] ?: false }
+    private val safePreferencesFlow: Flow<Preferences> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
 
-    val clientIdFlow: Flow<String> = context.dataStore.data.map {
+    val userEmailFlow: Flow<String?> = safePreferencesFlow.map { it[KEY_USER_EMAIL] }
+    val userNameFlow: Flow<String?> = safePreferencesFlow.map { it[KEY_USER_NAME] }
+    val userAvatarFlow: Flow<String?> = safePreferencesFlow.map { it[KEY_USER_AVATAR] }
+    val lastSyncTimestampFlow: Flow<Long?> = safePreferencesFlow.map { it[KEY_LAST_SYNC_TIMESTAMP] }
+    val hasUserLoggedInFlow: Flow<Boolean> = safePreferencesFlow.map { it[KEY_HAS_USER_LOGGED_IN] ?: false }
+
+    val clientIdFlow: Flow<String> = safePreferencesFlow.map {
         val custom = it[KEY_CUSTOM_CLIENT_ID]
         if (!custom.isNullOrBlank()) custom else BUNDLED_CLIENT_ID
     }
 
-    val clientSecretFlow: Flow<String> = context.dataStore.data.map {
+    val clientSecretFlow: Flow<String> = safePreferencesFlow.map {
         val custom = it[KEY_CUSTOM_CLIENT_SECRET]
         if (!custom.isNullOrBlank()) custom else BUNDLED_CLIENT_SECRET
     }
 
-    val customClientIdFlow: Flow<String?> = context.dataStore.data.map { it[KEY_CUSTOM_CLIENT_ID] }
-    val customClientSecretFlow: Flow<String?> = context.dataStore.data.map { it[KEY_CUSTOM_CLIENT_SECRET] }
+    val customClientIdFlow: Flow<String?> = safePreferencesFlow.map { it[KEY_CUSTOM_CLIENT_ID] }
+    val customClientSecretFlow: Flow<String?> = safePreferencesFlow.map { it[KEY_CUSTOM_CLIENT_SECRET] }
 
     suspend fun saveUserProfile(email: String?, name: String?, avatar: String?) {
         context.dataStore.edit { prefs ->
@@ -69,12 +81,12 @@ class ClassroomPreferences(private val context: Context) {
     }
 
     suspend fun getEffectiveClientId(): String {
-        val stored = context.dataStore.data.first()[KEY_CUSTOM_CLIENT_ID]
+        val stored = safePreferencesFlow.first()[KEY_CUSTOM_CLIENT_ID]
         return if (!stored.isNullOrBlank()) stored else BUNDLED_CLIENT_ID
     }
 
     suspend fun getEffectiveClientSecret(): String {
-        val stored = context.dataStore.data.first()[KEY_CUSTOM_CLIENT_SECRET]
+        val stored = safePreferencesFlow.first()[KEY_CUSTOM_CLIENT_SECRET]
         return if (!stored.isNullOrBlank()) stored else BUNDLED_CLIENT_SECRET
     }
 

@@ -229,4 +229,60 @@ class BaoBaiBucketingUtilsTest {
         assertEquals("task_a", sorted2[0].id)
         assertEquals("task_b", sorted2[1].id)
     }
+
+    @Test
+    fun testManualCompletion_OverridesPendingAndFutureDue() {
+        val futureDue = System.currentTimeMillis() + 86400_000
+        val normalPending = Coursework(
+            id = "pending_task",
+            courseId = "c1",
+            courseName = "Vật lý",
+            title = "Bài tập con lắc",
+            dueEpochMillis = futureDue,
+            status = SubmissionStatus.PENDING,
+            isManuallyCompleted = false
+        )
+        assertFalse(normalPending.isCompleted)
+
+        val manuallyChecked = normalPending.copy(isManuallyCompleted = true)
+        assertTrue(manuallyChecked.isCompleted)
+    }
+
+    @Test
+    fun testCourseFiltering_ExcludesUnselectedCourses() {
+        val course1 = com.phucta.classroom.data.model.Course(id = "c1", name = "Toán", isSelectedForWidget = true)
+        val course2 = com.phucta.classroom.data.model.Course(id = "c2", name = "Văn", isSelectedForWidget = false)
+
+        val task1 = Coursework(id = "t1", courseId = "c1", courseName = "Toán", title = "Toán 1")
+        val task2 = Coursework(id = "t2", courseId = "c2", courseName = "Văn", title = "Văn 1")
+
+        val filtered = BaoBaiBucketingUtils.filterByActiveCourses(listOf(task1, task2), listOf(course1, course2))
+        assertEquals(1, filtered.size)
+        assertEquals("t1", filtered.first().id)
+    }
+
+    @Test
+    fun testSorting_PlacesCompletedItemsAtTheBottom() {
+        val now = System.currentTimeMillis()
+        val completedTask = Coursework(
+            id = "done_task",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "A Task Done",
+            dueEpochMillis = now + 1000,
+            status = SubmissionStatus.TURNED_IN
+        )
+        val incompleteTask = Coursework(
+            id = "pending_task",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "Z Task Pending",
+            dueEpochMillis = now + 5000,
+            status = SubmissionStatus.PENDING
+        )
+
+        val sorted = BaoBaiBucketingUtils.sortCoursework(listOf(completedTask, incompleteTask))
+        assertEquals("pending_task", sorted[0].id)
+        assertEquals("done_task", sorted[1].id)
+    }
 }
