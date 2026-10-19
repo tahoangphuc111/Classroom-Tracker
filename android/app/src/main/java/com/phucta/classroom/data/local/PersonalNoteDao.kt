@@ -35,6 +35,12 @@ interface PersonalNoteDao {
     @Query("DELETE FROM personal_notes WHERE coursework_id = :courseworkId")
     suspend fun deleteNoteByCourseworkId(courseworkId: String)
 
+    @Query("SELECT * FROM personal_notes WHERE search_index LIKE '%' || :query || '%' ORDER BY updated_at DESC")
+    fun searchNotes(query: String): Flow<List<PersonalNoteEntity>>
+
+    @Query("SELECT * FROM personal_notes WHERE coursework_id IS NULL AND search_index LIKE '%' || :query || '%' ORDER BY updated_at DESC")
+    fun searchStandaloneNotes(query: String): Flow<List<PersonalNoteEntity>>
+
     @Query("DELETE FROM personal_notes")
     suspend fun deleteAllNotes()
 }

@@ -125,6 +125,9 @@ public struct PersonalNotesView: View {
                 }
             )
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenCreateNoteSheet"))) { _ in
+            showCreateSheet = true
+        }
     }
 
     private var filterBarView: some View {
@@ -187,6 +190,19 @@ public struct PersonalNotesView: View {
 
     private var notesListView: some View {
         ScrollView {
+            #if os(macOS)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 280, maximum: 440), spacing: 12, alignment: .top)], spacing: 12) {
+                ForEach(filteredNotes) { note in
+                    PersonalNoteRowCard(
+                        note: note,
+                        onToggle: { onToggleCompletion(note.id) },
+                        onEdit: { noteToEdit = note },
+                        onDelete: { onDeleteNote(note.id) }
+                    )
+                }
+            }
+            .padding(16)
+            #else
             LazyVStack(spacing: 10) {
                 ForEach(filteredNotes) { note in
                     PersonalNoteRowCard(
@@ -198,6 +214,7 @@ public struct PersonalNotesView: View {
                 }
             }
             .padding(16)
+            #endif
         }
     }
 
@@ -327,6 +344,10 @@ private struct PersonalNoteRowCard: View {
         #if os(macOS)
         .onHover { isHovered = $0 }
         #endif
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            onEdit()
+        }
         .contextMenu {
             Button("Chỉnh sửa") { onEdit() }
             Button("Xoá", role: .destructive) { onDelete() }
@@ -341,7 +362,7 @@ private struct PersonalNoteRowCard: View {
 
     @ViewBuilder
     private func dueDateBadge(for date: Date) -> some View {
-        let calendar = Calendar.current
+        let calendar = Calendar.autoupdatingCurrent
         if calendar.isDateInTomorrow(date) {
             Text("Ngày mai")
                 .font(.system(size: 11.5, weight: .bold))
@@ -444,11 +465,13 @@ public struct CreateOrEditNoteSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Huỷ", action: onCancel)
+                        .keyboardShortcut(.cancelAction)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Lưu") {
                         save()
                     }
+                    .keyboardShortcut(.return, modifiers: [.command])
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
@@ -458,7 +481,7 @@ public struct CreateOrEditNoteSheet: View {
                     content = existing.content
                     selectedCourseId = existing.courseId ?? ""
                     if let due = existing.dueDate {
-                        let cal = Calendar.current
+                        let cal = Calendar.autoupdatingCurrent
                         if cal.isDateInToday(due) {
                             selectedDueDateMode = .today
                         } else if cal.isDateInTomorrow(due) {
@@ -482,7 +505,7 @@ public struct CreateOrEditNoteSheet: View {
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
         guard !trimmedTitle.isEmpty else { return }
 
-        let cal = Calendar.current
+        let cal = Calendar.autoupdatingCurrent
         let computedDueDate: Date?
         switch selectedDueDateMode {
         case .none:

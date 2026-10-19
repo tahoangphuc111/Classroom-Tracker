@@ -1,12 +1,12 @@
 import Foundation
-import UserNotifications
+@preconcurrency import UserNotifications
 import Combine
 
 @MainActor
 public final class EveningReminderService: ObservableObject, @unchecked Sendable {
     public static let shared = EveningReminderService()
 
-    public static let notificationIdentifier = "com.phucta.classroom.evening_bao_bai_reminder"
+    public nonisolated static let notificationIdentifier = "com.phucta.classroom.evening_bao_bai_reminder"
     private let enabledKey = "classroom_evening_reminder_enabled"
     private let hourKey = "classroom_evening_reminder_hour"
     private let minuteKey = "classroom_evening_reminder_minute"
@@ -68,7 +68,7 @@ public final class EveningReminderService: ObservableObject, @unchecked Sendable
             let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
             self.isAuthorized = granted
             if granted && isEnabled {
-                scheduleReminder()
+                await performScheduleReminder()
             }
             return granted
         } catch {
@@ -88,31 +88,41 @@ public final class EveningReminderService: ObservableObject, @unchecked Sendable
             return
         }
 
-        let center = UNUserNotificationCenter.current()
-        center.getNotificationSettings { [weak self] settings in
+        Task { @MainActor [weak self] in
             guard let self = self else { return }
-            guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
-                return
-            }
+            await self.performScheduleReminder()
+        }
+    }
 
-            let content = self.buildNotificationContent()
+    public func performScheduleReminder() async {
+        guard isEnabled else {
+            cancelReminder()
+            return
+        }
 
-            var dateComponents = DateComponents()
-            dateComponents.hour = self.reminderHour
-            dateComponents.minute = self.reminderMinute
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
+            return
+        }
 
-            let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
-            let request = UNNotificationRequest(
-                identifier: Self.notificationIdentifier,
-                content: content,
-                trigger: trigger
-            )
+        let content = buildNotificationContent()
 
-            center.add(request) { error in
-                if let error = error {
-                    print("Lỗi lên lịch thông báo Báo bài buổi tối: \(error.localizedDescription)")
-                }
-            }
+        var dateComponents = DateComponents()
+        dateComponents.hour = reminderHour
+        dateComponents.minute = reminderMinute
+
+        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+        let request = UNNotificationRequest(
+            identifier: Self.notificationIdentifier,
+            content: content,
+            trigger: trigger
+        )
+
+        do {
+            try await center.add(request)
+        } catch {
+            print("Lỗi lên lịch thông báo Báo bài buổi tối: \(error.localizedDescription)")
         }
     }
 

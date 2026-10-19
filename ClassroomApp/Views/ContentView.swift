@@ -77,6 +77,7 @@ public struct ContentView: View {
     @State private var courseworkNoteToEditCourseworkId: String? = nil
     @State private var buckets = CourseworkBuckets()
     @State private var selectedFilter: AppFilterCategory = .tomorrow
+    @State private var selectedSubjectFilter: String = "Tất cả"
     @State private var selectedCourseworkIds: Set<String> = []
     @State private var selectedCoursework: Coursework? = nil
     @State private var selectedPreviewFamily: WidgetPreviewFamily = .medium
@@ -224,7 +225,7 @@ public struct ContentView: View {
         var noDates: [Coursework] = []
         var comp: [Coursework] = []
 
-        let calendar = Calendar.current
+        let calendar = Calendar.autoupdatingCurrent
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
@@ -311,6 +312,10 @@ public struct ContentView: View {
             noDueDate: noDates,
             completed: comp
         )
+
+        if selectedSubjectFilter != "Tất cả" && !availableSubjectPills.contains(selectedSubjectFilter) {
+            selectedSubjectFilter = "Tất cả"
+        }
     }
 
     private var itemsForPreview: [Coursework] {
@@ -347,7 +352,12 @@ public struct ContentView: View {
     }
 
     private func currentFilteredList(for category: AppFilterCategory) -> [Coursework] {
-        let baseList = baseFilteredList(for: category)
+        var baseList = baseFilteredList(for: category)
+        if category == .allUpcoming && selectedSubjectFilter != "Tất cả" {
+            baseList = baseList.filter { item in
+                SubjectArtHelper.badgeCode(for: item.courseName, title: item.title) == selectedSubjectFilter
+            }
+        }
         let query = searchText.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return baseList }
 
@@ -368,9 +378,17 @@ public struct ContentView: View {
         currentFilteredList(for: selectedFilter)
     }
 
+    private var availableSubjectPills: [String] {
+        let subjects = Set(buckets.allUpcoming.map {
+            SubjectArtHelper.badgeCode(for: $0.courseName, title: $0.title)
+        }).sorted()
+        return ["Tất cả"] + subjects
+    }
+
     private func categorizedSections(for list: [Coursework], category: AppFilterCategory? = nil) -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
         let targetCategory = category ?? selectedFilter
-        if searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+        let isDefaultFilter = searchText.trimmingCharacters(in: .whitespaces).isEmpty && (targetCategory != .allUpcoming || selectedSubjectFilter == "Tất cả")
+        if isDefaultFilter {
             return (
                 todays: buckets.today,
                 tomorrows: buckets.tomorrowStrict,
@@ -378,7 +396,7 @@ public struct ContentView: View {
                 noDueDates: targetCategory == .allUpcoming ? buckets.noDueDate : []
             )
         } else {
-            let calendar = Calendar.current
+            let calendar = Calendar.autoupdatingCurrent
             let now = Date()
             let startOfToday = calendar.startOfDay(for: now)
             guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
@@ -443,7 +461,23 @@ public struct ContentView: View {
             }
         }
         .onChange(of: selectedFilter) {
+            selectedSubjectFilter = "Tất cả"
             autoSelectFirstItem()
+        }
+        .onChange(of: selectedSubjectFilter) {
+            let list = currentFilteredList
+            if let current = selectedCoursework, list.contains(where: { $0.id == current.id }) {
+                selectedCourseworkIds = selectedCourseworkIds.filter { id in list.contains(where: { $0.id == id }) }
+                if selectedCourseworkIds.isEmpty {
+                    selectedCourseworkIds = [current.id]
+                }
+            } else if let first = list.first {
+                selectedCoursework = first
+                selectedCourseworkIds = [first.id]
+            } else {
+                selectedCoursework = nil
+                selectedCourseworkIds.removeAll()
+            }
         }
         .onChange(of: searchText) {
             let list = currentFilteredList
@@ -523,6 +557,26 @@ public struct ContentView: View {
         }
         .sheet(isPresented: $showSettingsModal) {
             settingsSheetView
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenSettingsModal"))) { _ in
+            clientIdInput = authService.configuredClientId
+            clientSecretInput = authService.configuredClientSecret
+            showSettingsModal = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TriggerSync"))) { _ in
+            Task {
+                triggerHapticFeedback()
+                await apiService.syncAll()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    refreshData()
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("CreateNewPersonalNote"))) { _ in
+            selectedFilter = .notes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NotificationCenter.default.post(name: NSNotification.Name("OpenCreateNoteSheet"), object: nil)
+            }
         }
     }
 
@@ -1120,6 +1174,7 @@ public struct ContentView: View {
                     onToggleCompletion: { id in
                         ClassroomStorage.shared.togglePersonalNoteCompletion(id: id)
                         personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        recomputeBuckets()
                     },
                     onSaveNote: { note in
                         var current = personalNotes
@@ -1130,11 +1185,13 @@ public struct ContentView: View {
                         }
                         ClassroomStorage.shared.savePersonalNotes(current)
                         personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        recomputeBuckets()
                         showToast(title: "Đã lưu ghi chú", icon: "checkmark.circle.fill", tint: .green)
                     },
                     onDeleteNote: { id in
                         ClassroomStorage.shared.deletePersonalNote(id: id)
                         personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        recomputeBuckets()
                         showToast(title: "Đã xoá ghi chú", icon: "trash.fill", tint: .orange)
                     }
                 )
@@ -1189,9 +1246,9 @@ public struct ContentView: View {
                 }
                 #else
                 GeometryReader { geometry in
-                    let isWide = geometry.size.width >= 560
+                    let isWide = geometry.size.width >= 440
                     if isWide {
-                        let listWidth = min(360, max(280, geometry.size.width * 0.38))
+                        let listWidth = min(360, max(260, geometry.size.width * 0.38))
                         HStack(spacing: 0) {
                             assignmentListPane(isWide: true, category: activeCategory)
                                 .frame(width: listWidth)
@@ -1738,6 +1795,45 @@ public struct ContentView: View {
                 .transition(.opacity)
             }
 
+            if activeCategory == .allUpcoming && availableSubjectPills.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(availableSubjectPills, id: \.self) { pill in
+                            let isSelected = (selectedSubjectFilter == pill)
+                            Button {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.72)) {
+                                    if isSelected && pill != "Tất cả" {
+                                        selectedSubjectFilter = "Tất cả"
+                                    } else {
+                                        selectedSubjectFilter = pill
+                                    }
+                                }
+                            } label: {
+                                Text(pill)
+                                    .font(.system(size: 11.5, weight: isSelected ? .bold : .medium))
+                                    .foregroundStyle(isSelected ? Color.white : Color.platformTextSecondary)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4.5)
+                                    .background(
+                                        isSelected
+                                            ? Color.blue
+                                            : Color.platformControlBackground
+                                    )
+                                    .clipShape(Capsule())
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(isSelected ? Color.clear : Color.platformCardBorder, lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                }
+                .padding(.bottom, 2)
+            }
+
             if selectedCourseworkIds.count > 1 {
                 HStack(spacing: 8) {
                     Image(systemName: "checklist.checked")
@@ -1788,11 +1884,12 @@ public struct ContentView: View {
             if list.isEmpty {
                 AssignmentListEmptyView(
                     filter: activeCategory,
-                    isSearching: !searchText.trimmingCharacters(in: .whitespaces).isEmpty,
-                    searchText: searchText,
+                    isSearching: !searchText.trimmingCharacters(in: .whitespaces).isEmpty || (activeCategory == .allUpcoming && selectedSubjectFilter != "Tất cả"),
+                    searchText: searchText.isEmpty ? (selectedSubjectFilter != "Tất cả" ? "Môn \(selectedSubjectFilter)" : "") : searchText,
                     onClearSearch: {
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
                             searchText = ""
+                            selectedSubjectFilter = "Tất cả"
                         }
                     },
                     onSwitchToUpcoming: {
@@ -1800,13 +1897,18 @@ public struct ContentView: View {
                     }
                 )
             } else {
-                ScrollView {
+                ScrollViewReader { scrollProxy in
+                    ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
                         let hasNoteForItem: (Coursework) -> Bool = { item in
                             personalNotes.contains { $0.courseworkId == item.id && !$0.content.isEmpty }
                         }
 
                         if activeCategory == .tomorrow {
+                            if !list.isEmpty && searchText.isEmpty {
+                                tomorrowProgressHeroCard
+                            }
+
                             ForEach(list) { item in
                                 AssignmentListRow(
                                     item: item,
@@ -1901,6 +2003,13 @@ public struct ContentView: View {
                     .padding(.bottom, isLandscapePhone ? 24 : 8)
                     #endif
                 }
+                .onChange(of: selectedCoursework?.id) { targetId in
+                    if let targetId {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            scrollProxy.scrollTo(targetId, anchor: .center)
+                        }
+                    }
+                }
                 .refreshable {
                     if authService.isAuthenticated {
                         await apiService.syncAll()
@@ -1912,9 +2021,77 @@ public struct ContentView: View {
                 #if os(iOS)
                 .scrollDismissesKeyboard(.interactively)
                 #endif
+                }
             }
         }
         .background(Color.platformWindowBackground)
+    }
+
+    private var tomorrowProgressHeroCard: some View {
+        let totalCount = buckets.tomorrow.count
+        let completedCount = buckets.tomorrow.filter(\.isCompleted).count
+        let incompleteCount = totalCount - completedCount
+        let isAllDone = totalCount > 0 && incompleteCount == 0
+        let progressFraction = totalCount > 0 ? Double(completedCount) / Double(totalCount) : 0.0
+
+        let emotion: EmberEmotion = {
+            if isAllDone { return .celebrating }
+            if incompleteCount >= 3 { return .stressed }
+            return .normal
+        }()
+
+        return VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                ChunkyEmberCharacterView(emotion: emotion, size: 52)
+                    .offset(y: floatingPhase)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(isAllDone ? "Xuất sắc! Đã xong hết" : "Báo bài ngày mai")
+                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.white)
+
+                    Text(isAllDone ? "Đã hoàn thành toàn bộ bài tập ngày mai. 🎉" : "Còn \(incompleteCount) bài tập cần nộp.")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.92))
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 4)
+            }
+
+            VStack(spacing: 5) {
+                HStack {
+                    Text(isAllDone ? "Hoàn thành 100%! 🎉" : "Tiến độ: \(completedCount)/\(totalCount) bài tập")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.white.opacity(0.95))
+
+                    Spacer()
+
+                    Text("\(Int(progressFraction * 100))%")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Color.white.opacity(0.90))
+                }
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.25))
+                            .frame(height: 6)
+
+                        Capsule()
+                            .fill(Color.white)
+                            .frame(width: max(6, geo.size.width * CGFloat(progressFraction)), height: 6)
+                            .animation(.spring(response: 0.35, dampingFraction: 0.78), value: progressFraction)
+                    }
+                }
+                .frame(height: 6)
+            }
+        }
+        .padding(13)
+        .background(ChunkyTheme.skyGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .shadow(color: Color.blue.opacity(0.18), radius: 6, x: 0, y: 3)
+        .padding(.bottom, 4)
     }
 
     private var homeworkReaderPane: some View {
@@ -2102,31 +2279,43 @@ public struct ContentView: View {
 
                         Spacer(minLength: 16)
 
-                        Button {
-                            triggerHapticFeedback()
-                            openURL(item.destinationURL)
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "arrow.up.right.square.fill")
-                                    .font(.system(size: 15.5, weight: .bold))
-                                Text("Mở bài tập trên Classroom")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.85)
+                        HStack {
+                            #if os(macOS)
+                            Spacer()
+                            #endif
+                            Button {
+                                triggerHapticFeedback()
+                                openURL(item.destinationURL)
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "arrow.up.right.square.fill")
+                                        .font(.system(size: 15.5, weight: .bold))
+                                    Text("Mở bài tập trên Classroom")
+                                        .font(.system(size: 15, weight: .bold))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.85)
+                                    #if os(macOS)
+                                    Text("(⌘O)")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .opacity(0.85)
+                                    #endif
+                                }
                                 #if os(macOS)
-                                Text("(⌘O)")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .opacity(0.85)
+                                .frame(maxWidth: 340)
+                                #else
+                                .frame(maxWidth: .infinity)
                                 #endif
+                                .padding(.vertical, 12)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+                            .buttonStyle(.borderedProminent)
+                            .tint(Color.blue)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .keyboardShortcut("o", modifiers: [.command])
+                            .help("Mở bài tập trực tiếp trên Google Classroom (⌘O)")
+                            #if os(macOS)
+                            Spacer()
+                            #endif
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Color.blue)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .keyboardShortcut("o", modifiers: [.command])
-                        .help("Mở bài tập trực tiếp trên Google Classroom (⌘O)")
                     }
                     #if os(iOS)
                     .padding(horizontalSizeClass == .compact ? 16 : 24)
@@ -2505,7 +2694,7 @@ public struct ContentView: View {
             VStack(alignment: .leading, spacing: 9) {
                 GuideStepRow(step: "1", text: "Click chuột phải vào bất kỳ vị trí trống nào trên màn hình Desktop của bạn.")
                 GuideStepRow(step: "2", text: "Chọn 'Chỉnh sửa tiện ích...' (Edit Widgets...).")
-                GuideStepRow(step: "3", text: "Tìm kiếm 'Classroom Hôm nay & Ngày mai' trong danh sách tiện ích bên dưới.")
+                GuideStepRow(step: "3", text: "Tìm kiếm 'Báo bài Ngày mai' trong danh sách tiện ích bên dưới.")
                 GuideStepRow(step: "4", text: "Kéo thả widget với kích thước mong muốn (Nhỏ, Vừa, Lớn) ra màn hình chính!")
             }
             #endif
@@ -2636,13 +2825,13 @@ public struct ContentView: View {
                             "Giờ báo bài",
                             selection: Binding(
                                 get: {
-                                    var c = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+                                    var c = Calendar.autoupdatingCurrent.dateComponents([.year, .month, .day], from: Date())
                                     c.hour = reminderService.reminderHour
                                     c.minute = reminderService.reminderMinute
-                                    return Calendar.current.date(from: c) ?? Date()
+                                    return Calendar.autoupdatingCurrent.date(from: c) ?? Date()
                                 },
                                 set: { newDate in
-                                    let comps = Calendar.current.dateComponents([.hour, .minute], from: newDate)
+                                    let comps = Calendar.autoupdatingCurrent.dateComponents([.hour, .minute], from: newDate)
                                     reminderService.setReminderTime(hour: comps.hour ?? 20, minute: comps.minute ?? 0)
                                 }
                             ),
@@ -2865,6 +3054,8 @@ public struct ContentView: View {
                     Button("Xong") {
                         showSettingsModal = false
                     }
+                    .keyboardShortcut(.defaultAction)
+                    .keyboardShortcut(.cancelAction)
                     .fontWeight(.semibold)
                 }
             }
@@ -3009,6 +3200,7 @@ public struct ContentView: View {
             content: content
         )
         self.personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+        recomputeBuckets()
         showToast(title: "Đã cập nhật ghi chú bài tập", icon: "checkmark.circle.fill", tint: .green)
     }
 
@@ -3075,6 +3267,7 @@ public struct ContentView: View {
         for id in ids {
             if let index = allCoursework.firstIndex(where: { $0.id == id }) {
                 allCoursework[index].status = .turnedIn
+                allCoursework[index].isManuallyCompleted = true
             }
         }
 
@@ -3138,6 +3331,24 @@ public struct ContentView: View {
                     tint: .orange
                 )
             }
+        } else if item.id.hasPrefix("note_") {
+            let noteId = String(item.id.dropFirst(5))
+            ClassroomStorage.shared.togglePersonalNoteCompletion(id: noteId)
+            self.personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                recomputeBuckets()
+                if let updated = buckets.tomorrow.first(where: { $0.id == item.id }) {
+                    if selectedCoursework?.id == item.id {
+                        selectedCoursework = updated
+                    }
+                }
+            }
+            showToast(
+                title: item.isCompleted ? "Đã chuyển về chưa xong" : "Đã hoàn thành ghi chú!",
+                subtitle: item.title,
+                icon: "checkmark.circle.fill",
+                tint: .green
+            )
         }
     }
 
@@ -3554,12 +3765,39 @@ private struct AssignmentListRow: View, Equatable {
                 }
                 .scaleEffect(checkmarkBounce ? 1.15 : 1.0)
             }
+            #if os(macOS)
+            .frame(width: 34, height: 34)
+            #else
             .frame(width: 44, height: 44)
+            #endif
             .contentShape(Rectangle())
             .buttonStyle(.plain)
             .help(isTurnedIn ? "Đã nộp bài (Space hoặc bấm để hoàn tác)" : "Chưa nộp bài (Space hoặc bấm để đánh dấu hoàn thành)")
 
             VStack(alignment: .leading, spacing: 3.5) {
+                #if os(macOS)
+                Text(item.title)
+                    .font(.system(size: 14, weight: isSelected ? .bold : .semibold))
+                    .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
+                    .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
+                    .lineLimit(2)
+                    .animation(.easeInOut(duration: 0.2), value: isTurnedIn)
+
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(themeColor)
+                        .frame(width: 6, height: 6)
+                    Text(item.courseName)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(themeColor)
+                        .lineLimit(1)
+                    if hasNote {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 10.5, weight: .semibold))
+                            .foregroundStyle(Color.blue)
+                    }
+                }
+                #else
                 Text(item.title)
                     .font(.system(size: 16.5, weight: isSelected ? .bold : .semibold))
                     .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
@@ -3581,6 +3819,7 @@ private struct AssignmentListRow: View, Equatable {
                             .foregroundStyle(Color.blue)
                     }
                 }
+                #endif
             }
 
             Spacer(minLength: 4)
@@ -3593,7 +3832,7 @@ private struct AssignmentListRow: View, Equatable {
         .padding(.vertical, 10)
         .frame(minHeight: 62)
         #else
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
         #endif
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)

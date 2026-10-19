@@ -89,11 +89,14 @@ class ClassroomRepository(
      * Preserves locally checked tasks and widget course selections.
      */
     suspend fun syncAll(): Result<Unit> = withContext(Dispatchers.IO) {
-        syncMutex.withLock {
-            if (_isSyncing.value) return@withLock Result.success(Unit)
+        if (!syncMutex.tryLock()) {
+            // Already syncing, do not pile up redundant background sync requests
+            return@withContext Result.success(Unit)
+        }
+        try {
             if (!oauthManager.isAuthenticated.value) {
                 _syncErrorMessage.value = "Chưa kết nối Google."
-                return@withLock Result.failure(IllegalStateException("Chưa kết nối Google."))
+                return@withContext Result.failure(IllegalStateException("Chưa kết nối Google."))
             }
 
             _isSyncing.value = true
@@ -170,9 +173,9 @@ class ClassroomRepository(
 
                     val finalCoursework = allCoursework.distinctBy { it.id }.map { incoming ->
                         val latest = latestStatusMap[incoming.id]
-                        // Keep local completion if not yet turned in on Classroom
+                        // Only keep local completion if the user explicitly manually checked it off in this app
                         val wasManuallyCompleted = !incoming.isCompleted &&
-                                (latest?.isManuallyCompleted == true || latest?.status == SubmissionStatus.TURNED_IN)
+                                (latest?.isManuallyCompleted == true)
 
                         if (wasManuallyCompleted) {
                             incoming.copy(
@@ -203,12 +206,16 @@ class ClassroomRepository(
             } finally {
                 _isSyncing.value = false
             }
+        } finally {
+            syncMutex.unlock()
         }
     }
 
     suspend fun clearAllData() = withContext(Dispatchers.IO) {
-        courseDao.deleteAllCourses()
-        courseworkDao.deleteAllCoursework()
+        database.withTransaction {
+            courseDao.deleteAllCourses()
+            courseworkDao.deleteAllCoursework()
+        }
         preferences.clear()
         oauthManager.signOut()
         ensureInitialData()
@@ -280,6 +287,8 @@ class ClassroomRepository(
             glanceIds.forEach { glanceId ->
                 ClassroomGlanceWidget().update(context, glanceId)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             e.printStackTrace()
         }

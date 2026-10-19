@@ -144,23 +144,21 @@ public struct LargeWidgetView: View {
                         } else if allItems.count == 1, let singleItem = allItems.first {
                             singleHeroLargeView(item: singleItem)
                         } else {
-                            let itemsToShow = Array(allItems.prefix(5))
+                            let itemsToShow = Array(allItems.prefix(4))
                             let count = itemsToShow.count
 
                             let rowHeight: CGFloat = {
                                 switch count {
-                                case 2: return 74
-                                case 3: return 62
-                                case 4: return 52
-                                default: return 44
+                                case 2: return 72
+                                case 3: return 58
+                                default: return 46
                                 }
                             }()
 
                             let badgeSize: CGFloat = {
                                 switch count {
-                                case 2: return 46
-                                case 3: return 42
-                                case 4: return 36
+                                case 2: return 44
+                                case 3: return 38
                                 default: return 32
                                 }
                             }()
@@ -168,17 +166,15 @@ public struct LargeWidgetView: View {
                             let iconSize: CGFloat = {
                                 switch count {
                                 case 2: return 22
-                                case 3: return 20
-                                case 4: return 18
+                                case 3: return 18
                                 default: return 15
                                 }
                             }()
 
                             let titleFontSize: CGFloat = {
                                 switch count {
-                                case 2: return 18
-                                case 3: return 16.5
-                                case 4: return 15
+                                case 2: return 17.5
+                                case 3: return 15.5
                                 default: return 14
                                 }
                             }()
@@ -187,7 +183,6 @@ public struct LargeWidgetView: View {
                                 switch count {
                                 case 2: return 12
                                 case 3: return 11
-                                case 4: return 10.5
                                 default: return 10
                                 }
                             }()
@@ -437,7 +432,7 @@ public struct LargeWidgetView: View {
                 .font(.system(size: fontSize + 5, weight: .bold))
                 .foregroundStyle(Color.green)
         } else {
-            Text(item.isDueTomorrow ? item.timeOnlyString : item.compactDueString)
+            Text(item.compactDueString)
                 .font(WidgetFontSystem.statusTag(size: fontSize))
                 .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
                 .padding(.horizontal, 7)

@@ -134,13 +134,17 @@ object BaoBaiBucketingUtils {
         }
 
         if (includeNotes && personalNotes.isNotEmpty()) {
+            val activeIds = if (courses.isNotEmpty()) {
+                courses.filter { it.isSelectedForWidget }.map { it.id }.toSet()
+            } else {
+                emptySet()
+            }
             for (note in personalNotes) {
                 if (note.courseworkId == null) {
                     val isEligible = includeCompleted || !note.isCompleted
                     if (isEligible && note.isDueTomorrow) {
-                        val matchesCourse = if (note.courseId != null && courses.isNotEmpty()) {
-                            val activeIds = courses.filter { it.isSelectedForWidget }.map { it.id }.toSet()
-                            activeIds.isEmpty() || activeIds.contains(note.courseId)
+                        val matchesCourse = if (note.courseId != null && activeIds.isNotEmpty()) {
+                            activeIds.contains(note.courseId)
                         } else {
                             true
                         }
@@ -170,8 +174,8 @@ object BaoBaiBucketingUtils {
         return emptyList()
     }
 
-    fun computeBuckets(items: List<Coursework>, courses: List<Course>): CourseworkBuckets {
-        val relevant = filterByActiveCourses(items, courses)
+    fun computeBuckets(items: List<Coursework>, courses: List<Course> = emptyList()): CourseworkBuckets {
+        val relevant = if (courses.isNotEmpty()) filterByActiveCourses(items, courses) else items
         val now = System.currentTimeMillis()
 
         val cal = Calendar.getInstance().apply {

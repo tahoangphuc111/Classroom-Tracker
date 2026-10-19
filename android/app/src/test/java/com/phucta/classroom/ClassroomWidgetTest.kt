@@ -3,68 +3,53 @@ package com.phucta.classroom
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.SubmissionStatus
 import com.phucta.classroom.ui.components.EmberEmotion
+import com.phucta.classroom.widget.ClassroomGlanceWidget
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Calendar
 
 class ClassroomWidgetTest {
 
-    private fun getSectionHeaderTitle(items: List<Coursework>): String {
-        val pending = items.filter { !it.isCompleted }
-        val hasToday = pending.any { it.isDueToday }
-        val hasTomorrow = pending.any { it.isDueTomorrow }
-
-        return when {
-            hasToday && hasTomorrow -> "HÔM NAY & MAI"
-            hasToday -> "HÔM NAY"
-            hasTomorrow -> "NGÀY MAI"
-            pending.isNotEmpty() -> "SẮP TỚI"
-            items.any { it.isDueToday } -> "HÔM NAY"
-            else -> "NGÀY MAI"
-        }
-    }
-
-    private fun getCharacterEmotion(activeCount: Int, hasCompleted: Boolean): EmberEmotion {
-        return when {
-            activeCount == 0 -> if (hasCompleted) EmberEmotion.CELEBRATING else EmberEmotion.SLEEPING
-            activeCount >= 3 -> EmberEmotion.STRESSED
-            else -> EmberEmotion.NORMAL
-        }
-    }
-
-    private fun dueLabel(item: Coursework): String {
-        return when {
-            item.isCompleted -> "Đã nộp"
-            item.isDueToday -> item.timeOnlyString
-            item.isDueTomorrow -> if (item.timeOnlyString == "Cuối ngày") "Mai" else "Mai ${item.timeOnlyString}"
-            item.dueEpochMillis == null -> "Không hạn"
-            else -> item.compactDueString
-        }
-    }
-
     @Test
     fun testEmotionParityWithIOS() {
-        assertEquals(EmberEmotion.CELEBRATING, getCharacterEmotion(activeCount = 0, hasCompleted = true))
+        // Zero active items: celebrating if any completed, sleeping if none
+        assertEquals(EmberEmotion.CELEBRATING, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 0, hasCompleted = true, isSmall = false))
+        assertEquals(EmberEmotion.CELEBRATING, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 0, hasCompleted = true, isSmall = true))
+        assertEquals(EmberEmotion.SLEEPING, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 0, hasCompleted = false, isSmall = false))
+        assertEquals(EmberEmotion.SLEEPING, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 0, hasCompleted = false, isSmall = true))
 
-        assertEquals(EmberEmotion.SLEEPING, getCharacterEmotion(activeCount = 0, hasCompleted = false))
+        // Normal threshold
+        assertEquals(EmberEmotion.NORMAL, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 1, hasCompleted = false, isSmall = false))
+        assertEquals(EmberEmotion.NORMAL, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 2, hasCompleted = true, isSmall = false))
 
-        assertEquals(EmberEmotion.NORMAL, getCharacterEmotion(activeCount = 1, hasCompleted = false))
-        assertEquals(EmberEmotion.NORMAL, getCharacterEmotion(activeCount = 2, hasCompleted = true))
+        // Small widget stressed threshold is >= 3
+        assertEquals(EmberEmotion.NORMAL, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 2, hasCompleted = false, isSmall = true))
+        assertEquals(EmberEmotion.STRESSED, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 3, hasCompleted = false, isSmall = true))
 
-        assertEquals(EmberEmotion.STRESSED, getCharacterEmotion(activeCount = 3, hasCompleted = false))
-        assertEquals(EmberEmotion.STRESSED, getCharacterEmotion(activeCount = 5, hasCompleted = true))
+        // Medium & Large widget stressed threshold is >= 4
+        assertEquals(EmberEmotion.NORMAL, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 3, hasCompleted = false, isSmall = false))
+        assertEquals(EmberEmotion.STRESSED, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 4, hasCompleted = false, isSmall = false))
+        assertEquals(EmberEmotion.STRESSED, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 5, hasCompleted = true, isSmall = false))
     }
 
     @Test
     fun testSectionHeaderParityWithIOS() {
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 14)
-            set(Calendar.MINUTE, 0)
+        val calToday = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
         }
-        val todayMillis = cal.timeInMillis
+        val todayMillis = calToday.timeInMillis
 
-        cal.add(Calendar.DAY_OF_YEAR, 1)
-        val tomorrowMillis = cal.timeInMillis
+        val calTomorrow = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        val tomorrowMillis = calTomorrow.timeInMillis
 
         val itemToday = Coursework(
             id = "1", courseId = "c1", courseName = "Toán", title = "Bài 1",
@@ -75,9 +60,18 @@ class ClassroomWidgetTest {
             dueEpochMillis = tomorrowMillis, status = SubmissionStatus.PENDING
         )
 
-        assertEquals("HÔM NAY", getSectionHeaderTitle(listOf(itemToday)))
-        assertEquals("NGÀY MAI", getSectionHeaderTitle(listOf(itemTomorrow)))
-        assertEquals("HÔM NAY & MAI", getSectionHeaderTitle(listOf(itemToday, itemTomorrow)))
+        assertEquals("HÔM NAY", ClassroomGlanceWidget.getSectionHeaderTitle(listOf(itemToday)))
+        assertEquals("NGÀY MAI", ClassroomGlanceWidget.getSectionHeaderTitle(listOf(itemTomorrow)))
+        assertEquals("HÔM NAY & MAI", ClassroomGlanceWidget.getSectionHeaderTitle(listOf(itemToday, itemTomorrow)))
+    }
+
+    @Test
+    fun testSectionCapsuleLabels() {
+        assertEquals("Hôm nay & mai", ClassroomGlanceWidget.getSectionCapsuleLabel("HÔM NAY & MAI"))
+        assertEquals("Hôm nay", ClassroomGlanceWidget.getSectionCapsuleLabel("HÔM NAY"))
+        assertEquals("Sắp tới", ClassroomGlanceWidget.getSectionCapsuleLabel("SẮP TỚI"))
+        assertEquals("Ngày mai", ClassroomGlanceWidget.getSectionCapsuleLabel("NGÀY MAI"))
+        assertEquals("Ngày mai", ClassroomGlanceWidget.getSectionCapsuleLabel("UNKNOWN"))
     }
 
     @Test
@@ -86,12 +80,88 @@ class ClassroomWidgetTest {
             id = "1", courseId = "c1", courseName = "Toán", title = "Bài 1",
             status = SubmissionStatus.TURNED_IN
         )
-        assertEquals("Đã nộp", dueLabel(completedItem))
+        assertEquals("Đã nộp", ClassroomGlanceWidget.dueLabel(completedItem))
 
         val undatedItem = Coursework(
             id = "2", courseId = "c2", courseName = "Sử", title = "Bài 2",
             dueEpochMillis = null, status = SubmissionStatus.PENDING
         )
-        assertEquals("Không hạn", dueLabel(undatedItem))
+        assertEquals("Không hạn", ClassroomGlanceWidget.dueLabel(undatedItem))
+
+        val calTodayEndOfDay = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        val itemTodayEndOfDay = Coursework(
+            id = "3", courseId = "c1", courseName = "Toán", title = "Bài 3",
+            dueEpochMillis = calTodayEndOfDay.timeInMillis, status = SubmissionStatus.PENDING
+        )
+        assertEquals("Cuối ngày", ClassroomGlanceWidget.dueLabel(itemTodayEndOfDay))
+
+        val calTomorrowEndOfDay = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        val itemTomorrowEndOfDay = Coursework(
+            id = "4", courseId = "c1", courseName = "Toán", title = "Bài 4",
+            dueEpochMillis = calTomorrowEndOfDay.timeInMillis, status = SubmissionStatus.PENDING
+        )
+        assertEquals("Mai", ClassroomGlanceWidget.dueLabel(itemTomorrowEndOfDay))
+    }
+
+    @Test
+    fun testFormatDeadlinePill() {
+        val calTodayEndOfDay = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        val itemTodayEndOfDay = Coursework(
+            id = "1", courseId = "c1", courseName = "Toán", title = "Bài 1",
+            dueEpochMillis = calTodayEndOfDay.timeInMillis, status = SubmissionStatus.PENDING
+        )
+        assertEquals("Cuối ngày", ClassroomGlanceWidget.formatDeadlinePill(itemTodayEndOfDay))
+
+        val calTomorrowEndOfDay = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        val itemTomorrowEndOfDay = Coursework(
+            id = "2", courseId = "c1", courseName = "Toán", title = "Bài 2",
+            dueEpochMillis = calTomorrowEndOfDay.timeInMillis, status = SubmissionStatus.PENDING
+        )
+        assertEquals("Mai", ClassroomGlanceWidget.formatDeadlinePill(itemTomorrowEndOfDay))
+
+        val calToday1430 = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 14)
+            set(Calendar.MINUTE, 30)
+            set(Calendar.SECOND, 0)
+        }
+        val itemToday1430 = Coursework(
+            id = "3", courseId = "c1", courseName = "Toán", title = "Bài 3",
+            dueEpochMillis = calToday1430.timeInMillis, status = SubmissionStatus.PENDING
+        )
+        assertEquals("14:30", ClassroomGlanceWidget.formatDeadlinePill(itemToday1430))
+
+        val calTomorrow1430 = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, 14)
+            set(Calendar.MINUTE, 30)
+            set(Calendar.SECOND, 0)
+        }
+        val itemTomorrow1430 = Coursework(
+            id = "4", courseId = "c1", courseName = "Toán", title = "Bài 4",
+            dueEpochMillis = calTomorrow1430.timeInMillis, status = SubmissionStatus.PENDING
+        )
+        assertEquals("14:30", ClassroomGlanceWidget.formatDeadlinePill(itemTomorrow1430))
     }
 }

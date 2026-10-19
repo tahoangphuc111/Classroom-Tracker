@@ -3,6 +3,7 @@ package com.phucta.classroom.ui.screens
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -65,6 +66,15 @@ fun TomorrowHomeworkScreen(
     val hasTomorrowTasks = remember(tomorrowItems) { tomorrowItems.any { it.isDueTomorrow } }
     val hasTodayTasks = remember(tomorrowItems) { tomorrowItems.isNotEmpty() && tomorrowItems.all { it.isDueToday } }
 
+    val totalCount = tomorrowItems.size
+    val completedCount = totalCount - incompleteCount
+    val progressFraction = if (totalCount > 0) completedCount.toFloat() / totalCount.toFloat() else 0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = progressFraction,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "progressAnim"
+    )
+
     val emotion = remember(tomorrowItems.isEmpty(), isAllDone, incompleteCount) {
         when {
             isAllDone -> EmberEmotion.CELEBRATING
@@ -100,76 +110,120 @@ fun TomorrowHomeworkScreen(
                     .background(ChunkyColor.SkyGradient)
                     .padding(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    EmberFlameCanvas(
-                        size = 72.dp,
-                        emotion = emotion,
-                        isUrgent = incompleteCount >= 3,
-                        modifier = Modifier.graphicsLayer {
-                            translationY = emberFloatOffset.value
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Column(
-                        modifier = Modifier.weight(1f)
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (tomorrowItems.isEmpty()) {
-                            Text(
-                                text = "Ngày mai rảnh rồi!",
-                                color = Color.White,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 20.sp
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Không có bài tập cho ngày mai. Nghỉ ngơi nhé!",
-                                color = Color.White.copy(alpha = 0.95f),
-                                fontSize = 13.5.sp,
-                                lineHeight = 18.sp
-                            )
-                        } else if (isAllDone) {
-                            val doneMessage = when {
-                                hasTomorrowTasks -> "Đã hoàn thành toàn bộ bài tập ngày mai."
-                                hasTodayTasks -> "Đã hoàn thành toàn bộ bài tập hôm nay."
-                                else -> "Đã hoàn thành toàn bộ bài tập sắp tới."
+                        EmberFlameCanvas(
+                            size = 72.dp,
+                            emotion = emotion,
+                            isUrgent = incompleteCount >= 3,
+                            modifier = Modifier.graphicsLayer {
+                                translationY = emberFloatOffset.value
                             }
-                            Text(
-                                text = "Xuất sắc! Đã xong hết",
-                                color = Color.White,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 20.sp
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = doneMessage,
-                                color = Color.White.copy(alpha = 0.95f),
-                                fontSize = 13.5.sp,
-                                lineHeight = 18.sp
-                            )
-                        } else {
-                            val headerTitle = when {
-                                hasTomorrowTasks -> "Báo bài ngày mai"
-                                hasTodayTasks -> "Báo bài hôm nay"
-                                else -> "Báo bài sắp tới"
+                        )
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            if (tomorrowItems.isEmpty()) {
+                                Text(
+                                    text = "Ngày mai rảnh rồi!",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 20.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Không có bài tập cho ngày mai. Nghỉ ngơi nhé!",
+                                    color = Color.White.copy(alpha = 0.95f),
+                                    fontSize = 13.5.sp,
+                                    lineHeight = 18.sp
+                                )
+                            } else if (isAllDone) {
+                                val doneMessage = when {
+                                    hasTomorrowTasks -> "Đã hoàn thành toàn bộ bài tập ngày mai."
+                                    hasTodayTasks -> "Đã hoàn thành toàn bộ bài tập hôm nay."
+                                    else -> "Đã hoàn thành toàn bộ bài tập sắp tới."
+                                }
+                                Text(
+                                    text = "Xuất sắc! Đã xong hết",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 20.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = doneMessage,
+                                    color = Color.White.copy(alpha = 0.95f),
+                                    fontSize = 13.5.sp,
+                                    lineHeight = 18.sp
+                                )
+                            } else {
+                                val headerTitle = when {
+                                    hasTomorrowTasks -> "Báo bài ngày mai"
+                                    hasTodayTasks -> "Báo bài hôm nay"
+                                    else -> "Báo bài sắp tới"
+                                }
+                                Text(
+                                    text = headerTitle,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 20.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Còn $incompleteCount bài tập cần nộp.",
+                                    color = Color.White.copy(alpha = 0.95f),
+                                    fontSize = 13.5.sp,
+                                    lineHeight = 18.sp
+                                )
                             }
-                            Text(
-                                text = headerTitle,
-                                color = Color.White,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 20.sp
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Còn $incompleteCount bài tập cần nộp.",
-                                color = Color.White.copy(alpha = 0.95f),
-                                fontSize = 13.5.sp,
-                                lineHeight = 18.sp
-                            )
+                        }
+                    }
+
+                    if (tomorrowItems.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (isAllDone) "Hoàn thành 100%! 🎉" else "Tiến độ: $completedCount/$totalCount bài tập",
+                                    color = Color.White.copy(alpha = 0.95f),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                                Text(
+                                    text = "${(progressFraction * 100).toInt()}%",
+                                    color = Color.White.copy(alpha = 0.90f),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(Color.White.copy(alpha = 0.25f))
+                            ) {
+                                if (animatedProgress > 0.001f) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                                            .height(6.dp)
+                                            .clip(RoundedCornerShape(3.dp))
+                                            .background(if (isAllDone) Color(0xFF6EE7B7) else Color.White)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

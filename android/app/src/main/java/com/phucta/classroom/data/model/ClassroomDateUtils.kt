@@ -26,6 +26,7 @@ object ClassroomDateUtils {
             return "Cuối ngày"
         }
         return synchronized(timeOnlyFormat) {
+            timeOnlyFormat.timeZone = TimeZone.getDefault()
             timeOnlyFormat.format(Date(dueEpochMillis))
         }
     }
@@ -33,6 +34,7 @@ object ClassroomDateUtils {
     fun buildFormattedFullDueDate(dueEpochMillis: Long?): String {
         if (dueEpochMillis == null) return "Không có hạn nộp"
         val formatted = synchronized(fullDueDateFormat) {
+            fullDueDateFormat.timeZone = TimeZone.getDefault()
             fullDueDateFormat.format(Date(dueEpochMillis))
         }
         return formatted.replaceFirstChar { if (it.isLowerCase()) it.titlecase(VIETNAMESE_LOCALE) else it.toString() }
@@ -87,7 +89,10 @@ object ClassroomDateUtils {
                 if (today) {
                     if (isEndOfDay) "Quá hạn (hôm nay)" else "Quá hạn ($time)"
                 } else {
-                    val dayStr = synchronized(shortDateFormat) { shortDateFormat.format(date) }
+                    val dayStr = synchronized(shortDateFormat) {
+                        shortDateFormat.timeZone = TimeZone.getDefault()
+                        shortDateFormat.format(date)
+                    }
                     "Quá hạn ($dayStr)"
                 }
             }
@@ -98,11 +103,17 @@ object ClassroomDateUtils {
                 if (isEndOfDay) "Hết ngày mai" else "Ngày mai, $time"
             }
             past -> {
-                val dayStr = synchronized(shortDateFormat) { shortDateFormat.format(date) }
+                val dayStr = synchronized(shortDateFormat) {
+                    shortDateFormat.timeZone = TimeZone.getDefault()
+                    shortDateFormat.format(date)
+                }
                 "Đã qua ($dayStr)"
             }
             else -> {
-                val dayStr = synchronized(dayAndDateFormat) { dayAndDateFormat.format(date) }
+                val dayStr = synchronized(dayAndDateFormat) {
+                    dayAndDateFormat.timeZone = TimeZone.getDefault()
+                    dayAndDateFormat.format(date)
+                }
                 if (isEndOfDay) "$dayStr (hết ngày)" else "$dayStr, $time"
             }
         }
@@ -164,18 +175,15 @@ object ClassroomDateUtils {
         val past = isPast(dueEpochMillis)
 
         return when {
-            overdue -> {
-                if (today) {
-                    if (isEndOfDay) "Quá hạn" else "Trễ $time"
-                } else {
-                    "Quá hạn"
-                }
-            }
-            today -> if (isEndOfDay) "Hết hôm nay" else time
-            tomorrow -> if (isEndOfDay) "Hết ngày mai" else "Mai $time"
+            today -> if (isEndOfDay) "Cuối ngày" else time
+            tomorrow -> if (isEndOfDay) "Mai" else "Mai $time"
+            overdue -> "Quá hạn"
             past -> "Đã qua"
             else -> {
-                val dayStr = synchronized(shortDateFormat) { shortDateFormat.format(Date(dueEpochMillis)) }
+                val dayStr = synchronized(shortDateFormat) {
+                    shortDateFormat.timeZone = TimeZone.getDefault()
+                    shortDateFormat.format(Date(dueEpochMillis))
+                }
                 if (isEndOfDay) dayStr else "$dayStr $time"
             }
         }

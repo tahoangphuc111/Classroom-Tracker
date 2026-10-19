@@ -17,44 +17,10 @@ data class PersonalNote(
     val searchIndex: String = buildSearchIndex(title, content, courseName)
 ) {
     val isDueTomorrow: Boolean
-        get() {
-            if (dueEpochMillis == null) return false
-            val now = Calendar.getInstance()
-            val tomorrowStart = (now.clone() as Calendar).apply {
-                add(Calendar.DAY_OF_YEAR, 1)
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }
-            val tomorrowEnd = (now.clone() as Calendar).apply {
-                add(Calendar.DAY_OF_YEAR, 1)
-                set(Calendar.HOUR_OF_DAY, 23)
-                set(Calendar.MINUTE, 59)
-                set(Calendar.SECOND, 59)
-                set(Calendar.MILLISECOND, 999)
-            }
-            return dueEpochMillis in tomorrowStart.timeInMillis..tomorrowEnd.timeInMillis
-        }
+        get() = ClassroomDateUtils.isDueTomorrow(dueEpochMillis)
 
     val isDueToday: Boolean
-        get() {
-            if (dueEpochMillis == null) return false
-            val now = Calendar.getInstance()
-            val todayStart = (now.clone() as Calendar).apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }
-            val todayEnd = (now.clone() as Calendar).apply {
-                set(Calendar.HOUR_OF_DAY, 23)
-                set(Calendar.MINUTE, 59)
-                set(Calendar.SECOND, 59)
-                set(Calendar.MILLISECOND, 999)
-            }
-            return dueEpochMillis in todayStart.timeInMillis..todayEnd.timeInMillis
-        }
+        get() = ClassroomDateUtils.isDueToday(dueEpochMillis)
 
     companion object {
         fun buildSearchIndex(title: String, content: String, courseName: String?): String {

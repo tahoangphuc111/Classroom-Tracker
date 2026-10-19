@@ -62,6 +62,26 @@ class SubjectArtHelperTest {
 
         val theme3 = SubjectArtHelper.theme("", "")
         assertEquals("MÔN", theme3.badgeCode)
+
+        val theme4 = SubjectArtHelper.theme("AI", "")
+        assertEquals("AI", theme4.badgeCode)
+    }
+
+    @Test
+    fun testTeacherNameExclusion_EnglishCategory() {
+        assertNotEquals(SubjectCategory.ENGLISH, SubjectArtHelper.category("Lớp Cô Mai Anh"))
+        assertNotEquals(SubjectCategory.ENGLISH, SubjectArtHelper.category("Chủ nhiệm Thầy Tuấn Anh"))
+        assertNotEquals(SubjectCategory.ENGLISH, SubjectArtHelper.category("GV Lê Anh"))
+    }
+
+    @Test
+    fun testVietnameseAccentVariation_LiteratureCategory() {
+        assertNotEquals(SubjectCategory.LITERATURE, SubjectArtHelper.category("Cơ sở Văn hoá"))
+    }
+
+    @Test
+    fun testCloudToken_NetworkingCategory() {
+        assertEquals(SubjectCategory.NETWORKING, SubjectArtHelper.category("Hạ tầng Cloud"))
     }
 
     @Test

@@ -29,11 +29,18 @@ private val TOKEN_DELIMITER_REGEX = Regex("[^\\p{L}\\p{Nd}]+")
 
 object SubjectArtHelper {
 
-    private val categoryCache = java.util.concurrent.ConcurrentHashMap<String, SubjectCategory>()
+    private val courseCategoryCache = java.util.concurrent.ConcurrentHashMap<String, SubjectCategory>()
+    private val compoundCategoryCache = java.util.concurrent.ConcurrentHashMap<String, SubjectCategory>()
 
     fun category(courseName: String, title: String? = null): SubjectCategory {
-        val key = "$courseName|${title ?: ""}"
-        return categoryCache.getOrPut(key) {
+        val courseCat = courseCategoryCache.getOrPut(courseName) {
+            computeCategory(courseName, null)
+        }
+        if (courseCat != SubjectCategory.OTHER || title.isNullOrBlank()) {
+            return courseCat
+        }
+        val key = "$courseName|$title"
+        return compoundCategoryCache.getOrPut(key) {
             computeCategory(courseName, title)
         }
     }
@@ -94,11 +101,11 @@ object SubjectArtHelper {
 
                 text.contains("ngữ văn") || text.contains("tiếng việt") || tokens.contains("literature") ||
                         tokens.contains("writing") || tokens.contains("essay") ||
-                        (tokens.contains("văn") && !text.contains("văn phòng") && !text.contains("văn hóa") && !text.contains("văn minh")) -> SubjectCategory.LITERATURE
+                        (tokens.contains("văn") && !text.contains("văn phòng") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("văn minh")) -> SubjectCategory.LITERATURE
 
                 text.contains("tiếng anh") || tokens.contains("english") || tokens.contains("ielts") ||
                         tokens.contains("toeic") || tokens.contains("toefl") ||
-                        (tokens.contains("anh") && !text.contains("hình ảnh") && !text.contains("âm thanh")) -> SubjectCategory.ENGLISH
+                        (tokens.contains("anh") && !text.contains("hình ảnh") && !text.contains("âm thanh") && !text.contains("thầy") && !text.contains("cô") && !text.contains("gv")) -> SubjectCategory.ENGLISH
 
                 tokens.contains("gdcd") || text.contains("triết học") || text.contains("chính trị") ||
                         text.contains("pháp luật") || text.contains("kinh tế và pháp luật") || tokens.contains("law") ||
@@ -120,9 +127,10 @@ object SubjectArtHelper {
                         (tokens.contains("tin") && !text.contains("thông tin") && !text.contains("bản tin") && !text.contains("tin tức") && !text.contains("niềm tin") && !tokens.contains("tự")) -> SubjectCategory.COMPUTER_SCIENCE
 
                 text.contains("an ninh mạng") || text.contains("mạng máy tính") ||
+                        (tokens.contains("mạng") && !text.contains("mạng xã hội")) ||
                         tokens.contains("network") || tokens.contains("networking") ||
                         tokens.contains("tcp") || tokens.contains("socket") ||
-                        (tokens.contains("mạng") && !text.contains("mạng xã hội")) -> SubjectCategory.NETWORKING
+                        (tokens.contains("cloud") && !tokens.contains("soundcloud")) -> SubjectCategory.NETWORKING
 
                 text.contains("nhiệm vụ") || tokens.contains("lab") || text.contains("thực hành") ||
                         text.contains("bài tập") || tokens.contains("project") || text.contains("dự án") -> SubjectCategory.GENERAL_ASSIGNMENT
@@ -157,7 +165,7 @@ object SubjectArtHelper {
         }
     }
 
-    private fun badgeCode(category: SubjectCategory, courseName: String, title: String? = null): String {
+    fun badgeCode(category: SubjectCategory, courseName: String = "", title: String? = null): String {
         return when (category) {
             SubjectCategory.MATH -> "TOÁ"
             SubjectCategory.PHYSICS -> "LÝ"
@@ -180,6 +188,10 @@ object SubjectArtHelper {
                     val titleCleaned = title?.trim().orEmpty()
                     if (titleCleaned.length >= 3) {
                         titleCleaned.take(3).uppercase()
+                    } else if (cleaned.isNotEmpty()) {
+                        cleaned.uppercase()
+                    } else if (titleCleaned.isNotEmpty()) {
+                        titleCleaned.uppercase()
                     } else {
                         "MÔN"
                     }

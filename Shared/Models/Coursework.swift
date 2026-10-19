@@ -148,22 +148,22 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
 
     public var isPast: Bool {
         guard let dueDate else { return false }
-        return dueDate < Calendar.current.startOfDay(for: Date())
+        return dueDate < Calendar.autoupdatingCurrent.startOfDay(for: Date())
     }
 
     public var isDueToday: Bool {
         guard let dueDate else { return false }
-        return Calendar.current.isDateInToday(dueDate)
+        return Calendar.autoupdatingCurrent.isDateInToday(dueDate)
     }
 
     public var isDueTomorrow: Bool {
         guard let dueDate else { return false }
-        return Calendar.current.isDateInTomorrow(dueDate)
+        return Calendar.autoupdatingCurrent.isDateInTomorrow(dueDate)
     }
 
     public var isDueLater: Bool {
         guard let dueDate else { return false }
-        let calendar = Calendar.current
+        let calendar = Calendar.autoupdatingCurrent
         let startOfToday = calendar.startOfDay(for: Date())
         guard let dayAfterTomorrow = calendar.date(byAdding: .day, value: 2, to: startOfToday) else { return false }
         return dueDate >= dayAfterTomorrow
@@ -215,9 +215,9 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         if isCompleted {
             return "Đã xong"
         } else if isDueToday {
-            return isEndOfDay ? "Hết hôm nay" : time
+            return isEndOfDay ? "Cuối ngày" : time
         } else if isDueTomorrow {
-            return isEndOfDay ? "Hết ngày mai" : "Mai \(time)"
+            return isEndOfDay ? "Mai" : "Mai \(time)"
         } else if isPast {
             return "Đã qua"
         } else {
@@ -289,7 +289,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
 
     private static func buildTimeOnlyString(from dueDate: Date?) -> String {
         guard let dueDate else { return "--:--" }
-        let calendar = Calendar.current
+        let calendar = Calendar.autoupdatingCurrent
         let hour = calendar.component(.hour, from: dueDate)
         let minute = calendar.component(.minute, from: dueDate)
         if hour == 23 && minute >= 55 {
@@ -308,9 +308,9 @@ private let vietnameseSearchLocale = Locale(identifier: "vi_VN")
 
 public extension String {
     func normalizedForVietnameseSearch() -> String {
-        self.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "đ", with: "d")
-            .replacingOccurrences(of: "Đ", with: "d")
+        guard !self.isEmpty else { return "" }
+        return self.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "đ", with: "d", options: .caseInsensitive)
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: vietnameseSearchLocale)
             .lowercased()
     }
@@ -320,6 +320,8 @@ private enum ClassroomDateFormatters {
     static let timeOnly: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .autoupdatingCurrent
         formatter.dateFormat = "HH:mm"
         return formatter
     }()
@@ -327,6 +329,8 @@ private enum ClassroomDateFormatters {
     static let shortDate: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "vi_VN")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .autoupdatingCurrent
         formatter.dateFormat = "d/M"
         return formatter
     }()
@@ -334,6 +338,8 @@ private enum ClassroomDateFormatters {
     static let dayAndDate: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "vi_VN")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .autoupdatingCurrent
         formatter.dateFormat = "E, d/M"
         return formatter
     }()
@@ -341,6 +347,8 @@ private enum ClassroomDateFormatters {
     static let fullDueDate: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "vi_VN")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .autoupdatingCurrent
         formatter.dateFormat = "EEEE, 'ngày' d 'tháng' M, yyyy 'lúc' HH:mm"
         return formatter
     }()

@@ -9,11 +9,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.ConnectionPool
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
 
 @Serializable
 private data class GoogleCoursesResponse(
@@ -80,9 +82,33 @@ class ClassroomApiService(
     private val httpClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
+        .connectionPool(ConnectionPool(10, 5, TimeUnit.MINUTES))
         .build()
 ) {
     private val json = Json { ignoreUnknownKeys = true }
+
+    /**
+     * Executes HTTP requests with exponential backoff on HTTP 429 (Too Many Requests / 10 QPS) or HTTP 503.
+     */
+    private fun executeWithRetry(request: Request, maxRetries: Int = 2): okhttp3.Response {
+        var attempt = 0
+        while (true) {
+            val response = httpClient.newCall(request).execute()
+            if ((response.code == 429 || response.code == 503) && attempt < maxRetries) {
+                response.close()
+                attempt++
+                val backoffMillis = 500L * (1 shl attempt) // 1000ms, 2000ms
+                try {
+                    Thread.sleep(backoffMillis)
+                } catch (e: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    throw IOException("Bị gián đoạn khi chờ thử lại API rate-limit", e)
+                }
+                continue
+            }
+            return response
+        }
+    }
 
     suspend fun fetchActiveCourses(accessToken: String): List<Course> = withContext(Dispatchers.IO) {
         val coursesMap = LinkedHashMap<String, Course>()
@@ -171,7 +197,7 @@ class ClassroomApiService(
                 .build()
 
             val (shouldContinue, newPageToken) = try {
-                httpClient.newCall(request).execute().use { response ->
+                executeWithRetry(request).use { response ->
                     if (!response.isSuccessful) {
                         if (pageCourses.isEmpty()) {
                             throw IllegalStateException("Không lấy được danh sách lớp học (${response.code})")
@@ -199,6 +225,7 @@ class ClassroomApiService(
                     Pair(true, decoded.nextPageToken)
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 if (pageCourses.isEmpty()) throw e
                 Pair(false, null)
             }
@@ -273,7 +300,7 @@ class ClassroomApiService(
                 .build()
 
             val (shouldContinue, newPageToken) = try {
-                httpClient.newCall(request).execute().use { response ->
+                executeWithRetry(request).use { response ->
                     if (!response.isSuccessful) {
                         if (allItems.isEmpty()) {
                             throw IOException("HTTP ${response.code} khi tải bài tập lớp $courseId")
@@ -286,6 +313,7 @@ class ClassroomApiService(
                     Pair(true, decoded.nextPageToken)
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 if (allItems.isEmpty()) throw e
                 Pair(false, null)
             }
@@ -305,7 +333,7 @@ class ClassroomApiService(
                     .addHeader("Authorization", "Bearer $accessToken")
                     .build()
 
-                httpClient.newCall(request).execute().use { response ->
+                executeWithRetry(request).use { response ->
                     if (response.isSuccessful) {
                         response.body?.string()?.let { body ->
                             val decoded = json.decodeFromString<GoogleCourseworkResponse>(body)
@@ -339,22 +367,24 @@ class ClassroomApiService(
                 .build()
 
             val (shouldContinue, newPageToken) = try {
-                httpClient.newCall(request).execute().use { response ->
+                executeWithRetry(request).use { response ->
                     if (!response.isSuccessful) {
-                        if (map.isEmpty()) {
-                            throw IOException("HTTP ${response.code} khi tải trạng thái nộp bài lớp $courseId")
-                        }
+                        // Submissions endpoint failure (e.g. 403 Forbidden when user is teacher/observer, or 404)
+                        // should NOT fail fetching coursework items
                         return@use Pair(false, null)
                     }
                     val body = response.body?.string() ?: return@use Pair(false, null)
                     val decoded = json.decodeFromString<GoogleSubmissionsResponse>(body)
                     decoded.studentSubmissions?.forEach { item ->
-                        map[item.courseWorkId] = item
+                        if (item.courseWorkId.isNotBlank()) {
+                            map[item.courseWorkId] = item
+                        }
                     }
                     Pair(true, decoded.nextPageToken)
                 }
             } catch (e: Exception) {
-                if (map.isEmpty()) throw e
+                if (e is CancellationException) throw e
+                // Submissions fetch error should not crash coursework retrieval
                 Pair(false, null)
             }
             if (!shouldContinue) break

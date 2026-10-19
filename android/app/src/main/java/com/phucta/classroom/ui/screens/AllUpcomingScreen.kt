@@ -1,5 +1,6 @@
 package com.phucta.classroom.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -26,8 +28,14 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Upcoming
 import androidx.compose.material.icons.filled.Warning
 import com.phucta.classroom.ui.components.SectionHeaderPill
+import com.phucta.classroom.ui.components.SubjectArtHelper
+import com.phucta.classroom.ui.components.SubjectCategory
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -66,29 +74,65 @@ fun AllUpcomingScreen(
     courseworkIdsWithNotes: Set<String> = emptySet()
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedSubjectCategory by rememberSaveable { mutableStateOf<String?>(null) }
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForVietnameseSearch() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    val selectedSubjectCategoryDisplayName = remember(selectedSubjectCategory) {
+        selectedSubjectCategory?.let { name ->
+            try {
+                when (SubjectCategory.valueOf(name)) {
+                    SubjectCategory.MATH -> "Toán"
+                    SubjectCategory.PHYSICS -> "Vật lý"
+                    SubjectCategory.CHEMISTRY -> "Hóa học"
+                    SubjectCategory.BIOLOGY -> "Sinh học"
+                    SubjectCategory.HISTORY_OR_GEOGRAPHY -> "Lịch sử - Địa lý"
+                    SubjectCategory.LITERATURE -> "Ngữ văn"
+                    SubjectCategory.ENGLISH -> "Tiếng Anh"
+                    SubjectCategory.CIVICS_OR_PHILOSOPHY -> "GDCD"
+                    SubjectCategory.ECONOMICS -> "Kinh tế"
+                    SubjectCategory.ART_AND_DESIGN -> "Thiết kế"
+                    SubjectCategory.COMPUTER_SCIENCE -> "Tin học"
+                    SubjectCategory.NETWORKING -> "Mạng máy tính"
+                    SubjectCategory.GENERAL_ASSIGNMENT -> "Bài tập chung"
+                    SubjectCategory.OTHER -> "Khác"
+                }
+            } catch (_: Exception) {
+                name
+            }
+        }
+    }
+
     val activeCoursework = remember(allCoursework, courses) {
         BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses)
+    }
+
+    val availableSubjectCategories = remember(activeCoursework) {
+        activeCoursework.map { SubjectArtHelper.category(it.courseName, it.title) }
+            .filter { it != SubjectCategory.OTHER }
+            .distinct()
+            .sortedBy { it.name }
     }
 
     val searchTokens = remember(normalizedQuery) {
         normalizedQuery.split("\\s+".toRegex()).filter { it.isNotBlank() }
     }
 
-    val filteredItems = remember(activeCoursework, searchTokens) {
-        if (searchTokens.isEmpty()) {
-            activeCoursework
-        } else {
-            activeCoursework.filter { item ->
+    val filteredItems = remember(activeCoursework, searchTokens, selectedSubjectCategory) {
+        var items = activeCoursework
+        if (selectedSubjectCategory != null) {
+            items = items.filter { SubjectArtHelper.category(it.courseName, it.title).name == selectedSubjectCategory }
+        }
+        if (searchTokens.isNotEmpty()) {
+            items = items.filter { item ->
                 searchTokens.all { token -> item.searchIndex.contains(token) }
             }
         }
+        items
     }
 
-    val buckets = remember(filteredItems, courses) {
-        BaoBaiBucketingUtils.computeBuckets(filteredItems, courses)
+    val buckets = remember(filteredItems) {
+        BaoBaiBucketingUtils.computeBuckets(filteredItems)
     }
 
     Column(
@@ -120,8 +164,72 @@ fun AllUpcomingScreen(
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp)
         )
+
+        if (availableSubjectCategories.isNotEmpty()) {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    FilterChip(
+                        selected = selectedSubjectCategory == null,
+                        onClick = { selectedSubjectCategory = null },
+                        label = { Text("Tất cả", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = ChunkyColor.SurfaceWhite,
+                            labelColor = ChunkyColor.TextPrimary,
+                            selectedContainerColor = ChunkyColor.SkyBottom.copy(alpha = 0.14f),
+                            selectedLabelColor = ChunkyColor.SkyBottom
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            borderColor = ChunkyColor.CardBorder,
+                            selectedBorderColor = ChunkyColor.SkyBottom.copy(alpha = 0.5f),
+                            borderWidth = 1.dp,
+                            selectedBorderWidth = 1.dp,
+                            enabled = true,
+                            selected = selectedSubjectCategory == null
+                        )
+                    )
+                }
+                items(availableSubjectCategories, key = { it.name }) { cat ->
+                    val themeColor = SubjectArtHelper.themeColor(cat)
+                    val badge = SubjectArtHelper.badgeCode(cat, "", null)
+                    val isSelected = selectedSubjectCategory == cat.name
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            selectedSubjectCategory = if (isSelected) null else cat.name
+                        },
+                        label = {
+                            Text(
+                                text = badge,
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = ChunkyColor.SurfaceWhite,
+                            labelColor = themeColor,
+                            selectedContainerColor = themeColor.copy(alpha = 0.14f),
+                            selectedLabelColor = themeColor
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            borderColor = ChunkyColor.CardBorder,
+                            selectedBorderColor = themeColor.copy(alpha = 0.6f),
+                            borderWidth = 1.dp,
+                            selectedBorderWidth = 1.dp,
+                            enabled = true,
+                            selected = isSelected
+                        )
+                    )
+                }
+            }
+        }
 
         val hasAnyUpcoming = buckets.overdue.isNotEmpty() ||
                 buckets.today.isNotEmpty() ||
@@ -163,24 +271,61 @@ fun AllUpcomingScreen(
                             )
                         }
                         Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = if (searchQuery.isNotBlank()) "Không tìm thấy bài tập" else "Chưa có bài tập nào",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = ChunkyColor.TextPrimary
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = if (searchQuery.isNotBlank()) {
-                                "Không có bài tập nào khớp với từ khóa \"$searchQuery\"."
-                            } else {
-                                "Danh sách bài tập sắp tới hiện đang trống."
-                            },
-                            fontSize = 13.sp,
-                            color = ChunkyColor.TextMuted,
-                            textAlign = TextAlign.Center,
-                            lineHeight = 18.sp
-                        )
+                        if (selectedSubjectCategory != null) {
+                            Text(
+                                text = "Không có bài tập môn $selectedSubjectCategoryDisplayName",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = ChunkyColor.TextPrimary,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = if (searchQuery.isNotBlank()) {
+                                    "Không có bài tập nào môn $selectedSubjectCategoryDisplayName khớp với từ khóa \"$searchQuery\"."
+                                } else {
+                                    "Danh sách bài tập sắp tới của môn này hiện đang trống."
+                                },
+                                fontSize = 13.sp,
+                                color = ChunkyColor.TextMuted,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp
+                            )
+                            Spacer(modifier = Modifier.height(14.dp))
+                            OutlinedButton(
+                                onClick = { selectedSubjectCategory = null },
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, ChunkyColor.SkyBottom.copy(alpha = 0.6f)),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = ChunkyColor.SkyBottom
+                                )
+                            ) {
+                                Text(
+                                    text = "Xoá bộ lọc môn",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.5.sp
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = if (searchQuery.isNotBlank()) "Không tìm thấy bài tập" else "Chưa có bài tập nào",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = ChunkyColor.TextPrimary
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = if (searchQuery.isNotBlank()) {
+                                    "Không có bài tập nào khớp với từ khóa \"$searchQuery\"."
+                                } else {
+                                    "Danh sách bài tập sắp tới hiện đang trống."
+                                },
+                                fontSize = 13.sp,
+                                color = ChunkyColor.TextMuted,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp
+                            )
+                        }
                     }
                 }
             }
@@ -217,19 +362,41 @@ fun AllUpcomingScreen(
                         }
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
-                            text = "Không có bài tập cần nộp!",
+                            text = if (selectedSubjectCategory != null) "Không có bài tập môn $selectedSubjectCategoryDisplayName cần nộp!" else "Không có bài tập cần nộp!",
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            color = ChunkyColor.TextPrimary
+                            color = ChunkyColor.TextPrimary,
+                            textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Tất cả bài tập đã được đánh dấu hoàn thành xuất sắc.",
+                            text = if (selectedSubjectCategory != null) {
+                                "Tất cả bài tập môn $selectedSubjectCategoryDisplayName đã được đánh dấu hoàn thành xuất sắc."
+                            } else {
+                                "Tất cả bài tập đã được đánh dấu hoàn thành xuất sắc."
+                            },
                             fontSize = 13.sp,
                             color = ChunkyColor.TextMuted,
                             textAlign = TextAlign.Center,
                             lineHeight = 18.sp
                         )
+                        if (selectedSubjectCategory != null) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            OutlinedButton(
+                                onClick = { selectedSubjectCategory = null },
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, ChunkyColor.SkyBottom.copy(alpha = 0.6f)),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = ChunkyColor.SkyBottom
+                                )
+                            ) {
+                                Text(
+                                    text = "Xoá bộ lọc môn",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.5.sp
+                                )
+                            }
+                        }
                     }
                 }
             }

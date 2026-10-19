@@ -115,4 +115,57 @@ class PersonalNoteTest {
         assertEquals("Văn Học", item.courseName)
         assertFalse("Item should be pending", item.isCompleted)
     }
+
+    @Test
+    fun testClearingDueDateToNull() {
+        val originalWithDue = PersonalNote(
+            id = "note-due-1",
+            title = "Bài tập Toán",
+            dueEpochMillis = 1700000000000L
+        )
+        assertNotNull(originalWithDue.dueEpochMillis)
+
+        // Clear due date to null
+        val cleared = originalWithDue.copy(dueEpochMillis = null)
+        assertEquals(null, cleared.dueEpochMillis)
+        assertFalse(cleared.isDueToday)
+        assertFalse(cleared.isDueTomorrow)
+
+        // Verify entity roundtrip preserves null due date
+        val entity = PersonalNoteEntity.fromDomain(cleared)
+        assertEquals(null, entity.dueEpochMillis)
+        val domain = entity.toDomain()
+        assertEquals(null, domain.dueEpochMillis)
+    }
+
+    @Test
+    fun testVietnameseSearchIndexEdgeCases() {
+        val note = PersonalNote(
+            id = "note-diacritics",
+            title = "ĐỀ CƯƠNG ÔN TẬP ĐỊA LÝ & LỊCH SỬ",
+            content = "Phần 1: Khí hậu nhiệt đới gió mùa ẩm",
+            courseName = "Địa Lý"
+        )
+        val index = note.searchIndex
+        assertTrue("Should contain normalized 'de cuong'", index.contains("de cuong"))
+        assertTrue("Should contain normalized 'dia ly'", index.contains("dia ly"))
+        assertTrue("Should contain normalized 'nhiet doi'", index.contains("nhiet doi"))
+    }
+
+    @Test
+    fun testCustomDueDateNeitherTodayNorTomorrow() {
+        val calFuture = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, 5)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+        }
+        val noteCustomDate = PersonalNote(
+            id = "note-custom-date",
+            title = "Nộp báo cáo nhóm",
+            dueEpochMillis = calFuture.timeInMillis
+        )
+        assertFalse("Should not be due today", noteCustomDate.isDueToday)
+        assertFalse("Should not be due tomorrow", noteCustomDate.isDueTomorrow)
+        assertNotNull("Should have non-null dueEpochMillis", noteCustomDate.dueEpochMillis)
+    }
 }

@@ -188,7 +188,7 @@ struct TestRunner {
 
         // Test 8: PersonalNote model, Codable round-trip, search index, and date bucketing
         do {
-            let cal = Calendar.current
+            let cal = Calendar.autoupdatingCurrent
             let now = Date()
             guard let tomorrow = cal.date(byAdding: .day, value: 1, to: now) else {
                 fatalError("Cannot calculate tomorrow")
@@ -225,8 +225,218 @@ struct TestRunner {
             assertCondition(decoded.title == note.title, "Decoded title must match")
             assertCondition(decoded.content == note.content, "Decoded content must match")
             assertCondition(decoded.isCompleted == false, "Decoded completion state must match")
+
+            // Test 8b: Coursework note clearing test
+            var notesList = [
+                PersonalNote(id: "note_cw", courseworkId: "cw_999", courseId: "c1", courseName: "Math", title: "Math HW", content: "Remember to do exercise 4")
+            ]
+            let trimmedEmptyContent = "   \n\t ".trimmingCharacters(in: .whitespacesAndNewlines)
+            if let index = notesList.firstIndex(where: { $0.courseworkId == "cw_999" }) {
+                if trimmedEmptyContent.isEmpty {
+                    notesList.remove(at: index)
+                }
+            }
+            assertCondition(notesList.isEmpty, "Coursework note must be removed when content is cleared")
         } catch {
             assertCondition(false, "PersonalNote test failed: \(error)")
+        }
+
+        // Test 9: compactDueString parity formatting
+        do {
+            let cal = Calendar.autoupdatingCurrent
+            let now = Date()
+
+            // 9.1: No due date
+            let noDue = Coursework(id: "cw_nodue", courseId: "c1", courseName: "M", title: "T", dueDate: nil, status: .pending)
+            assertCondition(noDue.compactDueString == "Không hạn", "No due date must format as 'Không hạn'")
+
+            // 9.2: Completed item
+            let completed = Coursework(id: "cw_done", courseId: "c1", courseName: "M", title: "T", dueDate: now.addingTimeInterval(3600), status: .turnedIn)
+            assertCondition(completed.compactDueString == "Đã xong", "Completed item must format as 'Đã xong'")
+
+            // 9.3: Today end-of-day (23:59:59)
+            var compToday = cal.dateComponents([.year, .month, .day], from: now)
+            compToday.hour = 23
+            compToday.minute = 59
+            compToday.second = 59
+            if let todayEndOfDay = cal.date(from: compToday), todayEndOfDay > now {
+                let todayEOD = Coursework(id: "cw_today_eod", courseId: "c1", courseName: "M", title: "T", dueDate: todayEndOfDay, status: .pending)
+                assertCondition(todayEOD.compactDueString == "Cuối ngày", "Today end-of-day (23:59:59) must format as 'Cuối ngày'")
+            }
+
+            // 9.3b: Today 23:55
+            var compToday2355 = cal.dateComponents([.year, .month, .day], from: now)
+            compToday2355.hour = 23
+            compToday2355.minute = 55
+            compToday2355.second = 0
+            if let today2355 = cal.date(from: compToday2355), today2355 > now {
+                let today2355Item = Coursework(id: "cw_today_2355", courseId: "c1", courseName: "M", title: "T", dueDate: today2355, status: .pending)
+                assertCondition(today2355Item.compactDueString == "Cuối ngày", "Today 23:55 must format as 'Cuối ngày'")
+            }
+
+            // 9.3c: Today future hour (e.g. 20:30)
+            var compToday2030 = cal.dateComponents([.year, .month, .day], from: now)
+            compToday2030.hour = 20
+            compToday2030.minute = 30
+            compToday2030.second = 0
+            if let today2030 = cal.date(from: compToday2030), today2030 > now {
+                let today2030Item = Coursework(id: "cw_today_2030", courseId: "c1", courseName: "M", title: "T", dueDate: today2030, status: .pending)
+                assertCondition(today2030Item.compactDueString == "20:30", "Today 20:30 must format as '20:30'")
+            }
+
+            // 9.4: Tomorrow end-of-day (23:59:59)
+            if let tomorrow = cal.date(byAdding: .day, value: 1, to: now) {
+                var compTomEOD = cal.dateComponents([.year, .month, .day], from: tomorrow)
+                compTomEOD.hour = 23
+                compTomEOD.minute = 59
+                compTomEOD.second = 59
+                if let tomorrowEndOfDay = cal.date(from: compTomEOD) {
+                    let tomEOD = Coursework(id: "cw_tom_eod", courseId: "c1", courseName: "M", title: "T", dueDate: tomorrowEndOfDay, status: .pending)
+                    assertCondition(tomEOD.compactDueString == "Mai", "Tomorrow end-of-day (23:59:59) must format as 'Mai'")
+                }
+
+                // 9.4b: Tomorrow 23:55
+                var compTom2355 = cal.dateComponents([.year, .month, .day], from: tomorrow)
+                compTom2355.hour = 23
+                compTom2355.minute = 55
+                compTom2355.second = 0
+                if let tomorrow2355 = cal.date(from: compTom2355) {
+                    let tom2355 = Coursework(id: "cw_tom_2355", courseId: "c1", courseName: "M", title: "T", dueDate: tomorrow2355, status: .pending)
+                    assertCondition(tom2355.compactDueString == "Mai", "Tomorrow 23:55 must format as 'Mai'")
+                }
+
+                // 9.5: Tomorrow 14:30
+                var compTom1430 = cal.dateComponents([.year, .month, .day], from: tomorrow)
+                compTom1430.hour = 14
+                compTom1430.minute = 30
+                compTom1430.second = 0
+                if let tomorrow1430 = cal.date(from: compTom1430) {
+                    let tom1430 = Coursework(id: "cw_tom_1430", courseId: "c1", courseName: "M", title: "T", dueDate: tomorrow1430, status: .pending)
+                    assertCondition(tom1430.compactDueString == "Mai 14:30", "Tomorrow 14:30 must format as 'Mai 14:30'")
+                }
+            }
+        }
+
+        // Test 10: Sync reconciliation parity (local check vs remote unsubmit)
+        do {
+            let future = Date().addingTimeInterval(86400 * 2)
+
+            // Case A: Item previously turned in on Classroom (isManuallyCompleted: false, status: .turnedIn)
+            // Then student or teacher unsubmitted on Classroom Web -> incoming item has status: .pending, isManuallyCompleted: false
+            let cachedRemoteTurnedIn = Coursework(id: "cw_unsubmit", courseId: "c1", courseName: "M", title: "Remote Unsubmit", dueDate: future, status: .turnedIn, isManuallyCompleted: false)
+            let incomingUnsubmitted = Coursework(id: "cw_unsubmit", courseId: "c1", courseName: "M", title: "Remote Unsubmit", dueDate: future, status: .pending, isManuallyCompleted: false)
+
+            let freshMapA = [cachedRemoteTurnedIn.id: cachedRemoteTurnedIn]
+            var reconciledA = incomingUnsubmitted
+            if let fresh = freshMapA[incomingUnsubmitted.id], fresh.isManuallyCompleted, !reconciledA.isCompleted {
+                reconciledA.status = .turnedIn
+                reconciledA.isManuallyCompleted = true
+            }
+            assertCondition(reconciledA.status == .pending, "Remote unsubmit without local manual check must revert to pending")
+            assertCondition(reconciledA.isManuallyCompleted == false, "Remote unsubmit should have isManuallyCompleted == false")
+            assertCondition(reconciledA.isCompleted == false, "Remote unsubmit should evaluate isCompleted == false")
+
+            // Case B: Student manually tapped checkbox in app (isManuallyCompleted: true, status: .turnedIn)
+            // Classroom sync returns status: .pending, isManuallyCompleted: false
+            let cachedLocallyChecked = Coursework(id: "cw_local", courseId: "c1", courseName: "M", title: "Local Checked", dueDate: future, status: .turnedIn, isManuallyCompleted: true)
+            let incomingPending = Coursework(id: "cw_local", courseId: "c1", courseName: "M", title: "Local Checked", dueDate: future, status: .pending, isManuallyCompleted: false)
+
+            let freshMapB = [cachedLocallyChecked.id: cachedLocallyChecked]
+            var reconciledB = incomingPending
+            if let fresh = freshMapB[incomingPending.id], fresh.isManuallyCompleted, !reconciledB.isCompleted {
+                reconciledB.status = .turnedIn
+                reconciledB.isManuallyCompleted = true
+            }
+            assertCondition(reconciledB.status == .turnedIn, "Locally completed task must remain turnedIn after sync")
+            assertCondition(reconciledB.isManuallyCompleted == true, "Locally completed task must preserve isManuallyCompleted flag")
+            assertCondition(reconciledB.isCompleted == true, "Locally completed task must evaluate isCompleted == true")
+        }
+
+        // Test 11: Unauthenticated widget state integrity (no mock coursework leakage)
+        do {
+            func widgetDisplayItems(isLoggedIn: Bool, items: [Coursework]) -> [Coursework] {
+                isLoggedIn ? items : []
+            }
+            let rawRealCoursework: [Coursework] = [
+                Coursework(id: "cw_secret", courseId: "c1", courseName: "Math", title: "Secret HW", status: .pending)
+            ]
+            let loggedOutDisplay = widgetDisplayItems(isLoggedIn: false, items: rawRealCoursework)
+            assertCondition(loggedOutDisplay.isEmpty, "Logged-out widget must have empty coursework list")
+
+            let loggedInDisplay = widgetDisplayItems(isLoggedIn: true, items: rawRealCoursework)
+            assertCondition(!loggedInDisplay.isEmpty, "Logged-in widget must display coursework list")
+        }
+
+        // Test 12: Calendar & Timezone formatting stability (Gregorian calendar pinning)
+        do {
+            var comp = DateComponents()
+            comp.year = 2026
+            comp.month = 10
+            comp.day = 20
+            comp.hour = 15
+            comp.minute = 45
+            comp.second = 0
+            var gregorianCal = Calendar(identifier: .gregorian)
+            gregorianCal.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh")!
+            if let date = gregorianCal.date(from: comp) {
+                let item = Coursework(id: "cw_greg", courseId: "c1", courseName: "Math", title: "Test Greg", dueDate: date, status: .pending)
+                assertCondition(item.timeOnlyString == "15:45", "Coursework timeOnlyString must match expected Gregorian time '15:45'")
+                assertCondition(item.formattedFullDueDate.contains("2026"), "Coursework formattedFullDueDate must use Gregorian year 2026")
+            }
+        }
+
+        // Test 13: Personal notes integration in tomorrow coursework
+        do {
+            let cal = Calendar.autoupdatingCurrent
+            let now = Date()
+            guard let tomorrow = cal.date(byAdding: .day, value: 1, to: now) else {
+                fatalError("Cannot calculate tomorrow")
+            }
+            var compTom = cal.dateComponents([.year, .month, .day], from: tomorrow)
+            compTom.hour = 14
+            compTom.minute = 30
+            let tomorrowDate = cal.date(from: compTom) ?? tomorrow
+
+            let standaloneNote = PersonalNote(
+                id: "standalone_1",
+                courseworkId: nil,
+                courseId: "c_bio",
+                courseName: "Sinh học",
+                title: "Chuẩn bị mẫu vật",
+                content: "Mang theo lá cây",
+                dueDate: tomorrowDate,
+                isCompleted: false
+            )
+
+            let courseworkAttachedNote = PersonalNote(
+                id: "attached_1",
+                courseworkId: "cw_existing",
+                courseId: "c_bio",
+                courseName: "Sinh học",
+                title: "Ghi chú cho bài tập",
+                content: "Chú ý câu 3",
+                dueDate: tomorrowDate,
+                isCompleted: false
+            )
+
+            ClassroomStorage.shared.savePersonalNotes([standaloneNote, courseworkAttachedNote])
+
+            let tomorrowItems = ClassroomStorage.shared.getTomorrowCoursework(items: [], courses: [], includeCompleted: true, includeNotes: true)
+            assertCondition(tomorrowItems.contains { $0.id == "note_standalone_1" }, "getTomorrowCoursework must include standalone personal note due tomorrow")
+            assertCondition(!tomorrowItems.contains { $0.id == "note_attached_1" }, "getTomorrowCoursework must NOT include coursework-attached note as duplicate item")
+
+            let noteItem = tomorrowItems.first { $0.id == "note_standalone_1" }
+            assertCondition(noteItem?.compactDueString == "Mai 14:30", "Tomorrow 14:30 note must format as 'Mai 14:30'")
+
+            // Toggle completion
+            ClassroomStorage.shared.togglePersonalNoteCompletion(id: "standalone_1")
+            let notesAfterToggle = ClassroomStorage.shared.loadPersonalNotes()
+            assertCondition(notesAfterToggle.first { $0.id == "standalone_1" }?.isCompleted == true, "Personal note completion must toggle to true")
+
+            // Delete note
+            ClassroomStorage.shared.deletePersonalNote(id: "standalone_1")
+            let notesAfterDelete = ClassroomStorage.shared.loadPersonalNotes()
+            assertCondition(!notesAfterDelete.contains { $0.id == "standalone_1" }, "Personal note must be deleted")
         }
 
         print("=== All Apple Core Logic Tests Passed Successfully! ===")

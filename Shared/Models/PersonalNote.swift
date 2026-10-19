@@ -74,11 +74,11 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
 
     public var isDueTomorrow: Bool {
         guard let dueDate else { return false }
-        return Calendar.current.isDateInTomorrow(dueDate)
+        return Calendar.autoupdatingCurrent.isDateInTomorrow(dueDate)
     }
 
     public var isDueToday: Bool {
         guard let dueDate else { return false }
-        return Calendar.current.isDateInToday(dueDate)
+        return Calendar.autoupdatingCurrent.isDateInToday(dueDate)
     }
 }

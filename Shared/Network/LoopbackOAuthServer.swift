@@ -76,16 +76,20 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
 
         var actualAddress = sockaddr_in()
         var len = socklen_t(MemoryLayout<sockaddr_in>.size)
-        withUnsafeMutablePointer(to: &actualAddress) {
+        let getSockNameResult = withUnsafeMutablePointer(to: &actualAddress) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
                 getsockname(serverFd, $0, &len)
             }
+        }
+        guard getSockNameResult == 0 else {
+            Darwin.close(serverFd)
+            throw NSError(domain: "LoopbackOAuthServer", code: -3, userInfo: [NSLocalizedDescriptionKey: "Không thể lấy thông tin cổng kết nối"])
         }
         let port = Int(UInt16(bigEndian: actualAddress.sin_port))
 
         guard listen(serverFd, 10) == 0 else {
             Darwin.close(serverFd)
-            throw NSError(domain: "LoopbackOAuthServer", code: -3, userInfo: [NSLocalizedDescriptionKey: "Không thể lắng nghe kết nối"])
+            throw NSError(domain: "LoopbackOAuthServer", code: -4, userInfo: [NSLocalizedDescriptionKey: "Không thể lắng nghe kết nối"])
         }
 
         let handle = SafeSocketHandle(fd: serverFd)

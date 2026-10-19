@@ -1,11 +1,14 @@
 import SwiftUI
 #if os(macOS)
 import AppKit
+import UserNotifications
 
-final class ClassroomAppDelegate: NSObject, NSApplicationDelegate {
+final class ClassroomAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     private var backgroundSyncTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
+
         NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
             object: nil,
@@ -52,8 +55,20 @@ final class ClassroomAppDelegate: NSObject, NSApplicationDelegate {
                     return true
                 }
             }
+            if let window = sender.windows.first {
+                window.makeKeyAndOrderFront(nil)
+                return true
+            }
         }
         return true
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound, .badge])
     }
 }
 #endif
@@ -91,7 +106,25 @@ struct ClassroomApp: App {
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
         .commands {
-            CommandGroup(replacing: .newItem) {}
+            SidebarCommands()
+            CommandGroup(replacing: .appSettings) {
+                Button("Cài đặt...") {
+                    NotificationCenter.default.post(name: NSNotification.Name("OpenSettingsModal"), object: nil)
+                }
+                .keyboardShortcut(",", modifiers: [.command])
+            }
+            CommandGroup(replacing: .newItem) {
+                Button("Tạo ghi chú mới...") {
+                    NotificationCenter.default.post(name: NSNotification.Name("CreateNewPersonalNote"), object: nil)
+                }
+                .keyboardShortcut("n", modifiers: [.command])
+            }
+            CommandMenu("Báo bài") {
+                Button("Làm mới & Đồng bộ") {
+                    NotificationCenter.default.post(name: NSNotification.Name("TriggerSync"), object: nil)
+                }
+                .keyboardShortcut("r", modifiers: [.command])
+            }
             CommandGroup(after: .appInfo) {
                 Divider()
                 Button("Kiểm tra bản cập nhật...") {

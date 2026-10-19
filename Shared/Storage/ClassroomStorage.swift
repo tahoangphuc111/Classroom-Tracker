@@ -8,13 +8,13 @@ public final class ClassroomStorage: @unchecked Sendable {
         #if os(iOS)
         return [
             "group.com.phucta.classroom",
-            "4J32CASZVT.group.com.phucta.classroom",
-            "VGWH8K5259.group.com.phucta.classroom"
+            "VGWH8K5259.group.com.phucta.classroom",
+            "4J32CASZVT.group.com.phucta.classroom"
         ]
         #else
         return [
-            "4J32CASZVT.group.com.phucta.classroom",
             "VGWH8K5259.group.com.phucta.classroom",
+            "4J32CASZVT.group.com.phucta.classroom",
             "group.com.phucta.classroom"
         ]
         #endif
@@ -46,6 +46,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     private let ioQueue = DispatchQueue(label: "com.phucta.classroom.storage.io", qos: .utility)
     private let storageInitializedKey = "cached_classroom_storage_initialized"
     private var lastWidgetReloadTime: TimeInterval = 0
+    private var pendingWidgetReloadWorkItem: DispatchWorkItem?
 
     public struct ClassroomSharedMetadata: Codable {
         public var userEmail: String?
@@ -125,47 +126,81 @@ public final class ClassroomStorage: @unchecked Sendable {
 
     private func readDataFromDirectories(fileName: String) -> Data? {
         let logger = Logger(subsystem: "com.phucta.ClassroomTracker", category: "storage")
-        var candidateData: Data? = nil
+        var bestData: Data? = nil
+        var bestDate: Date = .distantPast
+        var bestIsMock: Bool = true
+
         for dir in allStorageDirectories {
             let fileURL = dir.appendingPathComponent(fileName)
-            let exists = FileManager.default.fileExists(atPath: fileURL.path)
-            logger.notice("readData check \(fileName, privacy: .public) at \(fileURL.path, privacy: .public) -> exists=\(exists)")
-            if exists {
-                do {
-                    let data = try Data(contentsOf: fileURL)
-                    logger.notice("readData read \(data.count) bytes of \(fileName, privacy: .public) at \(dir.path, privacy: .public)")
-                    if data.isEmpty {
-                        logger.error("readData: file is 0 bytes at \(fileURL.path, privacy: .public)")
-                    } else {
-                        if fileName == "cached_classroom_courses.json" {
-                            let isMock = isMockCoursesData(data)
-                            logger.notice("readData courses isMock=\(isMock) for \(dir.path, privacy: .public)")
-                            if !isMock { return data }
-                        } else if fileName == "cached_classroom_coursework.json" {
-                            let isMock = isMockCourseworkData(data)
-                            logger.notice("readData coursework isMock=\(isMock) for \(dir.path, privacy: .public)")
-                            if !isMock { return data }
-                        }
-                        if candidateData == nil {
-                            candidateData = data
-                        }
-                    }
-                } catch {
-                    logger.error("readData FAILED to read \(fileURL.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            guard FileManager.default.fileExists(atPath: fileURL.path) else { continue }
+            do {
+                let attrs = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+                let modDate = attrs[.modificationDate] as? Date ?? .distantPast
+                let data = try Data(contentsOf: fileURL)
+                guard !data.isEmpty else {
+                    logger.error("readData: file is 0 bytes at \(fileURL.path, privacy: .public)")
+                    continue
                 }
+
+                let isMock: Bool
+                if fileName == "cached_classroom_courses.json" {
+                    isMock = isMockCoursesData(data)
+                } else if fileName == "cached_classroom_coursework.json" {
+                    isMock = isMockCourseworkData(data)
+                } else {
+                    isMock = false
+                }
+
+                if isAppExtension && isMock {
+                    continue
+                }
+
+                logger.notice("readData found \(data.count) bytes in \(dir.path, privacy: .public), isMock=\(isMock), modDate=\(modDate)")
+
+                if bestData == nil {
+                    bestData = data
+                    bestDate = modDate
+                    bestIsMock = isMock
+                } else if bestIsMock && !isMock {
+                    bestData = data
+                    bestDate = modDate
+                    bestIsMock = isMock
+                } else if bestIsMock == isMock && modDate > bestDate {
+                    bestData = data
+                    bestDate = modDate
+                }
+            } catch {
+                logger.error("readData FAILED to read \(fileURL.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
         }
-        if let candidateData {
+
+        if let bestData {
             if isAppExtension {
-                if fileName == "cached_classroom_courses.json" && isMockCoursesData(candidateData) {
+                if fileName == "cached_classroom_courses.json" && isMockCoursesData(bestData) {
                     return nil
                 }
-                if fileName == "cached_classroom_coursework.json" && isMockCourseworkData(candidateData) {
+                if fileName == "cached_classroom_coursework.json" && isMockCourseworkData(bestData) {
                     return nil
                 }
             }
         }
-        return candidateData
+        return bestData
+    }
+
+    public func invalidateMemoryCache() {
+        lock.lock()
+        cachedCourses = nil
+        cachedCoursesTimestamp = 0
+        cachedCoursework = nil
+        cachedCourseworkTimestamp = 0
+        cachedPersonalNotes = nil
+        cachedPersonalNotesTimestamp = 0
+        cachedHasUserLoggedIn = nil
+        lock.unlock()
+
+        for ud in allUserDefaults {
+            ud.synchronize()
+        }
     }
 
     public func loadSharedMetadata() -> ClassroomSharedMetadata? {
@@ -185,7 +220,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     private var cachedHasUserLoggedIn: Bool? = nil
 
     public var hasUserLoggedIn: Bool {
-        if let cached = cachedHasUserLoggedIn {
+        if !isAppExtension, let cached = cachedHasUserLoggedIn {
             return cached
         }
         if let metadata = loadSharedMetadata(), metadata.hasUserLoggedIn {
@@ -214,6 +249,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         var metadata = loadSharedMetadata() ?? ClassroomSharedMetadata()
         metadata.hasUserLoggedIn = loggedIn
         saveSharedMetadata(metadata)
+        notifyWidgetReload()
     }
 
     private init() {
@@ -242,14 +278,19 @@ public final class ClassroomStorage: @unchecked Sendable {
         guard !isAppExtension else { return }
         var bestCoursesData: Data?
         var bestCourseworkData: Data?
+        var bestPersonalNotesData: Data?
         var bestEmail: String?
         var bestSyncTime: Double = 0
+        var bestPersonalNotesTime: Double = 0
 
         if let fData = readDataFromDirectories(fileName: "cached_classroom_courses.json") {
             bestCoursesData = fData
         }
         if let fData = readDataFromDirectories(fileName: "cached_classroom_coursework.json") {
             bestCourseworkData = fData
+        }
+        if let fData = readDataFromDirectories(fileName: "cached_classroom_personal_notes.json") {
+            bestPersonalNotesData = fData
         }
         if let meta = loadSharedMetadata() {
             if let e = meta.userEmail, !e.isEmpty { bestEmail = e }
@@ -278,10 +319,28 @@ public final class ClassroomStorage: @unchecked Sendable {
                     bestCourseworkData = cwData
                 }
             }
+            let pnTime = ud.double(forKey: personalNotesTimestampKey)
+            if pnTime > bestPersonalNotesTime {
+                bestPersonalNotesTime = pnTime
+            }
+            if let pnData = ud.data(forKey: personalNotesKey), !pnData.isEmpty {
+                if bestPersonalNotesData == nil {
+                    bestPersonalNotesData = pnData
+                } else if let currentNotes = try? JSONDecoder().decode([PersonalNote].self, from: bestPersonalNotesData!),
+                          let newNotes = try? JSONDecoder().decode([PersonalNote].self, from: pnData) {
+                    if currentNotes.isEmpty && !newNotes.isEmpty {
+                        bestPersonalNotesData = pnData
+                    }
+                }
+            }
             let sTime = ud.double(forKey: lastSyncKey)
             if sTime > bestSyncTime {
                 bestSyncTime = sTime
             }
+        }
+
+        if bestPersonalNotesData != nil && bestPersonalNotesTime == 0 {
+            bestPersonalNotesTime = Date().timeIntervalSince1970
         }
 
         for ud in allUserDefaults {
@@ -291,12 +350,19 @@ public final class ClassroomStorage: @unchecked Sendable {
             if let bestCourseworkData {
                 ud.set(bestCourseworkData, forKey: courseworkKey)
             }
+            if let bestPersonalNotesData {
+                ud.set(bestPersonalNotesData, forKey: personalNotesKey)
+                if bestPersonalNotesTime > 0 {
+                    ud.set(bestPersonalNotesTime, forKey: personalNotesTimestampKey)
+                }
+            }
             if let bestEmail {
                 ud.set(bestEmail, forKey: userEmailKey)
             }
             if bestSyncTime > 0 {
                 ud.set(bestSyncTime, forKey: lastSyncKey)
             }
+            ud.synchronize()
         }
 
         if let bestCoursesData {
@@ -304,6 +370,9 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
         if let bestCourseworkData {
             writeDataToAllDirectories(bestCourseworkData, fileName: "cached_classroom_coursework.json")
+        }
+        if let bestPersonalNotesData {
+            writeDataToAllDirectories(bestPersonalNotesData, fileName: "cached_classroom_personal_notes.json")
         }
 
         let isUserLogged = !(bestEmail?.isEmpty ?? true) || hasUserLoggedIn
@@ -354,7 +423,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         let memoryTimestamp = cachedCoursesTimestamp
         lock.unlock()
 
-        if let memoryCached, memoryTimestamp > 0 {
+        if !isAppExtension, let memoryCached, memoryTimestamp > 0 {
             let primaryTime = userDefaults.double(forKey: coursesTimestampKey)
             if primaryTime <= memoryTimestamp {
                 return memoryCached
@@ -435,7 +504,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         let memoryTimestamp = cachedCourseworkTimestamp
         lock.unlock()
 
-        if let memoryCached, memoryTimestamp > 0 {
+        if !isAppExtension, let memoryCached, memoryTimestamp > 0 {
             let primaryTime = userDefaults.double(forKey: courseworkTimestampKey)
             if primaryTime <= memoryTimestamp {
                 return memoryCached
@@ -581,7 +650,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     public func getTodayAndTomorrowCoursework(includeCompleted: Bool = true) -> [Coursework] {
         let allItems = loadCoursework()
         let relevant = filterItemsByActiveCourses(allItems)
-        let calendar = Calendar.current
+        let calendar = Calendar.autoupdatingCurrent
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
         guard let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday) else {
@@ -601,7 +670,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     public func getTomorrowCoursework(items: [Coursework]? = nil, courses: [Course]? = nil, includeCompleted: Bool = true, includeNotes: Bool = true) -> [Coursework] {
         let allItems = items ?? loadCoursework()
         let relevant = filterItemsByActiveCourses(allItems, courses: courses)
-        let calendar = Calendar.current
+        let calendar = Calendar.autoupdatingCurrent
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
@@ -663,12 +732,16 @@ public final class ClassroomStorage: @unchecked Sendable {
         return []
     }
 
-    public func clearAllData() {
+    public func clearAllData(includePersonalNotes: Bool = true) {
         lock.lock()
         cachedCourses = nil
         cachedCoursesTimestamp = 0
         cachedCoursework = nil
         cachedCourseworkTimestamp = 0
+        if includePersonalNotes {
+            cachedPersonalNotes = nil
+            cachedPersonalNotesTimestamp = 0
+        }
         cachedHasUserLoggedIn = nil
         lock.unlock()
 
@@ -678,18 +751,24 @@ public final class ClassroomStorage: @unchecked Sendable {
                 try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_courses.json"))
                 try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_coursework.json"))
                 try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_metadata.json"))
+                if includePersonalNotes {
+                    try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_personal_notes.json"))
+                }
             }
-            self.userDefaults.removeObject(forKey: self.coursesKey)
-            self.userDefaults.removeObject(forKey: self.courseworkKey)
-            self.userDefaults.removeObject(forKey: self.coursesTimestampKey)
-            self.userDefaults.removeObject(forKey: self.courseworkTimestampKey)
-            self.userDefaults.removeObject(forKey: self.lastSyncKey)
-            self.userDefaults.removeObject(forKey: self.userEmailKey)
 
-            UserDefaults.standard.removeObject(forKey: self.coursesKey)
-            UserDefaults.standard.removeObject(forKey: self.courseworkKey)
-            UserDefaults.standard.removeObject(forKey: self.coursesTimestampKey)
-            UserDefaults.standard.removeObject(forKey: self.courseworkTimestampKey)
+            for ud in self.allUserDefaults {
+                ud.removeObject(forKey: self.coursesKey)
+                ud.removeObject(forKey: self.courseworkKey)
+                ud.removeObject(forKey: self.coursesTimestampKey)
+                ud.removeObject(forKey: self.courseworkTimestampKey)
+                ud.removeObject(forKey: self.lastSyncKey)
+                ud.removeObject(forKey: self.userEmailKey)
+                if includePersonalNotes {
+                    ud.removeObject(forKey: self.personalNotesKey)
+                    ud.removeObject(forKey: self.personalNotesTimestampKey)
+                }
+                ud.synchronize()
+            }
 
             self.notifyWidgetReload()
         }
@@ -772,17 +851,35 @@ public final class ClassroomStorage: @unchecked Sendable {
             || (Bundle.main.bundleIdentifier?.contains("widget") == true)
         guard !isAppExtension else { return }
 
-        let now = Date().timeIntervalSince1970
         lock.lock()
-        if now - lastWidgetReloadTime < 1.0 {
-            lock.unlock()
-            return
-        }
-        lastWidgetReloadTime = now
-        lock.unlock()
-
-        DispatchQueue.main.async {
+        pendingWidgetReloadWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            for ud in self.allUserDefaults {
+                ud.synchronize()
+            }
+            #if os(macOS)
+            DistributedNotificationCenter.default().postNotificationName(
+                NSNotification.Name("com.phucta.ClassroomTracker.widgetReload"),
+                object: nil,
+                userInfo: nil,
+                deliverImmediately: true
+            )
+            #endif
             WidgetCenter.shared.reloadAllTimelines()
+        }
+        pendingWidgetReloadWorkItem = workItem
+
+        let now = Date().timeIntervalSince1970
+        let timeSinceLast = now - lastWidgetReloadTime
+        if timeSinceLast >= 1.0 {
+            lastWidgetReloadTime = now
+            lock.unlock()
+            DispatchQueue.main.async(execute: workItem)
+        } else {
+            lock.unlock()
+            let delay = max(0.1, 1.0 - timeSinceLast)
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
         }
         #endif
     }
@@ -807,7 +904,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     ]
 
     public static var mockCoursework: [Coursework] {
-        let calendar = Calendar.current
+        let calendar = Calendar.autoupdatingCurrent
         let now = Date()
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now.addingTimeInterval(24 * 3600)
         let tomorrowDue = calendar.date(bySettingHour: 17, minute: 30, second: 0, of: tomorrow) ?? now.addingTimeInterval(26 * 3600)
@@ -914,7 +1011,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         let memoryTimestamp = cachedPersonalNotesTimestamp
         lock.unlock()
 
-        if let memoryCached, memoryTimestamp > 0 {
+        if !isAppExtension, let memoryCached, memoryTimestamp > 0 {
             let primaryTime = userDefaults.double(forKey: personalNotesTimestampKey)
             if primaryTime <= memoryTimestamp {
                 return memoryCached
@@ -967,7 +1064,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         var allNotes = loadPersonalNotes()
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         if let index = allNotes.firstIndex(where: { $0.courseworkId == courseworkId }) {
-            if trimmed.isEmpty && allNotes[index].title.isEmpty {
+            if trimmed.isEmpty {
                 allNotes.remove(at: index)
             } else {
                 allNotes[index].content = trimmed
@@ -1005,7 +1102,7 @@ public final class ClassroomStorage: @unchecked Sendable {
 
     public func getTomorrowPersonalNotes(notes: [PersonalNote]? = nil, includeCompleted: Bool = false) -> [PersonalNote] {
         let allNotes = notes ?? loadPersonalNotes()
-        let calendar = Calendar.current
+        let calendar = Calendar.autoupdatingCurrent
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),

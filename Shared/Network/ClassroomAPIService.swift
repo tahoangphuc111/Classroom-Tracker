@@ -114,13 +114,14 @@ public final class ClassroomAPIService: ObservableObject {
                 }
             }
 
-            // Keep local completions if not yet marked turned in on Classroom
+            // Keep local manual completions if locally marked done and not yet completed on Classroom
             let freshCoursework = ClassroomStorage.shared.loadCoursework()
-            let freshStatusMap = Dictionary(freshCoursework.map { ($0.id, $0.status) }, uniquingKeysWith: { _, new in new })
+            let freshMap = Dictionary(freshCoursework.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
             let finalCoursework = uniqueCoursework.map { item -> Coursework in
                 var updated = item
-                if let freshStatus = freshStatusMap[item.id], freshStatus == .turnedIn, !updated.isCompleted {
+                if let fresh = freshMap[item.id], fresh.isManuallyCompleted, !updated.isCompleted {
                     updated.status = .turnedIn
+                    updated.isManuallyCompleted = true
                 }
                 return updated
             }
@@ -193,6 +194,36 @@ public final class ClassroomAPIService: ObservableObject {
         return Array(coursesMap.values)
     }
 
+    private func dataWithRetry(for request: URLRequest, maxRetries: Int = 2) async throws -> (Data, URLResponse) {
+        var attempt = 0
+        while true {
+            let (data, response): (Data, URLResponse)
+            do {
+                (data, response) = try await URLSession.shared.data(for: request)
+            } catch {
+                if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw error }
+                if attempt < maxRetries {
+                    attempt += 1
+                    let delay = UInt64(500_000_000) * (1 << attempt)
+                    try await Task.sleep(nanoseconds: delay)
+                    continue
+                }
+                throw error
+            }
+
+            if let httpResponse = response as? HTTPURLResponse,
+               (httpResponse.statusCode == 429 || httpResponse.statusCode == 503),
+               attempt < maxRetries {
+                attempt += 1
+                let delay = UInt64(500_000_000) * (1 << attempt)
+                try await Task.sleep(nanoseconds: delay)
+                continue
+            }
+
+            return (data, response)
+        }
+    }
+
     private func fetchCoursesPage(
         accessToken: String,
         filterKey: String?,
@@ -230,7 +261,7 @@ public final class ClassroomAPIService: ObservableObject {
 
             let (data, response): (Data, URLResponse)
             do {
-                (data, response) = try await URLSession.shared.data(for: request)
+                (data, response) = try await dataWithRetry(for: request)
             } catch {
                 if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw error }
                 if courses.isEmpty {
@@ -346,7 +377,7 @@ public final class ClassroomAPIService: ObservableObject {
             request.timeoutInterval = 15
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await dataWithRetry(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
                 if allItems.isEmpty { throw ClassroomAPIError.invalidResponse }
                 break
@@ -374,7 +405,7 @@ public final class ClassroomAPIService: ObservableObject {
                 var request = URLRequest(url: url)
                 request.timeoutInterval = 15
                 request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-                if let (data, response) = try? await URLSession.shared.data(for: request),
+                if let (data, response) = try? await dataWithRetry(for: request),
                    let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode),
                    let decoded = try? JSONDecoder().decode(GoogleCourseworkListResponse.self, from: data),
                    let items = decoded.courseWork {
@@ -408,7 +439,7 @@ public final class ClassroomAPIService: ObservableObject {
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
             do {
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await dataWithRetry(for: request)
                 guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
                     break
                 }

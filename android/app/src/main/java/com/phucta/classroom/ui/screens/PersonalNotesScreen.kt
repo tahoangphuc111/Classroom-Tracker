@@ -20,12 +20,16 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -46,6 +50,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -56,7 +61,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,12 +71,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phucta.classroom.data.model.Course
 import com.phucta.classroom.data.model.PersonalNote
+import com.phucta.classroom.data.model.normalizeForVietnameseSearch
 import com.phucta.classroom.ui.components.DueDateBadge
 import com.phucta.classroom.ui.components.EmberEmotion
 import com.phucta.classroom.ui.components.EmberFlameCanvas
 import com.phucta.classroom.ui.components.SubjectBadgePill
 import com.phucta.classroom.ui.theme.ChunkyColor
 import com.phucta.classroom.ui.theme.OutfitFontFamily
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -86,6 +95,25 @@ fun PersonalNotesScreen(
 ) {
     var selectedStatusTab by rememberSaveable { mutableIntStateOf(0) }
     var selectedCourseId by rememberSaveable { mutableStateOf<String?>(null) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var debouncedQuery by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isBlank()) {
+            debouncedQuery = ""
+        } else {
+            delay(250)
+            debouncedQuery = searchQuery
+        }
+    }
+
+    val normalizedQuery = remember(debouncedQuery) { debouncedQuery.normalizeForVietnameseSearch() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    val searchTokens = remember(normalizedQuery) {
+        normalizedQuery.split("\\s+".toRegex()).filter { it.isNotBlank() }
+    }
+
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
     var noteToEdit by remember { mutableStateOf<PersonalNote?>(null) }
 
@@ -93,7 +121,7 @@ fun PersonalNotesScreen(
         notes.filter { it.courseworkId == null }
     }
 
-    val filteredNotes = remember(standaloneNotes, selectedStatusTab, selectedCourseId) {
+    val filteredNotes = remember(standaloneNotes, selectedStatusTab, selectedCourseId, searchTokens) {
         standaloneNotes.filter { note ->
             val matchesStatus = when (selectedStatusTab) {
                 1 -> !note.isCompleted
@@ -101,7 +129,10 @@ fun PersonalNotesScreen(
                 else -> true
             }
             val matchesCourse = selectedCourseId == null || note.courseId == selectedCourseId
-            matchesStatus && matchesCourse
+            val matchesSearch = if (searchTokens.isEmpty()) true else {
+                searchTokens.all { token -> note.searchIndex.contains(token) }
+            }
+            matchesStatus && matchesCourse && matchesSearch
         }.sortedWith { first, second ->
             if (first.isCompleted != second.isCompleted) {
                 if (first.isCompleted) 1 else -1
@@ -226,6 +257,33 @@ fun PersonalNotesScreen(
                 }
             }
 
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Tìm ghi chú...", fontSize = 14.sp) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = ChunkyColor.TextMuted) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = ChunkyColor.TextMuted)
+                        }
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = ChunkyColor.SurfaceWhite,
+                    unfocusedContainerColor = ChunkyColor.SurfaceWhite,
+                    focusedBorderColor = ChunkyColor.SkyBottom,
+                    unfocusedBorderColor = ChunkyColor.CardBorder
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
             if (filteredNotes.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -237,14 +295,14 @@ fun PersonalNotesScreen(
                         EmberFlameCanvas(size = 72.dp, emotion = EmberEmotion.NORMAL)
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Chưa có ghi chú nào",
+                            text = if (searchQuery.isNotBlank()) "Không tìm thấy ghi chú" else "Chưa có ghi chú nào",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = ChunkyColor.TextPrimary
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Nhấn nút + bên dưới để tạo ghi chú mới cho việc học nhé!",
+                            text = if (searchQuery.isNotBlank()) "Thử tìm kiếm với từ khóa khác hoặc xoá bộ lọc." else "Nhấn nút + bên dưới để tạo ghi chú mới cho việc học nhé!",
                             fontSize = 13.5.sp,
                             color = ChunkyColor.TextMuted,
                             textAlign = TextAlign.Center
@@ -461,6 +519,12 @@ private fun CreateOrEditNoteDialog(
             }
         )
     }
+    val hasCustomDueDate = existingNote?.dueEpochMillis != null && !existingNote.isDueToday && !existingNote.isDueTomorrow
+    val customDateStr = remember(existingNote?.dueEpochMillis) {
+        existingNote?.dueEpochMillis?.let {
+            SimpleDateFormat("d/M", Locale.getDefault()).format(Date(it))
+        } ?: ""
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -502,25 +566,40 @@ private fun CreateOrEditNoteDialog(
                     color = ChunkyColor.TextPrimary
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(top = 4.dp)
                 ) {
-                    FilterChip(
-                        selected = dueDateMode == 0,
-                        onClick = { dueDateMode = 0 },
-                        label = { Text("Không hạn", fontSize = 11.5.sp) }
-                    )
-                    FilterChip(
-                        selected = dueDateMode == 1,
-                        onClick = { dueDateMode = 1 },
-                        label = { Text("Hôm nay", fontSize = 11.5.sp) }
-                    )
-                    FilterChip(
-                        selected = dueDateMode == 2,
-                        onClick = { dueDateMode = 2 },
-                        label = { Text("Ngày mai", fontSize = 11.5.sp) }
-                    )
+                    item {
+                        FilterChip(
+                            selected = dueDateMode == 0,
+                            onClick = { dueDateMode = 0 },
+                            label = { Text("Không hạn", fontSize = 11.5.sp) }
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = dueDateMode == 1,
+                            onClick = { dueDateMode = 1 },
+                            label = { Text("Hôm nay", fontSize = 11.5.sp) }
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = dueDateMode == 2,
+                            onClick = { dueDateMode = 2 },
+                            label = { Text("Ngày mai", fontSize = 11.5.sp) }
+                        )
+                    }
+                    if (hasCustomDueDate) {
+                        item {
+                            FilterChip(
+                                selected = dueDateMode == 3,
+                                onClick = { dueDateMode = 3 },
+                                label = { Text("Ngày khác ($customDateStr)", fontSize = 11.5.sp) }
+                            )
+                        }
+                    }
                 }
 
                 if (courses.isNotEmpty()) {
@@ -564,6 +643,7 @@ private fun CreateOrEditNoteDialog(
                                     set(Calendar.HOUR_OF_DAY, 23)
                                     set(Calendar.MINUTE, 59)
                                     set(Calendar.SECOND, 59)
+                                    set(Calendar.MILLISECOND, 999)
                                 }
                                 cal.timeInMillis
                             }
@@ -573,9 +653,11 @@ private fun CreateOrEditNoteDialog(
                                     set(Calendar.HOUR_OF_DAY, 23)
                                     set(Calendar.MINUTE, 59)
                                     set(Calendar.SECOND, 59)
+                                    set(Calendar.MILLISECOND, 999)
                                 }
                                 cal.timeInMillis
                             }
+                            0 -> null
                             else -> existingNote?.dueEpochMillis
                         }
                         val courseObj = courses.find { it.id == selectedCourseId }

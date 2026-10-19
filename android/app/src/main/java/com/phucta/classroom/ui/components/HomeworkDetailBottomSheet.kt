@@ -1,5 +1,6 @@
 package com.phucta.classroom.ui.components
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
@@ -19,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.foundation.layout.Arrangement
@@ -331,7 +333,50 @@ fun HomeworkDetailBottomSheet(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        val clipText = buildString {
+                            append(coursework.title)
+                            append(" - ")
+                            append(coursework.courseName)
+                            if (coursework.dueEpochMillis != null) {
+                                append("\nHạn nộp: ")
+                                append(coursework.formattedFullDueDate)
+                            }
+                            if (!coursework.description.isNullOrBlank()) {
+                                append("\n\n")
+                                append(coursework.description)
+                            }
+                            if (!coursework.alternateLink.isNullOrBlank()) {
+                                append("\n\nLink: ")
+                                append(coursework.alternateLink)
+                            }
+                        }
+                        val clip = android.content.ClipData.newPlainText("Bài tập", clipText)
+                        clipboard?.setPrimaryClip(clip)
+                        android.widget.Toast.makeText(context, "Đã sao chép thông tin bài tập!", android.widget.Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.height(48.dp),
+                    border = BorderStroke(1.dp, ChunkyColor.CardBorder),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = ChunkyColor.SurfaceWhite,
+                        contentColor = ChunkyColor.TextPrimary
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Sao chép",
+                        tint = ChunkyColor.TextPrimary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 OutlinedButton(
                     onClick = {
@@ -343,7 +388,7 @@ fun HomeworkDetailBottomSheet(
                         } catch (e: Exception) {
                             android.widget.Toast.makeText(
                                 context,
-                                "Không thể mở liên kết: ${e.localizedMessage ?: "Lỗi không xác định"}",
+                                "Không thể mở trình duyệt",
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -354,7 +399,8 @@ fun HomeworkDetailBottomSheet(
                         containerColor = ChunkyColor.SkyBottom.copy(alpha = 0.08f),
                         contentColor = ChunkyColor.SkyBottom
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.OpenInBrowser,
@@ -362,9 +408,9 @@ fun HomeworkDetailBottomSheet(
                         tint = ChunkyColor.SkyBottom,
                         modifier = Modifier.size(18.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(5.dp))
                     Text(
-                        text = "Mở Classroom",
+                        text = "Mở",
                         color = ChunkyColor.SkyBottom,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp

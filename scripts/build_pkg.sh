@@ -28,17 +28,24 @@ fi
 
 SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep -E '^[[:space:]]*1\)' | head -n 1 | awk -F '"' '{print $2}' || true)
 
+BUILT=0
 if [ -n "$SIGN_IDENTITY" ]; then
-  echo "===> [macOS] Using signing identity: $SIGN_IDENTITY"
-  xcodebuild -project ClassroomTracker.xcodeproj \
+  echo "===> [macOS] Attempting build with signing identity: $SIGN_IDENTITY"
+  if xcodebuild -project ClassroomTracker.xcodeproj \
     -scheme ClassroomApp \
     -configuration Release \
     -derivedDataPath build/DerivedData \
     CONFIGURATION_BUILD_DIR="$ROOT_DIR/build/Release" \
     MACOSX_DEPLOYMENT_TARGET="$TARGET_VER" \
-    build
-else
-  echo "===> [macOS] No signing identity found, building with ad-hoc signing..."
+    build; then
+    BUILT=1
+  else
+    echo "⚠️ Signing with identity failed (likely missing matching provisioning profile). Falling back to ad-hoc signing..."
+  fi
+fi
+
+if [ "$BUILT" -eq 0 ]; then
+  echo "===> [macOS] Building with ad-hoc signing..."
   xcodebuild -project ClassroomTracker.xcodeproj \
     -scheme ClassroomApp \
     -configuration Release \
@@ -47,6 +54,7 @@ else
     MACOSX_DEPLOYMENT_TARGET="$TARGET_VER" \
     CODE_SIGN_IDENTITY="-" \
     CODE_SIGNING_REQUIRED=NO \
+    CODE_SIGNING_ALLOWED=NO \
     build
 fi
 

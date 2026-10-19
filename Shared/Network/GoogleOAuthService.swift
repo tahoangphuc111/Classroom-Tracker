@@ -146,7 +146,18 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         do {
             try await signInWithWebSession(clientId: clientId, verifier: verifier)
         } catch {
-            if let authError = error as? ASWebAuthenticationSessionError, authError.code == .canceledLogin {
+            let isCanceled: Bool = {
+                if let authError = error as? ASWebAuthenticationSessionError, authError.code == .canceledLogin {
+                    return true
+                }
+                let nsError = error as NSError
+                if (nsError.domain == "com.apple.AuthenticationServices.WebAuthenticationSession" && nsError.code == 1) ||
+                   (nsError.domain == "GoogleOAuthService" && nsError.code == 499) {
+                    return true
+                }
+                return false
+            }()
+            if isCanceled {
                 throw error
             }
             try await signInWithLoopback(clientId: clientId, verifier: verifier)

@@ -1051,7 +1051,7 @@ public struct MediumWidgetView: View {
                         HStack(spacing: 3.5) {
                             Image(systemName: "clock")
                                 .font(.system(size: 9.5, weight: .semibold))
-                            Text(item.isDueTomorrow ? item.timeOnlyString : item.compactDueString)
+                            Text(item.compactDueString)
                                 .font(WidgetFontSystem.statusTag(size: 10.5))
                         }
                         .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textPrimary)
@@ -1140,7 +1140,7 @@ public struct MediumWidgetView: View {
                                     .font(.system(size: 13, weight: .bold))
                                     .foregroundStyle(Color.green)
                             } else {
-                                Text(item.isDueTomorrow ? (item.timeOnlyString == "Cuối ngày" ? "Mai" : item.timeOnlyString) : item.compactDueString)
+                                Text(item.compactDueString)
                                     .font(WidgetFontSystem.statusTag(size: displayItems.count <= 2 ? 10 : 9))
                                     .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
                                     .padding(.horizontal, 6)

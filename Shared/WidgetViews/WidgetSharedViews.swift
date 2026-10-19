@@ -27,10 +27,37 @@ public struct SubjectArtHelper {
     }
 
     private static let cacheLock = NSLock()
+    private static var courseCategoryCache: [String: SubjectCategory] = [:]
     private static var categoryCache: [String: SubjectCategory] = [:]
     private static let nonAlphanumericCharacterSet = CharacterSet.alphanumerics.inverted
 
     public static func category(for courseName: String, title: String? = nil) -> SubjectCategory {
+        cacheLock.lock()
+        if let courseCat = courseCategoryCache[courseName] {
+            if courseCat != .other || title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false {
+                cacheLock.unlock()
+                return courseCat
+            }
+        }
+        cacheLock.unlock()
+
+        let courseCat: SubjectCategory
+        cacheLock.lock()
+        if let cached = courseCategoryCache[courseName] {
+            courseCat = cached
+        } else {
+            cacheLock.unlock()
+            let computed = computeCategory(for: courseName, title: nil)
+            cacheLock.lock()
+            courseCategoryCache[courseName] = computed
+            courseCat = computed
+        }
+        cacheLock.unlock()
+
+        if courseCat != .other || title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false {
+            return courseCat
+        }
+
         let key = "\(courseName)|\(title ?? "")"
         cacheLock.lock()
         if let cached = categoryCache[key] {
@@ -567,16 +594,6 @@ public struct DueBadgeView: View, Equatable {
 
     private var badgeText: String {
         if compact {
-            if item.isCompleted {
-                return "Đã xong"
-            } else if item.isDueToday {
-                return item.timeOnlyString == "Cuối ngày" ? "Hôm nay" : "Hôm nay \(item.timeOnlyString)"
-            } else if item.isDueTomorrow {
-                return item.timeOnlyString == "Cuối ngày" ? "Ngày mai" : "Mai \(item.timeOnlyString)"
-            }
-            if item.dueDate == nil {
-                return "Không hạn"
-            }
             return item.compactDueString
         } else {
             return item.friendlyDueString
@@ -1168,7 +1185,7 @@ public struct RisoEmptyStateDeskView: View {
 // MARK: - Mock Data
 public struct RisoMockData {
     public static var tomorrowEvening: Date {
-        let calendar = Calendar.current
+        let calendar = Calendar.autoupdatingCurrent
         var comp = calendar.dateComponents([.year, .month, .day], from: Date())
         comp.day = (comp.day ?? 0) + 1
         comp.hour = 23
@@ -1177,7 +1194,7 @@ public struct RisoMockData {
     }
 
     public static var tomorrowAfternoon: Date {
-        let calendar = Calendar.current
+        let calendar = Calendar.autoupdatingCurrent
         var comp = calendar.dateComponents([.year, .month, .day], from: Date())
         comp.day = (comp.day ?? 0) + 1
         comp.hour = 17
@@ -1186,7 +1203,7 @@ public struct RisoMockData {
     }
 
     public static var todayEvening: Date {
-        let calendar = Calendar.current
+        let calendar = Calendar.autoupdatingCurrent
         var comp = calendar.dateComponents([.year, .month, .day], from: Date())
         comp.hour = 23
         comp.minute = 55

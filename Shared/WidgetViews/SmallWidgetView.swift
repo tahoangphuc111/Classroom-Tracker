@@ -307,12 +307,6 @@ public struct SmallWidgetView: View {
     private func dueLabel(for item: Coursework) -> String {
         if item.isCompleted {
             return "Đã nộp"
-        } else if item.isDueToday {
-            return item.timeOnlyString
-        } else if item.isDueTomorrow {
-            return item.timeOnlyString == "Cuối ngày" ? "Mai" : "Mai \(item.timeOnlyString)"
-        } else if item.dueDate == nil {
-            return "Không hạn"
         } else {
             return item.compactDueString
         }
@@ -325,8 +319,7 @@ public struct SmallWidgetView: View {
                 .font(.system(size: fontSize + 4, weight: .bold))
                 .foregroundStyle(Color.green)
         } else {
-            let labelText = item.isDueToday || item.isDueTomorrow ? item.timeOnlyString : item.compactDueString
-            Text(labelText)
+            Text(item.compactDueString)
                 .font(WidgetFontSystem.statusTag(size: fontSize))
                 .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
                 .padding(.horizontal, 4)

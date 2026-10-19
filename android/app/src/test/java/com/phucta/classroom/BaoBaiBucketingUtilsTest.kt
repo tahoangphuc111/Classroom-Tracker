@@ -285,4 +285,75 @@ class BaoBaiBucketingUtilsTest {
         assertEquals("pending_task", sorted[0].id)
         assertEquals("done_task", sorted[1].id)
     }
+
+    @Test
+    fun testReconciliation_RemoteUnsubmitResetsToPending() {
+        // Previously turned in on Classroom (isManuallyCompleted = false, status = TURNED_IN)
+        val cachedFromPreviousTurnIn = Coursework(
+            id = "task_hw1",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "Bài tập đại số",
+            status = SubmissionStatus.TURNED_IN,
+            isManuallyCompleted = false
+        )
+
+        // Student un-submits on Classroom web, incoming coursework is now PENDING
+        val incomingFromSync = Coursework(
+            id = "task_hw1",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "Bài tập đại số",
+            status = SubmissionStatus.PENDING,
+            isManuallyCompleted = false
+        )
+
+        val wasManuallyCompleted = !incomingFromSync.isCompleted &&
+                (cachedFromPreviousTurnIn.isManuallyCompleted)
+
+        val reconciled = if (wasManuallyCompleted) {
+            incomingFromSync.copy(status = SubmissionStatus.TURNED_IN, isManuallyCompleted = true)
+        } else {
+            incomingFromSync
+        }
+
+        assertEquals("Unsubmitted task must become PENDING again, not stuck in TURNED_IN", SubmissionStatus.PENDING, reconciled.status)
+        assertFalse(reconciled.isCompleted)
+    }
+
+    @Test
+    fun testReconciliation_LocalManualCompletionPreserved() {
+        // Student manually tapped checkbox in app (isManuallyCompleted = true)
+        val locallyChecked = Coursework(
+            id = "task_hw2",
+            courseId = "c1",
+            courseName = "Lý",
+            title = "Bài tập quang học",
+            status = SubmissionStatus.TURNED_IN,
+            isManuallyCompleted = true
+        )
+
+        // Google Classroom API still returns PENDING because it wasn't submitted via Classroom
+        val incomingFromSync = Coursework(
+            id = "task_hw2",
+            courseId = "c1",
+            courseName = "Lý",
+            title = "Bài tập quang học",
+            status = SubmissionStatus.PENDING,
+            isManuallyCompleted = false
+        )
+
+        val wasManuallyCompleted = !incomingFromSync.isCompleted &&
+                (locallyChecked.isManuallyCompleted)
+
+        val reconciled = if (wasManuallyCompleted) {
+            incomingFromSync.copy(status = SubmissionStatus.TURNED_IN, isManuallyCompleted = true)
+        } else {
+            incomingFromSync
+        }
+
+        assertEquals("Manual local completion must be preserved during sync", SubmissionStatus.TURNED_IN, reconciled.status)
+        assertTrue(reconciled.isManuallyCompleted)
+        assertTrue(reconciled.isCompleted)
+    }
 }

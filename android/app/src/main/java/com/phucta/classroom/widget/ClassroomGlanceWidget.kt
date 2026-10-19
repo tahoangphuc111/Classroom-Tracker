@@ -43,6 +43,7 @@ import com.phucta.classroom.ui.MainActivity
 import com.phucta.classroom.ui.components.EmberEmotion
 import com.phucta.classroom.ui.components.SubjectArtHelper
 import com.phucta.classroom.ui.theme.ChunkyColor
+import com.phucta.classroom.widget.ClassroomGlanceWidget.Companion.formatDeadlinePill
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -88,6 +89,15 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 } else {
                     emptyList()
                 }
+
+                // Pre-warm Ember bitmap cache on IO thread so Glance composables render without latency
+                val activeCount = items.count { !it.isCompleted }
+                val hasCompleted = items.any { it.isCompleted }
+                listOf(38, 44, 62, 68, 70).forEach { sizeDp ->
+                    val emotion = getCharacterEmotion(activeCount, hasCompleted, isSmall = sizeDp <= 44)
+                    EmberWidgetBitmapHelper.getEmberBitmap(context, sizeDp, if (authed) emotion else EmberEmotion.NORMAL)
+                }
+
                 Pair(authed, items)
             } catch (e: Exception) {
                 Pair(false, emptyList())
@@ -358,11 +368,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         val shownCount = if (displayItems.size == 1) 1 else 2
         val extraCount = maxOf(0, activeItems.size - shownCount)
 
-        val emotion = when {
-            activeItems.isEmpty() -> if (courseworkList.any { it.isCompleted }) EmberEmotion.CELEBRATING else EmberEmotion.SLEEPING
-            activeItems.size >= 3 -> EmberEmotion.STRESSED
-            else -> EmberEmotion.NORMAL
-        }
+        val emotion = getCharacterEmotion(activeItems.size, courseworkList.any { it.isCompleted }, isSmall = true)
 
         Column(
             modifier = GlanceModifier.fillMaxSize()
@@ -518,7 +524,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                     modifier = GlanceModifier.size(12.dp)
                                 )
                             } else {
-                                val labelText = if (item.isDueToday || item.isDueTomorrow) item.timeOnlyString else item.compactDueString
+                                val labelText = formatDeadlinePill(item)
                                 Box(
                                     modifier = GlanceModifier
                                         .cornerRadius(6.dp)
@@ -527,6 +533,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 ) {
                                     Text(
                                         text = labelText,
+                                        maxLines = 1,
                                         style = TextStyle(
                                             color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else ChunkyColor.TextMuted),
                                             fontWeight = FontWeight.Bold,
@@ -667,11 +674,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         val displayItems = if (activeItems.isEmpty()) courseworkList else (activeItems + completedItems)
         val sectionTitle = getSectionHeaderTitle(courseworkList)
 
-        val emotion = when {
-            activeItems.isEmpty() -> if (completedItems.isNotEmpty()) EmberEmotion.CELEBRATING else EmberEmotion.SLEEPING
-            activeItems.size >= 4 -> EmberEmotion.STRESSED
-            else -> EmberEmotion.NORMAL
-        }
+        val emotion = getCharacterEmotion(activeItems.size, completedItems.isNotEmpty(), isSmall = false)
 
         Row(
             modifier = GlanceModifier.fillMaxSize(),
@@ -905,9 +908,9 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                             )
                                             Spacer(modifier = GlanceModifier.width(3.dp))
                                             Text(
-                                                text = if (item.isDueTomorrow) item.timeOnlyString else item.compactDueString,
+                                                text = formatDeadlinePill(item),
                                                 style = TextStyle(
-                                                    color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else ChunkyColor.TextPrimary),
+                                                    color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else ChunkyColor.TextMuted),
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 9.5.sp
                                                 )
@@ -1003,11 +1006,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                             modifier = GlanceModifier.size(12.dp)
                                         )
                                     } else {
-                                        val timeText = if (item.isDueTomorrow) {
-                                            if (item.timeOnlyString == "Cuối ngày") "Mai" else item.timeOnlyString
-                                        } else {
-                                            item.compactDueString
-                                        }
+                                        val timeText = formatDeadlinePill(item)
                                         Box(
                                             modifier = GlanceModifier
                                                 .cornerRadius(7.dp)
@@ -1047,11 +1046,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         val sectionTitle = getSectionHeaderTitle(courseworkList)
         val sectionCapsule = getSectionCapsuleLabel(sectionTitle)
 
-        val emotion = when {
-            activeItems.isEmpty() -> if (completedItems.isNotEmpty()) EmberEmotion.CELEBRATING else EmberEmotion.SLEEPING
-            activeItems.size >= 4 -> EmberEmotion.STRESSED
-            else -> EmberEmotion.NORMAL
-        }
+        val emotion = getCharacterEmotion(activeItems.size, completedItems.isNotEmpty(), isSmall = false)
 
         Column(
             modifier = GlanceModifier.fillMaxSize()
@@ -1311,7 +1306,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                             .padding(horizontal = 7.dp, vertical = 3.dp)
                                     ) {
                                         Text(
-                                            text = if (item.isDueTomorrow) item.timeOnlyString else item.compactDueString,
+                                            text = formatDeadlinePill(item),
                                             style = TextStyle(
                                                 color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else ChunkyColor.TextMuted),
                                                 fontWeight = FontWeight.Bold,
@@ -1354,7 +1349,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             )
                         }
                     } else {
-                        val itemsToShow = displayItems.take(5)
+                        val itemsToShow = displayItems.take(4)
                         Column(
                             modifier = GlanceModifier.defaultWeight().fillMaxWidth()
                         ) {
@@ -1409,7 +1404,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                             modifier = GlanceModifier.size(13.dp)
                                         )
                                     } else {
-                                        val timeText = if (item.isDueTomorrow) item.timeOnlyString else item.compactDueString
+                                        val timeText = formatDeadlinePill(item)
                                         Box(
                                             modifier = GlanceModifier
                                                 .cornerRadius(7.dp)
@@ -1438,37 +1433,58 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         }
     }
 
-    private fun getSectionHeaderTitle(items: List<Coursework>): String {
-        val pending = items.filter { !it.isCompleted }
-        val hasToday = pending.any { it.isDueToday }
-        val hasTomorrow = pending.any { it.isDueTomorrow }
-
-        return when {
-            hasToday && hasTomorrow -> "HÔM NAY & MAI"
-            hasToday -> "HÔM NAY"
-            hasTomorrow -> "NGÀY MAI"
-            pending.isNotEmpty() -> "SẮP TỚI"
-            items.any { it.isDueToday } -> "HÔM NAY"
-            else -> "NGÀY MAI"
+    companion object {
+        fun getCharacterEmotion(activeCount: Int, hasCompleted: Boolean, isSmall: Boolean = false): EmberEmotion {
+            val stressedThreshold = if (isSmall) 3 else 4
+            return when {
+                activeCount == 0 -> if (hasCompleted) EmberEmotion.CELEBRATING else EmberEmotion.SLEEPING
+                activeCount >= stressedThreshold -> EmberEmotion.STRESSED
+                else -> EmberEmotion.NORMAL
+            }
         }
-    }
 
-    private fun getSectionCapsuleLabel(sectionTitle: String): String {
-        return when (sectionTitle) {
-            "HÔM NAY & MAI" -> "Hôm nay & mai"
-            "HÔM NAY" -> "Hôm nay"
-            "SẮP TỚI" -> "Sắp tới"
-            else -> "Ngày mai"
+        fun getSectionHeaderTitle(items: List<Coursework>): String {
+            val pending = items.filter { !it.isCompleted }
+            val hasToday = pending.any { it.isDueToday }
+            val hasTomorrow = pending.any { it.isDueTomorrow }
+
+            return when {
+                hasToday && hasTomorrow -> "HÔM NAY & MAI"
+                hasToday -> "HÔM NAY"
+                hasTomorrow -> "NGÀY MAI"
+                pending.isNotEmpty() -> "SẮP TỚI"
+                items.any { it.isDueToday } -> "HÔM NAY"
+                else -> "NGÀY MAI"
+            }
         }
-    }
 
-    private fun dueLabel(item: Coursework): String {
-        return when {
-            item.isCompleted -> "Đã nộp"
-            item.isDueToday -> item.timeOnlyString
-            item.isDueTomorrow -> if (item.timeOnlyString == "Cuối ngày") "Mai" else "Mai ${item.timeOnlyString}"
-            item.dueEpochMillis == null -> "Không hạn"
-            else -> item.compactDueString
+        fun getSectionCapsuleLabel(sectionTitle: String): String {
+            return when (sectionTitle) {
+                "HÔM NAY & MAI" -> "Hôm nay & mai"
+                "HÔM NAY" -> "Hôm nay"
+                "SẮP TỚI" -> "Sắp tới"
+                else -> "Ngày mai"
+            }
+        }
+
+        fun formatDeadlinePill(item: Coursework): String {
+            return if (item.isDueTomorrow) {
+                if (item.timeOnlyString == "Cuối ngày") "Mai" else item.timeOnlyString
+            } else if (item.isDueToday) {
+                item.timeOnlyString
+            } else {
+                item.compactDueString
+            }
+        }
+
+        fun dueLabel(item: Coursework): String {
+            return when {
+                item.isCompleted -> "Đã nộp"
+                item.isDueToday -> item.timeOnlyString
+                item.isDueTomorrow -> if (item.timeOnlyString == "Cuối ngày") "Mai" else "Mai ${item.timeOnlyString}"
+                item.dueEpochMillis == null -> "Không hạn"
+                else -> item.compactDueString
+            }
         }
     }
 }

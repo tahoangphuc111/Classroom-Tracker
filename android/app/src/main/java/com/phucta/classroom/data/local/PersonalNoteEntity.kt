@@ -74,7 +74,7 @@ data class PersonalNoteEntity(
             isCompleted = domain.isCompleted,
             createdAt = domain.createdAt,
             updatedAt = domain.updatedAt,
-            searchIndex = domain.searchIndex
+            searchIndex = PersonalNote.buildSearchIndex(domain.title, domain.content, domain.courseName)
         )
     }
 }
