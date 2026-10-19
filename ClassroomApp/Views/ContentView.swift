@@ -365,8 +365,16 @@ public struct ContentView: View {
         let tokens = cleanQuery.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
         guard !tokens.isEmpty else { return baseList }
 
-        return baseList.filter { item in
+        let matchingItems = baseList.filter { item in
             tokens.allSatisfy { item.searchIndex.contains($0) }
+        }
+        return matchingItems.sorted { first, second in
+            let score1 = first.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)
+            let score2 = second.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)
+            if score1 != score2 {
+                return score1 > score2
+            }
+            return first < second
         }
     }
 

@@ -121,8 +121,8 @@ fun PersonalNotesScreen(
         notes.filter { it.courseworkId == null }
     }
 
-    val filteredNotes = remember(standaloneNotes, selectedStatusTab, selectedCourseId, searchTokens) {
-        standaloneNotes.filter { note ->
+    val filteredNotes = remember(standaloneNotes, selectedStatusTab, selectedCourseId, searchTokens, normalizedQuery) {
+        val matches = standaloneNotes.filter { note ->
             val matchesStatus = when (selectedStatusTab) {
                 1 -> !note.isCompleted
                 2 -> note.isCompleted
@@ -133,7 +133,9 @@ fun PersonalNotesScreen(
                 searchTokens.all { token -> note.searchIndex.contains(token) }
             }
             matchesStatus && matchesCourse && matchesSearch
-        }.sortedWith { first, second ->
+        }
+
+        val defaultComparator = Comparator<PersonalNote> { first, second ->
             if (first.isCompleted != second.isCompleted) {
                 if (first.isCompleted) 1 else -1
             } else {
@@ -146,6 +148,22 @@ fun PersonalNotesScreen(
                     else -> second.updatedAt.compareTo(first.updatedAt)
                 }
             }
+        }
+
+        if (searchTokens.isNotEmpty()) {
+            matches.sortedWith(
+                compareByDescending<PersonalNote> { note ->
+                    com.phucta.classroom.data.model.calculateSearchRelevance(
+                        queryTokens = searchTokens,
+                        rawNormalizedQuery = normalizedQuery,
+                        title = note.title,
+                        courseName = note.courseName,
+                        content = note.content
+                    )
+                }.then(defaultComparator)
+            )
+        } else {
+            matches.sortedWith(defaultComparator)
         }
     }
 
@@ -424,12 +442,14 @@ private fun PersonalNoteCard(
                 if (note.isDueTomorrow) {
                     DueDateBadge(
                         text = "Ngày mai",
+                        isCompleted = note.isCompleted,
                         isDueTomorrow = true,
                         fontSize = 11.5.sp
                     )
                 } else if (note.isDueToday) {
                     DueDateBadge(
                         text = "Hôm nay",
+                        isCompleted = note.isCompleted,
                         isDueToday = true,
                         fontSize = 11.5.sp
                     )
@@ -439,6 +459,7 @@ private fun PersonalNoteCard(
                     }
                     DueDateBadge(
                         text = dateStr,
+                        isCompleted = note.isCompleted,
                         fontSize = 11.5.sp
                     )
                 }

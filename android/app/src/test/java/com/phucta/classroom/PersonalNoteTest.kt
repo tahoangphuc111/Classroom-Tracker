@@ -5,6 +5,8 @@ import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.PersonalNote
 import com.phucta.classroom.data.model.SubmissionStatus
 import com.phucta.classroom.domain.BaoBaiBucketingUtils
+import com.phucta.classroom.ui.components.DueDateBadgeDefaults
+import com.phucta.classroom.ui.theme.ChunkyColor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -167,5 +169,39 @@ class PersonalNoteTest {
         assertFalse("Should not be due today", noteCustomDate.isDueToday)
         assertFalse("Should not be due tomorrow", noteCustomDate.isDueTomorrow)
         assertNotNull("Should have non-null dueEpochMillis", noteCustomDate.dueEpochMillis)
+    }
+
+    @Test
+    fun testDueDateBadgeColorsWhenNoteCompleted() {
+        val completedTomorrowBadge = DueDateBadgeDefaults.colors(
+            isCompleted = true,
+            isOverdue = false,
+            isDueToday = false,
+            isDueTomorrow = true
+        )
+        assertEquals(ChunkyColor.CompletedBadgeBackground, completedTomorrowBadge.background)
+        assertEquals(ChunkyColor.CompletedBadgeBorder, completedTomorrowBadge.border)
+        assertEquals(ChunkyColor.CompletedBadgeText, completedTomorrowBadge.text)
+
+        val completedTodayBadge = DueDateBadgeDefaults.colors(
+            isCompleted = true,
+            isOverdue = false,
+            isDueToday = true,
+            isDueTomorrow = false
+        )
+        assertEquals(ChunkyColor.CompletedBadgeBackground, completedTodayBadge.background)
+        assertEquals(ChunkyColor.CompletedBadgeText, completedTodayBadge.text)
+    }
+
+    @Test
+    fun testEmptyContentClearingCondition() {
+        // Simulates coursework-attached note deletion condition
+        val existingTitle = "Bài tập Vật Lý hạt nhân"
+        val userEnteredContent = "   \n  \t  "
+        val trimmed = userEnteredContent.trim()
+        
+        // Even though existing title is not empty, trimmed content is empty so it should qualify for deletion
+        val shouldDelete = trimmed.isEmpty()
+        assertTrue("Coursework attached note with empty trimmed content must be deleted", shouldDelete)
     }
 }

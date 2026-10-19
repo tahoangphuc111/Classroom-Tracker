@@ -66,10 +66,17 @@ object SubjectArtHelper {
                 text.contains("toán") || tokens.contains("math") || tokens.contains("maths") ||
                         text.contains("giải tích") || text.contains("đại số") || text.contains("hình học") ||
                         text.contains("xác suất") || tokens.contains("calculus") || tokens.contains("algebra") ||
-                        tokens.contains("geometry") -> SubjectCategory.MATH
+                        tokens.contains("geometry") || text.contains("lượng giác") || text.contains("đạo hàm") ||
+                        text.contains("tích phân") || text.contains("toán cao cấp") || text.contains("toán rời rạc") ||
+                        text.contains("thống kê") || text.contains("vi phân") || text.contains("ma trận") ||
+                        tokens.contains("trigonometry") || tokens.contains("statistics") || tokens.contains("discrete") -> SubjectCategory.MATH
 
                 text.contains("vật lý") || text.contains("vật lí") || tokens.contains("physics") ||
                         text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") ||
+                        text.contains("cơ học") || text.contains("nhiệt học") || text.contains("quang học") ||
+                        text.contains("điện từ") || text.contains("vật lý đại cương") || text.contains("vật lí đại cương") ||
+                        text.contains("dao động") || text.contains("sóng cơ") ||
+                        tokens.contains("mechanics") || tokens.contains("thermodynamics") || tokens.contains("optics") ||
                         ((tokens.contains("lý") || tokens.contains("lí")) && !text.contains("quản lý") && !text.contains("quản lí") &&
                                 !text.contains("xử lý") && !text.contains("xử lí") &&
                                 !text.contains("tâm lý") && !text.contains("tâm lí") &&
@@ -80,7 +87,9 @@ object SubjectArtHelper {
                                 !text.contains("lý do") && !text.contains("lí do")) -> SubjectCategory.PHYSICS
 
                 text.contains("hóa học") || text.contains("hoá học") || text.contains("môn hóa") || text.contains("môn hoá") ||
-                        tokens.contains("chemistry") || tokens.contains("chem") ||
+                        text.contains("hóa hữu cơ") || text.contains("hoá hữu cơ") || text.contains("hóa vô cơ") || text.contains("hoá vô cơ") ||
+                        text.contains("hóa đại cương") || text.contains("hoá đại cương") || text.contains("hóa phân tích") || text.contains("hoá phân tích") ||
+                        tokens.contains("chemistry") || tokens.contains("chem") || tokens.contains("biochemistry") ||
                         ((tokens.contains("hóa") || tokens.contains("hoá")) && !text.contains("tự động hóa") && !text.contains("tự động hoá") &&
                                 !text.contains("tiến hóa") && !text.contains("tiến hoá") &&
                                 !text.contains("hóa đơn") && !text.contains("hoá đơn") &&
@@ -91,7 +100,9 @@ object SubjectArtHelper {
                                 !text.contains("hiện đại hóa") && !text.contains("hiện đại hoá")) -> SubjectCategory.CHEMISTRY
 
                 text.contains("sinh học") || text.contains("môn sinh") || tokens.contains("biology") || tokens.contains("bio") ||
-                        text.contains("y học") || (tokens.contains("sinh") && !text.contains("học sinh") &&
+                        text.contains("y học") || text.contains("di truyền") || text.contains("tế bào") ||
+                        text.contains("vi sinh") || text.contains("sinh thái") || tokens.contains("genetics") || tokens.contains("ecology") ||
+                        (tokens.contains("sinh") && !text.contains("học sinh") &&
                         !text.contains("sinh viên") && !text.contains("sinh hoạt")) -> SubjectCategory.BIOLOGY
 
                 text.contains("lịch sử") || tokens.contains("history") ||
@@ -109,7 +120,9 @@ object SubjectArtHelper {
 
                 tokens.contains("gdcd") || text.contains("triết học") || text.contains("chính trị") ||
                         text.contains("pháp luật") || text.contains("kinh tế và pháp luật") || tokens.contains("law") ||
-                        text.contains("tư tưởng") || (tokens.contains("triết") && !text.contains("triết lý")) -> SubjectCategory.CIVICS_OR_PHILOSOPHY
+                        text.contains("tư tưởng") || text.contains("mác - lênin") || text.contains("mác lênin") ||
+                        text.contains("tư tưởng hồ chí minh") || text.contains("pháp luật đại cương") ||
+                        (tokens.contains("triết") && !text.contains("triết lý")) -> SubjectCategory.CIVICS_OR_PHILOSOPHY
 
                 text.contains("kinh tế") || text.contains("quản trị") || text.contains("tài chính") ||
                         text.contains("marketing") || text.contains("kế toán") || tokens.contains("business") ||
@@ -124,9 +137,15 @@ object SubjectArtHelper {
                         tokens.contains("python") || tokens.contains("java") || tokens.contains("cntt") ||
                         text.contains("công nghệ thông tin") || tokens.contains("it") || text.contains("thuật toán") ||
                         text.contains("cơ sở dữ liệu") || text.contains("khoa học máy tính") ||
+                        text.contains("cấu trúc dữ liệu") || tokens.contains("ctdl") || tokens.contains("cpp") ||
+                        tokens.contains("kotlin") || tokens.contains("javascript") || tokens.contains("typescript") ||
+                        text.contains("trí tuệ nhân tạo") || text.contains("machine learning") ||
+                        text.contains("hệ điều hành") || text.contains("kiến trúc máy tính") ||
                         (tokens.contains("tin") && !text.contains("thông tin") && !text.contains("bản tin") && !text.contains("tin tức") && !text.contains("niềm tin") && !tokens.contains("tự")) -> SubjectCategory.COMPUTER_SCIENCE
 
                 text.contains("an ninh mạng") || text.contains("mạng máy tính") ||
+                        text.contains("an toàn thông tin") || text.contains("hệ thống phân tán") || text.contains("quản trị mạng") ||
+                        tokens.contains("cybersecurity") ||
                         (tokens.contains("mạng") && !text.contains("mạng xã hội")) ||
                         tokens.contains("network") || tokens.contains("networking") ||
                         tokens.contains("tcp") || tokens.contains("socket") ||

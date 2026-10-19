@@ -439,6 +439,37 @@ struct TestRunner {
             assertCondition(!notesAfterDelete.contains { $0.id == "standalone_1" }, "Personal note must be deleted")
         }
 
+        // Test 15: Coursework Search Relevance Algorithm
+        do {
+            let itemExactTitle = Coursework(id: "cw_exact", courseId: "c1", courseName: "12A1", title: "Giải tích", description: "Bình thường")
+            let itemPrefixTitle = Coursework(id: "cw_prefix", courseId: "c1", courseName: "12A1", title: "Giải tích chương 1", description: "Bình thường")
+            let itemDescOnly = Coursework(id: "cw_desc", courseId: "c1", courseName: "12A1", title: "Bài tập cuối tuần", description: "Làm bài tập giải tích SGK")
+
+            let tokens = ["giai", "tich"]
+            let rawQuery = "giai tich"
+
+            let scoreExact = itemExactTitle.searchRelevanceScore(for: tokens, rawNormalizedQuery: rawQuery)
+            let scorePrefix = itemPrefixTitle.searchRelevanceScore(for: tokens, rawNormalizedQuery: rawQuery)
+            let scoreDesc = itemDescOnly.searchRelevanceScore(for: tokens, rawNormalizedQuery: rawQuery)
+
+            assertCondition(scoreExact > scorePrefix, "Exact title match score (\(scoreExact)) must be higher than prefix title match score (\(scorePrefix))")
+            assertCondition(scorePrefix > scoreDesc, "Prefix title match score (\(scorePrefix)) must be higher than description-only match score (\(scoreDesc))")
+        }
+
+        // Test 16: PersonalNote Search Relevance Algorithm
+        do {
+            let noteExact = PersonalNote(id: "n_exact", title: "Hóa học", content: "Nội dung")
+            let noteDesc = PersonalNote(id: "n_desc", title: "Ghi nhớ", content: "Cần ôn bài hóa học")
+
+            let tokens = ["hoa", "hoc"]
+            let rawQuery = "hoa hoc"
+
+            let scoreExact = noteExact.searchRelevanceScore(for: tokens, rawNormalizedQuery: rawQuery)
+            let scoreDesc = noteDesc.searchRelevanceScore(for: tokens, rawNormalizedQuery: rawQuery)
+
+            assertCondition(scoreExact > scoreDesc, "PersonalNote exact title match score (\(scoreExact)) must be higher than content match score (\(scoreDesc))")
+        }
+
         print("=== All Apple Core Logic Tests Passed Successfully! ===")
     }
 }

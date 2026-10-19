@@ -20,6 +20,22 @@ class SubjectArtHelperTest {
     }
 
     @Test
+    fun testAdvancedAcademicCurriculumMatching() {
+        assertEquals(SubjectCategory.MATH, SubjectArtHelper.category("Chuyên đề Lượng giác 11"))
+        assertEquals(SubjectCategory.MATH, SubjectArtHelper.category("Đạo hàm và Tích phân"))
+        assertEquals(SubjectCategory.MATH, SubjectArtHelper.category("Toán rời rạc"))
+        assertEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Cơ học lượng tử"))
+        assertEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Thí nghiệm Quang học"))
+        assertEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Hóa phân tích thực nghiệm"))
+        assertEquals(SubjectCategory.BIOLOGY, SubjectArtHelper.category("Di truyền học quần thể"))
+        assertEquals(SubjectCategory.CIVICS_OR_PHILOSOPHY, SubjectArtHelper.category("Triết học Mác - Lênin"))
+        assertEquals(SubjectCategory.CIVICS_OR_PHILOSOPHY, SubjectArtHelper.category("Tư tưởng Hồ Chí Minh"))
+        assertEquals(SubjectCategory.COMPUTER_SCIENCE, SubjectArtHelper.category("Cấu trúc dữ liệu và giải thuật"))
+        assertEquals(SubjectCategory.COMPUTER_SCIENCE, SubjectArtHelper.category("Trí tuệ nhân tạo"))
+        assertEquals(SubjectCategory.NETWORKING, SubjectArtHelper.category("An toàn thông tin mạng"))
+    }
+
+    @Test
     fun testNegativeTokenGuards_Physics() {
         // "Quản lý", "Xử lý", and "Tâm lý" must not be categorized as physics.
         assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Quản lý Dự án Phần mềm"))

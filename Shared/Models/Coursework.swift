@@ -316,6 +316,77 @@ public extension String {
     }
 }
 
+public extension Coursework {
+    /// Computes search relevance score based on title, course name, and description.
+    /// Title exact and prefix matches receive highest priority.
+    func searchRelevanceScore(for tokens: [String], rawNormalizedQuery: String) -> Int {
+        guard !tokens.isEmpty else { return 0 }
+        let normTitle = title.normalizedForVietnameseSearch()
+        let normCourse = courseName.normalizedForVietnameseSearch()
+        let normDesc = (description ?? "").normalizedForVietnameseSearch()
+
+        var score = 0
+        if normTitle == rawNormalizedQuery {
+            score += 200
+        } else if normTitle.hasPrefix(rawNormalizedQuery) {
+            score += 120
+        } else if normTitle.contains(rawNormalizedQuery) {
+            score += 80
+        }
+
+        if normCourse == rawNormalizedQuery {
+            score += 100
+        } else if normCourse.hasPrefix(rawNormalizedQuery) {
+            score += 60
+        } else if normCourse.contains(rawNormalizedQuery) {
+            score += 40
+        }
+
+        for token in tokens {
+            if normTitle.contains(token) {
+                score += 30
+                if normTitle.hasPrefix(token) || normTitle.contains(" \(token)") {
+                    score += 15
+                }
+            }
+            if normCourse.contains(token) {
+                score += 15
+            }
+            if normDesc.contains(token) {
+                score += 5
+            }
+        }
+        return score
+    }
+}
+
+extension Coursework: Comparable {
+    public static func < (first: Coursework, second: Coursework) -> Bool {
+        if first.isCompleted != second.isCompleted {
+            return !first.isCompleted
+        }
+        switch (first.dueDate, second.dueDate) {
+        case let (d1?, d2?):
+            if d1 != d2 { return d1 < d2 }
+            let titleOrder = first.title.localizedStandardCompare(second.title)
+            if titleOrder != .orderedSame {
+                return titleOrder == .orderedAscending
+            }
+            return first.id < second.id
+        case (_?, nil):
+            return true
+        case (nil, _?):
+            return false
+        case (nil, nil):
+            let titleOrder = first.title.localizedStandardCompare(second.title)
+            if titleOrder != .orderedSame {
+                return titleOrder == .orderedAscending
+            }
+            return first.id < second.id
+        }
+    }
+}
+
 private enum ClassroomDateFormatters {
     static let timeOnly: DateFormatter = {
         let formatter = DateFormatter()

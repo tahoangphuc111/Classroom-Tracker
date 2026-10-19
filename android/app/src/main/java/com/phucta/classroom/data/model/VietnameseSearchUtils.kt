@@ -18,3 +18,59 @@ fun String.normalizeForVietnameseSearch(): String {
 
     return stripped.trim()
 }
+
+/**
+ * Calculates a search relevance score for a given item based on title, course name, and content.
+ * Prioritizes exact matches, prefix matches, and title token matches over description mentions.
+ */
+fun calculateSearchRelevance(
+    queryTokens: List<String>,
+    rawNormalizedQuery: String,
+    title: String,
+    courseName: String? = null,
+    content: String? = null
+): Int {
+    if (queryTokens.isEmpty()) return 0
+
+    val normTitle = title.normalizeForVietnameseSearch()
+    val normCourse = courseName?.normalizeForVietnameseSearch().orEmpty()
+    val normContent = content?.normalizeForVietnameseSearch().orEmpty()
+
+    var score = 0
+
+    // Exact full query match bonuses
+    if (normTitle == rawNormalizedQuery) {
+        score += 200
+    } else if (normTitle.startsWith(rawNormalizedQuery)) {
+        score += 120
+    } else if (normTitle.contains(rawNormalizedQuery)) {
+        score += 80
+    }
+
+    if (normCourse == rawNormalizedQuery) {
+        score += 100
+    } else if (normCourse.startsWith(rawNormalizedQuery)) {
+        score += 60
+    } else if (normCourse.contains(rawNormalizedQuery)) {
+        score += 40
+    }
+
+    // Token-level scoring with word boundary recognition
+    for (token in queryTokens) {
+        if (normTitle.contains(token)) {
+            score += 30
+            if (normTitle.startsWith(token) || normTitle.contains(" $token")) {
+                score += 15
+            }
+        }
+        if (normCourse.contains(token)) {
+            score += 15
+        }
+        if (normContent.contains(token)) {
+            score += 5
+        }
+    }
+
+    return score
+}
+

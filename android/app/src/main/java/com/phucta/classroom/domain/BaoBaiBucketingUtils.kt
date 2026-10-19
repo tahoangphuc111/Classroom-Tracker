@@ -41,8 +41,25 @@ object BaoBaiBucketingUtils {
         }
     }
 
-    fun sortCoursework(items: List<Coursework>): List<Coursework> {
+    fun sortCoursework(
+        items: List<Coursework>,
+        searchTokens: List<String> = emptyList(),
+        rawNormalizedQuery: String = ""
+    ): List<Coursework> {
         if (items.size <= 1) return items
+        if (searchTokens.isNotEmpty()) {
+            return items.sortedWith(
+                compareByDescending<Coursework> { item ->
+                    com.phucta.classroom.data.model.calculateSearchRelevance(
+                        queryTokens = searchTokens,
+                        rawNormalizedQuery = rawNormalizedQuery,
+                        title = item.title,
+                        courseName = item.courseName,
+                        content = item.description
+                    )
+                }.then(COURSEWORK_COMPARATOR)
+            )
+        }
         return items.sortedWith(COURSEWORK_COMPARATOR)
     }
 
@@ -174,7 +191,12 @@ object BaoBaiBucketingUtils {
         return emptyList()
     }
 
-    fun computeBuckets(items: List<Coursework>, courses: List<Course> = emptyList()): CourseworkBuckets {
+    fun computeBuckets(
+        items: List<Coursework>,
+        courses: List<Course> = emptyList(),
+        searchTokens: List<String> = emptyList(),
+        rawNormalizedQuery: String = ""
+    ): CourseworkBuckets {
         val relevant = if (courses.isNotEmpty()) filterByActiveCourses(items, courses) else items
         val now = System.currentTimeMillis()
 
@@ -214,12 +236,12 @@ object BaoBaiBucketingUtils {
         }
 
         return CourseworkBuckets(
-            overdue = sortCoursework(overdue),
-            today = sortCoursework(today),
-            tomorrow = sortCoursework(tomorrow),
-            laterUpcoming = sortCoursework(later),
-            noDueDate = sortCoursework(noDate),
-            completed = sortCoursework(completed)
+            overdue = sortCoursework(overdue, searchTokens, rawNormalizedQuery),
+            today = sortCoursework(today, searchTokens, rawNormalizedQuery),
+            tomorrow = sortCoursework(tomorrow, searchTokens, rawNormalizedQuery),
+            laterUpcoming = sortCoursework(later, searchTokens, rawNormalizedQuery),
+            noDueDate = sortCoursework(noDate, searchTokens, rawNormalizedQuery),
+            completed = sortCoursework(completed, searchTokens, rawNormalizedQuery)
         )
     }
 }

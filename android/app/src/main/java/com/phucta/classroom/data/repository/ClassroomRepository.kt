@@ -211,10 +211,13 @@ class ClassroomRepository(
         }
     }
 
-    suspend fun clearAllData() = withContext(Dispatchers.IO) {
+    suspend fun clearAllData(includePersonalNotes: Boolean = true) = withContext(Dispatchers.IO) {
         database.withTransaction {
             courseDao.deleteAllCourses()
             courseworkDao.deleteAllCoursework()
+            if (includePersonalNotes) {
+                personalNoteDao.deleteAllNotes()
+            }
         }
         preferences.clear()
         oauthManager.signOut()
@@ -245,7 +248,7 @@ class ClassroomRepository(
         val trimmed = content.trim()
         val existing = personalNoteDao.getNoteForCoursework(courseworkId)
         if (existing != null) {
-            if (trimmed.isEmpty() && existing.title.isEmpty()) {
+            if (trimmed.isEmpty()) {
                 personalNoteDao.deleteNoteById(existing.id)
             } else {
                 val updated = existing.copy(

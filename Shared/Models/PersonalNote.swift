@@ -81,4 +81,45 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
         guard let dueDate else { return false }
         return Calendar.autoupdatingCurrent.isDateInToday(dueDate)
     }
+
+    /// Computes search relevance score based on title, course name, and content.
+    public func searchRelevanceScore(for tokens: [String], rawNormalizedQuery: String) -> Int {
+        guard !tokens.isEmpty else { return 0 }
+        let normTitle = title.normalizedForVietnameseSearch()
+        let normCourse = (courseName ?? "").normalizedForVietnameseSearch()
+        let normContent = content.normalizedForVietnameseSearch()
+
+        var score = 0
+        if normTitle == rawNormalizedQuery {
+            score += 200
+        } else if normTitle.hasPrefix(rawNormalizedQuery) {
+            score += 120
+        } else if normTitle.contains(rawNormalizedQuery) {
+            score += 80
+        }
+
+        if normCourse == rawNormalizedQuery {
+            score += 100
+        } else if normCourse.hasPrefix(rawNormalizedQuery) {
+            score += 60
+        } else if normCourse.contains(rawNormalizedQuery) {
+            score += 40
+        }
+
+        for token in tokens {
+            if normTitle.contains(token) {
+                score += 30
+                if normTitle.hasPrefix(token) || normTitle.contains(" \(token)") {
+                    score += 15
+                }
+            }
+            if normCourse.contains(token) {
+                score += 15
+            }
+            if normContent.contains(token) {
+                score += 5
+            }
+        }
+        return score
+    }
 }

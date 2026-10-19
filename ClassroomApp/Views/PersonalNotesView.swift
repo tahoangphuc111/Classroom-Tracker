@@ -60,8 +60,21 @@ public struct PersonalNotesView: View {
         if !query.isEmpty {
             let cleanQuery = query.normalizedForVietnameseSearch()
             let tokens = cleanQuery.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
-            result = result.filter { note in
-                tokens.allSatisfy { note.searchIndex.contains($0) }
+            if !tokens.isEmpty {
+                result = result.filter { note in
+                    tokens.allSatisfy { note.searchIndex.contains($0) }
+                }
+                return result.sorted { first, second in
+                    let score1 = first.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)
+                    let score2 = second.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)
+                    if score1 != score2 {
+                        return score1 > score2
+                    }
+                    if first.isCompleted != second.isCompleted {
+                        return !first.isCompleted
+                    }
+                    return first.updatedAt > second.updatedAt
+                }
             }
         }
 

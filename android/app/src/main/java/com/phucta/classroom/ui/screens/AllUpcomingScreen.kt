@@ -131,8 +131,12 @@ fun AllUpcomingScreen(
         items
     }
 
-    val buckets = remember(filteredItems) {
-        BaoBaiBucketingUtils.computeBuckets(filteredItems)
+    val buckets = remember(filteredItems, searchTokens, normalizedQuery) {
+        BaoBaiBucketingUtils.computeBuckets(
+            items = filteredItems,
+            searchTokens = searchTokens,
+            rawNormalizedQuery = normalizedQuery
+        )
     }
 
     Column(
