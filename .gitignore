@@ -13,6 +13,9 @@ project.xcworkspace/xcuserdata/
 
 # Agent & Tooling
 .agents/
+.claude/
+agent/
+templates/
 skills-lock.json
 
 # Secrets

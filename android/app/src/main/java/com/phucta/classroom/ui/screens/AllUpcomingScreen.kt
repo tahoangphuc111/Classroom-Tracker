@@ -425,8 +425,10 @@ fun AllUpcomingScreen(
                             hasNote = courseworkIdsWithNotes.contains(item.id),
                             onToggleCompletion = { onToggleCompletion(item.id, it) },
                             onClick = { onSelectAssignment(item) },
-                            modifier = Modifier.animateItemPlacement(
-                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
                             )
                         )
                     }
@@ -448,8 +450,10 @@ fun AllUpcomingScreen(
                             hasNote = courseworkIdsWithNotes.contains(item.id),
                             onToggleCompletion = { onToggleCompletion(item.id, it) },
                             onClick = { onSelectAssignment(item) },
-                            modifier = Modifier.animateItemPlacement(
-                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
                             )
                         )
                     }
@@ -471,8 +475,10 @@ fun AllUpcomingScreen(
                             hasNote = courseworkIdsWithNotes.contains(item.id),
                             onToggleCompletion = { onToggleCompletion(item.id, it) },
                             onClick = { onSelectAssignment(item) },
-                            modifier = Modifier.animateItemPlacement(
-                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
                             )
                         )
                     }
@@ -494,8 +500,10 @@ fun AllUpcomingScreen(
                             hasNote = courseworkIdsWithNotes.contains(item.id),
                             onToggleCompletion = { onToggleCompletion(item.id, it) },
                             onClick = { onSelectAssignment(item) },
-                            modifier = Modifier.animateItemPlacement(
-                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
                             )
                         )
                     }
@@ -517,8 +525,10 @@ fun AllUpcomingScreen(
                             hasNote = courseworkIdsWithNotes.contains(item.id),
                             onToggleCompletion = { onToggleCompletion(item.id, it) },
                             onClick = { onSelectAssignment(item) },
-                            modifier = Modifier.animateItemPlacement(
-                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
                             )
                         )
                     }
@@ -540,8 +550,10 @@ fun AllUpcomingScreen(
                             hasNote = courseworkIdsWithNotes.contains(item.id),
                             onToggleCompletion = { onToggleCompletion(item.id, it) },
                             onClick = { onSelectAssignment(item) },
-                            modifier = Modifier.animateItemPlacement(
-                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
                             )
                         )
                     }

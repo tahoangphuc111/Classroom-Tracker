@@ -12,6 +12,7 @@ public struct PersonalNotesView: View {
     @State private var selectedCourseId: String? = nil
     @State private var showCreateSheet: Bool = false
     @State private var noteToEdit: PersonalNote? = nil
+    @State private var emptyAppeared: Bool = false
 
     public enum StatusFilter: String, CaseIterable, Identifiable {
         case all = "Tất cả"
@@ -112,6 +113,8 @@ public struct PersonalNotesView: View {
                 notesListView
             }
         }
+        .animation(.spring(response: 0.32, dampingFraction: 0.8), value: selectedStatusFilter)
+        .animation(.spring(response: 0.32, dampingFraction: 0.8), value: selectedCourseId)
         .sheet(isPresented: $showCreateSheet) {
             CreateOrEditNoteSheet(
                 existingNote: nil,
@@ -212,9 +215,14 @@ public struct PersonalNotesView: View {
                         onEdit: { noteToEdit = note },
                         onDelete: { onDeleteNote(note.id) }
                     )
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.95)),
+                        removal: .opacity.combined(with: .scale(scale: 0.95))
+                    ))
                 }
             }
             .padding(16)
+            .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes)
             #else
             LazyVStack(spacing: 10) {
                 ForEach(filteredNotes) { note in
@@ -224,9 +232,14 @@ public struct PersonalNotesView: View {
                         onEdit: { noteToEdit = note },
                         onDelete: { onDeleteNote(note.id) }
                     )
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.95)),
+                        removal: .opacity.combined(with: .scale(scale: 0.95))
+                    ))
                 }
             }
             .padding(16)
+            .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes)
             #endif
         }
     }
@@ -237,6 +250,7 @@ public struct PersonalNotesView: View {
             Image(systemName: "square.and.pencil")
                 .font(.system(size: 44))
                 .foregroundStyle(Color.secondary.opacity(0.6))
+                .scaleEffect(emptyAppeared ? 1.0 : 0.88)
 
             Text(searchText.isEmpty ? "Chưa có ghi chú nào" : "Không tìm thấy ghi chú phù hợp")
                 .font(.system(size: 17, weight: .bold))
@@ -264,13 +278,21 @@ public struct PersonalNotesView: View {
                     .background(Color.blue)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
-                .buttonStyle(SpringPressButtonStyle())
+                .buttonStyle(SpringPressButtonStyle(scale: 0.96))
                 .padding(.top, 6)
             }
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)
+        .opacity(emptyAppeared ? 1.0 : 0.0)
+        .scaleEffect(emptyAppeared ? 1.0 : 0.95)
+        .offset(y: emptyAppeared ? 0 : 8)
+        .onAppear {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) {
+                emptyAppeared = true
+            }
+        }
     }
 }
 
@@ -281,16 +303,49 @@ private struct PersonalNoteRowCard: View {
     let onDelete: () -> Void
 
     @State private var isHovered: Bool = false
+    @State private var checkmarkBounce: Bool = false
+    @State private var isCardPressed: Bool = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Button(action: onToggle) {
-                Image(systemName: note.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(note.isCompleted ? Color.green : Color.secondary.opacity(0.6))
-                    .frame(width: 28, height: 28)
+            Button {
+                withAnimation(.spring(response: 0.24, dampingFraction: 0.52)) {
+                    checkmarkBounce = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+                    withAnimation(.spring(response: 0.24, dampingFraction: 0.65)) {
+                        checkmarkBounce = false
+                    }
+                }
+                onToggle()
+            } label: {
+                ZStack {
+                    if note.isCompleted {
+                        if #available(macOS 14.0, iOS 17.0, *) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(Color.green)
+                                .scaleEffect(checkmarkBounce ? 1.28 : 1.0)
+                                .symbolEffect(.bounce, value: note.isCompleted)
+                                .transition(.scale(scale: 0.6).combined(with: .opacity))
+                        } else {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(Color.green)
+                                .scaleEffect(checkmarkBounce ? 1.28 : 1.0)
+                                .transition(.scale(scale: 0.6).combined(with: .opacity))
+                        }
+                    } else {
+                        Image(systemName: "circle")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(Color.secondary.opacity(0.6))
+                            .scaleEffect(checkmarkBounce ? 0.9 : 1.0)
+                            .transition(.scale(scale: 0.6).combined(with: .opacity))
+                    }
+                }
+                .frame(width: 28, height: 28)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SpringPressButtonStyle(scale: 0.88, pressedOpacity: 0.82))
             .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 5) {
@@ -299,6 +354,8 @@ private struct PersonalNoteRowCard: View {
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(note.isCompleted ? Color.platformTextSecondary : Color.platformTextPrimary)
                         .strikethrough(note.isCompleted, color: Color.platformTextTertiary)
+                        .opacity(note.isCompleted ? 0.72 : 1.0)
+                        .animation(.spring(response: 0.28, dampingFraction: 0.8), value: note.isCompleted)
 
                     Spacer()
 
@@ -321,8 +378,10 @@ private struct PersonalNoteRowCard: View {
                     Text(note.content)
                         .font(.system(size: 14))
                         .foregroundStyle(note.isCompleted ? Color.platformTextTertiary : Color.platformTextSecondary)
+                        .opacity(note.isCompleted ? 0.7 : 1.0)
                         .lineLimit(3)
                         .padding(.top, 1)
+                        .animation(.spring(response: 0.28, dampingFraction: 0.8), value: note.isCompleted)
                 }
             }
 
@@ -341,10 +400,10 @@ private struct PersonalNoteRowCard: View {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.secondary)
-                    .frame(width: 24, height: 24)
+                    .frame(width: 26, height: 26)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SpringPressButtonStyle(scale: 0.90, pressedOpacity: 0.8))
         }
         .padding(14)
         .background(Color.platformControlBackground)
@@ -353,17 +412,40 @@ private struct PersonalNoteRowCard: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(isHovered ? Color.platformCardHoverBorder : Color.platformCardBorder, lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.02), radius: 3, x: 0, y: 1)
+        .shadow(color: Color.black.opacity(isHovered ? 0.035 : 0.015), radius: isHovered ? 5 : 3, x: 0, y: 1)
         #if os(macOS)
+        .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isHovered)
         .onHover { isHovered = $0 }
         #endif
+        .scaleEffect(isCardPressed ? 0.98 : (isHovered ? 1.01 : 1.0))
+        .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isCardPressed)
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) {
-            onEdit()
+        .onTapGesture {
+            withAnimation(.spring(response: 0.16, dampingFraction: 0.65)) {
+                isCardPressed = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.spring(response: 0.24, dampingFraction: 0.65)) {
+                    isCardPressed = false
+                }
+                onEdit()
+            }
         }
         .contextMenu {
             Button("Chỉnh sửa") { onEdit() }
             Button("Xoá", role: .destructive) { onDelete() }
+        }
+        .onChange(of: note.isCompleted) {
+            if note.isCompleted {
+                withAnimation(.spring(response: 0.24, dampingFraction: 0.52)) {
+                    checkmarkBounce = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+                    withAnimation(.spring(response: 0.24, dampingFraction: 0.65)) {
+                        checkmarkBounce = false
+                    }
+                }
+            }
         }
     }
 

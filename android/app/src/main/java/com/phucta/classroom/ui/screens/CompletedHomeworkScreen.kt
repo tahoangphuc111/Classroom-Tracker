@@ -100,13 +100,19 @@ fun CompletedHomeworkScreen(
             contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            item {
+            item(key = "header_completed") {
                 SectionHeaderPill(
                     title = "ĐÃ HOÀN THÀNH",
                     count = completedItems.size,
                     icon = Icons.Default.CheckCircle,
                     color = ChunkyColor.HeaderCompleted,
-                    modifier = Modifier.padding(bottom = 2.dp)
+                    modifier = Modifier
+                        .padding(bottom = 2.dp)
+                        .animateItem(
+                            fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                            placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                            fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                        )
                 )
             }
             items(completedItems, key = { it.id }) { item ->
@@ -115,8 +121,10 @@ fun CompletedHomeworkScreen(
                     hasNote = courseworkIdsWithNotes.contains(item.id),
                     onToggleCompletion = { onToggleCompletion(item.id, it) },
                     onClick = { onSelectAssignment(item) },
-                    modifier = Modifier.animateItemPlacement(
-                        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                        placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                        fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
                     )
                 )
             }

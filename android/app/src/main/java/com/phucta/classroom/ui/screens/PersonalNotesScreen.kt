@@ -1,8 +1,24 @@
 package com.phucta.classroom.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material3.ripple
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -327,7 +343,6 @@ fun PersonalNotesScreen(
                         )
                     }
                 }
-            } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp),
@@ -338,18 +353,39 @@ fun PersonalNotesScreen(
                             note = note,
                             onToggle = { onToggleCompletion(note.id, !note.isCompleted) },
                             onEdit = { noteToEdit = note },
-                            onDelete = { onDeleteNote(note.id) }
+                            onDelete = { onDeleteNote(note.id) },
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = spring(dampingRatio = 0.82f, stiffness = 380f)
+                            )
                         )
                     }
                 }
             }
         }
 
+        val fabInteractionSource = remember { MutableInteractionSource() }
+        val isFabPressed by fabInteractionSource.collectIsPressedAsState()
+        val fabScale by animateFloatAsState(
+            targetValue = if (isFabPressed) 0.92f else 1.0f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            ),
+            label = "fabScale"
+        )
+
         FloatingActionButton(
             onClick = { showCreateDialog = true },
+            interactionSource = fabInteractionSource,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(20.dp),
+                .padding(20.dp)
+                .graphicsLayer {
+                    scaleX = fabScale
+                    scaleY = fabScale
+                },
             containerColor = ChunkyColor.SkyBottom,
             contentColor = Color.White
         ) {
@@ -387,134 +423,299 @@ private fun PersonalNoteCard(
     note: PersonalNote,
     onToggle: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
+    // Tactile card press animation with snappy spring
+    val cardInteractionSource = remember { MutableInteractionSource() }
+    val isCardPressed by cardInteractionSource.collectIsPressedAsState()
+    val cardScale by animateFloatAsState(
+        targetValue = if (isCardPressed) 0.985f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "noteCardScale"
+    )
+
+    // Checkbox press feedback & elastic bounce/scale pop (1.15f -> 1.0f)
+    val checkInteractionSource = remember { MutableInteractionSource() }
+    val isCheckPressed by checkInteractionSource.collectIsPressedAsState()
+    val checkPressScale by animateFloatAsState(
+        targetValue = if (isCheckPressed) 0.88f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "noteCheckPressScale"
+    )
+
+    val checkScale = remember { Animatable(if (note.isCompleted) 1.0f else 0.88f) }
+    var isFirstComposition by remember { mutableStateOf(true) }
+    LaunchedEffect(note.isCompleted) {
+        if (isFirstComposition) {
+            isFirstComposition = false
+            return@LaunchedEffect
+        }
+        if (note.isCompleted) {
+            checkScale.animateTo(
+                targetValue = 1.15f,
+                animationSpec = tween(durationMillis = 110, easing = FastOutSlowInEasing)
+            )
+            checkScale.animateTo(
+                targetValue = 1.0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+        } else {
+            checkScale.animateTo(
+                targetValue = 0.88f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            )
+        }
+    }
+
+    val iconScale by animateFloatAsState(
+        targetValue = if (note.isCompleted) 1.0f else 0.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "noteIconScale"
+    )
+
+    val iconAlpha by animateFloatAsState(
+        targetValue = if (note.isCompleted) 1.0f else 0.0f,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "noteIconAlpha"
+    )
+
+    val checkBgColor by animateColorAsState(
+        targetValue = if (note.isCompleted) ChunkyColor.SuccessGreen else Color.Transparent,
+        animationSpec = tween(durationMillis = 200),
+        label = "noteCheckBgColor"
+    )
+
+    val checkBorderColor by animateColorAsState(
+        targetValue = if (note.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted.copy(alpha = 0.5f),
+        animationSpec = tween(durationMillis = 200),
+        label = "noteCheckBorderColor"
+    )
+
+    // Smooth strikethrough transition & color fade
+    val strikethroughProgress by animateFloatAsState(
+        targetValue = if (note.isCompleted) 1.0f else 0.0f,
+        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+        label = "noteStrikethroughProgress"
+    )
+
+    val titleColor by animateColorAsState(
+        targetValue = if (note.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary,
+        animationSpec = tween(durationMillis = 220),
+        label = "noteTitleColor"
+    )
+
+    val titleAlpha by animateFloatAsState(
+        targetValue = if (note.isCompleted) 0.60f else 1.0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "noteTitleAlpha"
+    )
+
+    var titleLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = cardScale
+                scaleY = cardScale
+            }
             .clip(RoundedCornerShape(14.dp))
             .background(ChunkyColor.SurfaceWhite)
-            .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(14.dp))
-            .padding(14.dp),
+            .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(14.dp)),
         verticalAlignment = Alignment.Top
     ) {
         Box(
             modifier = Modifier
-                .size(26.dp)
+                .padding(start = 6.dp, top = 6.dp)
+                .size(44.dp)
                 .clip(CircleShape)
-                .background(if (note.isCompleted) ChunkyColor.SuccessGreen else Color.Transparent)
-                .border(
-                    1.5.dp,
-                    if (note.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted.copy(alpha = 0.5f),
-                    CircleShape
-                )
-                .clickable(onClick = onToggle),
+                .clickable(
+                    interactionSource = checkInteractionSource,
+                    indication = ripple(bounded = false, radius = 20.dp),
+                    role = Role.Checkbox,
+                    onClick = onToggle
+                ),
             contentAlignment = Alignment.Center
         ) {
-            if (note.isCompleted) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Hoàn thành",
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = note.title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = if (note.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary,
-                    textDecoration = if (note.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-                    modifier = Modifier.weight(1f)
-                )
-
-                if (note.isDueTomorrow) {
-                    DueDateBadge(
-                        text = "Ngày mai",
-                        isCompleted = note.isCompleted,
-                        isDueTomorrow = true,
-                        fontSize = 11.5.sp
-                    )
-                } else if (note.isDueToday) {
-                    DueDateBadge(
-                        text = "Hôm nay",
-                        isCompleted = note.isCompleted,
-                        isDueToday = true,
-                        fontSize = 11.5.sp
-                    )
-                } else if (note.dueEpochMillis != null) {
-                    val dateStr = remember(note.dueEpochMillis) {
-                        SimpleDateFormat("d/M", Locale.getDefault()).format(Date(note.dueEpochMillis))
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .graphicsLayer {
+                        val combinedScale = checkScale.value * checkPressScale
+                        scaleX = combinedScale
+                        scaleY = combinedScale
                     }
-                    DueDateBadge(
-                        text = dateStr,
-                        isCompleted = note.isCompleted,
-                        fontSize = 11.5.sp
+                    .clip(CircleShape)
+                    .background(color = checkBgColor)
+                    .border(
+                        1.5.dp,
+                        color = checkBorderColor,
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (iconScale > 0.01f) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Hoàn thành",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(15.dp)
+                            .graphicsLayer {
+                                scaleX = iconScale
+                                scaleY = iconScale
+                                alpha = iconAlpha
+                            }
                     )
                 }
             }
-
-            if (note.content.isNotBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = note.content,
-                    fontSize = 13.5.sp,
-                    color = if (note.isCompleted) ChunkyColor.TextMuted.copy(alpha = 0.7f) else ChunkyColor.TextMuted,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            if (!note.courseName.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                SubjectBadgePill(courseName = note.courseName)
-            }
         }
 
-        Box {
-            IconButton(
-                onClick = { showMenu = true },
-                modifier = Modifier.size(28.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "Tùy chọn",
-                    tint = ChunkyColor.TextMuted,
-                    modifier = Modifier.size(18.dp)
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(topEnd = 14.dp, bottomEnd = 14.dp))
+                .clickable(
+                    interactionSource = cardInteractionSource,
+                    indication = ripple(),
+                    onClick = onEdit
                 )
+                .padding(start = 4.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = note.title,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = titleColor,
+                        onTextLayout = { titleLayoutResult = it },
+                        modifier = Modifier
+                            .weight(1f)
+                            .graphicsLayer { alpha = titleAlpha }
+                            .drawWithContent {
+                                drawContent()
+                                if (strikethroughProgress > 0.001f) {
+                                    titleLayoutResult?.let { layout ->
+                                        for (i in 0 until layout.lineCount) {
+                                            val lineTop = layout.getLineTop(i)
+                                            val lineBottom = layout.getLineBottom(i)
+                                            val lineLeft = layout.getLineLeft(i)
+                                            val lineRight = layout.getLineRight(i)
+                                            val y = (lineTop + lineBottom) / 2f
+                                            val endX = lineLeft + (lineRight - lineLeft) * strikethroughProgress
+                                            drawLine(
+                                                color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
+                                                start = Offset(lineLeft, y),
+                                                end = Offset(endX, y),
+                                                strokeWidth = 1.75.dp.toPx(),
+                                                cap = StrokeCap.Round
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                    )
+
+                    if (note.isDueTomorrow) {
+                        DueDateBadge(
+                            text = "Ngày mai",
+                            isCompleted = note.isCompleted,
+                            isDueTomorrow = true,
+                            fontSize = 11.5.sp
+                        )
+                    } else if (note.isDueToday) {
+                        DueDateBadge(
+                            text = "Hôm nay",
+                            isCompleted = note.isCompleted,
+                            isDueToday = true,
+                            fontSize = 11.5.sp
+                        )
+                    } else if (note.dueEpochMillis != null) {
+                        val dateStr = remember(note.dueEpochMillis) {
+                            SimpleDateFormat("d/M", Locale.getDefault()).format(Date(note.dueEpochMillis))
+                        }
+                        DueDateBadge(
+                            text = dateStr,
+                            isCompleted = note.isCompleted,
+                            fontSize = 11.5.sp
+                        )
+                    }
+                }
+
+                if (note.content.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = note.content,
+                        fontSize = 13.5.sp,
+                        color = if (note.isCompleted) ChunkyColor.TextMuted.copy(alpha = 0.7f) else ChunkyColor.TextMuted,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                if (!note.courseName.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SubjectBadgePill(courseName = note.courseName)
+                }
             }
 
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Chỉnh sửa") },
-                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                    onClick = {
-                        showMenu = false
-                        onEdit()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Xoá ghi chú", color = ChunkyColor.UrgentAccent) },
-                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = ChunkyColor.UrgentAccent, modifier = Modifier.size(18.dp)) },
-                    onClick = {
-                        showMenu = false
-                        onDelete()
-                    }
-                )
+            Box {
+                IconButton(
+                    onClick = { showMenu = true },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Tùy chọn",
+                        tint = ChunkyColor.TextMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Chỉnh sửa") },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        onClick = {
+                            showMenu = false
+                            onEdit()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Xoá ghi chú", color = ChunkyColor.UrgentAccent) },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = ChunkyColor.UrgentAccent, modifier = Modifier.size(18.dp)) },
+                        onClick = {
+                            showMenu = false
+                            onDelete()
+                        }
+                    )
+                }
             }
         }
     }
@@ -654,6 +855,17 @@ private fun CreateOrEditNoteDialog(
             }
         },
         confirmButton = {
+            val saveInteractionSource = remember { MutableInteractionSource() }
+            val isSavePressed by saveInteractionSource.collectIsPressedAsState()
+            val saveScale by animateFloatAsState(
+                targetValue = if (isSavePressed) 0.94f else 1.0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
+                label = "saveScale"
+            )
+
             Button(
                 onClick = {
                     val trimmedTitle = title.trim()
@@ -697,6 +909,11 @@ private fun CreateOrEditNoteDialog(
                         onSave(finalNote)
                     }
                 },
+                interactionSource = saveInteractionSource,
+                modifier = Modifier.graphicsLayer {
+                    scaleX = saveScale
+                    scaleY = saveScale
+                },
                 enabled = title.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SkyBottom)
             ) {
@@ -704,7 +921,25 @@ private fun CreateOrEditNoteDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            val dismissInteractionSource = remember { MutableInteractionSource() }
+            val isDismissPressed by dismissInteractionSource.collectIsPressedAsState()
+            val dismissScale by animateFloatAsState(
+                targetValue = if (isDismissPressed) 0.94f else 1.0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
+                label = "dismissScale"
+            )
+
+            TextButton(
+                onClick = onDismiss,
+                interactionSource = dismissInteractionSource,
+                modifier = Modifier.graphicsLayer {
+                    scaleX = dismissScale
+                    scaleY = dismissScale
+                }
+            ) {
                 Text("Huỷ")
             }
         }

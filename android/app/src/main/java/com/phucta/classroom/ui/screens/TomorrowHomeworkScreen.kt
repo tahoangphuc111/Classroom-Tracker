@@ -102,7 +102,7 @@ fun TomorrowHomeworkScreen(
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        item {
+        item(key = "tomorrow_summary_card") {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -231,9 +231,14 @@ fun TomorrowHomeworkScreen(
         }
 
         if (tomorrowItems.isEmpty()) {
-            item {
+            item(key = "empty_state_card") {
                 Box(
                     modifier = Modifier
+                        .animateItem(
+                            fadeInSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                            placementSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                            fadeOutSpec = spring(dampingRatio = 0.82f, stiffness = 380f)
+                        )
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                         .background(ChunkyColor.SurfaceWhite)
@@ -271,7 +276,7 @@ fun TomorrowHomeworkScreen(
             }
         } else {
             if (isAllDone) {
-                item {
+                item(key = "celebration_banner") {
                     val bannerText = when {
                         hasTomorrowTasks -> "Đã hoàn thành toàn bộ bài tập ngày mai!"
                         hasTodayTasks -> "Đã hoàn thành toàn bộ bài tập hôm nay!"
@@ -279,6 +284,11 @@ fun TomorrowHomeworkScreen(
                     }
                     Box(
                         modifier = Modifier
+                            .animateItem(
+                                fadeInSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = spring(dampingRatio = 0.82f, stiffness = 380f)
+                            )
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .background(ChunkyColor.SuccessGreen.copy(alpha = 0.08f))
@@ -304,7 +314,7 @@ fun TomorrowHomeworkScreen(
                 }
             }
 
-            item {
+            item(key = "section_header") {
                 val (sectionTitle, sectionIcon, sectionColor) = when {
                     hasTomorrowTasks -> Triple("BÀI TẬP NGÀY MAI", Icons.Default.CalendarToday, ChunkyColor.HeaderTomorrow)
                     hasTodayTasks -> Triple("BÀI TẬP HÔM NAY", Icons.Default.Schedule, ChunkyColor.HeaderToday)
@@ -314,7 +324,12 @@ fun TomorrowHomeworkScreen(
                     title = sectionTitle,
                     count = tomorrowItems.size,
                     icon = sectionIcon,
-                    color = sectionColor
+                    color = sectionColor,
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                        placementSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                        fadeOutSpec = spring(dampingRatio = 0.82f, stiffness = 380f)
+                    )
                 )
             }
 
@@ -324,11 +339,10 @@ fun TomorrowHomeworkScreen(
                     hasNote = courseworkIdsWithNotes.contains(item.id),
                     onToggleCompletion = { completed -> onToggleCompletion(item.id, completed) },
                     onClick = { onSelectAssignment(item) },
-                    modifier = Modifier.animateItemPlacement(
-                        animationSpec = spring(
-                            dampingRatio = 0.82f,
-                            stiffness = 380f
-                        )
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                        placementSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                        fadeOutSpec = spring(dampingRatio = 0.82f, stiffness = 380f)
                     )
                 )
             }

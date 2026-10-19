@@ -88,9 +88,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.semantics.Role
 import com.phucta.classroom.ClassroomApplication
@@ -167,18 +167,6 @@ fun MainScreen() {
     }
 
     val pullToRefreshState = rememberPullToRefreshState()
-    if (pullToRefreshState.isRefreshing) {
-        LaunchedEffect(true) {
-            try {
-                val result = repository.syncAll()
-                if (result.isSuccess) {
-                    snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
-                }
-            } finally {
-                pullToRefreshState.endRefresh()
-            }
-        }
-    }
 
     val completedItems = remember(allCoursework, courses) {
         val filtered = BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses).filter { it.isCompleted }
@@ -472,11 +460,29 @@ fun MainScreen() {
                 }
             }
         ) { paddingValues ->
-            Box(
+            PullToRefreshBox(
+                isRefreshing = isSyncing,
+                onRefresh = {
+                    scope.launch {
+                        val result = repository.syncAll()
+                        if (result.isSuccess) {
+                            snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+                        }
+                    }
+                },
+                state = pullToRefreshState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .nestedScroll(pullToRefreshState.nestedScrollConnection)
+                    .padding(paddingValues),
+                indicator = {
+                    PullToRefreshDefaults.Indicator(
+                        state = pullToRefreshState,
+                        isRefreshing = isSyncing,
+                        modifier = Modifier.align(Alignment.TopCenter),
+                        containerColor = ChunkyColor.SurfaceWhite,
+                        color = ChunkyColor.SkyBottom
+                    )
+                }
             ) {
                 AnimatedContent(
                     targetState = selectedTabIndex,
@@ -552,13 +558,6 @@ fun MainScreen() {
                         )
                     }
                 }
-
-                PullToRefreshContainer(
-                    state = pullToRefreshState,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                    containerColor = ChunkyColor.SurfaceWhite,
-                    contentColor = ChunkyColor.SkyBottom
-                )
             }
         }
         }

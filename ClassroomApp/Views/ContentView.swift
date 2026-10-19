@@ -10,12 +10,41 @@ import AuthenticationServices
 #endif
 
 public struct SpringPressButtonStyle: ButtonStyle {
-    public init() {}
+    public var scale: CGFloat
+    public var pressedOpacity: CGFloat
+
+    public init(scale: CGFloat = 0.98, pressedOpacity: CGFloat = 0.92) {
+        self.scale = scale
+        self.pressedOpacity = pressedOpacity
+    }
+
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-            .opacity(configuration.isPressed ? 0.88 : 1.0)
-            .animation(.spring(response: 0.22, dampingFraction: 0.68), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? scale : 1.0)
+            .opacity(configuration.isPressed ? pressedOpacity : 1.0)
+            .animation(.spring(response: 0.24, dampingFraction: 0.65), value: configuration.isPressed)
+    }
+}
+
+public struct SpringPressCardModifier: ViewModifier {
+    public var scale: CGFloat
+    public var isPressed: Bool
+
+    public init(scale: CGFloat = 0.98, isPressed: Bool) {
+        self.scale = scale
+        self.isPressed = isPressed
+    }
+
+    public func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPressed ? scale : 1.0)
+            .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isPressed)
+    }
+}
+
+public extension View {
+    func springPressCard(isPressed: Bool, scale: CGFloat = 0.98) -> some View {
+        modifier(SpringPressCardModifier(scale: scale, isPressed: isPressed))
     }
 }
 
@@ -449,6 +478,10 @@ public struct ContentView: View {
             refreshData()
             hasInitialLoadHappened = true
 
+            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
+                floatingPhase = 5
+            }
+
             if authService.isAuthenticated {
                 Task {
                     await Task.yield()
@@ -598,7 +631,9 @@ public struct ContentView: View {
                 Spacer()
 
                 AppLogoView(size: 88)
-                    .offset(y: floatingPhase)
+                    .offset(y: floatingPhase > 0 ? -4 : 4)
+                    .scaleEffect(floatingPhase > 0 ? 1.02 : 0.98)
+                    .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: floatingPhase)
                     .opacity(welcomeAppeared ? 1 : 0)
                     .scaleEffect(welcomeAppeared ? 1 : 0.85)
 
@@ -755,7 +790,7 @@ public struct ContentView: View {
             withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
                 welcomeAppeared = true
             }
-            withAnimation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
                 floatingPhase = 5
             }
         }
@@ -2007,6 +2042,7 @@ public struct ContentView: View {
                         }
                     }
                     .padding(12)
+                    .animation(.spring(response: 0.32, dampingFraction: 0.8), value: list)
                     #if os(iOS)
                     .padding(.bottom, isLandscapePhone ? 24 : 8)
                     #endif
@@ -2051,7 +2087,9 @@ public struct ContentView: View {
         return VStack(spacing: 10) {
             HStack(spacing: 12) {
                 ChunkyEmberCharacterView(emotion: emotion, size: 52)
-                    .offset(y: floatingPhase)
+                    .offset(y: floatingPhase > 0 ? -4 : 4)
+                    .scaleEffect(floatingPhase > 0 ? 1.03 : 0.97)
+                    .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: floatingPhase)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(isAllDone ? "Xuất sắc! Đã xong hết" : "Báo bài ngày mai")
@@ -2480,8 +2518,14 @@ public struct ContentView: View {
             toggleCompletion(for: item)
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: item.isCompleted ? "arrow.uturn.backward" : "checkmark")
-                    .font(.system(size: 12, weight: .bold))
+                if #available(macOS 14.0, iOS 17.0, *) {
+                    Image(systemName: item.isCompleted ? "arrow.uturn.backward" : "checkmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .symbolEffect(.bounce, value: item.isCompleted)
+                } else {
+                    Image(systemName: item.isCompleted ? "arrow.uturn.backward" : "checkmark")
+                        .font(.system(size: 12, weight: .bold))
+                }
                 Text(item.isCompleted ? "Chưa nộp" : "Đã nộp")
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
@@ -2494,13 +2538,16 @@ public struct ContentView: View {
                     .fixedSize(horizontal: true, vertical: false)
                 #endif
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.platformControlBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.platformCardBorder, lineWidth: 1)
+            )
         }
-        .buttonStyle(.bordered)
-        #if os(iOS)
-        .controlSize(horizontalSizeClass == .compact ? .regular : .small)
-        #else
-        .controlSize(.small)
-        #endif
+        .buttonStyle(SpringPressButtonStyle(scale: 0.96))
         .help("Đánh dấu hoàn thành / Hoàn tác (Phím Space)")
     }
 
@@ -2510,21 +2557,31 @@ public struct ContentView: View {
             copyToClipboard(desc, title: item.title)
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: copyFeedbackMessage != nil ? "checkmark" : "doc.on.doc")
-                    .font(.system(size: 12))
-                    .foregroundStyle(copyFeedbackMessage != nil ? Color.green : Color.secondary)
+                if #available(macOS 14.0, iOS 17.0, *) {
+                    Image(systemName: copyFeedbackMessage != nil ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 12))
+                        .foregroundStyle(copyFeedbackMessage != nil ? Color.green : Color.secondary)
+                        .symbolEffect(.bounce, value: copyFeedbackMessage != nil)
+                } else {
+                    Image(systemName: copyFeedbackMessage != nil ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 12))
+                        .foregroundStyle(copyFeedbackMessage != nil ? Color.green : Color.secondary)
+                }
                 Text(copyFeedbackMessage ?? "Sao chép đề")
                     .font(.system(size: 13, weight: .medium))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.platformControlBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.platformCardBorder, lineWidth: 1)
+            )
         }
-        .buttonStyle(.bordered)
-        #if os(iOS)
-        .controlSize(horizontalSizeClass == .compact ? .regular : .small)
-        #else
-        .controlSize(.small)
-        #endif
+        .buttonStyle(SpringPressButtonStyle(scale: 0.96))
         .keyboardShortcut("c", modifiers: [.command, .shift])
         .help("Sao chép đề bài vào bộ nhớ tạm (⌘⇧C)")
     }
@@ -3529,9 +3586,16 @@ private struct CourseSelectionRow: View, Equatable {
     var body: some View {
         Button(action: onToggle) {
             HStack(alignment: .center, spacing: 10) {
-                Image(systemName: course.isSelectedForWidget ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(course.isSelectedForWidget ? Color.blue : Color.secondary.opacity(0.45))
+                if #available(macOS 14.0, iOS 17.0, *) {
+                    Image(systemName: course.isSelectedForWidget ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(course.isSelectedForWidget ? Color.blue : Color.secondary.opacity(0.45))
+                        .symbolEffect(.bounce, value: course.isSelectedForWidget)
+                } else {
+                    Image(systemName: course.isSelectedForWidget ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(course.isSelectedForWidget ? Color.blue : Color.secondary.opacity(0.45))
+                }
 
                 SubjectArtBadgeView(courseName: course.name, size: 26)
 
@@ -3560,7 +3624,8 @@ private struct CourseSelectionRow: View, Equatable {
             #endif
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SpringPressButtonStyle(scale: 0.98))
+        .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isHovered)
         .onHover { hovering in
             isHovered = hovering
         }
@@ -3723,6 +3788,7 @@ private struct AssignmentListRow: View, Equatable {
 
     @State private var isHovered: Bool = false
     @State private var checkmarkBounce: Bool = false
+    @State private var isRowPressed: Bool = false
     @Environment(\.openURL) private var openURL
 
     static func == (lhs: AssignmentListRow, rhs: AssignmentListRow) -> Bool {
@@ -3740,14 +3806,16 @@ private struct AssignmentListRow: View, Equatable {
             Capsule()
                 .fill(isSelected ? Color.blue : Color.clear)
                 .frame(width: 3.5, height: 34)
-                .animation(.easeInOut(duration: 0.15), value: isSelected)
+                .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isSelected)
 
             Button {
-                withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) {
+                withAnimation(.spring(response: 0.24, dampingFraction: 0.52)) {
                     checkmarkBounce = true
                 }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    checkmarkBounce = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+                    withAnimation(.spring(response: 0.24, dampingFraction: 0.65)) {
+                        checkmarkBounce = false
+                    }
                 }
                 onToggleCompletion()
             } label: {
@@ -3756,19 +3824,32 @@ private struct AssignmentListRow: View, Equatable {
                         .equatable()
 
                     if isTurnedIn {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
-                            .background(Circle().fill(Color.white).padding(1))
-                            .offset(x: 3, y: 3)
-                            .scaleEffect(checkmarkBounce ? 1.3 : 1.0)
-                            .transition(.scale.combined(with: .opacity))
+                        if #available(macOS 14.0, iOS 17.0, *) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
+                                .background(Circle().fill(Color.white).padding(1))
+                                .offset(x: 3, y: 3)
+                                .scaleEffect(checkmarkBounce ? 1.32 : 1.0)
+                                .symbolEffect(.bounce, value: isTurnedIn)
+                                .transition(.scale(scale: 0.5).combined(with: .opacity))
+                        } else {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
+                                .background(Circle().fill(Color.white).padding(1))
+                                .offset(x: 3, y: 3)
+                                .scaleEffect(checkmarkBounce ? 1.32 : 1.0)
+                                .transition(.scale(scale: 0.5).combined(with: .opacity))
+                        }
                     } else {
                         Circle()
                             .strokeBorder(Color.secondary.opacity(0.35), lineWidth: 1.3)
                             .background(Circle().fill(Color.platformControlBackground.opacity(0.85)))
                             .frame(width: 13, height: 13)
                             .offset(x: 2, y: 2)
+                            .scaleEffect(checkmarkBounce ? 0.9 : 1.0)
+                            .transition(.scale(scale: 0.5).combined(with: .opacity))
                     }
                 }
                 .scaleEffect(checkmarkBounce ? 1.15 : 1.0)
@@ -3779,7 +3860,7 @@ private struct AssignmentListRow: View, Equatable {
             .frame(width: 44, height: 44)
             #endif
             .contentShape(Rectangle())
-            .buttonStyle(.plain)
+            .buttonStyle(SpringPressButtonStyle(scale: 0.92, pressedOpacity: 0.88))
             .help(isTurnedIn ? "Đã nộp bài (Space hoặc bấm để hoàn tác)" : "Chưa nộp bài (Space hoặc bấm để đánh dấu hoàn thành)")
 
             VStack(alignment: .leading, spacing: 3.5) {
@@ -3788,8 +3869,9 @@ private struct AssignmentListRow: View, Equatable {
                     .font(.system(size: 14, weight: isSelected ? .bold : .semibold))
                     .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
                     .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
+                    .opacity(isTurnedIn ? 0.72 : 1.0)
                     .lineLimit(2)
-                    .animation(.easeInOut(duration: 0.2), value: isTurnedIn)
+                    .animation(.spring(response: 0.28, dampingFraction: 0.8), value: isTurnedIn)
 
                 HStack(spacing: 5) {
                     Circle()
@@ -3805,13 +3887,16 @@ private struct AssignmentListRow: View, Equatable {
                             .foregroundStyle(Color.blue)
                     }
                 }
+                .opacity(isTurnedIn ? 0.75 : 1.0)
+                .animation(.spring(response: 0.28, dampingFraction: 0.8), value: isTurnedIn)
                 #else
                 Text(item.title)
                     .font(.system(size: 16.5, weight: isSelected ? .bold : .semibold))
                     .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
                     .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
+                    .opacity(isTurnedIn ? 0.72 : 1.0)
                     .lineLimit(2)
-                    .animation(.easeInOut(duration: 0.2), value: isTurnedIn)
+                    .animation(.spring(response: 0.28, dampingFraction: 0.8), value: isTurnedIn)
 
                 HStack(spacing: 5) {
                     Circle()
@@ -3827,6 +3912,8 @@ private struct AssignmentListRow: View, Equatable {
                             .foregroundStyle(Color.blue)
                     }
                 }
+                .opacity(isTurnedIn ? 0.75 : 1.0)
+                .animation(.spring(response: 0.28, dampingFraction: 0.8), value: isTurnedIn)
                 #endif
             }
 
@@ -3860,21 +3947,43 @@ private struct AssignmentListRow: View, Equatable {
             x: 0,
             y: 1
         )
-        .animation(.easeInOut(duration: 0.12), value: isHovered)
+        .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isHovered)
         .onHover { hovering in
             isHovered = hovering
         }
         #else
         .modifier(RowSelectedShadowModifier(isSelected: isSelected))
         #endif
+        .scaleEffect(isRowPressed ? 0.98 : (isHovered ? 1.006 : 1.0))
+        .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isRowPressed)
         .contentShape(Rectangle())
         .onTapGesture {
+            withAnimation(.spring(response: 0.16, dampingFraction: 0.65)) {
+                isRowPressed = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.spring(response: 0.24, dampingFraction: 0.65)) {
+                    isRowPressed = false
+                }
+            }
             #if os(macOS)
             let isCmd = NSEvent.modifierFlags.contains(.command)
             #else
             let isCmd = false
             #endif
             onSelect(isCmd)
+        }
+        .onChange(of: isTurnedIn) {
+            if isTurnedIn {
+                withAnimation(.spring(response: 0.24, dampingFraction: 0.52)) {
+                    checkmarkBounce = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+                    withAnimation(.spring(response: 0.24, dampingFraction: 0.65)) {
+                        checkmarkBounce = false
+                    }
+                }
+            }
         }
         .contextMenu {
             Button {
@@ -3958,7 +4067,7 @@ private struct MetaInfoCard: View {
         )
         .shadow(color: Color.black.opacity(isHovered ? 0.035 : 0.015), radius: isHovered ? 4 : 2, x: 0, y: 1)
         .scaleEffect(isHovered ? 1.015 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isHovered)
         .onHover { hovering in
             isHovered = hovering
         }
@@ -3972,15 +4081,22 @@ private struct AssignmentListEmptyView: View {
     let onClearSearch: () -> Void
     var onSwitchToUpcoming: (() -> Void)? = nil
 
+    @State private var hasAppeared: Bool = false
+    @State private var isEmberFloating: Bool = false
+
     var body: some View {
         VStack(spacing: 16) {
             Spacer()
 
             if !isSearching && (filter == .tomorrow || filter == .todayAndTomorrow) {
                 ChunkyEmberCharacterView(emotion: .sleeping, size: 76)
+                    .offset(y: isEmberFloating ? -5 : 4)
+                    .scaleEffect(isEmberFloating ? 1.02 : 0.98)
                     .padding(.bottom, 2)
             } else if !isSearching && filter == .past {
                 ChunkyEmberCharacterView(emotion: .celebrating, size: 76)
+                    .offset(y: isEmberFloating ? -5 : 4)
+                    .scaleEffect(isEmberFloating ? 1.02 : 0.98)
                     .padding(.bottom, 2)
             } else {
                 ZStack {
@@ -3995,10 +4111,18 @@ private struct AssignmentListEmptyView: View {
                         )
                         .frame(width: 92, height: 92)
 
-                    Image(systemName: emptyIcon)
-                        .font(.system(size: 34, weight: .light))
-                        .foregroundStyle(emptyTint)
+                    if #available(macOS 14.0, iOS 17.0, *) {
+                        Image(systemName: emptyIcon)
+                            .font(.system(size: 34, weight: .light))
+                            .foregroundStyle(emptyTint)
+                            .symbolEffect(.bounce, value: hasAppeared)
+                    } else {
+                        Image(systemName: emptyIcon)
+                            .font(.system(size: 34, weight: .light))
+                            .foregroundStyle(emptyTint)
+                    }
                 }
+                .offset(y: isEmberFloating ? -3 : 3)
             }
 
             VStack(spacing: 6) {
@@ -4018,7 +4142,7 @@ private struct AssignmentListEmptyView: View {
                 Button("Xóa tìm kiếm") {
                     onClearSearch()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(SpringPressButtonStyle(scale: 0.96))
                 .controlSize(.regular)
                 .padding(.top, 4)
             } else if (filter == .tomorrow || filter == .todayAndTomorrow), let onSwitchToUpcoming {
@@ -4032,7 +4156,7 @@ private struct AssignmentListEmptyView: View {
                             .font(.system(size: 13.5, weight: .semibold))
                     }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(SpringPressButtonStyle(scale: 0.96))
                 .controlSize(.regular)
                 .padding(.top, 4)
             }
@@ -4040,6 +4164,17 @@ private struct AssignmentListEmptyView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .opacity(hasAppeared ? 1.0 : 0.0)
+        .scaleEffect(hasAppeared ? 1.0 : 0.94)
+        .offset(y: hasAppeared ? 0 : 10)
+        .onAppear {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
+                hasAppeared = true
+            }
+            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
+                isEmberFloating = true
+            }
+        }
     }
 
     private var emptyIcon: String {
@@ -4105,6 +4240,8 @@ private struct AssignmentListEmptyView: View {
 }
 
 private struct HomeworkReaderEmptyStateView: View {
+    @State private var hasAppeared: Bool = false
+
     var body: some View {
         VStack(spacing: 16) {
             ZStack {
@@ -4123,6 +4260,7 @@ private struct HomeworkReaderEmptyStateView: View {
                     .font(.system(size: 36, weight: .light))
                     .foregroundStyle(Color.blue)
             }
+            .scaleEffect(hasAppeared ? 1.0 : 0.90)
 
             VStack(spacing: 6) {
                 Text("Chọn một bài tập từ danh sách bên trái")
@@ -4148,6 +4286,14 @@ private struct HomeworkReaderEmptyStateView: View {
             #endif
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .opacity(hasAppeared ? 1.0 : 0.0)
+        .scaleEffect(hasAppeared ? 1.0 : 0.95)
+        .offset(y: hasAppeared ? 0 : 8)
+        .onAppear {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
+                hasAppeared = true
+            }
+        }
         .background(Color.platformWindowBackground)
     }
 }
