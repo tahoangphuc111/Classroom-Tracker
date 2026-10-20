@@ -247,7 +247,7 @@ fun AllUpcomingScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(20.dp),
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Box(
@@ -256,7 +256,7 @@ fun AllUpcomingScreen(
                         .clip(RoundedCornerShape(16.dp))
                         .background(ChunkyColor.SurfaceWhite)
                         .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
-                        .padding(horizontal = 24.dp, vertical = 36.dp),
+                        .padding(horizontal = 20.dp, vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -337,7 +337,7 @@ fun AllUpcomingScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(20.dp),
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Box(
@@ -346,7 +346,7 @@ fun AllUpcomingScreen(
                         .clip(RoundedCornerShape(16.dp))
                         .background(ChunkyColor.SurfaceWhite)
                         .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
-                        .padding(horizontal = 24.dp, vertical = 36.dp),
+                        .padding(horizontal = 20.dp, vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -411,12 +411,17 @@ fun AllUpcomingScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (buckets.overdue.isNotEmpty()) {
-                    item {
+                    item(key = "header_overdue") {
                         SectionHeaderPill(
                             title = "QUÁ HẠN",
                             count = buckets.overdue.size,
                             icon = Icons.Default.Warning,
-                            color = ChunkyColor.HeaderOverdue
+                            color = ChunkyColor.HeaderOverdue,
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            )
                         )
                     }
                     items(buckets.overdue, key = { it.id }) { item ->
@@ -432,16 +437,21 @@ fun AllUpcomingScreen(
                             )
                         )
                     }
-                    item { Spacer(modifier = Modifier.height(6.dp)) }
+                    item(key = "spacer_overdue") { Spacer(modifier = Modifier.height(6.dp)) }
                 }
 
                 if (buckets.today.isNotEmpty()) {
-                    item {
+                    item(key = "header_today") {
                         SectionHeaderPill(
                             title = "HÔM NAY",
                             count = buckets.today.size,
                             icon = Icons.Default.Schedule,
-                            color = ChunkyColor.HeaderToday
+                            color = ChunkyColor.HeaderToday,
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            )
                         )
                     }
                     items(buckets.today, key = { it.id }) { item ->
@@ -457,16 +467,21 @@ fun AllUpcomingScreen(
                             )
                         )
                     }
-                    item { Spacer(modifier = Modifier.height(6.dp)) }
+                    item(key = "spacer_today") { Spacer(modifier = Modifier.height(6.dp)) }
                 }
 
                 if (buckets.tomorrow.isNotEmpty()) {
-                    item {
+                    item(key = "header_tomorrow") {
                         SectionHeaderPill(
                             title = "NGÀY MAI",
                             count = buckets.tomorrow.size,
                             icon = Icons.Default.CalendarToday,
-                            color = ChunkyColor.HeaderTomorrow
+                            color = ChunkyColor.HeaderTomorrow,
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            )
                         )
                     }
                     items(buckets.tomorrow, key = { it.id }) { item ->
@@ -482,16 +497,21 @@ fun AllUpcomingScreen(
                             )
                         )
                     }
-                    item { Spacer(modifier = Modifier.height(6.dp)) }
+                    item(key = "spacer_tomorrow") { Spacer(modifier = Modifier.height(6.dp)) }
                 }
 
                 if (buckets.laterUpcoming.isNotEmpty()) {
-                    item {
+                    item(key = "header_later") {
                         SectionHeaderPill(
                             title = "SẮP TỚI",
                             count = buckets.laterUpcoming.size,
                             icon = Icons.Default.Upcoming,
-                            color = ChunkyColor.HeaderUpcoming
+                            color = ChunkyColor.HeaderUpcoming,
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            )
                         )
                     }
                     items(buckets.laterUpcoming, key = { it.id }) { item ->
@@ -507,16 +527,21 @@ fun AllUpcomingScreen(
                             )
                         )
                     }
-                    item { Spacer(modifier = Modifier.height(6.dp)) }
+                    item(key = "spacer_later") { Spacer(modifier = Modifier.height(6.dp)) }
                 }
 
                 if (buckets.noDueDate.isNotEmpty()) {
-                    item {
+                    item(key = "header_no_due_date") {
                         SectionHeaderPill(
                             title = "KHÔNG CÓ HẠN",
                             count = buckets.noDueDate.size,
                             icon = Icons.AutoMirrored.Filled.HelpOutline,
-                            color = ChunkyColor.HeaderUpcoming
+                            color = ChunkyColor.HeaderUpcoming,
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            )
                         )
                     }
                     items(buckets.noDueDate, key = { it.id }) { item ->
@@ -535,13 +560,18 @@ fun AllUpcomingScreen(
                 }
 
                 if (searchQuery.isNotBlank() && buckets.completed.isNotEmpty()) {
-                    item {
+                    item(key = "header_completed") {
                         Spacer(modifier = Modifier.height(6.dp))
                         SectionHeaderPill(
                             title = "ĐÃ HOÀN THÀNH",
                             count = buckets.completed.size,
                             icon = Icons.Default.CheckCircle,
-                            color = ChunkyColor.HeaderCompleted
+                            color = ChunkyColor.HeaderCompleted,
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
+                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            )
                         )
                     }
                     items(buckets.completed, key = { it.id }) { item ->

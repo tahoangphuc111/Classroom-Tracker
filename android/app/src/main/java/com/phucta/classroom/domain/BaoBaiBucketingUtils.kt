@@ -1,5 +1,7 @@
 package com.phucta.classroom.domain
 
+import androidx.compose.runtime.Immutable
+import com.phucta.classroom.data.model.ClassroomDateUtils
 import com.phucta.classroom.data.model.Course
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.PersonalNote
@@ -8,6 +10,7 @@ import java.util.Calendar
 
 object BaoBaiBucketingUtils {
 
+    @Immutable
     data class CourseworkBuckets(
         val overdue: List<Coursework> = emptyList(),
         val today: List<Coursework> = emptyList(),
@@ -108,19 +111,8 @@ object BaoBaiBucketingUtils {
         if (relevant.isEmpty() && (!includeNotes || personalNotes.isEmpty())) return emptyList()
 
         val now = System.currentTimeMillis()
-
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-
-        cal.add(Calendar.DAY_OF_YEAR, 1)
-        val startOfTomorrow = cal.timeInMillis
-
-        cal.add(Calendar.DAY_OF_YEAR, 1)
-        val startOfDayAfter = cal.timeInMillis
+        val startOfTomorrow = ClassroomDateUtils.startOfTomorrow
+        val startOfDayAfter = ClassroomDateUtils.startOfDayAfter
 
         val tomorrowFiltered = ArrayList<Coursework>()
         val todayIncomplete = ArrayList<Coursework>()
@@ -199,19 +191,8 @@ object BaoBaiBucketingUtils {
     ): CourseworkBuckets {
         val relevant = if (courses.isNotEmpty()) filterByActiveCourses(items, courses) else items
         val now = System.currentTimeMillis()
-
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-
-        cal.add(Calendar.DAY_OF_YEAR, 1)
-        val startOfTomorrow = cal.timeInMillis
-
-        cal.add(Calendar.DAY_OF_YEAR, 1)
-        val startOfDayAfter = cal.timeInMillis
+        val startOfTomorrow = ClassroomDateUtils.startOfTomorrow
+        val startOfDayAfter = ClassroomDateUtils.startOfDayAfter
 
         val overdue = mutableListOf<Coursework>()
         val today = mutableListOf<Coursework>()

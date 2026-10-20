@@ -63,10 +63,10 @@ fun AssignmentCard(
     val isCompleted = coursework.isCompleted
     val isOverdue = coursework.isOverdue
 
-    // Tactile card press animation with snappy spring
+    // Tactile card press animation with snappy spring (deferred to draw phase)
     val cardInteractionSource = remember { MutableInteractionSource() }
     val isCardPressed by cardInteractionSource.collectIsPressedAsState()
-    val cardScale by animateFloatAsState(
+    val cardScale = animateFloatAsState(
         targetValue = if (isCardPressed) 0.985f else 1.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -78,7 +78,7 @@ fun AssignmentCard(
     // Checkbox press feedback & elastic bounce/scale pop (1.15f -> 1.0f)
     val checkInteractionSource = remember { MutableInteractionSource() }
     val isCheckPressed by checkInteractionSource.collectIsPressedAsState()
-    val checkPressScale by animateFloatAsState(
+    val checkPressScale = animateFloatAsState(
         targetValue = if (isCheckPressed) 0.90f else 1.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -118,8 +118,8 @@ fun AssignmentCard(
         }
     }
 
-    // Smooth checkmark reveal (scale + alpha)
-    val iconScale by animateFloatAsState(
+    // Smooth checkmark reveal (scale + alpha deferred to graphicsLayer)
+    val iconScale = animateFloatAsState(
         targetValue = if (isCompleted) 1.0f else 0.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -128,7 +128,7 @@ fun AssignmentCard(
         label = "iconScale"
     )
 
-    val iconAlpha by animateFloatAsState(
+    val iconAlpha = animateFloatAsState(
         targetValue = if (isCompleted) 1.0f else 0.0f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "iconAlpha"
@@ -147,7 +147,7 @@ fun AssignmentCard(
     )
 
     // Smooth text strikethrough transition & color fade
-    val strikethroughProgress by animateFloatAsState(
+    val strikethroughProgress = animateFloatAsState(
         targetValue = if (isCompleted) 1.0f else 0.0f,
         animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
         label = "strikethroughProgress"
@@ -159,29 +159,29 @@ fun AssignmentCard(
         label = "titleColor"
     )
 
-    val titleAlpha by animateFloatAsState(
+    val titleAlpha = animateFloatAsState(
         targetValue = if (isCompleted) 0.60f else 1.0f,
         animationSpec = tween(durationMillis = 220),
         label = "titleAlpha"
     )
 
-    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var textLayoutResult by remember(coursework.id, coursework.title) { mutableStateOf<TextLayoutResult?>(null) }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
-                scaleX = cardScale
-                scaleY = cardScale
+                scaleX = cardScale.value
+                scaleY = cardScale.value
             }
             .clip(RoundedCornerShape(12.dp))
             .background(ChunkyColor.SurfaceWhite)
             .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(12.dp)),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         Box(
             modifier = Modifier
-                .padding(start = 4.dp, top = 2.dp, bottom = 2.dp)
+                .padding(start = 4.dp, top = 2.dp)
                 .size(48.dp)
                 .clip(CircleShape)
                 .clickable(
@@ -196,7 +196,7 @@ fun AssignmentCard(
                 modifier = Modifier
                     .size(22.dp)
                     .graphicsLayer {
-                        val combinedScale = checkScale.value * checkPressScale
+                        val combinedScale = checkScale.value * checkPressScale.value
                         scaleX = combinedScale
                         scaleY = combinedScale
                     }
@@ -209,7 +209,7 @@ fun AssignmentCard(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                if (iconScale > 0.01f) {
+                if (isCompleted || iconScale.value > 0.01f) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Completed",
@@ -217,9 +217,9 @@ fun AssignmentCard(
                         modifier = Modifier
                             .size(15.dp)
                             .graphicsLayer {
-                                scaleX = iconScale
-                                scaleY = iconScale
-                                alpha = iconAlpha
+                                scaleX = iconScale.value
+                                scaleY = iconScale.value
+                                alpha = iconAlpha.value
                             }
                     )
                 }
@@ -236,11 +236,12 @@ fun AssignmentCard(
                     onClick = onClick
                 )
                 .padding(start = 4.dp, end = 14.dp, top = 13.dp, bottom = 13.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             SubjectBadgePill(
                 courseName = coursework.courseName,
-                title = coursework.title
+                title = coursework.title,
+                modifier = Modifier.padding(top = 1.dp)
             )
 
             Spacer(modifier = Modifier.width(10.dp))
@@ -257,18 +258,20 @@ fun AssignmentCard(
                     overflow = TextOverflow.Ellipsis,
                     onTextLayout = { textLayoutResult = it },
                     modifier = Modifier
-                        .graphicsLayer { alpha = titleAlpha }
+                        .graphicsLayer { alpha = titleAlpha.value }
                         .drawWithContent {
                             drawContent()
-                            if (strikethroughProgress > 0.001f) {
-                                textLayoutResult?.let { layout ->
+                            val progress = strikethroughProgress.value
+                            if (progress > 0.001f) {
+                                val layout = textLayoutResult
+                                if (layout != null) {
                                     for (i in 0 until layout.lineCount) {
                                         val lineTop = layout.getLineTop(i)
                                         val lineBottom = layout.getLineBottom(i)
                                         val lineLeft = layout.getLineLeft(i)
                                         val lineRight = layout.getLineRight(i)
                                         val y = (lineTop + lineBottom) / 2f
-                                        val endX = lineLeft + (lineRight - lineLeft) * strikethroughProgress
+                                        val endX = lineLeft + (lineRight - lineLeft) * progress
                                         drawLine(
                                             color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
                                             start = Offset(lineLeft, y),
@@ -277,6 +280,16 @@ fun AssignmentCard(
                                             cap = StrokeCap.Round
                                         )
                                     }
+                                } else {
+                                    val y = size.height / 2f
+                                    val endX = size.width * progress
+                                    drawLine(
+                                        color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
+                                        start = Offset(0f, y),
+                                        end = Offset(endX, y),
+                                        strokeWidth = 1.75.dp.toPx(),
+                                        cap = StrokeCap.Round
+                                    )
                                 }
                             }
                         }
@@ -311,7 +324,8 @@ fun AssignmentCard(
                 isOverdue = isOverdue || coursework.isPast,
                 isDueToday = coursework.isDueToday,
                 isDueTomorrow = coursework.isDueTomorrow,
-                fontSize = 12.sp
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 1.dp)
             )
         }
     }

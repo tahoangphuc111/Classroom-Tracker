@@ -113,12 +113,12 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
 
     public var isDueTomorrow: Bool {
         guard let dueDate else { return false }
-        return Calendar.autoupdatingCurrent.isDateInTomorrow(dueDate)
+        return Calendar.current.isDateInTomorrow(dueDate)
     }
 
     public var isDueToday: Bool {
         guard let dueDate else { return false }
-        return Calendar.autoupdatingCurrent.isDateInToday(dueDate)
+        return Calendar.current.isDateInToday(dueDate)
     }
 
     /// Computes search relevance score based on title, course name, and content.

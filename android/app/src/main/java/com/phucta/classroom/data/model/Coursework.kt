@@ -1,7 +1,9 @@
 package com.phucta.classroom.data.model
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 
+@Immutable
 @Serializable
 data class Coursework(
     val id: String,
@@ -13,9 +15,9 @@ data class Coursework(
     val dueEpochMillis: Long? = null,
     val status: SubmissionStatus = SubmissionStatus.PENDING,
     val maxPoints: Double? = null,
-    val isManuallyCompleted: Boolean = false
-) {
+    val isManuallyCompleted: Boolean = false,
     val searchIndex: String = buildSearchIndex(title, courseName, description)
+) {
     val timeOnlyString: String = ClassroomDateUtils.buildTimeOnlyString(dueEpochMillis)
     val formattedFullDueDate: String = ClassroomDateUtils.buildFormattedFullDueDate(dueEpochMillis)
 
@@ -67,20 +69,10 @@ data class Coursework(
         get() = ClassroomDateUtils.countdownBadgeString(dueEpochMillis, isCompleted)
 
     val compactDueString: String
-        get() = ClassroomDateUtils.compactDueString(dueEpochMillis, isCompleted)
+        get() = ClassroomDateUtils.compactDueString(dueEpochMillis, isCompleted, timeOnlyString)
 
     val isDueLater: Boolean
-        get() {
-            if (dueEpochMillis == null) return false
-            val cal = java.util.Calendar.getInstance().apply {
-                set(java.util.Calendar.HOUR_OF_DAY, 0)
-                set(java.util.Calendar.MINUTE, 0)
-                set(java.util.Calendar.SECOND, 0)
-                set(java.util.Calendar.MILLISECOND, 0)
-                add(java.util.Calendar.DAY_OF_YEAR, 2)
-            }
-            return dueEpochMillis >= cal.timeInMillis
-        }
+        get() = dueEpochMillis != null && dueEpochMillis >= ClassroomDateUtils.startOfDayAfter
 
     val statusTitle: String
         get() = when (status) {

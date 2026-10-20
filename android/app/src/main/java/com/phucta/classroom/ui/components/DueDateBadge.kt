@@ -25,6 +25,32 @@ data class DueDateBadgeColors(
 )
 
 object DueDateBadgeDefaults {
+    private val completedColors = DueDateBadgeColors(
+        background = ChunkyColor.CompletedBadgeBackground,
+        border = ChunkyColor.CompletedBadgeBorder,
+        text = ChunkyColor.CompletedBadgeText
+    )
+    private val overdueColors = DueDateBadgeColors(
+        background = ChunkyColor.OverdueBackground,
+        border = ChunkyColor.OverdueBorder,
+        text = ChunkyColor.OverdueText
+    )
+    private val todayColors = DueDateBadgeColors(
+        background = ChunkyColor.TodayBackground,
+        border = ChunkyColor.TodayBorder,
+        text = ChunkyColor.TodayText
+    )
+    private val tomorrowColors = DueDateBadgeColors(
+        background = ChunkyColor.TomorrowBackground,
+        border = ChunkyColor.TomorrowBorder,
+        text = ChunkyColor.TomorrowText
+    )
+    private val neutralColors = DueDateBadgeColors(
+        background = ChunkyColor.NeutralBadgeBackground,
+        border = ChunkyColor.NeutralBadgeBorder,
+        text = ChunkyColor.NeutralBadgeText
+    )
+
     fun colors(
         isCompleted: Boolean,
         isOverdue: Boolean,
@@ -32,31 +58,11 @@ object DueDateBadgeDefaults {
         isDueTomorrow: Boolean
     ): DueDateBadgeColors {
         return when {
-            isCompleted -> DueDateBadgeColors(
-                background = ChunkyColor.CompletedBadgeBackground,
-                border = ChunkyColor.CompletedBadgeBorder,
-                text = ChunkyColor.CompletedBadgeText
-            )
-            isOverdue -> DueDateBadgeColors(
-                background = ChunkyColor.OverdueBackground,
-                border = ChunkyColor.OverdueBorder,
-                text = ChunkyColor.OverdueText
-            )
-            isDueToday -> DueDateBadgeColors(
-                background = ChunkyColor.TodayBackground,
-                border = ChunkyColor.TodayBorder,
-                text = ChunkyColor.TodayText
-            )
-            isDueTomorrow -> DueDateBadgeColors(
-                background = ChunkyColor.TomorrowBackground,
-                border = ChunkyColor.TomorrowBorder,
-                text = ChunkyColor.TomorrowText
-            )
-            else -> DueDateBadgeColors(
-                background = ChunkyColor.NeutralBadgeBackground,
-                border = ChunkyColor.NeutralBadgeBorder,
-                text = ChunkyColor.NeutralBadgeText
-            )
+            isCompleted -> completedColors
+            isOverdue -> overdueColors
+            isDueToday -> todayColors
+            isDueTomorrow -> tomorrowColors
+            else -> neutralColors
         }
     }
 }
@@ -92,7 +98,8 @@ fun DueDateBadge(
             fontFamily = OutfitFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = fontSize,
-            maxLines = 1
+            maxLines = 1,
+            softWrap = false
         )
     }
 }

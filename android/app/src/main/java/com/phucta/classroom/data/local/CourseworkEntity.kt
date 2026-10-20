@@ -59,7 +59,8 @@ data class CourseworkEntity(
         dueEpochMillis = dueEpochMillis,
         status = SubmissionStatus.fromRaw(status),
         maxPoints = maxPoints,
-        isManuallyCompleted = isManuallyCompleted
+        isManuallyCompleted = isManuallyCompleted,
+        searchIndex = searchIndex
     )
 
     companion object {

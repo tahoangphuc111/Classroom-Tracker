@@ -577,12 +577,16 @@ public struct DueBadgeView: View, Equatable {
         lhs.item.id == rhs.item.id &&
         lhs.item.status == rhs.item.status &&
         lhs.item.dueDate == rhs.item.dueDate &&
+        lhs.item.isCompleted == rhs.item.isCompleted &&
+        lhs.item.isOverdue == rhs.item.isOverdue &&
         lhs.compact == rhs.compact
     }
 
     private var badgeColor: Color {
         if item.isCompleted {
             return Color(red: 0.12, green: 0.62, blue: 0.35)
+        } else if item.isOverdue || item.isPast {
+            return Color(red: 0.90, green: 0.22, blue: 0.21)
         } else if item.isDueToday {
             return Color(red: 0.90, green: 0.48, blue: 0.08)
         } else if item.isDueTomorrow {
@@ -605,6 +609,9 @@ public struct DueBadgeView: View, Equatable {
             if item.isCompleted {
                 Image(systemName: "checkmark")
                     .font(.system(size: compact ? 10.5 : 11.5, weight: .bold))
+            } else if item.isOverdue || item.isPast {
+                Image(systemName: "exclamationmark.circle")
+                    .font(.system(size: compact ? 10.5 : 11.5, weight: .semibold))
             } else {
                 Image(systemName: "clock")
                     .font(.system(size: compact ? 10.5 : 11.5, weight: .semibold))

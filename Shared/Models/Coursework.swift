@@ -148,22 +148,22 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
 
     public var isPast: Bool {
         guard let dueDate else { return false }
-        return dueDate < Calendar.autoupdatingCurrent.startOfDay(for: Date())
+        return dueDate < Calendar.current.startOfDay(for: Date())
     }
 
     public var isDueToday: Bool {
         guard let dueDate else { return false }
-        return Calendar.autoupdatingCurrent.isDateInToday(dueDate)
+        return Calendar.current.isDateInToday(dueDate)
     }
 
     public var isDueTomorrow: Bool {
         guard let dueDate else { return false }
-        return Calendar.autoupdatingCurrent.isDateInTomorrow(dueDate)
+        return Calendar.current.isDateInTomorrow(dueDate)
     }
 
     public var isDueLater: Bool {
         guard let dueDate else { return false }
-        let calendar = Calendar.autoupdatingCurrent
+        let calendar = Calendar.current
         let startOfToday = calendar.startOfDay(for: Date())
         guard let dayAfterTomorrow = calendar.date(byAdding: .day, value: 2, to: startOfToday) else { return false }
         return dueDate >= dayAfterTomorrow
@@ -289,7 +289,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
 
     private static func buildTimeOnlyString(from dueDate: Date?) -> String {
         guard let dueDate else { return "--:--" }
-        let calendar = Calendar.autoupdatingCurrent
+        let calendar = Calendar.current
         let hour = calendar.component(.hour, from: dueDate)
         let minute = calendar.component(.minute, from: dueDate)
         if hour == 23 && minute >= 55 {

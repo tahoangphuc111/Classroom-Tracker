@@ -31,6 +31,7 @@ object SubjectArtHelper {
 
     private val courseCategoryCache = java.util.concurrent.ConcurrentHashMap<String, SubjectCategory>()
     private val compoundCategoryCache = java.util.concurrent.ConcurrentHashMap<String, SubjectCategory>()
+    private val themeCache = java.util.concurrent.ConcurrentHashMap<String, SubjectTheme>()
 
     fun category(courseName: String, title: String? = null): SubjectCategory {
         val courseCat = courseCategoryCache.getOrPut(courseName) {
@@ -46,12 +47,15 @@ object SubjectArtHelper {
     }
 
     fun theme(courseName: String, title: String? = null): SubjectTheme {
-        val cat = category(courseName, title)
-        return SubjectTheme(
-            category = cat,
-            color = themeColor(cat),
-            badgeCode = badgeCode(cat, courseName, title)
-        )
+        val key = if (title.isNullOrBlank()) courseName else "$courseName|$title"
+        return themeCache.getOrPut(key) {
+            val cat = category(courseName, title)
+            SubjectTheme(
+                category = cat,
+                color = themeColor(cat),
+                badgeCode = badgeCode(cat, courseName, title)
+            )
+        }
     }
 
     private fun computeCategory(courseName: String, title: String? = null): SubjectCategory {

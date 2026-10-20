@@ -47,7 +47,7 @@ fun CompletedHomeworkScreen(
             modifier = modifier
                 .fillMaxSize()
                 .background(ChunkyColor.WindowBackground)
-                .padding(20.dp),
+                .padding(horizontal = 16.dp, vertical = 20.dp),
             contentAlignment = Alignment.Center
         ) {
             Box(
@@ -56,7 +56,7 @@ fun CompletedHomeworkScreen(
                     .clip(RoundedCornerShape(16.dp))
                     .background(ChunkyColor.SurfaceWhite)
                     .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 24.dp, vertical = 36.dp),
+                    .padding(horizontal = 20.dp, vertical = 32.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

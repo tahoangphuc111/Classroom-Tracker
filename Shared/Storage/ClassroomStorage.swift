@@ -650,7 +650,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     public func getTodayAndTomorrowCoursework(includeCompleted: Bool = true) -> [Coursework] {
         let allItems = loadCoursework()
         let relevant = filterItemsByActiveCourses(allItems)
-        let calendar = Calendar.autoupdatingCurrent
+        let calendar = Calendar.current
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
         guard let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday) else {
@@ -670,7 +670,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     public func getTomorrowCoursework(items: [Coursework]? = nil, courses: [Course]? = nil, includeCompleted: Bool = true, includeNotes: Bool = true) -> [Coursework] {
         let allItems = items ?? loadCoursework()
         let relevant = filterItemsByActiveCourses(allItems, courses: courses)
-        let calendar = Calendar.autoupdatingCurrent
+        let calendar = Calendar.current
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
@@ -904,7 +904,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     ]
 
     public static var mockCoursework: [Coursework] {
-        let calendar = Calendar.autoupdatingCurrent
+        let calendar = Calendar.current
         let now = Date()
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now.addingTimeInterval(24 * 3600)
         let tomorrowDue = calendar.date(bySettingHour: 17, minute: 30, second: 0, of: tomorrow) ?? now.addingTimeInterval(26 * 3600)
@@ -1128,7 +1128,7 @@ public final class ClassroomStorage: @unchecked Sendable {
 
     public func getTomorrowPersonalNotes(notes: [PersonalNote]? = nil, includeCompleted: Bool = false) -> [PersonalNote] {
         let allNotes = notes ?? loadPersonalNotes()
-        let calendar = Calendar.autoupdatingCurrent
+        let calendar = Calendar.current
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),

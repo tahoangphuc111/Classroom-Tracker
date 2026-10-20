@@ -7,6 +7,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -88,6 +91,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phucta.classroom.data.model.ClassroomDateUtils
 import com.phucta.classroom.data.model.Course
 import com.phucta.classroom.data.model.PersonalNote
 import com.phucta.classroom.data.model.normalizeForVietnameseSearch
@@ -371,7 +375,7 @@ fun PersonalNotesScreen(
 
         val fabInteractionSource = remember { MutableInteractionSource() }
         val isFabPressed by fabInteractionSource.collectIsPressedAsState()
-        val fabScale by animateFloatAsState(
+        val fabScale = animateFloatAsState(
             targetValue = if (isFabPressed) 0.92f else 1.0f,
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -387,8 +391,8 @@ fun PersonalNotesScreen(
                 .align(Alignment.BottomEnd)
                 .padding(20.dp)
                 .graphicsLayer {
-                    scaleX = fabScale
-                    scaleY = fabScale
+                    scaleX = fabScale.value
+                    scaleY = fabScale.value
                 },
             containerColor = ChunkyColor.SkyBottom,
             contentColor = Color.White
@@ -432,10 +436,10 @@ private fun PersonalNoteCard(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    // Tactile card press animation with snappy spring
+    // Tactile card press animation with snappy spring (deferred to draw phase)
     val cardInteractionSource = remember { MutableInteractionSource() }
     val isCardPressed by cardInteractionSource.collectIsPressedAsState()
-    val cardScale by animateFloatAsState(
+    val cardScale = animateFloatAsState(
         targetValue = if (isCardPressed) 0.985f else 1.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -447,7 +451,7 @@ private fun PersonalNoteCard(
     // Checkbox press feedback & elastic bounce/scale pop (1.15f -> 1.0f)
     val checkInteractionSource = remember { MutableInteractionSource() }
     val isCheckPressed by checkInteractionSource.collectIsPressedAsState()
-    val checkPressScale by animateFloatAsState(
+    val checkPressScale = animateFloatAsState(
         targetValue = if (isCheckPressed) 0.88f else 1.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -486,7 +490,7 @@ private fun PersonalNoteCard(
         }
     }
 
-    val iconScale by animateFloatAsState(
+    val iconScale = animateFloatAsState(
         targetValue = if (note.isCompleted) 1.0f else 0.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -495,7 +499,7 @@ private fun PersonalNoteCard(
         label = "noteIconScale"
     )
 
-    val iconAlpha by animateFloatAsState(
+    val iconAlpha = animateFloatAsState(
         targetValue = if (note.isCompleted) 1.0f else 0.0f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "noteIconAlpha"
@@ -514,7 +518,7 @@ private fun PersonalNoteCard(
     )
 
     // Smooth strikethrough transition & color fade
-    val strikethroughProgress by animateFloatAsState(
+    val strikethroughProgress = animateFloatAsState(
         targetValue = if (note.isCompleted) 1.0f else 0.0f,
         animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
         label = "noteStrikethroughProgress"
@@ -526,20 +530,20 @@ private fun PersonalNoteCard(
         label = "noteTitleColor"
     )
 
-    val titleAlpha by animateFloatAsState(
+    val titleAlpha = animateFloatAsState(
         targetValue = if (note.isCompleted) 0.60f else 1.0f,
         animationSpec = tween(durationMillis = 220),
         label = "noteTitleAlpha"
     )
 
-    var titleLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var titleLayoutResult by remember(note.id, note.title) { mutableStateOf<TextLayoutResult?>(null) }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
-                scaleX = cardScale
-                scaleY = cardScale
+                scaleX = cardScale.value
+                scaleY = cardScale.value
             }
             .clip(RoundedCornerShape(14.dp))
             .background(ChunkyColor.SurfaceWhite)
@@ -548,7 +552,7 @@ private fun PersonalNoteCard(
     ) {
         Box(
             modifier = Modifier
-                .padding(start = 6.dp, top = 6.dp)
+                .padding(start = 6.dp, top = 4.dp)
                 .size(44.dp)
                 .clip(CircleShape)
                 .clickable(
@@ -563,7 +567,7 @@ private fun PersonalNoteCard(
                 modifier = Modifier
                     .size(24.dp)
                     .graphicsLayer {
-                        val combinedScale = checkScale.value * checkPressScale
+                        val combinedScale = checkScale.value * checkPressScale.value
                         scaleX = combinedScale
                         scaleY = combinedScale
                     }
@@ -576,7 +580,7 @@ private fun PersonalNoteCard(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                if (iconScale > 0.01f) {
+                if (note.isCompleted || iconScale.value > 0.01f) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Hoàn thành",
@@ -584,9 +588,9 @@ private fun PersonalNoteCard(
                         modifier = Modifier
                             .size(15.dp)
                             .graphicsLayer {
-                                scaleX = iconScale
-                                scaleY = iconScale
-                                alpha = iconAlpha
+                                scaleX = iconScale.value
+                                scaleY = iconScale.value
+                                alpha = iconAlpha.value
                             }
                     )
                 }
@@ -618,18 +622,20 @@ private fun PersonalNoteCard(
                         onTextLayout = { titleLayoutResult = it },
                         modifier = Modifier
                             .weight(1f)
-                            .graphicsLayer { alpha = titleAlpha }
+                            .graphicsLayer { alpha = titleAlpha.value }
                             .drawWithContent {
                                 drawContent()
-                                if (strikethroughProgress > 0.001f) {
-                                    titleLayoutResult?.let { layout ->
+                                val progress = strikethroughProgress.value
+                                if (progress > 0.001f) {
+                                    val layout = titleLayoutResult
+                                    if (layout != null) {
                                         for (i in 0 until layout.lineCount) {
                                             val lineTop = layout.getLineTop(i)
                                             val lineBottom = layout.getLineBottom(i)
                                             val lineLeft = layout.getLineLeft(i)
                                             val lineRight = layout.getLineRight(i)
                                             val y = (lineTop + lineBottom) / 2f
-                                            val endX = lineLeft + (lineRight - lineLeft) * strikethroughProgress
+                                            val endX = lineLeft + (lineRight - lineLeft) * progress
                                             drawLine(
                                                 color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
                                                 start = Offset(lineLeft, y),
@@ -638,6 +644,16 @@ private fun PersonalNoteCard(
                                                 cap = StrokeCap.Round
                                             )
                                         }
+                                    } else {
+                                        val y = size.height / 2f
+                                        val endX = size.width * progress
+                                        drawLine(
+                                            color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
+                                            start = Offset(0f, y),
+                                            end = Offset(endX, y),
+                                            strokeWidth = 1.75.dp.toPx(),
+                                            cap = StrokeCap.Round
+                                        )
                                     }
                                 }
                             }
@@ -662,9 +678,7 @@ private fun PersonalNoteCard(
                             modifier = Modifier.padding(top = 1.dp)
                         )
                     } else if (note.dueEpochMillis != null) {
-                        val dateStr = remember(note.dueEpochMillis) {
-                            SimpleDateFormat("d/M", Locale.getDefault()).format(Date(note.dueEpochMillis))
-                        }
+                        val dateStr = ClassroomDateUtils.formatShortDate(note.dueEpochMillis)
                         Spacer(modifier = Modifier.width(8.dp))
                         DueDateBadge(
                             text = dateStr,
@@ -697,7 +711,7 @@ private fun PersonalNoteCard(
             Box {
                 IconButton(
                     onClick = { showMenu = true },
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
@@ -709,18 +723,21 @@ private fun PersonalNoteCard(
 
                 DropdownMenu(
                     expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
+                    onDismissRequest = { showMenu = false },
+                    containerColor = ChunkyColor.SurfaceWhite,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, ChunkyColor.CardBorder)
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Chỉnh sửa") },
-                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        text = { Text("Chỉnh sửa", fontWeight = FontWeight.Medium, fontSize = 14.sp) },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = ChunkyColor.SkyBottom, modifier = Modifier.size(18.dp)) },
                         onClick = {
                             showMenu = false
                             onEdit()
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Xoá ghi chú", color = ChunkyColor.UrgentAccent) },
+                        text = { Text("Xoá ghi chú", color = ChunkyColor.UrgentAccent, fontWeight = FontWeight.Medium, fontSize = 14.sp) },
                         leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = ChunkyColor.UrgentAccent, modifier = Modifier.size(18.dp)) },
                         onClick = {
                             showMenu = false
@@ -762,6 +779,11 @@ private fun CreateOrEditNoteDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier
+            .fillMaxWidth(0.92f)
+            .heightIn(max = 620.dp)
+            .imePadding(),
         title = {
             Text(
                 text = if (existingNote == null) "Ghi chú mới" else "Chỉnh sửa ghi chú",
@@ -773,7 +795,6 @@ private fun CreateOrEditNoteDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .imePadding()
                     .verticalScroll(rememberScrollState())
             ) {
                 OutlinedTextField(

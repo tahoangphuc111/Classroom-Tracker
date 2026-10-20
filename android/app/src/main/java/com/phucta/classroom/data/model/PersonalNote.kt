@@ -1,8 +1,10 @@
 package com.phucta.classroom.data.model
 
+import androidx.compose.runtime.Immutable
 import java.util.Calendar
 import java.util.UUID
 
+@Immutable
 data class PersonalNote(
     val id: String = UUID.randomUUID().toString(),
     val courseworkId: String? = null,

@@ -64,16 +64,11 @@ fun TomorrowHomeworkScreen(
     val incompleteCount = remember(tomorrowItems) { tomorrowItems.count { !it.isCompleted } }
     val isAllDone = remember(tomorrowItems, incompleteCount) { tomorrowItems.isNotEmpty() && incompleteCount == 0 }
     val hasTomorrowTasks = remember(tomorrowItems) { tomorrowItems.any { it.isDueTomorrow } }
-    val hasTodayTasks = remember(tomorrowItems) { tomorrowItems.isNotEmpty() && tomorrowItems.all { it.isDueToday } }
+    val hasTodayTasks = remember(tomorrowItems) { tomorrowItems.any { it.isDueToday } }
 
     val totalCount = tomorrowItems.size
     val completedCount = totalCount - incompleteCount
-    val progressFraction = if (totalCount > 0) completedCount.toFloat() / totalCount.toFloat() else 0f
-    val animatedProgress by animateFloatAsState(
-        targetValue = progressFraction,
-        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
-        label = "progressAnim"
-    )
+    val progressFraction = if (totalCount > 0) (completedCount.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f) else 0f
 
     val emotion = remember(tomorrowItems.isEmpty(), isAllDone, incompleteCount) {
         when {
@@ -83,17 +78,6 @@ fun TomorrowHomeworkScreen(
             else -> EmberEmotion.NORMAL
         }
     }
-
-    val emberTransition = rememberInfiniteTransition(label = "emberFloating")
-    val emberFloatOffset = emberTransition.animateFloat(
-        initialValue = -3f,
-        targetValue = 3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "emberFloat"
-    )
 
     LazyColumn(
         modifier = modifier
@@ -115,13 +99,9 @@ fun TomorrowHomeworkScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        EmberFlameCanvas(
-                            size = 72.dp,
+                        FloatingEmberHero(
                             emotion = emotion,
-                            isUrgent = incompleteCount >= 3,
-                            modifier = Modifier.graphicsLayer {
-                                translationY = emberFloatOffset.value
-                            }
+                            isUrgent = incompleteCount >= 3
                         )
 
                         Spacer(modifier = Modifier.width(16.dp))
@@ -207,23 +187,10 @@ fun TomorrowHomeworkScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.height(6.dp))
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(6.dp)
-                                    .clip(RoundedCornerShape(3.dp))
-                                    .background(Color.White.copy(alpha = 0.25f))
-                            ) {
-                                if (animatedProgress > 0.001f) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
-                                            .height(6.dp)
-                                            .clip(RoundedCornerShape(3.dp))
-                                            .background(if (isAllDone) Color(0xFF6EE7B7) else Color.White)
-                                    )
-                                }
-                            }
+                            HomeworkProgressBar(
+                                progressFraction = progressFraction,
+                                isAllDone = isAllDone
+                            )
                         }
                     }
                 }
@@ -243,7 +210,7 @@ fun TomorrowHomeworkScreen(
                         .clip(RoundedCornerShape(16.dp))
                         .background(ChunkyColor.SurfaceWhite)
                         .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
-                        .padding(vertical = 36.dp, horizontal = 24.dp),
+                        .padding(vertical = 32.dp, horizontal = 20.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
@@ -346,6 +313,65 @@ fun TomorrowHomeworkScreen(
                     )
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun FloatingEmberHero(
+    emotion: EmberEmotion,
+    isUrgent: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val emberTransition = rememberInfiniteTransition(label = "emberFloating")
+    val emberFloatOffset = emberTransition.animateFloat(
+        initialValue = -3f,
+        targetValue = 3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "emberFloat"
+    )
+
+    EmberFlameCanvas(
+        size = 72.dp,
+        emotion = emotion,
+        isUrgent = isUrgent,
+        modifier = modifier.graphicsLayer {
+            translationY = emberFloatOffset.value
+        }
+    )
+}
+
+@Composable
+private fun HomeworkProgressBar(
+    progressFraction: Float,
+    isAllDone: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = progressFraction.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "progressAnim"
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(Color.White.copy(alpha = 0.25f))
+    ) {
+        val clampedProgress = animatedProgress.coerceIn(0f, 1f)
+        if (clampedProgress > 0.001f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(clampedProgress)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(if (isAllDone) Color(0xFF6EE7B7) else Color.White)
+            )
         }
     }
 }

@@ -1,7 +1,9 @@
 package com.phucta.classroom.data.model
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 
+@Immutable
 @Serializable
 data class Course(
     val id: String,

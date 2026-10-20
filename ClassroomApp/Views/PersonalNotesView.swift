@@ -276,12 +276,22 @@ public struct PersonalNotesView: View {
 
                 Spacer()
 
-                addNoteButton()
+                ViewThatFits(in: .horizontal) {
+                    addNoteButton(compact: false)
+                    addNoteButton(compact: true)
+                }
             }
         }
     }
 
     private var quickTodoBar: some View {
+        ViewThatFits(in: .horizontal) {
+            singleLineQuickTodoBar
+            compactStackedQuickTodoBar
+        }
+    }
+
+    private var singleLineQuickTodoBar: some View {
         HStack(spacing: 8) {
             Image(systemName: "checkmark.circle")
                 .font(.system(size: 16, weight: .semibold))
@@ -296,64 +306,11 @@ public struct PersonalNotesView: View {
                 }
 
             if !quickTodoTitle.trimmingCharacters(in: .whitespaces).isEmpty {
-                Menu {
-                    Button("Không đặt hạn") { quickTodoDue = .none }
-                    Button("Hôm nay") { quickTodoDue = .today }
-                    Button("Ngày mai") { quickTodoDue = .tomorrow }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 10.5))
-                        Text(quickTodoDue.rawValue)
-                            .font(.system(size: 11.5, weight: .medium))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 7.5, weight: .bold))
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.platformSubtleFill)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                }
-                .menuStyle(.borderlessButton)
-
-                if !courses.isEmpty {
-                    Menu {
-                        Button("Không gắn môn") { quickTodoCourseId = nil }
-                        Divider()
-                        ForEach(courses) { course in
-                            Button(course.name) { quickTodoCourseId = course.id }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "book")
-                                .font(.system(size: 10.5))
-                            Text(quickTodoCourseId != nil ? (courses.first(where: { $0.id == quickTodoCourseId })?.name ?? "Môn") : "Môn")
-                                .font(.system(size: 11.5, weight: .medium))
-                                .lineLimit(1)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 7.5, weight: .bold))
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.platformSubtleFill)
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    }
-                    .menuStyle(.borderlessButton)
-                }
+                quickTodoDueDateMenu
+                quickTodoCourseMenu
             }
 
-            Button {
-                submitQuickTodo()
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(quickTodoTitle.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary.opacity(0.35) : Color.blue)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(quickTodoTitle.trimmingCharacters(in: .whitespaces).isEmpty)
-            .accessibilityLabel("Tạo việc cần làm")
+            quickTodoSubmitButton
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -364,11 +321,117 @@ public struct PersonalNotesView: View {
         )
     }
 
+    private var compactStackedQuickTodoBar: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.blue)
+
+                TextField("Thêm việc cần làm nhanh...", text: $quickTodoTitle)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13.5))
+                    .submitLabel(.done)
+                    .onSubmit {
+                        submitQuickTodo()
+                    }
+
+                quickTodoSubmitButton
+            }
+
+            if !quickTodoTitle.trimmingCharacters(in: .whitespaces).isEmpty {
+                HStack(spacing: 6) {
+                    quickTodoDueDateMenu
+                    quickTodoCourseMenu
+                    Spacer()
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.platformControlBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color.platformCardBorder, lineWidth: 1)
+        )
+    }
+
+    private var quickTodoDueDateMenu: some View {
+        Menu {
+            Button("Không đặt hạn") { quickTodoDue = .none }
+            Button("Hôm nay") { quickTodoDue = .today }
+            Button("Ngày mai") { quickTodoDue = .tomorrow }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 10.5))
+                Text(quickTodoDue.rawValue)
+                    .font(.system(size: 11.5, weight: .medium))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 7.5, weight: .bold))
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.platformSubtleFill)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+    }
+
+    @ViewBuilder
+    private var quickTodoCourseMenu: some View {
+        if !courses.isEmpty {
+            Menu {
+                Button("Không gắn môn") { quickTodoCourseId = nil }
+                Divider()
+                ForEach(courses) { course in
+                    Button(course.name) { quickTodoCourseId = course.id }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "book")
+                        .font(.system(size: 10.5))
+                    Text(quickTodoCourseId != nil ? (courses.first(where: { $0.id == quickTodoCourseId })?.name ?? "Môn") : "Môn")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 7.5, weight: .bold))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.platformSubtleFill)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+        }
+    }
+
+    private var quickTodoSubmitButton: some View {
+        Button {
+            submitQuickTodo()
+        } label: {
+            Image(systemName: "arrow.up.circle.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(quickTodoTitle.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary.opacity(0.35) : Color.blue)
+                #if os(iOS)
+                .frame(width: 36, height: 36)
+                #else
+                .frame(width: 28, height: 28)
+                #endif
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(quickTodoTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+        .accessibilityLabel("Tạo việc cần làm")
+    }
+
     private func submitQuickTodo() {
         let trimmed = quickTodoTitle.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
 
-        let cal = Calendar.autoupdatingCurrent
+        let cal = Calendar.current
         let computedDue: Date?
         switch quickTodoDue {
         case .none:
@@ -420,6 +483,7 @@ public struct PersonalNotesView: View {
                         onEdit: { activeSheet = .edit(note) },
                         onDelete: { onDeleteNote(note.id) }
                     )
+                    .equatable()
                     .transition(.asymmetric(
                         insertion: .opacity.combined(with: .scale(scale: 0.95)),
                         removal: .opacity.combined(with: .scale(scale: 0.95))
@@ -427,7 +491,7 @@ public struct PersonalNotesView: View {
                 }
             }
             .padding(16)
-            .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes)
+            .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes.map(\.id))
             #else
             LazyVStack(spacing: 10) {
                 ForEach(filteredNotes) { note in
@@ -444,6 +508,7 @@ public struct PersonalNotesView: View {
                         onEdit: { activeSheet = .edit(note) },
                         onDelete: { onDeleteNote(note.id) }
                     )
+                    .equatable()
                     .transition(.asymmetric(
                         insertion: .opacity.combined(with: .scale(scale: 0.95)),
                         removal: .opacity.combined(with: .scale(scale: 0.95))
@@ -451,7 +516,7 @@ public struct PersonalNotesView: View {
                 }
             }
             .padding(16)
-            .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes)
+            .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes.map(\.id))
             #endif
         }
     }
@@ -516,12 +581,16 @@ public struct PersonalNotesView: View {
     }
 }
 
-private struct PersonalNoteRowCard: View {
+private struct PersonalNoteRowCard: View, Equatable {
     let note: PersonalNote
     let onToggle: () -> Void
     let onToggleChecklistItem: (String, String) -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
+
+    static func == (lhs: PersonalNoteRowCard, rhs: PersonalNoteRowCard) -> Bool {
+        lhs.note == rhs.note
+    }
 
     @State private var isHovered: Bool = false
     @State private var checkmarkBounce: Bool = false
@@ -564,10 +633,15 @@ private struct PersonalNoteRowCard: View {
                             .transition(.scale(scale: 0.6).combined(with: .opacity))
                     }
                 }
+                #if os(iOS)
+                .frame(width: 38, height: 38)
+                #else
                 .frame(width: 28, height: 28)
+                #endif
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.top, 2)
+            .padding(.top, 1)
 
             // Center content area
             VStack(alignment: .leading, spacing: 6) {
@@ -629,10 +703,14 @@ private struct PersonalNoteRowCard: View {
                                         .frame(height: 4)
                                     Capsule()
                                         .fill(isAllDone ? Color.green : Color.blue)
-                                        .frame(width: geo.size.width * CGFloat(note.checklistProgress), height: 4)
+                                        .frame(
+                                            width: max(0, min(geo.size.width, geo.size.width * CGFloat(max(0.0, min(1.0, note.checklistProgress))))),
+                                            height: 4
+                                        )
                                 }
                             }
                             .frame(height: 4)
+                            .frame(minWidth: 40, maxWidth: 120)
                         }
                     }
                     .padding(.top, 2)
@@ -650,7 +728,11 @@ private struct PersonalNoteRowCard: View {
                                         .frame(width: 16, height: 16)
                                 }
                                 .buttonStyle(.plain)
+                                #if os(iOS)
+                                .frame(width: 28, height: 28)
+                                #else
                                 .frame(width: 22, height: 22)
+                                #endif
                                 .contentShape(Rectangle())
 
                                 Text(item.title)
@@ -703,7 +785,11 @@ private struct PersonalNoteRowCard: View {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.secondary)
+                    #if os(iOS)
+                    .frame(width: 38, height: 38)
+                    #else
                     .frame(width: 28, height: 28)
+                    #endif
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -734,7 +820,7 @@ private struct PersonalNoteRowCard: View {
 
     @ViewBuilder
     private func dueDateBadge(for date: Date) -> some View {
-        let calendar = Calendar.autoupdatingCurrent
+        let calendar = Calendar.current
         if calendar.isDateInTomorrow(date) {
             Text("Ngày mai")
                 .font(.system(size: 11, weight: .bold))
@@ -803,7 +889,7 @@ public struct CreateOrEditNoteSheet: View {
         _selectedCourseId = State(initialValue: existingNote?.courseId ?? "")
 
         if let due = existingNote?.dueDate {
-            let cal = Calendar.autoupdatingCurrent
+            let cal = Calendar.current
             if cal.isDateInToday(due) {
                 _selectedDueDateMode = State(initialValue: .today)
                 _customDueDate = State(initialValue: due)
@@ -937,7 +1023,7 @@ public struct CreateOrEditNoteSheet: View {
                     checklist = existing.checklist
                     selectedCourseId = existing.courseId ?? ""
                     if let due = existing.dueDate {
-                        let cal = Calendar.autoupdatingCurrent
+                        let cal = Calendar.current
                         if cal.isDateInToday(due) {
                             selectedDueDateMode = .today
                             customDueDate = due
@@ -977,7 +1063,7 @@ public struct CreateOrEditNoteSheet: View {
             finalChecklist.append(ChecklistItem(title: pendingItem))
         }
 
-        let cal = Calendar.autoupdatingCurrent
+        let cal = Calendar.current
         let computedDueDate: Date?
         switch selectedDueDateMode {
         case .none:

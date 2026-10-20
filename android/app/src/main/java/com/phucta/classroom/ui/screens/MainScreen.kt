@@ -182,18 +182,6 @@ fun MainScreen() {
         }
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "syncSpin")
-    val spinningRotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "syncRotation"
-    )
-    val syncRotationAngle = if (isSyncing) spinningRotation else 0f
-
     if (isAuthenticated || isDemoMode) {
         ModalNavigationDrawer(
         drawerState = drawerState,
@@ -297,26 +285,17 @@ fun MainScreen() {
                         }
                     },
                     actions = {
-                        IconButton(
-                            onClick = {
+                        SyncActionButton(
+                            isSyncing = isSyncing,
+                            onSyncClick = {
                                 scope.launch {
                                     val result = repository.syncAll()
                                     if (result.isSuccess) {
                                         snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
                                     }
                                 }
-                            },
-                            enabled = !isSyncing
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Sync",
-                                tint = ChunkyColor.SkyBottom,
-                                modifier = Modifier.graphicsLayer {
-                                    rotationZ = syncRotationAngle
-                                }
-                            )
-                        }
+                            }
+                        )
                         IconButton(onClick = { showSettingsDialog = true }) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings", tint = ChunkyColor.TextPrimary)
                         }
@@ -646,17 +625,6 @@ private fun WelcomeLoginScreen(
     onDemoMode: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "floating")
-    val floatOffset = infiniteTransition.animateFloat(
-        initialValue = -5f,
-        targetValue = 5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "float"
-    )
-
     Scaffold(
         containerColor = ChunkyColor.WindowBackground,
         topBar = {
@@ -684,19 +652,7 @@ private fun WelcomeLoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .graphicsLayer { translationY = floatOffset.value }
-                    .size(88.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(ChunkyColor.SkyGradient),
-                contentAlignment = Alignment.Center
-            ) {
-                EmberFlameCanvas(
-                    size = 64.dp,
-                    emotion = EmberEmotion.NORMAL
-                )
-            }
+            FloatingWelcomeEmber()
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -743,6 +699,78 @@ private fun WelcomeLoginScreen(
                     color = ChunkyColor.TextMuted
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun FloatingWelcomeEmber() {
+    val infiniteTransition = rememberInfiniteTransition(label = "welcomeFloating")
+    val floatOffset = infiniteTransition.animateFloat(
+        initialValue = -5f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "welcomeFloat"
+    )
+
+    Box(
+        modifier = Modifier
+            .graphicsLayer { translationY = floatOffset.value }
+            .size(88.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(ChunkyColor.SkyGradient),
+        contentAlignment = Alignment.Center
+    ) {
+        EmberFlameCanvas(
+            size = 64.dp,
+            emotion = EmberEmotion.NORMAL
+        )
+    }
+}
+
+@Composable
+private fun SyncActionButton(
+    isSyncing: Boolean,
+    onSyncClick: () -> Unit
+) {
+    if (isSyncing) {
+        val infiniteTransition = rememberInfiniteTransition(label = "syncSpin")
+        val spinningRotation = infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(900, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "syncRotation"
+        )
+
+        IconButton(
+            onClick = onSyncClick,
+            enabled = false
+        ) {
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = "Sync",
+                tint = ChunkyColor.SkyBottom,
+                modifier = Modifier.graphicsLayer {
+                    rotationZ = spinningRotation.value
+                }
+            )
+        }
+    } else {
+        IconButton(
+            onClick = onSyncClick,
+            enabled = true
+        ) {
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = "Sync",
+                tint = ChunkyColor.SkyBottom
+            )
         }
     }
 }

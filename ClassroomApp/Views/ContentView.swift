@@ -285,7 +285,7 @@ public struct ContentView: View {
         var noDates: [Coursework] = []
         var comp: [Coursework] = []
 
-        let calendar = Calendar.autoupdatingCurrent
+        let calendar = Calendar.current
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
@@ -411,6 +411,40 @@ public struct ContentView: View {
         }
     }
 
+    private func categoryPendingCount(_ category: AppFilterCategory) -> Int {
+        if !searchText.isEmpty {
+            return currentFilteredList(for: category).filter { !$0.isCompleted }.count
+        }
+        switch category {
+        case .tomorrow:
+            return buckets.tomorrow.filter { !$0.isCompleted }.count
+        case .todayAndTomorrow:
+            return buckets.todayAndTomorrow.filter { !$0.isCompleted }.count
+        case .allUpcoming:
+            return buckets.allUpcoming.filter { !$0.isCompleted }.count
+        case .past:
+            return buckets.past.filter { !$0.isCompleted }.count
+        case .completed:
+            return buckets.completed.filter { !$0.isCompleted }.count
+        case .notes, .widgetPreview:
+            return 0
+        }
+    }
+
+    private func categoryHasItems(_ category: AppFilterCategory) -> Bool {
+        if !searchText.isEmpty {
+            return !currentFilteredList(for: category).isEmpty
+        }
+        switch category {
+        case .tomorrow: return !buckets.tomorrow.isEmpty
+        case .todayAndTomorrow: return !buckets.todayAndTomorrow.isEmpty
+        case .allUpcoming: return !buckets.allUpcoming.isEmpty
+        case .past: return !buckets.past.isEmpty
+        case .completed: return !buckets.completed.isEmpty
+        case .notes, .widgetPreview: return false
+        }
+    }
+
     private func currentFilteredList(for category: AppFilterCategory) -> [Coursework] {
         var baseList = baseFilteredList(for: category)
         if category == .allUpcoming && selectedSubjectFilter != "Tất cả" {
@@ -464,7 +498,7 @@ public struct ContentView: View {
                 noDueDates: targetCategory == .allUpcoming ? buckets.noDueDate : []
             )
         } else {
-            let calendar = Calendar.autoupdatingCurrent
+            let calendar = Calendar.current
             let now = Date()
             let startOfToday = calendar.startOfDay(for: now)
             guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
@@ -884,7 +918,7 @@ public struct ContentView: View {
                 category: .completed,
                 shortTitle: "Đã xong",
                 icon: "checkmark.seal",
-                badgeCount: buckets.completed.count > 0 ? buckets.completed.count : nil
+                badgeCount: nil
             ),
             CompactTabDefinition(
                 category: .notes,
@@ -919,30 +953,45 @@ public struct ContentView: View {
     private var compactCourseFilterSheetView: some View {
         NavigationStack {
             List {
-                Section {
-                    ForEach(courses) { course in
-                        CourseSelectionRow(
-                            course: course,
-                            onToggle: {
-                                toggleCourse(courseId: course.id)
-                            }
-                        )
-                        .equatable()
+                if courses.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "books.vertical")
+                            .font(.system(size: 28))
+                            .foregroundStyle(Color.secondary)
+                        Text("Chưa có danh sách môn học")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(Color.platformTextSecondary)
                     }
-                } header: {
-                    HStack {
-                        Text("Lớp hiển thị (\(courses.filter(\.isSelectedForWidget).count)/\(courses.count))")
-                        Spacer()
-                        let allSelected = courses.allSatisfy(\.isSelectedForWidget)
-                        Button(allSelected ? "Bỏ chọn hết" : "Tất cả") {
-                            toggleAllCourses()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 24)
+                    .listRowBackground(Color.clear)
+                } else {
+                    Section {
+                        ForEach(courses) { course in
+                            CourseSelectionRow(
+                                course: course,
+                                onToggle: {
+                                    toggleCourse(courseId: course.id)
+                                }
+                            )
+                            .equatable()
                         }
-                        .buttonStyle(.plain)
-                        .font(.caption2)
-                        .foregroundStyle(.blue)
+                    } header: {
+                        HStack {
+                            Text("Lớp hiển thị (\(courses.filter(\.isSelectedForWidget).count)/\(courses.count))")
+                            Spacer()
+                            let allSelected = courses.allSatisfy(\.isSelectedForWidget)
+                            Button(allSelected ? "Bỏ chọn hết" : "Tất cả") {
+                                toggleAllCourses()
+                            }
+                            .buttonStyle(.plain)
+                            .font(.caption2)
+                            .foregroundStyle(.blue)
+                        }
                     }
                 }
             }
+            .listStyle(.insetGrouped)
             .navigationTitle("Lọc môn học")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -954,6 +1003,8 @@ public struct ContentView: View {
                 }
             }
         }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
     #endif
 
@@ -1488,8 +1539,9 @@ public struct ContentView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
+            .layoutPriority(0)
 
-            Spacer()
+            Spacer(minLength: 4)
 
             Button {
                 showCompactCourseFilterSheet = true
@@ -1499,6 +1551,7 @@ public struct ContentView: View {
                         .font(.system(size: 12.5, weight: .semibold))
                     Text("Lớp (\(courses.filter(\.isSelectedForWidget).count)/\(courses.count))")
                         .font(.system(size: 13.5, weight: .medium))
+                        .lineLimit(1)
                 }
                 .foregroundStyle(Color.platformTextSecondary)
                 .padding(.horizontal, 9)
@@ -1507,6 +1560,7 @@ public struct ContentView: View {
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
+            .fixedSize()
 
             if category == .widgetPreview {
                 HStack(spacing: 4) {
@@ -1514,12 +1568,14 @@ public struct ContentView: View {
                         .font(.system(size: 11.5, weight: .semibold))
                     Text("Xem trước")
                         .font(.system(size: 13, weight: .medium))
+                        .lineLimit(1)
                 }
                 .foregroundStyle(.purple)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4.5)
                 .background(Color.purple.opacity(0.08))
                 .clipShape(Capsule())
+                .fixedSize()
             } else if category == .notes {
                 let pendingCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
                 HStack(spacing: 5) {
@@ -1529,13 +1585,15 @@ public struct ContentView: View {
                     Text("\(pendingCount) việc cần làm")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(categoryIconColor(category))
+                        .lineLimit(1)
                 }
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4.5)
                 .background(categoryIconColor(category).opacity(0.09))
                 .clipShape(Capsule())
+                .fixedSize()
             } else {
-                let pendingCount = currentFilteredList(for: category).filter { !$0.isCompleted }.count
+                let pendingCount = categoryPendingCount(category)
                 if pendingCount > 0 {
                     HStack(spacing: 5) {
                         Circle()
@@ -1544,23 +1602,27 @@ public struct ContentView: View {
                         Text("\(pendingCount) cần nộp")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
                             .foregroundStyle(categoryIconColor(category))
+                            .lineLimit(1)
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 4.5)
                     .background(categoryIconColor(category).opacity(0.09))
                     .clipShape(Capsule())
-                } else if !currentFilteredList(for: category).isEmpty {
+                    .fixedSize()
+                } else if categoryHasItems(category) {
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark")
                             .font(.system(size: 10.5, weight: .bold))
                         Text("Đã nộp hết")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .lineLimit(1)
                     }
                     .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
                     .padding(.horizontal, 9)
                     .padding(.vertical, 4.5)
                     .background(Color(red: 0.12, green: 0.62, blue: 0.35).opacity(0.10))
                     .clipShape(Capsule())
+                    .fixedSize()
                 }
             }
         }
@@ -1608,11 +1670,13 @@ public struct ContentView: View {
                     Text("Cấu hình & Xem trước Widget")
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundStyle(.purple)
+                        .lineLimit(1)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4.5)
                 .background(Color.purple.opacity(0.08))
                 .clipShape(Capsule())
+                .fixedSize()
             } else if category == .notes {
                 let pendingCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
                 HStack(spacing: 5) {
@@ -1622,13 +1686,15 @@ public struct ContentView: View {
                     Text("\(pendingCount) việc cần làm")
                         .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(categoryIconColor(category))
+                        .lineLimit(1)
                 }
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
                 .background(categoryIconColor(category).opacity(0.09))
                 .clipShape(Capsule())
+                .fixedSize()
             } else {
-                let pendingCount = currentFilteredList(for: category).filter { !$0.isCompleted }.count
+                let pendingCount = categoryPendingCount(category)
                 if pendingCount > 0 {
                     HStack(spacing: 5) {
                         Circle()
@@ -1637,23 +1703,27 @@ public struct ContentView: View {
                         Text("\(pendingCount) bài cần nộp")
                             .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                             .foregroundStyle(categoryIconColor(category))
+                            .lineLimit(1)
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 4)
                     .background(categoryIconColor(category).opacity(0.09))
                     .clipShape(Capsule())
-                } else if !currentFilteredList(for: category).isEmpty {
+                    .fixedSize()
+                } else if categoryHasItems(category) {
                     HStack(spacing: 5) {
                         Image(systemName: "checkmark")
                             .font(.system(size: 9.5, weight: .bold))
                         Text("Đã nộp tất cả")
                             .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                            .lineLimit(1)
                     }
                     .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
                     .padding(.horizontal, 9)
                     .padding(.vertical, 4)
                     .background(Color(red: 0.12, green: 0.62, blue: 0.35).opacity(0.10))
                     .clipShape(Capsule())
+                    .fixedSize()
                 }
             }
 
@@ -1675,6 +1745,7 @@ public struct ContentView: View {
                     Capsule()
                         .stroke(Color.platformCardBorder, lineWidth: 1)
                 )
+                .fixedSize()
             }
         }
         .padding(.horizontal, 20)
@@ -3916,10 +3987,11 @@ private struct AssignmentListRow: View, Equatable {
                 #endif
             }
 
-            Spacer(minLength: 4)
+            Spacer(minLength: 8)
 
             DueBadgeView(item: item, compact: true)
                 .equatable()
+                .layoutPriority(1)
         }
         .padding(.horizontal, 11)
         #if os(iOS)
