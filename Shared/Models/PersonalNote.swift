@@ -1,5 +1,21 @@
 import Foundation
 
+public struct ChecklistItem: Identifiable, Codable, Hashable, Sendable {
+    public let id: String
+    public var title: String
+    public var isCompleted: Bool
+
+    public init(
+        id: String = UUID().uuidString,
+        title: String,
+        isCompleted: Bool = false
+    ) {
+        self.id = id
+        self.title = title
+        self.isCompleted = isCompleted
+    }
+}
+
 public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
     public let id: String
     public var courseworkId: String?
@@ -7,6 +23,7 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
     public var courseName: String?
     public var title: String
     public var content: String
+    public var checklist: [ChecklistItem]
     public var dueDate: Date?
     public var isCompleted: Bool
     public var createdAt: Date
@@ -15,7 +32,7 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
     public var searchIndex: String
 
     private enum CodingKeys: String, CodingKey {
-        case id, courseworkId, courseId, courseName, title, content, dueDate, isCompleted, createdAt, updatedAt
+        case id, courseworkId, courseId, courseName, title, content, checklist, dueDate, isCompleted, createdAt, updatedAt
     }
 
     public init(
@@ -25,6 +42,7 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
         courseName: String? = nil,
         title: String,
         content: String = "",
+        checklist: [ChecklistItem] = [],
         dueDate: Date? = nil,
         isCompleted: Bool = false,
         createdAt: Date = Date(),
@@ -36,11 +54,13 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
         self.courseName = courseName
         self.title = title
         self.content = content
+        self.checklist = checklist
         self.dueDate = dueDate
         self.isCompleted = isCompleted
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        self.searchIndex = "\(title) \(content) \(courseName ?? "")".normalizedForVietnameseSearch()
+        let checklistText = checklist.map(\.title).joined(separator: " ")
+        self.searchIndex = "\(title) \(content) \(courseName ?? "") \(checklistText)".normalizedForVietnameseSearch()
     }
 
     public init(from decoder: Decoder) throws {
@@ -51,11 +71,13 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
         self.courseName = try container.decodeIfPresent(String.self, forKey: .courseName)
         self.title = try container.decode(String.self, forKey: .title)
         self.content = (try? container.decode(String.self, forKey: .content)) ?? ""
+        self.checklist = (try? container.decode([ChecklistItem].self, forKey: .checklist)) ?? []
         self.dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
         self.isCompleted = (try? container.decode(Bool.self, forKey: .isCompleted)) ?? false
         self.createdAt = (try? container.decode(Date.self, forKey: .createdAt)) ?? Date()
         self.updatedAt = (try? container.decode(Date.self, forKey: .updatedAt)) ?? Date()
-        self.searchIndex = "\(title) \(content) \(courseName ?? "")".normalizedForVietnameseSearch()
+        let checklistText = checklist.map(\.title).joined(separator: " ")
+        self.searchIndex = "\(title) \(content) \(courseName ?? "") \(checklistText)".normalizedForVietnameseSearch()
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -66,10 +88,27 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
         try container.encodeIfPresent(courseName, forKey: .courseName)
         try container.encode(title, forKey: .title)
         try container.encode(content, forKey: .content)
+        try container.encode(checklist, forKey: .checklist)
         try container.encodeIfPresent(dueDate, forKey: .dueDate)
         try container.encode(isCompleted, forKey: .isCompleted)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(updatedAt, forKey: .updatedAt)
+    }
+
+    public var completedChecklistCount: Int {
+        checklist.filter(\.isCompleted).count
+    }
+
+    public var totalChecklistCount: Int {
+        checklist.count
+    }
+
+    public var hasChecklist: Bool {
+        !checklist.isEmpty
+    }
+
+    public var checklistProgress: Double {
+        checklist.isEmpty ? 0 : Double(completedChecklistCount) / Double(totalChecklistCount)
     }
 
     public var isDueTomorrow: Bool {
@@ -118,6 +157,20 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
             }
             if normContent.contains(token) {
                 score += 5
+            }
+        }
+
+        for item in checklist {
+            let normItem = item.title.normalizedForVietnameseSearch()
+            if normItem == rawNormalizedQuery {
+                score += 60
+            } else if normItem.contains(rawNormalizedQuery) {
+                score += 30
+            }
+            for token in tokens {
+                if normItem.contains(token) {
+                    score += 8
+                }
             }
         }
         return score

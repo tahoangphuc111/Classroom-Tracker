@@ -28,16 +28,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -343,6 +346,7 @@ fun PersonalNotesScreen(
                         )
                     }
                 }
+            } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp),
@@ -603,7 +607,7 @@ private fun PersonalNoteCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
@@ -640,27 +644,33 @@ private fun PersonalNoteCard(
                     )
 
                     if (note.isDueTomorrow) {
+                        Spacer(modifier = Modifier.width(8.dp))
                         DueDateBadge(
                             text = "Ngày mai",
                             isCompleted = note.isCompleted,
                             isDueTomorrow = true,
-                            fontSize = 11.5.sp
+                            fontSize = 11.5.sp,
+                            modifier = Modifier.padding(top = 1.dp)
                         )
                     } else if (note.isDueToday) {
+                        Spacer(modifier = Modifier.width(8.dp))
                         DueDateBadge(
                             text = "Hôm nay",
                             isCompleted = note.isCompleted,
                             isDueToday = true,
-                            fontSize = 11.5.sp
+                            fontSize = 11.5.sp,
+                            modifier = Modifier.padding(top = 1.dp)
                         )
                     } else if (note.dueEpochMillis != null) {
                         val dateStr = remember(note.dueEpochMillis) {
                             SimpleDateFormat("d/M", Locale.getDefault()).format(Date(note.dueEpochMillis))
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
                         DueDateBadge(
                             text = dateStr,
                             isCompleted = note.isCompleted,
-                            fontSize = 11.5.sp
+                            fontSize = 11.5.sp,
+                            modifier = Modifier.padding(top = 1.dp)
                         )
                     }
                 }
@@ -681,6 +691,8 @@ private fun PersonalNoteCard(
                     SubjectBadgePill(courseName = note.courseName)
                 }
             }
+
+            Spacer(modifier = Modifier.width(6.dp))
 
             Box {
                 IconButton(
@@ -758,7 +770,12 @@ private fun CreateOrEditNoteDialog(
             )
         },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },

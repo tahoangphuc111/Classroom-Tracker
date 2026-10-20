@@ -75,24 +75,24 @@ fun EmberFlameCanvas(
                     EmberEmotion.NORMAL -> {
                         mouthPath = Path().apply {
                             moveTo(w * 0.46f, h * 0.66f)
-                            quadraticBezierTo(w * 0.50f, h * 0.70f, w * 0.54f, h * 0.66f)
+                            quadraticTo(w * 0.50f, h * 0.70f, w * 0.54f, h * 0.66f)
                         }
                         mouthStroke = Stroke(width = w * 0.025f, cap = StrokeCap.Round)
                     }
                     EmberEmotion.SLEEPING -> {
                         leftEyePath = Path().apply {
                             moveTo(w * 0.36f, h * 0.60f)
-                            quadraticBezierTo(w * 0.41f, h * 0.56f, w * 0.46f, h * 0.60f)
+                            quadraticTo(w * 0.41f, h * 0.56f, w * 0.46f, h * 0.60f)
                         }
                         rightEyePath = Path().apply {
                             moveTo(w * 0.54f, h * 0.60f)
-                            quadraticBezierTo(w * 0.59f, h * 0.56f, w * 0.64f, h * 0.60f)
+                            quadraticTo(w * 0.59f, h * 0.56f, w * 0.64f, h * 0.60f)
                         }
                         eyeStroke = Stroke(width = w * 0.03f, cap = StrokeCap.Round)
 
                         mouthPath = Path().apply {
                             moveTo(w * 0.47f, h * 0.67f)
-                            quadraticBezierTo(w * 0.50f, h * 0.69f, w * 0.53f, h * 0.67f)
+                            quadraticTo(w * 0.50f, h * 0.69f, w * 0.53f, h * 0.67f)
                         }
                         mouthStroke = Stroke(width = w * 0.022f, cap = StrokeCap.Round)
 
@@ -113,8 +113,8 @@ fun EmberFlameCanvas(
                     EmberEmotion.STRESSED -> {
                         mouthPath = Path().apply {
                             moveTo(w * 0.44f, h * 0.68f)
-                            quadraticBezierTo(w * 0.47f, h * 0.65f, w * 0.50f, h * 0.68f)
-                            quadraticBezierTo(w * 0.53f, h * 0.71f, w * 0.56f, h * 0.68f)
+                            quadraticTo(w * 0.47f, h * 0.65f, w * 0.50f, h * 0.68f)
+                            quadraticTo(w * 0.53f, h * 0.71f, w * 0.56f, h * 0.68f)
                         }
                         mouthStroke = Stroke(width = w * 0.025f, cap = StrokeCap.Round)
 
@@ -131,17 +131,17 @@ fun EmberFlameCanvas(
                     EmberEmotion.CELEBRATING -> {
                         leftEyePath = Path().apply {
                             moveTo(w * 0.36f, h * 0.60f)
-                            quadraticBezierTo(w * 0.41f, h * 0.53f, w * 0.46f, h * 0.60f)
+                            quadraticTo(w * 0.41f, h * 0.53f, w * 0.46f, h * 0.60f)
                         }
                         rightEyePath = Path().apply {
                             moveTo(w * 0.54f, h * 0.60f)
-                            quadraticBezierTo(w * 0.59f, h * 0.53f, w * 0.64f, h * 0.60f)
+                            quadraticTo(w * 0.59f, h * 0.53f, w * 0.64f, h * 0.60f)
                         }
                         eyeStroke = Stroke(width = w * 0.035f, cap = StrokeCap.Round)
 
                         mouthPath = Path().apply {
                             moveTo(w * 0.44f, h * 0.66f)
-                            quadraticBezierTo(w * 0.50f, h * 0.75f, w * 0.56f, h * 0.66f)
+                            quadraticTo(w * 0.50f, h * 0.75f, w * 0.56f, h * 0.66f)
                         }
                         mouthStroke = Stroke(width = w * 0.028f, cap = StrokeCap.Round)
                     }

@@ -470,6 +470,54 @@ struct TestRunner {
             assertCondition(scoreExact > scoreDesc, "PersonalNote exact title match score (\(scoreExact)) must be higher than content match score (\(scoreDesc))")
         }
 
+        // Test 17: ChecklistItem & Checklist Auto-Completion Logic
+        do {
+            let item1 = ChecklistItem(id: "item_1", title: "Mua máy tính Casio", isCompleted: false)
+            let item2 = ChecklistItem(id: "item_2", title: "In đề cương", isCompleted: true)
+            let noteWithChecklist = PersonalNote(
+                id: "note_chk_1",
+                title: "Chuẩn bị học kì",
+                checklist: [item1, item2]
+            )
+
+            assertCondition(noteWithChecklist.hasChecklist, "Note with checklist must return hasChecklist == true")
+            assertCondition(noteWithChecklist.totalChecklistCount == 2, "totalChecklistCount must be 2")
+            assertCondition(noteWithChecklist.completedChecklistCount == 1, "completedChecklistCount must be 1")
+            assertCondition(noteWithChecklist.checklistProgress == 0.5, "checklistProgress must be 0.5")
+
+            // Codable test with checklist
+            let encodedData = try JSONEncoder().encode(noteWithChecklist)
+            let decodedNote = try JSONDecoder().decode(PersonalNote.self, from: encodedData)
+            assertCondition(decodedNote.checklist.count == 2, "Decoded note must preserve 2 checklist items")
+            assertCondition(decodedNote.checklist[0].title == "Mua máy tính Casio", "Decoded checklist title must match")
+            assertCondition(decodedNote.checklist[1].isCompleted == true, "Decoded checklist completion state must match")
+
+            // Search index check
+            let query = "may tinh".normalizedForVietnameseSearch()
+            assertCondition(decodedNote.searchIndex.contains(query), "PersonalNote search index must include checklist titles")
+
+            // Test storage toggleChecklistItemCompletion
+            ClassroomStorage.shared.savePersonalNotes([noteWithChecklist])
+            ClassroomStorage.shared.toggleChecklistItemCompletion(noteId: "note_chk_1", itemId: "item_1")
+
+            let notesAfterCheck = ClassroomStorage.shared.loadPersonalNotes()
+            let updatedNote = notesAfterCheck.first { $0.id == "note_chk_1" }
+            assertCondition(updatedNote?.checklist.first { $0.id == "item_1" }?.isCompleted == true, "Checklist item 1 must be toggled to completed")
+            assertCondition(updatedNote?.isCompleted == true, "Note must auto-complete when all checklist items are done")
+
+            // Untoggle item 2 -> note should revert to incomplete
+            ClassroomStorage.shared.toggleChecklistItemCompletion(noteId: "note_chk_1", itemId: "item_2")
+            let notesAfterUncheck = ClassroomStorage.shared.loadPersonalNotes()
+            let uncompleteNote = notesAfterUncheck.first { $0.id == "note_chk_1" }
+            assertCondition(uncompleteNote?.checklist.first { $0.id == "item_2" }?.isCompleted == false, "Checklist item 2 must be toggled to false")
+            assertCondition(uncompleteNote?.isCompleted == false, "Note must revert to incomplete when any checklist item is pending")
+
+            // Clean up
+            ClassroomStorage.shared.deletePersonalNote(id: "note_chk_1")
+        } catch {
+            assertCondition(false, "ChecklistItem test failed: \(error)")
+        }
+
         print("=== All Apple Core Logic Tests Passed Successfully! ===")
     }
 }

@@ -50,9 +50,12 @@ public extension View {
 
 public struct AppLogoView: View {
     public var size: CGFloat
+    public var floats: Bool
+    @State private var isFloating: Bool = false
 
-    public init(size: CGFloat = 84) {
+    public init(size: CGFloat = 84, floats: Bool = false) {
         self.size = size
+        self.floats = floats
     }
 
     public var body: some View {
@@ -82,6 +85,14 @@ public struct AppLogoView: View {
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.223, style: .continuous))
         .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 6)
+        .offset(y: floats && isFloating ? -4 : 0)
+        .scaleEffect(floats && isFloating ? 1.02 : 1.0)
+        .animation(floats ? .easeInOut(duration: 2.6).repeatForever(autoreverses: true) : nil, value: isFloating)
+        .onAppear {
+            if floats {
+                isFloating = true
+            }
+        }
     }
 
     private var fallbackIcon: some View {
@@ -90,6 +101,27 @@ public struct AppLogoView: View {
             ChunkyEmberCharacterView(emotion: .normal, size: size * 0.72)
         }
         .frame(width: size, height: size)
+    }
+}
+
+public struct FloatingEmberView: View {
+    public let emotion: EmberEmotion
+    public var size: CGFloat
+    @State private var isFloating: Bool = false
+
+    public init(emotion: EmberEmotion, size: CGFloat = 52) {
+        self.emotion = emotion
+        self.size = size
+    }
+
+    public var body: some View {
+        ChunkyEmberCharacterView(emotion: emotion, size: size)
+            .offset(y: isFloating ? -4 : 4)
+            .scaleEffect(isFloating ? 1.025 : 0.975)
+            .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: isFloating)
+            .onAppear {
+                isFloating = true
+            }
     }
 }
 
@@ -121,7 +153,6 @@ public struct ContentView: View {
     @State private var showAdvancedOAuthConfig: Bool = false
     @State private var isAdvancedSettingsExpanded: Bool = false
     @State private var welcomeAppeared: Bool = false
-    @State private var floatingPhase: CGFloat = 0
     @State private var searchText: String = ""
     @State private var copyFeedbackMessage: String? = nil
     @FocusState private var isSearchFocused: Bool
@@ -478,10 +509,6 @@ public struct ContentView: View {
             refreshData()
             hasInitialLoadHappened = true
 
-            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
-                floatingPhase = 5
-            }
-
             if authService.isAuthenticated {
                 Task {
                     await Task.yield()
@@ -630,10 +657,7 @@ public struct ContentView: View {
             VStack(spacing: 24) {
                 Spacer()
 
-                AppLogoView(size: 88)
-                    .offset(y: floatingPhase > 0 ? -4 : 4)
-                    .scaleEffect(floatingPhase > 0 ? 1.02 : 0.98)
-                    .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: floatingPhase)
+                AppLogoView(size: 88, floats: true)
                     .opacity(welcomeAppeared ? 1 : 0)
                     .scaleEffect(welcomeAppeared ? 1 : 0.85)
 
@@ -790,9 +814,6 @@ public struct ContentView: View {
             withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
                 welcomeAppeared = true
             }
-            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
-                floatingPhase = 5
-            }
         }
         .overlay(alignment: .bottom) {
             if let toast = activeToast {
@@ -838,7 +859,9 @@ public struct ContentView: View {
     }
 
     private var compactTabs: [CompactTabDefinition] {
-        var items: [CompactTabDefinition] = [
+        let pendingNotesCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
+        let upcomingBadge = buckets.allUpcomingPendingCount + buckets.pastPendingCount
+        return [
             CompactTabDefinition(
                 category: .tomorrow,
                 shortTitle: "Báo bài",
@@ -855,47 +878,21 @@ public struct ContentView: View {
                 category: .allUpcoming,
                 shortTitle: "Sắp tới",
                 icon: "tray",
-                badgeCount: buckets.allUpcomingPendingCount > 0 ? buckets.allUpcomingPendingCount : nil
+                badgeCount: upcomingBadge > 0 ? upcomingBadge : nil
             ),
-        ]
-        if buckets.past.count > 0 {
-            items.append(
-                CompactTabDefinition(
-                    category: .past,
-                    shortTitle: "Quá hạn",
-                    icon: "clock.badge.exclamationmark",
-                    badgeCount: buckets.past.count
-                )
-            )
-        }
-        items.append(
             CompactTabDefinition(
                 category: .completed,
                 shortTitle: "Đã xong",
                 icon: "checkmark.seal",
                 badgeCount: buckets.completed.count > 0 ? buckets.completed.count : nil
-            )
-        )
-        let pendingNotesCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
-        items.append(
+            ),
             CompactTabDefinition(
                 category: .notes,
                 shortTitle: "Ghi chú",
                 icon: "square.and.pencil",
                 badgeCount: pendingNotesCount > 0 ? pendingNotesCount : nil
-            )
-        )
-        if buckets.past.count == 0 {
-            items.append(
-                CompactTabDefinition(
-                    category: .widgetPreview,
-                    shortTitle: "Widget",
-                    icon: "macwindow",
-                    badgeCount: nil
-                )
-            )
-        }
-        return items
+            ),
+        ]
     }
 
     @ViewBuilder
@@ -1071,6 +1068,7 @@ public struct ContentView: View {
         .listStyle(.sidebar)
         .navigationTitle("Classroom")
         #if os(macOS)
+        .tint(categoryIconColor(selectedFilter))
         .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 280)
         #endif
     }
@@ -1095,22 +1093,37 @@ public struct ContentView: View {
     }
 
     private func sidebarCategoryRowContent(for category: AppFilterCategory, count: Int?, isSelected: Bool) -> some View {
-        HStack(spacing: 9) {
-            #if os(macOS)
+        #if os(macOS)
+        let iconBgColor = isSelected ? Color.white.opacity(0.24) : categoryIconColor(category).opacity(0.12)
+        let iconFgColor = isSelected ? Color.white : categoryIconColor(category)
+        let textFgColor = isSelected ? Color.white : Color.platformTextPrimary
+        let badgeBgColor = isSelected ? Color.white : categoryBadgeBg(category)
+        let badgeFgColor = isSelected ? categoryIconColor(category) : categoryBadgeFg(category)
+        let badgeShadowColor = isSelected ? Color.black.opacity(0.12) : Color.clear
+        #else
+        let iconBgColor = categoryIconColor(category).opacity(isSelected ? 0.20 : 0.12)
+        let iconFgColor = categoryIconColor(category)
+        let textFgColor = isSelected ? categoryIconColor(category) : Color.platformTextPrimary
+        let badgeBgColor = isSelected ? categoryIconColor(category).opacity(0.18) : categoryBadgeBg(category)
+        let badgeFgColor = categoryIconColor(category)
+        let badgeShadowColor = Color.clear
+        #endif
+
+        return HStack(spacing: 9) {
             ZStack {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(categoryIconColor(category).opacity(0.12))
+                    .fill(iconBgColor)
                     .frame(width: 24, height: 24)
 
                 Image(systemName: category.icon)
                     .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundStyle(categoryIconColor(category))
+                    .foregroundStyle(iconFgColor)
                     .scaleEffect(isSelected ? 1.08 : 1.0)
             }
 
             Text(category.rawValue)
                 .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                .foregroundStyle(Color.platformTextPrimary)
+                .foregroundStyle(textFgColor)
                 .lineLimit(1)
 
             Spacer()
@@ -1123,46 +1136,12 @@ public struct ContentView: View {
                     .padding(.vertical, 2)
                     .background(
                         Capsule()
-                            .fill(categoryBadgeBg(category))
-                            .shadow(color: isSelected ? Color.black.opacity(0.08) : Color.clear, radius: 2, x: 0, y: 1)
+                            .fill(badgeBgColor)
+                            .shadow(color: badgeShadowColor, radius: 2, x: 0, y: 1)
                     )
-                    .foregroundStyle(categoryBadgeFg(category))
+                    .foregroundStyle(badgeFgColor)
                     .scaleEffect(isSelected ? 1.06 : 1.0)
             }
-            #else
-            ZStack {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(isSelected ? Color.white.opacity(0.24) : categoryIconColor(category).opacity(0.12))
-                    .frame(width: 24, height: 24)
-
-                Image(systemName: category.icon)
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundStyle(isSelected ? Color.white : categoryIconColor(category))
-                    .scaleEffect(isSelected ? 1.08 : 1.0)
-            }
-
-            Text(category.rawValue)
-                .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                .foregroundStyle(isSelected ? Color.white : Color.primary)
-                .lineLimit(1)
-
-            Spacer()
-
-            if let count, count > 0 {
-                Text("\(count)")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .contentTransition(.numericText())
-                    .padding(.horizontal, 6.5)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(isSelected ? Color.white : categoryBadgeBg(category))
-                            .shadow(color: isSelected ? Color.black.opacity(0.12) : Color.clear, radius: 2, x: 0, y: 1)
-                    )
-                    .foregroundStyle(isSelected ? categoryIconColor(category) : categoryBadgeFg(category))
-                    .scaleEffect(isSelected ? 1.06 : 1.0)
-            }
-            #endif
         }
         .padding(.vertical, 2)
         .animation(.spring(response: 0.30, dampingFraction: 0.75), value: isSelected)
@@ -1216,6 +1195,11 @@ public struct ContentView: View {
                     searchText: searchText,
                     onToggleCompletion: { id in
                         ClassroomStorage.shared.togglePersonalNoteCompletion(id: id)
+                        personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        recomputeBuckets()
+                    },
+                    onToggleChecklistItem: { noteId, itemId in
+                        ClassroomStorage.shared.toggleChecklistItemCompletion(noteId: noteId, itemId: itemId)
                         personalNotes = ClassroomStorage.shared.loadPersonalNotes()
                         recomputeBuckets()
                     },
@@ -1321,8 +1305,8 @@ public struct ContentView: View {
                 #endif
             }
         }
-        #if os(iOS)
         .navigationTitle(activeCategory.rawValue)
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .overlay(alignment: .bottom) {
@@ -1498,11 +1482,11 @@ public struct ContentView: View {
                 Image(systemName: "calendar")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color.platformTextTertiary)
-                Text(formattedCurrentDate())
-                    .font(.system(size: 14, weight: .semibold))
+                Text(formattedCompactCurrentDate())
+                    .font(.system(size: 13.5, weight: .semibold))
                     .foregroundStyle(Color.platformTextSecondary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.85)
             }
 
             Spacer()
@@ -1792,13 +1776,10 @@ public struct ContentView: View {
             #else
             .padding(.vertical, 8.5)
             #endif
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.platformControlBackground)
-            )
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(isSearchFocused ? Color.blue.opacity(0.50) : Color.platformCardBorder, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(isSearchFocused ? Color.blue.opacity(0.55) : Color.platformCardBorder.opacity(0.8), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(isSearchFocused ? 0.04 : 0.015), radius: 3, x: 0, y: 1)
             .padding(.horizontal, 12)
@@ -1924,7 +1905,8 @@ public struct ContentView: View {
 
             Divider()
 
-            if list.isEmpty {
+            let hasOverdueToDisplay = activeCategory == .allUpcoming && !buckets.past.isEmpty && searchText.isEmpty && selectedSubjectFilter == "Tất cả"
+            if list.isEmpty && !hasOverdueToDisplay {
                 AssignmentListEmptyView(
                     filter: activeCategory,
                     isSearching: !searchText.trimmingCharacters(in: .whitespaces).isEmpty || (activeCategory == .allUpcoming && selectedSubjectFilter != "Tất cả"),
@@ -1943,9 +1925,7 @@ public struct ContentView: View {
                 ScrollViewReader { scrollProxy in
                     ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
-                        let hasNoteForItem: (Coursework) -> Bool = { item in
-                            personalNotes.contains { $0.courseworkId == item.id && !$0.content.isEmpty }
-                        }
+                        let noteCourseworkIds: Set<String> = Set(personalNotes.lazy.filter { !$0.content.isEmpty }.compactMap(\.courseworkId))
 
                         if activeCategory == .tomorrow {
                             if !list.isEmpty && searchText.isEmpty {
@@ -1956,7 +1936,7 @@ public struct ContentView: View {
                                 AssignmentListRow(
                                     item: item,
                                     isSelected: selectedCourseworkIds.contains(item.id),
-                                    hasNote: hasNoteForItem(item),
+                                    hasNote: noteCourseworkIds.contains(item.id),
                                     onSelect: { cmdPressed in
                                         handleItemTap(item, commandPressed: cmdPressed, isWide: isWide)
                                     },
@@ -1969,13 +1949,27 @@ public struct ContentView: View {
                         } else if activeCategory == .todayAndTomorrow || activeCategory == .allUpcoming {
                             let sections = categorizedSections(for: list, category: activeCategory)
 
+                            if hasOverdueToDisplay {
+                                SectionHeaderPill(title: "QUÁ HẠN", count: buckets.past.count, icon: "clock.badge.exclamationmark.fill", color: Color(red: 0.86, green: 0.24, blue: 0.26))
+                                ForEach(buckets.past) { item in
+                                    AssignmentListRow(
+                                        item: item,
+                                        isSelected: selectedCourseworkIds.contains(item.id),
+                                        hasNote: noteCourseworkIds.contains(item.id),
+                                        onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
+                                        onToggleCompletion: { toggleCompletion(for: item) }
+                                    )
+                                    .equatable()
+                                }
+                            }
+
                             if !sections.todays.isEmpty {
                                 SectionHeaderPill(title: "HÔM NAY", count: sections.todays.count, icon: "clock.fill", color: Color(red: 0.95, green: 0.55, blue: 0.10))
                                 ForEach(sections.todays) { item in
                                     AssignmentListRow(
                                         item: item,
                                         isSelected: selectedCourseworkIds.contains(item.id),
-                                        hasNote: hasNoteForItem(item),
+                                        hasNote: noteCourseworkIds.contains(item.id),
                                         onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
                                         onToggleCompletion: { toggleCompletion(for: item) }
                                     )
@@ -1989,7 +1983,7 @@ public struct ContentView: View {
                                     AssignmentListRow(
                                         item: item,
                                         isSelected: selectedCourseworkIds.contains(item.id),
-                                        hasNote: hasNoteForItem(item),
+                                        hasNote: noteCourseworkIds.contains(item.id),
                                         onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
                                         onToggleCompletion: { toggleCompletion(for: item) }
                                     )
@@ -2003,7 +1997,7 @@ public struct ContentView: View {
                                     AssignmentListRow(
                                         item: item,
                                         isSelected: selectedCourseworkIds.contains(item.id),
-                                        hasNote: hasNoteForItem(item),
+                                        hasNote: noteCourseworkIds.contains(item.id),
                                         onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
                                         onToggleCompletion: { toggleCompletion(for: item) }
                                     )
@@ -2017,7 +2011,7 @@ public struct ContentView: View {
                                     AssignmentListRow(
                                         item: item,
                                         isSelected: selectedCourseworkIds.contains(item.id),
-                                        hasNote: hasNoteForItem(item),
+                                        hasNote: noteCourseworkIds.contains(item.id),
                                         onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
                                         onToggleCompletion: { toggleCompletion(for: item) }
                                     )
@@ -2029,7 +2023,7 @@ public struct ContentView: View {
                                 AssignmentListRow(
                                     item: item,
                                     isSelected: selectedCourseworkIds.contains(item.id),
-                                    hasNote: hasNoteForItem(item),
+                                    hasNote: noteCourseworkIds.contains(item.id),
                                     onSelect: { cmdPressed in
                                         handleItemTap(item, commandPressed: cmdPressed, isWide: isWide)
                                     },
@@ -2086,10 +2080,7 @@ public struct ContentView: View {
 
         return VStack(spacing: 10) {
             HStack(spacing: 12) {
-                ChunkyEmberCharacterView(emotion: emotion, size: 52)
-                    .offset(y: floatingPhase > 0 ? -4 : 4)
-                    .scaleEffect(floatingPhase > 0 ? 1.03 : 0.97)
-                    .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: floatingPhase)
+                FloatingEmberView(emotion: emotion, size: 52)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(isAllDone ? "Xuất sắc! Đã xong hết" : "Báo bài ngày mai")
@@ -2719,11 +2710,7 @@ public struct ContentView: View {
             Spacer(minLength: 12)
 
             Toggle("Dữ liệu mẫu", isOn: $useSampleDataForPreview)
-                #if os(macOS)
-                .toggleStyle(.checkbox)
-                #else
                 .toggleStyle(.switch)
-                #endif
                 .font(.system(size: 12))
                 .lineLimit(1)
                 .fixedSize()
@@ -2884,6 +2871,7 @@ public struct ContentView: View {
                             }
                         }
                     ))
+                    .toggleStyle(.switch)
 
                     if reminderService.isEnabled {
                         DatePicker(
@@ -3493,8 +3481,19 @@ public struct ContentView: View {
         return formatter
     }()
 
+    private static let compactHeaderDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "vi_VN")
+        formatter.dateFormat = "EEE, d/M"
+        return formatter
+    }()
+
     private func formattedCurrentDate() -> String {
         Self.headerDateFormatter.string(from: Date()).capitalized
+    }
+
+    private func formattedCompactCurrentDate() -> String {
+        Self.compactHeaderDateFormatter.string(from: Date()).capitalized
     }
 }
 
@@ -3942,20 +3941,20 @@ private struct AssignmentListRow: View, Equatable {
         )
         #if os(macOS)
         .shadow(
-            color: Color.black.opacity(isSelected ? 0.04 : (isHovered ? 0.03 : 0.015)),
-            radius: isSelected ? 4 : (isHovered ? 3 : 2),
+            color: Color.black.opacity(isSelected ? 0.04 : 0.015),
+            radius: isSelected ? 4 : 2,
             x: 0,
             y: 1
         )
-        .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isHovered)
         .onHover { hovering in
             isHovered = hovering
         }
         #else
         .modifier(RowSelectedShadowModifier(isSelected: isSelected))
         #endif
-        .scaleEffect(isRowPressed ? 0.98 : (isHovered ? 1.006 : 1.0))
-        .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isRowPressed)
+        .scaleEffect(isRowPressed ? 0.985 : 1.0)
+        .animation(.spring(response: 0.20, dampingFraction: 0.70), value: isRowPressed)
+        .animation(.easeInOut(duration: 0.12), value: isHovered)
         .contentShape(Rectangle())
         .onTapGesture {
             withAnimation(.spring(response: 0.16, dampingFraction: 0.65)) {
@@ -4082,21 +4081,16 @@ private struct AssignmentListEmptyView: View {
     var onSwitchToUpcoming: (() -> Void)? = nil
 
     @State private var hasAppeared: Bool = false
-    @State private var isEmberFloating: Bool = false
 
     var body: some View {
         VStack(spacing: 16) {
             Spacer()
 
             if !isSearching && (filter == .tomorrow || filter == .todayAndTomorrow) {
-                ChunkyEmberCharacterView(emotion: .sleeping, size: 76)
-                    .offset(y: isEmberFloating ? -5 : 4)
-                    .scaleEffect(isEmberFloating ? 1.02 : 0.98)
+                FloatingEmberView(emotion: .sleeping, size: 76)
                     .padding(.bottom, 2)
             } else if !isSearching && filter == .past {
-                ChunkyEmberCharacterView(emotion: .celebrating, size: 76)
-                    .offset(y: isEmberFloating ? -5 : 4)
-                    .scaleEffect(isEmberFloating ? 1.02 : 0.98)
+                FloatingEmberView(emotion: .celebrating, size: 76)
                     .padding(.bottom, 2)
             } else {
                 ZStack {
@@ -4122,7 +4116,6 @@ private struct AssignmentListEmptyView: View {
                             .foregroundStyle(emptyTint)
                     }
                 }
-                .offset(y: isEmberFloating ? -3 : 3)
             }
 
             VStack(spacing: 6) {
@@ -4170,9 +4163,6 @@ private struct AssignmentListEmptyView: View {
         .onAppear {
             withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
                 hasAppeared = true
-            }
-            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
-                isEmberFloating = true
             }
         }
     }

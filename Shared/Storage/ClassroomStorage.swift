@@ -1095,9 +1095,35 @@ public final class ClassroomStorage: @unchecked Sendable {
         var allNotes = loadPersonalNotes()
         if let index = allNotes.firstIndex(where: { $0.id == id }) {
             allNotes[index].isCompleted.toggle()
+            let newStatus = allNotes[index].isCompleted
+            if newStatus && !allNotes[index].checklist.isEmpty {
+                allNotes[index].checklist = allNotes[index].checklist.map { item in
+                    var copy = item
+                    copy.isCompleted = true
+                    return copy
+                }
+            }
             allNotes[index].updatedAt = Date()
             savePersonalNotes(allNotes)
         }
+    }
+
+    public func toggleChecklistItemCompletion(noteId: String, itemId: String) {
+        var allNotes = loadPersonalNotes()
+        guard let noteIndex = allNotes.firstIndex(where: { $0.id == noteId }) else { return }
+        guard let itemIndex = allNotes[noteIndex].checklist.firstIndex(where: { $0.id == itemId }) else { return }
+
+        allNotes[noteIndex].checklist[itemIndex].isCompleted.toggle()
+        allNotes[noteIndex].updatedAt = Date()
+
+        let items = allNotes[noteIndex].checklist
+        if !items.isEmpty && items.allSatisfy({ $0.isCompleted }) {
+            allNotes[noteIndex].isCompleted = true
+        } else if items.contains(where: { !$0.isCompleted }) && allNotes[noteIndex].isCompleted {
+            allNotes[noteIndex].isCompleted = false
+        }
+
+        savePersonalNotes(allNotes)
     }
 
     public func getTomorrowPersonalNotes(notes: [PersonalNote]? = nil, includeCompleted: Bool = false) -> [PersonalNote] {

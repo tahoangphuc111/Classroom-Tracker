@@ -7,11 +7,14 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -49,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phucta.classroom.data.model.Coursework
@@ -77,6 +81,7 @@ fun HomeworkDetailBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .imePadding()
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
                 .verticalScroll(rememberScrollState())
@@ -303,118 +308,227 @@ fun HomeworkDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = {
-                        onToggleCompletion(coursework.id, !coursework.isCompleted)
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (coursework.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.SkyBottom
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        imageVector = if (coursework.isCompleted) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (coursework.isCompleted) "Đã làm xong" else "Đánh dấu đã nộp",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.5.sp,
-                        maxLines = 1
-                    )
+            val onCopyClick: () -> Unit = {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                val clipText = buildString {
+                    append(coursework.title)
+                    append(" - ")
+                    append(coursework.courseName)
+                    if (coursework.dueEpochMillis != null) {
+                        append("\nHạn nộp: ")
+                        append(coursework.formattedFullDueDate)
+                    }
+                    if (!coursework.description.isNullOrBlank()) {
+                        append("\n\n")
+                        append(coursework.description)
+                    }
+                    if (!coursework.alternateLink.isNullOrBlank()) {
+                        append("\n\nLink: ")
+                        append(coursework.alternateLink)
+                    }
                 }
+                val clip = android.content.ClipData.newPlainText("Bài tập", clipText)
+                clipboard?.setPrimaryClip(clip)
+                android.widget.Toast.makeText(context, "Đã sao chép thông tin bài tập!", android.widget.Toast.LENGTH_SHORT).show()
+            }
 
-                Spacer(modifier = Modifier.width(8.dp))
+            val onOpenBrowserClick: () -> Unit = {
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(coursework.destinationURL)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    android.widget.Toast.makeText(
+                        context,
+                        "Không thể mở trình duyệt",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
 
-                OutlinedButton(
-                    onClick = {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                        val clipText = buildString {
-                            append(coursework.title)
-                            append(" - ")
-                            append(coursework.courseName)
-                            if (coursework.dueEpochMillis != null) {
-                                append("\nHạn nộp: ")
-                                append(coursework.formattedFullDueDate)
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val isNarrow = maxWidth < 360.dp
+                if (isNarrow) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                onToggleCompletion(coursework.id, !coursework.isCompleted)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (coursework.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.SkyBottom
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (coursework.isCompleted) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (coursework.isCompleted) "Đã làm xong" else "Đánh dấu đã nộp",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = onCopyClick,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 48.dp),
+                                border = BorderStroke(1.dp, ChunkyColor.CardBorder),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = ChunkyColor.SurfaceWhite,
+                                    contentColor = ChunkyColor.TextPrimary
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = "Sao chép",
+                                    tint = ChunkyColor.TextPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Sao chép",
+                                    color = ChunkyColor.TextPrimary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
-                            if (!coursework.description.isNullOrBlank()) {
-                                append("\n\n")
-                                append(coursework.description)
-                            }
-                            if (!coursework.alternateLink.isNullOrBlank()) {
-                                append("\n\nLink: ")
-                                append(coursework.alternateLink)
+
+                            OutlinedButton(
+                                onClick = onOpenBrowserClick,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 48.dp),
+                                border = BorderStroke(1.dp, ChunkyColor.SkyBottom.copy(alpha = 0.5f)),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = ChunkyColor.SkyBottom.copy(alpha = 0.08f),
+                                    contentColor = ChunkyColor.SkyBottom
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.OpenInBrowser,
+                                    contentDescription = "Mở trên Classroom",
+                                    tint = ChunkyColor.SkyBottom,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Mở link",
+                                    color = ChunkyColor.SkyBottom,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
-                        val clip = android.content.ClipData.newPlainText("Bài tập", clipText)
-                        clipboard?.setPrimaryClip(clip)
-                        android.widget.Toast.makeText(context, "Đã sao chép thông tin bài tập!", android.widget.Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.height(48.dp),
-                    border = BorderStroke(1.dp, ChunkyColor.CardBorder),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = ChunkyColor.SurfaceWhite,
-                        contentColor = ChunkyColor.TextPrimary
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Sao chép",
-                        tint = ChunkyColor.TextPrimary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                OutlinedButton(
-                    onClick = {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(coursework.destinationURL)).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Không thể mở trình duyệt",
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = {
+                                onToggleCompletion(coursework.id, !coursework.isCompleted)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (coursework.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.SkyBottom
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (coursework.isCompleted) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (coursework.isCompleted) "Đã làm xong" else "Đánh dấu đã nộp",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
-                    },
-                    modifier = Modifier.height(48.dp),
-                    border = BorderStroke(1.dp, ChunkyColor.SkyBottom.copy(alpha = 0.5f)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = ChunkyColor.SkyBottom.copy(alpha = 0.08f),
-                        contentColor = ChunkyColor.SkyBottom
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.OpenInBrowser,
-                        contentDescription = "Mở trên Classroom",
-                        tint = ChunkyColor.SkyBottom,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(5.dp))
-                    Text(
-                        text = "Mở",
-                        color = ChunkyColor.SkyBottom,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
-                    )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        OutlinedButton(
+                            onClick = onCopyClick,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            border = BorderStroke(1.dp, ChunkyColor.CardBorder),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = ChunkyColor.SurfaceWhite,
+                                contentColor = ChunkyColor.TextPrimary
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Sao chép",
+                                tint = ChunkyColor.TextPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        OutlinedButton(
+                            onClick = onOpenBrowserClick,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            border = BorderStroke(1.dp, ChunkyColor.SkyBottom.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = ChunkyColor.SkyBottom.copy(alpha = 0.08f),
+                                contentColor = ChunkyColor.SkyBottom
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.OpenInBrowser,
+                                contentDescription = "Mở trên Classroom",
+                                tint = ChunkyColor.SkyBottom,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = "Mở",
+                                color = ChunkyColor.SkyBottom,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
             }
         }
