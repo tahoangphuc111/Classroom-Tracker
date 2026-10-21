@@ -20,7 +20,7 @@ class ClassroomGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
                 TimeZone.setDefault(null)
                 triggerWidgetUpdate(context)
             }
-            Intent.ACTION_TIME_CHANGED, Intent.ACTION_DATE_CHANGED -> {
+            Intent.ACTION_TIME_CHANGED, Intent.ACTION_DATE_CHANGED, "com.phucta.classroom.action.UPDATE_WIDGET" -> {
                 triggerWidgetUpdate(context)
             }
         }

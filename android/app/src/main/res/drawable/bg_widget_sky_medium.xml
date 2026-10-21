@@ -4,14 +4,14 @@
         <shape android:shape="rectangle">
             <gradient
                 android:type="linear"
-                android:angle="315"
+                android:angle="270"
                 android:startColor="#61C7FF"
+                android:centerColor="#3AAEFF"
                 android:endColor="#249EFA" />
             <corners android:radius="18dp" />
         </shape>
     </item>
 
-    <!-- Right Cloud 68x18 -->
     <item
         android:gravity="top|end"
         android:top="6dp"
@@ -19,20 +19,19 @@
         android:width="68dp"
         android:height="18dp">
         <shape android:shape="rectangle">
-            <solid android:color="#29FFFFFF" />
+            <solid android:color="#24FFFFFF" />
             <corners android:radius="9dp" />
         </shape>
     </item>
 
-    <!-- Left Cloud 44x14 -->
     <item
         android:gravity="top|start"
-        android:top="8dp"
-        android:start="10dp"
+        android:top="5dp"
+        android:start="8dp"
         android:width="44dp"
         android:height="14dp">
         <shape android:shape="rectangle">
-            <solid android:color="#1FFFFFFF" />
+            <solid android:color="#1AFFFFFF" />
             <corners android:radius="7dp" />
         </shape>
     </item>

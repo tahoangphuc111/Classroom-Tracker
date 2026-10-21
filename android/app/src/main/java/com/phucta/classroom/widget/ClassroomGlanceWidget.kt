@@ -29,6 +29,7 @@ import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
+import androidx.glance.text.FontFamily
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
@@ -46,6 +47,8 @@ import com.phucta.classroom.ui.theme.ChunkyColor
 import com.phucta.classroom.widget.ClassroomGlanceWidget.Companion.formatDeadlinePill
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+
+private val WidgetRoundedFamily = FontFamily("sans-serif-rounded")
 
 class ClassroomGlanceWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
@@ -106,7 +109,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
             GlanceTheme {
                 val currentSize = androidx.glance.LocalSize.current
                 val isSmall = currentSize.width < 200.dp
-                val isLarge = currentSize.height >= 180.dp && !isSmall
+                val isLarge = currentSize.height >= 240.dp && !isSmall
 
                 val skyBg = when {
                     isSmall -> R.drawable.bg_widget_sky
@@ -159,7 +162,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         currentSize: DpSize
     ) {
         val isSmall = currentSize.width < 200.dp
-        val isLarge = currentSize.height >= 180.dp && !isSmall
+        val isLarge = currentSize.height >= 240.dp && !isSmall
 
         when {
             isSmall -> {
@@ -391,7 +394,8 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         style = TextStyle(
                             color = ColorProvider(Color.White),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 28.sp
+                            fontSize = 28.sp,
+                            fontFamily = WidgetRoundedFamily
                         )
                     )
                     Spacer(modifier = GlanceModifier.width(4.dp))
@@ -409,7 +413,8 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 9.5.sp
+                                fontSize = 9.5.sp,
+                                fontFamily = WidgetRoundedFamily
                             )
                         )
                     }
@@ -427,7 +432,8 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     color = ColorProvider(Color.White),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 8.5.sp
+                                    fontSize = 8.5.sp,
+                                    fontFamily = WidgetRoundedFamily
                                 )
                             )
                         }
@@ -554,15 +560,16 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
 
                         Text(
                             text = item.title.ifEmpty { item.courseName },
-                            maxLines = 3,
+                            maxLines = 2,
                             style = TextStyle(
                                 color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 14.5.sp
+                                fontSize = 14.sp,
+                                fontFamily = WidgetRoundedFamily
                             )
                         )
 
-                        Spacer(modifier = GlanceModifier.defaultWeight())
+                        Spacer(modifier = GlanceModifier.height(5.dp))
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically
@@ -570,18 +577,21 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             Image(
                                 provider = ImageProvider(R.drawable.ic_widget_clock),
                                 contentDescription = "Due time",
-                                modifier = GlanceModifier.size(9.dp)
+                                modifier = GlanceModifier.size(10.dp)
                             )
-                            Spacer(modifier = GlanceModifier.width(3.dp))
+                            Spacer(modifier = GlanceModifier.width(4.dp))
                             Text(
                                 text = dueLabel(item),
                                 style = TextStyle(
                                     color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else if (item.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted),
                                     fontWeight = FontWeight.Medium,
-                                    fontSize = 9.5.sp
+                                    fontSize = 10.sp,
+                                    fontFamily = WidgetRoundedFamily
                                 )
                             )
                         }
+
+                        Spacer(modifier = GlanceModifier.defaultWeight())
                     }
                 } else {
                     val itemsToShow = displayItems.take(2)
@@ -695,7 +705,8 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         style = TextStyle(
                             color = ColorProvider(Color.White),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 32.sp
+                            fontSize = 32.sp,
+                            fontFamily = WidgetRoundedFamily
                         )
                     )
                     Spacer(modifier = GlanceModifier.width(4.dp))
@@ -712,7 +723,8 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 9.sp
+                                fontSize = 9.sp,
+                                fontFamily = WidgetRoundedFamily
                             )
                         )
                     }
@@ -942,7 +954,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             }
                             Text(
                                 text = subtitleText,
-                                maxLines = 1,
+                                maxLines = 2,
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextMuted),
                                     fontWeight = FontWeight.Medium,
@@ -1081,7 +1093,8 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             style = TextStyle(
                                 color = ColorProvider(Color.White),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 40.sp
+                                fontSize = 40.sp,
+                                fontFamily = WidgetRoundedFamily
                             )
                         )
                         Spacer(modifier = GlanceModifier.width(7.dp))
@@ -1090,7 +1103,8 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
+                                fontSize = 15.sp,
+                                fontFamily = WidgetRoundedFamily
                             )
                         )
                     }

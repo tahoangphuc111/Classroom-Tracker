@@ -170,6 +170,7 @@ public struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
+    @Namespace private var tabSwitchNamespace
 
     private var isLandscapePhone: Bool {
         verticalSizeClass == .compact
@@ -262,8 +263,7 @@ public struct ContentView: View {
     public init() {
         #if os(iOS)
         let tabBarAppearance = UITabBarAppearance()
-        tabBarAppearance.configureWithDefaultBackground()
-        tabBarAppearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+        tabBarAppearance.configureWithTransparentBackground()
 
         let itemAppearance = UITabBarItemAppearance()
         tabBarAppearance.stackedLayoutAppearance = itemAppearance
@@ -765,7 +765,7 @@ public struct ContentView: View {
 
                     Button {
                         triggerHapticFeedback()
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                             ClassroomStorage.shared.populateMockDataManually()
                             refreshData()
                             isDemoMode = true
@@ -855,7 +855,7 @@ public struct ContentView: View {
         .frame(minWidth: 480, minHeight: 460)
         #endif
         .onAppear {
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                 welcomeAppeared = true
             }
         }
@@ -946,18 +946,115 @@ public struct ContentView: View {
                 NavigationStack {
                     detailMasterView(isCompact: true, tabCategory: tab.category)
                 }
-                .tabItem {
-                    Label(tab.shortTitle, systemImage: tab.icon)
-                }
-                .badge(tab.badgeCount ?? 0)
                 .tag(tab.category)
             }
         }
-        .toolbarBackground(.visible, for: .tabBar)
-        .toolbarBackground(Color.platformWindowBackground, for: .tabBar)
+        .toolbar(.hidden, for: .tabBar)
+        .safeAreaInset(edge: .bottom) {
+            liquidGlassSwitchBar
+                .frame(maxWidth: 520)
+                .padding(.horizontal, 14)
+                .padding(.bottom, 6)
+        }
         .sheet(isPresented: $showCompactCourseFilterSheet) {
             compactCourseFilterSheetView
         }
+    }
+
+    private var liquidGlassSwitchBar: some View {
+        HStack(spacing: 3) {
+            ForEach(compactTabs) { tab in
+                let isSelected = selectedFilter == tab.category
+                Button {
+                    if selectedFilter != tab.category {
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred()
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                            selectedFilter = tab.category
+                        }
+                    }
+                } label: {
+                    VStack(spacing: 2.5) {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: tab.icon)
+                                .font(.system(size: 16.5, weight: isSelected ? .semibold : .regular))
+                                .frame(height: 19)
+
+                            if let badge = tab.badgeCount, badge > 0 {
+                                Text(badge > 99 ? "99+" : "\(badge)")
+                                    .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                                    .foregroundStyle(Color.white)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Capsule().fill(Color.red))
+                                    .offset(x: 10, y: -4)
+                            }
+                        }
+
+                        Text(tab.shortTitle)
+                            .font(.system(size: 10, weight: isSelected ? .semibold : .medium, design: .rounded))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                    .background {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(
+                                    colorScheme == .dark
+                                    ? Color.accentColor.opacity(0.22)
+                                    : Color.accentColor.opacity(0.12)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(
+                                            colorScheme == .dark
+                                            ? Color.accentColor.opacity(0.40)
+                                            : Color.accentColor.opacity(0.25),
+                                            lineWidth: 0.6
+                                        )
+                                )
+                                .matchedGeometryEffect(id: "liquidGlassActiveSwitch", in: tabSwitchNamespace)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(5)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(
+                            Color(uiColor: .systemBackground)
+                                .opacity(colorScheme == .dark ? 0.62 : 0.76)
+                        )
+                )
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.32 : 0.70),
+                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.25)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.6
+                )
+        )
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.38 : 0.08),
+            radius: 14,
+            x: 0,
+            y: 5
+        )
     }
 
     private var compactCourseFilterSheetView: some View {
@@ -4305,7 +4402,7 @@ private struct AssignmentListEmptyView: View {
         .scaleEffect(hasAppeared ? 1.0 : 0.94)
         .offset(y: hasAppeared ? 0 : 10)
         .onAppear {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
                 hasAppeared = true
             }
         }
@@ -4424,7 +4521,7 @@ private struct HomeworkReaderEmptyStateView: View {
         .scaleEffect(hasAppeared ? 1.0 : 0.95)
         .offset(y: hasAppeared ? 0 : 8)
         .onAppear {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
                 hasAppeared = true
             }
         }

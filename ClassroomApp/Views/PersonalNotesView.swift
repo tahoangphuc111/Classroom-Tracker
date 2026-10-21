@@ -649,7 +649,7 @@ public struct PersonalNotesView: View {
         .scaleEffect(emptyAppeared ? 1.0 : 0.95)
         .offset(y: emptyAppeared ? 0 : 8)
         .onAppear {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
                 emptyAppeared = true
             }
         }
