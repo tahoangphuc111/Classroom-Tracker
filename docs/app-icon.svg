@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="macAppShadow" x="-25%" y="-15%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="28" stdDeviation="28" flood-color="#021C42" flood-opacity="0.38"/>
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#011028" flood-opacity="0.25"/>
+    </filter>
+
+    <linearGradient id="ios6SkyBase" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6ED6FF"/>
+      <stop offset="28%" stop-color="#3BB8FF"/>
+      <stop offset="68%" stop-color="#1594F7"/>
+      <stop offset="100%" stop-color="#0265CD"/>
+    </linearGradient>
+
+    <linearGradient id="ios6GlossArc" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.78"/>
+      <stop offset="25%" stop-color="#FFFFFF" stop-opacity="0.52"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.26"/>
+      <stop offset="98%" stop-color="#FFFFFF" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+    </linearGradient>
+
+    <radialGradient id="topSunlightFlare" cx="50%" cy="10%" r="55%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.65"/>
+      <stop offset="35%" stop-color="#FFFFFF" stop-opacity="0.25"/>
+      <stop offset="70%" stop-color="#FFFFFF" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.00"/>
+    </radialGradient>
+
+    <radialGradient id="topLeftHotspot" cx="30%" cy="20%" r="35%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.60"/>
+      <stop offset="30%" stop-color="#FFFFFF" stop-opacity="0.28"/>
+      <stop offset="70%" stop-color="#FFFFFF" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.00"/>
+    </radialGradient>
+
+    <linearGradient id="topBevelRim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="5%" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="15%" stop-color="#FFFFFF" stop-opacity="0.00"/>
+    </linearGradient>
+
+    <radialGradient id="bottomInternalBounce" cx="50%" cy="100%" r="50%">
+      <stop offset="0%" stop-color="#9DEBFF" stop-opacity="0.55"/>
+      <stop offset="45%" stop-color="#72DBFF" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#72DBFF" stop-opacity="0.00"/>
+    </radialGradient>
+
+    <linearGradient id="bottomBevelRim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.00"/>
+      <stop offset="85%" stop-color="#FFFFFF" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.50"/>
+    </linearGradient>
+
+    <linearGradient id="bottomCornerGlintLeft" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="35%" stop-color="#FFFFFF" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <linearGradient id="bottomCornerGlintRight" x1="1" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="35%" stop-color="#FFFFFF" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <clipPath id="squircleClip">
+      <rect x="100" y="100" width="824" height="824" rx="190" ry="190"/>
+    </clipPath>
+
+    <radialGradient id="broadAmbientShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#031432" stop-opacity="0.45"/>
+      <stop offset="28%" stop-color="#041638" stop-opacity="0.32"/>
+      <stop offset="55%" stop-color="#061C48" stop-opacity="0.18"/>
+      <stop offset="78%" stop-color="#0A245C" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#0E2C6C" stop-opacity="0.00"/>
+    </radialGradient>
+
+    <radialGradient id="mediumCastShadow" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#010C22" stop-opacity="0.65"/>
+      <stop offset="32%" stop-color="#02102E" stop-opacity="0.45"/>
+      <stop offset="64%" stop-color="#03163E" stop-opacity="0.22"/>
+      <stop offset="85%" stop-color="#062054" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#0A2864" stop-opacity="0.00"/>
+    </radialGradient>
+
+    <radialGradient id="tightContactShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#010512" stop-opacity="0.85"/>
+      <stop offset="35%" stop-color="#01081C" stop-opacity="0.62"/>
+      <stop offset="72%" stop-color="#020E28" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#041438" stop-opacity="0.00"/>
+    </radialGradient>
+
+    <linearGradient id="boardTopSurface" x1="0.1" y1="0.05" x2="0.9" y2="0.95">
+      <stop offset="0%" stop-color="#363E50"/>
+      <stop offset="22%" stop-color="#2A3141"/>
+      <stop offset="60%" stop-color="#1C212D"/>
+      <stop offset="100%" stop-color="#12161F"/>
+    </linearGradient>
+
+    <linearGradient id="boardEdgeLeft" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2D3546"/>
+      <stop offset="100%" stop-color="#1E232E"/>
+    </linearGradient>
+
+    <linearGradient id="boardEdgeRight" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#151922"/>
+      <stop offset="100%" stop-color="#0D1016"/>
+    </linearGradient>
+
+    <linearGradient id="skullCapCloth" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#161B25"/>
+      <stop offset="18%" stop-color="#262F3E"/>
+      <stop offset="46%" stop-color="#384357"/>
+      <stop offset="78%" stop-color="#1F2633"/>
+      <stop offset="100%" stop-color="#11151D"/>
+    </linearGradient>
+
+    <linearGradient id="skullCapOcclusion" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#040609" stop-opacity="0.95"/>
+      <stop offset="35%" stop-color="#090C12" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#090C12" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <linearGradient id="goldDomeGrad" x1="0.2" y1="0.1" x2="0.8" y2="0.9">
+      <stop offset="0%" stop-color="#FEF08A"/>
+      <stop offset="25%" stop-color="#F59E0B"/>
+      <stop offset="65%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#78350F"/>
+    </linearGradient>
+
+    <linearGradient id="goldCordGrad" x1="0.1" y1="0.2" x2="0.9" y2="1">
+      <stop offset="0%" stop-color="#FDE047"/>
+      <stop offset="25%" stop-color="#F59E0B"/>
+      <stop offset="65%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#92400E"/>
+    </linearGradient>
+
+    <linearGradient id="goldFringeBody" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#92400E"/>
+      <stop offset="18%" stop-color="#D97706"/>
+      <stop offset="45%" stop-color="#FDE047"/>
+      <stop offset="75%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#78350F"/>
+    </linearGradient>
+
+    <linearGradient id="fabricButtonGrad" x1="0.2" y1="0.1" x2="0.8" y2="0.9">
+      <stop offset="0%" stop-color="#424B5D"/>
+      <stop offset="40%" stop-color="#262D3B"/>
+      <stop offset="100%" stop-color="#141820"/>
+    </linearGradient>
+  </defs>
+
+  <g filter="url(#macAppShadow)">
+    <rect x="100" y="100" width="824" height="824" rx="190" ry="190" fill="url(#ios6SkyBase)"/>
+  </g>
+
+  <g clip-path="url(#squircleClip)">
+    <rect x="100" y="100" width="824" height="412" fill="url(#topSunlightFlare)"/>
+    <rect x="100" y="100" width="824" height="412" fill="url(#topLeftHotspot)"/>
+    <rect x="100" y="500" width="824" height="424" fill="url(#bottomInternalBounce)"/>
+
+
+    <path d="M 100,100 L 924,100 L 924,475 C 690,550 334,550 100,475 Z" fill="url(#ios6GlossArc)"/>
+    <path d="M 100,475 C 334,550 690,550 924,475" 
+          fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-opacity="0.38"/>
+
+    <rect x="100" y="100" width="824" height="824" rx="190" ry="190" fill="none" stroke="url(#topBevelRim)" stroke-width="2.6"/>
+    <rect x="100" y="100" width="824" height="824" rx="190" ry="190" fill="none" stroke="url(#bottomBevelRim)" stroke-width="2.2"/>
+    <rect x="101" y="101" width="822" height="822" rx="189" ry="189" fill="none" stroke="#FFFFFF" stroke-width="1.6" stroke-opacity="0.25"/>
+
+    <path d="M 120 780 C 110 840, 160 890, 240 914" 
+          fill="none" stroke="url(#bottomCornerGlintLeft)" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 904 780 C 914 840, 864 890, 784 914" 
+          fill="none" stroke="url(#bottomCornerGlintRight)" stroke-width="3" stroke-linecap="round"/>
+
+    <ellipse cx="525" cy="655" rx="340" ry="155" fill="url(#broadAmbientShadow)"/>
+
+    <ellipse cx="516" cy="640" rx="220" ry="85" fill="url(#mediumCastShadow)"/>
+
+    <ellipse cx="512" cy="635" rx="155" ry="42" fill="url(#tightContactShadow)"/>
+
+
+    <g id="graduationCapGroup" transform="translate(0, 36)">
+
+      <g id="skullCap">
+        <path d="M 370 452 
+                 C 366 485, 362 525, 365 554 
+                 C 367 618, 657 618, 659 554 
+                 C 662 525, 658 485, 654 452 Z" 
+              fill="url(#skullCapCloth)"/>
+
+        <path d="M 370 452 
+                 C 368 480, 366 505, 366 524 
+                 C 370 568, 654 568, 658 524 
+                 C 658 505, 656 480, 654 452 Z" 
+              fill="url(#skullCapOcclusion)"/>
+
+        <path d="M 460 495 C 455 530, 452 560, 454 582" 
+              fill="none" stroke="#0D1016" stroke-width="1.4" opacity="0.55"/>
+        <path d="M 461 495 C 456 530, 453 560, 455 582" 
+              fill="none" stroke="#475569" stroke-width="0.8" opacity="0.35"/>
+
+        <path d="M 564 495 C 569 530, 572 560, 570 582" 
+              fill="none" stroke="#0D1016" stroke-width="1.4" opacity="0.55"/>
+        <path d="M 565 495 C 570 530, 573 560, 571 582" 
+              fill="none" stroke="#475569" stroke-width="0.8" opacity="0.35"/>
+
+        <path d="M 374 558 C 420 606, 604 606, 650 558" 
+              fill="none" stroke="#64748B" stroke-width="1.8" opacity="0.35"/>
+        <path d="M 382 564 C 424 610, 600 610, 642 564" 
+              fill="none" stroke="#94A3B8" stroke-width="1.0" opacity="0.25"/>
+      </g>
+
+      <g id="mortarboardBoard">
+        <polygon points="244,395 512,518 512,534 244,411" fill="url(#boardEdgeLeft)"/>
+        <polygon points="512,518 780,395 780,411 512,534" fill="url(#boardEdgeRight)"/>
+
+        <polyline points="244,411 512,534 780,411" 
+                  fill="none" stroke="#080A0E" stroke-width="1.5"/>
+
+        <path d="M 504 271 
+                 C 508 267, 516 267, 520 271 
+                 L 775 391 
+                 C 781 394, 781 401, 775 404 
+                 L 520 520 
+                 C 516 523, 508 523, 504 520 
+                 L 249 404 
+                 C 243 401, 243 394, 249 391 Z" 
+              fill="url(#boardTopSurface)"/>
+
+        <path d="M 252 393 L 512 516" 
+              stroke="#64748B" stroke-width="1.8" stroke-linecap="round" opacity="0.45"/>
+        <path d="M 252 393 L 512 270" 
+              stroke="#94A3B8" stroke-width="1.4" stroke-linecap="round" opacity="0.30"/>
+
+        <polygon points="512,270 512,517 252,393" fill="#FFFFFF" opacity="0.04"/>
+      </g>
+
+      <g id="centerButton">
+        <ellipse cx="512" cy="402" rx="19" ry="11" fill="#06080C" opacity="0.75"/>
+        <circle cx="512" cy="396" r="17" fill="url(#goldDomeGrad)"/>
+        <circle cx="512" cy="395" r="14.5" fill="url(#fabricButtonGrad)"/>
+        <ellipse cx="507" cy="391" rx="5" ry="3" fill="#FFFFFF" opacity="0.45"/>
+        <circle cx="512" cy="395" r="3.5" fill="url(#goldDomeGrad)"/>
+      </g>
+
+      <g id="goldenTassel">
+        <path d="M 512 396 Q 402 410, 368 468" 
+              fill="none" stroke="#06080C" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+
+        <path d="M 364 476 Q 352 524, 356 580" 
+              fill="none" stroke="#05070B" stroke-width="11" stroke-linecap="round" opacity="0.60"/>
+
+        <path d="M 512 395 Q 404 406, 368 464" 
+              fill="none" stroke="url(#goldCordGrad)" stroke-width="9.5" stroke-linecap="round"/>
+        <path d="M 512 394 Q 404 405, 368 463" 
+              fill="none" stroke="#FEF08A" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>
+
+        <path d="M 368 464 L 364 476" 
+              stroke="url(#goldDomeGrad)" stroke-width="10.5" stroke-linecap="round"/>
+        <line x1="367" y1="465" x2="363" y2="475" 
+              stroke="#FFFBEB" stroke-width="3" opacity="0.95"/>
+
+        <path d="M 364 476 Q 355 520, 358 574" 
+              fill="none" stroke="url(#goldCordGrad)" stroke-width="9" stroke-linecap="round"/>
+        <path d="M 363 476 Q 354 520, 357 573" 
+              fill="none" stroke="#FEF08A" stroke-width="2.2" stroke-linecap="round" opacity="0.80"/>
+
+        <rect x="345" y="573" width="26" height="12" rx="4" fill="#05070B" opacity="0.55"/>
+        <rect x="346" y="570" width="24" height="12" rx="4" fill="url(#goldDomeGrad)"/>
+        <rect x="348" y="571" width="20" height="3.2" rx="1.5" fill="#FFFFFF" opacity="0.90"/>
+        <line x1="346" y1="576" x2="370" y2="576" stroke="#92400E" stroke-width="1.2"/>
+
+        <path d="M 342 582 L 374 582 L 378 656 C 378 662, 338 662, 338 656 Z" 
+              fill="#040508" opacity="0.45"/>
+
+        <path d="M 345 581 L 371 581 L 375 654 C 375 660, 341 660, 341 654 Z" 
+              fill="url(#goldFringeBody)"/>
+
+        <line x1="348" y1="583" x2="345" y2="652" stroke="#FEF08A" stroke-width="1.8" opacity="0.85"/>
+        <line x1="352" y1="583" x2="350" y2="654" stroke="#FFFBEB" stroke-width="1.5" opacity="0.95"/>
+        <line x1="357" y1="583" x2="357" y2="655" stroke="#FDE047" stroke-width="1.8" opacity="0.90"/>
+        <line x1="362" y1="583" x2="363" y2="654" stroke="#FFFFFF" stroke-width="1.5" opacity="0.95"/>
+        <line x1="367" y1="583" x2="370" y2="652" stroke="#B45309" stroke-width="1.8" opacity="0.75"/>
+
+        <ellipse cx="358" cy="655" rx="16" ry="3.5" fill="#78350F" opacity="0.65"/>
+      </g>
+    </g>
+  </g>
+</svg>
