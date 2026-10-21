@@ -59,12 +59,13 @@ fun TomorrowHomeworkScreen(
     onToggleCompletion: (String, Boolean) -> Unit,
     onSelectAssignment: (Coursework) -> Unit,
     modifier: Modifier = Modifier,
-    courseworkIdsWithNotes: Set<String> = emptySet()
+    courseworkIdsWithNotes: Set<String> = emptySet(),
+    currentDayEpoch: Long = com.phucta.classroom.data.model.ClassroomDateUtils.startOfToday
 ) {
     val incompleteCount = remember(tomorrowItems) { tomorrowItems.count { !it.isCompleted } }
     val isAllDone = remember(tomorrowItems, incompleteCount) { tomorrowItems.isNotEmpty() && incompleteCount == 0 }
-    val hasTomorrowTasks = remember(tomorrowItems) { tomorrowItems.any { it.isDueTomorrow } }
-    val hasTodayTasks = remember(tomorrowItems) { tomorrowItems.any { it.isDueToday } }
+    val hasTomorrowTasks = remember(tomorrowItems, currentDayEpoch) { tomorrowItems.any { it.isDueTomorrow } }
+    val hasTodayTasks = remember(tomorrowItems, currentDayEpoch) { tomorrowItems.any { it.isDueToday } }
 
     val totalCount = tomorrowItems.size
     val completedCount = totalCount - incompleteCount
@@ -300,7 +301,11 @@ fun TomorrowHomeworkScreen(
                 )
             }
 
-            items(tomorrowItems, key = { it.id }) { item ->
+            items(
+                items = tomorrowItems,
+                key = { it.id },
+                contentType = { "assignment_card" }
+            ) { item ->
                 AssignmentCard(
                     coursework = item,
                     hasNote = courseworkIdsWithNotes.contains(item.id),

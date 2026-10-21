@@ -51,17 +51,22 @@ object BaoBaiBucketingUtils {
     ): List<Coursework> {
         if (items.size <= 1) return items
         if (searchTokens.isNotEmpty()) {
-            return items.sortedWith(
-                compareByDescending<Coursework> { item ->
-                    com.phucta.classroom.data.model.calculateSearchRelevance(
-                        queryTokens = searchTokens,
-                        rawNormalizedQuery = rawNormalizedQuery,
-                        title = item.title,
-                        courseName = item.courseName,
-                        content = item.description
-                    )
-                }.then(COURSEWORK_COMPARATOR)
-            )
+            val scores = IntArray(items.size) { index ->
+                val item = items[index]
+                com.phucta.classroom.data.model.calculateSearchRelevance(
+                    queryTokens = searchTokens,
+                    rawNormalizedQuery = rawNormalizedQuery,
+                    title = item.title,
+                    courseName = item.courseName,
+                    content = item.description
+                )
+            }
+            val indices = Array(items.size) { it }
+            indices.sortWith { a, b ->
+                val scoreDiff = scores[b].compareTo(scores[a])
+                if (scoreDiff != 0) scoreDiff else COURSEWORK_COMPARATOR.compare(items[a], items[b])
+            }
+            return indices.map { items[it] }
         }
         return items.sortedWith(COURSEWORK_COMPARATOR)
     }

@@ -165,7 +165,7 @@ fun AssignmentCard(
         label = "titleAlpha"
     )
 
-    var textLayoutResult by remember(coursework.id, coursework.title) { mutableStateOf<TextLayoutResult?>(null) }
+    val textLayoutResultHolder = remember(coursework.id, coursework.title) { arrayOfNulls<TextLayoutResult>(1) }
 
     Row(
         modifier = modifier
@@ -209,20 +209,18 @@ fun AssignmentCard(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                if (isCompleted || iconScale.value > 0.01f) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Completed",
-                        tint = Color.White,
-                        modifier = Modifier
-                            .size(15.dp)
-                            .graphicsLayer {
-                                scaleX = iconScale.value
-                                scaleY = iconScale.value
-                                alpha = iconAlpha.value
-                            }
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Completed",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(15.dp)
+                        .graphicsLayer {
+                            scaleX = iconScale.value
+                            scaleY = iconScale.value
+                            alpha = iconAlpha.value
+                        }
+                )
             }
         }
 
@@ -256,14 +254,14 @@ fun AssignmentCard(
                     fontSize = 15.5.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    onTextLayout = { textLayoutResult = it },
+                    onTextLayout = { textLayoutResultHolder[0] = it },
                     modifier = Modifier
                         .graphicsLayer { alpha = titleAlpha.value }
                         .drawWithContent {
                             drawContent()
                             val progress = strikethroughProgress.value
                             if (progress > 0.001f) {
-                                val layout = textLayoutResult
+                                val layout = textLayoutResultHolder[0]
                                 if (layout != null) {
                                     for (i in 0 until layout.lineCount) {
                                         val lineTop = layout.getLineTop(i)

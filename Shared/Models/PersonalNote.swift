@@ -29,7 +29,10 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
     public var createdAt: Date
     public var updatedAt: Date
 
-    public var searchIndex: String
+    public var searchIndex: String {
+        let checklistText = checklist.map(\.title).joined(separator: " ")
+        return "\(title) \(content) \(courseName ?? "") \(checklistText)".normalizedForVietnameseSearch()
+    }
 
     private enum CodingKeys: String, CodingKey {
         case id, courseworkId, courseId, courseName, title, content, checklist, dueDate, isCompleted, createdAt, updatedAt
@@ -59,8 +62,6 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
         self.isCompleted = isCompleted
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        let checklistText = checklist.map(\.title).joined(separator: " ")
-        self.searchIndex = "\(title) \(content) \(courseName ?? "") \(checklistText)".normalizedForVietnameseSearch()
     }
 
     public init(from decoder: Decoder) throws {
@@ -76,8 +77,6 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
         self.isCompleted = (try? container.decode(Bool.self, forKey: .isCompleted)) ?? false
         self.createdAt = (try? container.decode(Date.self, forKey: .createdAt)) ?? Date()
         self.updatedAt = (try? container.decode(Date.self, forKey: .updatedAt)) ?? Date()
-        let checklistText = checklist.map(\.title).joined(separator: " ")
-        self.searchIndex = "\(title) \(content) \(courseName ?? "") \(checklistText)".normalizedForVietnameseSearch()
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -125,8 +124,8 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
     public func searchRelevanceScore(for tokens: [String], rawNormalizedQuery: String) -> Int {
         guard !tokens.isEmpty else { return 0 }
         let normTitle = title.normalizedForVietnameseSearch()
-        let normCourse = (courseName ?? "").normalizedForVietnameseSearch()
-        let normContent = content.normalizedForVietnameseSearch()
+        let normCourse = (courseName?.isEmpty ?? true) ? "" : courseName!.normalizedForVietnameseSearch()
+        let normContent = content.isEmpty ? "" : content.normalizedForVietnameseSearch()
 
         var score = 0
         if normTitle == rawNormalizedQuery {

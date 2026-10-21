@@ -18,8 +18,10 @@ data class Coursework(
     val isManuallyCompleted: Boolean = false,
     val searchIndex: String = buildSearchIndex(title, courseName, description)
 ) {
-    val timeOnlyString: String = ClassroomDateUtils.buildTimeOnlyString(dueEpochMillis)
-    val formattedFullDueDate: String = ClassroomDateUtils.buildFormattedFullDueDate(dueEpochMillis)
+    val timeOnlyString: String
+        get() = ClassroomDateUtils.buildTimeOnlyString(dueEpochMillis)
+    val formattedFullDueDate: String
+        get() = ClassroomDateUtils.buildFormattedFullDueDate(dueEpochMillis)
 
     /**
      * Triết lý ứng dụng: Cứ hết hạn thì tính là đã hoàn thành.

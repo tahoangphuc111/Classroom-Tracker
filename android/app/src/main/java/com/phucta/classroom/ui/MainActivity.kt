@@ -13,9 +13,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.phucta.classroom.ClassroomApplication
+import com.phucta.classroom.data.model.ClassroomDateUtils
 import com.phucta.classroom.ui.screens.MainScreen
 import com.phucta.classroom.ui.theme.ChunkyColor
 import com.phucta.classroom.ui.theme.ClassroomTypography
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -45,6 +47,20 @@ class MainActivity : ComponentActivity() {
                         .background(ChunkyColor.WindowBackground)
                 ) {
                     MainScreen()
+                }
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ClassroomDateUtils.ensureDayBoundaries()
+        lifecycleScope.launch {
+            if (app.oauthManager.isAuthenticated.value) {
+                val lastSync = app.preferences.lastSyncTimestampFlow.first()
+                val now = System.currentTimeMillis()
+                if (lastSync == null || (now - lastSync) > 300_000L) {
+                    app.repository.syncAll()
                 }
             }
         }

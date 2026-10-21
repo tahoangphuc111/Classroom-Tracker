@@ -6,17 +6,34 @@ import java.util.regex.Pattern
 
 private val DIACRITICS_PATTERN = Pattern.compile("\\p{InCombiningDiacriticalMarks}+")
 private val VIETNAMESE_LOCALE = Locale("vi", "VN")
+private val WHITESPACE_REGEX = Regex("\\s+")
+private val NORMALIZE_CACHE = java.util.concurrent.ConcurrentHashMap<String, String>(256)
+
+fun tokenizeSearchQuery(query: String): List<String> {
+    val trimmed = query.trim()
+    if (trimmed.isEmpty()) return emptyList()
+    return trimmed.split(WHITESPACE_REGEX).filter { it.isNotEmpty() }
+}
 
 fun String.normalizeForVietnameseSearch(): String {
     if (this.isEmpty()) return ""
+
+    if (this.length <= 128) {
+        val cached = NORMALIZE_CACHE[this]
+        if (cached != null) return cached
+    }
 
     // Lowercase first using Vietnamese locale so both 'đ' and 'Đ' map to 'đ'
     val lower = this.lowercase(VIETNAMESE_LOCALE).replace('đ', 'd')
 
     val decomposed = Normalizer.normalize(lower, Normalizer.Form.NFD)
-    val stripped = DIACRITICS_PATTERN.matcher(decomposed).replaceAll("")
+    val stripped = DIACRITICS_PATTERN.matcher(decomposed).replaceAll("").trim()
 
-    return stripped.trim()
+    if (this.length <= 128 && NORMALIZE_CACHE.size < 1024) {
+        NORMALIZE_CACHE[this] = stripped
+    }
+
+    return stripped
 }
 
 /**

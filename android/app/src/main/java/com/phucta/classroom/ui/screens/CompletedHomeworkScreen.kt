@@ -115,7 +115,11 @@ fun CompletedHomeworkScreen(
                         )
                 )
             }
-            items(completedItems, key = { it.id }) { item ->
+            items(
+                items = completedItems,
+                key = { it.id },
+                contentType = { "assignment_card" }
+            ) { item ->
                 AssignmentCard(
                     coursework = item,
                     hasNote = courseworkIdsWithNotes.contains(item.id),

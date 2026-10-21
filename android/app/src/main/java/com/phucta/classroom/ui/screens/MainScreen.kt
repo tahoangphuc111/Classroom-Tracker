@@ -73,6 +73,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -95,6 +96,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.semantics.Role
 import com.phucta.classroom.ClassroomApplication
 import com.phucta.classroom.data.model.Coursework
+import com.phucta.classroom.data.model.PersonalNote
 import com.phucta.classroom.domain.BaoBaiBucketingUtils
 import com.phucta.classroom.ui.components.EmberEmotion
 import com.phucta.classroom.ui.components.EmberFlameCanvas
@@ -120,6 +122,18 @@ fun MainScreen() {
     var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var selectedCourseworkId by rememberSaveable { mutableStateOf<String?>(null) }
     var isDemoMode by rememberSaveable { mutableStateOf(false) }
+    var currentDayEpoch by remember { mutableLongStateOf(com.phucta.classroom.data.model.ClassroomDateUtils.startOfToday) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(30_000L)
+            com.phucta.classroom.data.model.ClassroomDateUtils.ensureDayBoundaries()
+            val today = com.phucta.classroom.data.model.ClassroomDateUtils.startOfToday
+            if (today != currentDayEpoch) {
+                currentDayEpoch = today
+            }
+        }
+    }
 
     val courses by repository.coursesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val allCoursework by repository.courseworkFlow.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -145,7 +159,7 @@ fun MainScreen() {
         }
     }
 
-    val tomorrowItems = remember(allCoursework, courses, personalNotes) {
+    val tomorrowItems = remember(allCoursework, courses, personalNotes, currentDayEpoch) {
         BaoBaiBucketingUtils.getTomorrowCoursework(
             items = allCoursework,
             courses = courses,
@@ -154,10 +168,10 @@ fun MainScreen() {
     }
 
     val tomorrowIncompleteCount = remember(tomorrowItems) { tomorrowItems.count { !it.isCompleted } }
-    val upcomingIncompleteCount = remember(allCoursework, courses) {
+    val upcomingIncompleteCount = remember(allCoursework, courses, currentDayEpoch) {
         BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses).count { !it.isCompleted }
     }
-    val incompleteNotesCount = remember(personalNotes) {
+    val incompleteNotesCount = remember(personalNotes, currentDayEpoch) {
         personalNotes.count { it.courseworkId == null && !it.isCompleted }
     }
     val courseworkIdsWithNotes = remember(personalNotes) {
@@ -168,7 +182,7 @@ fun MainScreen() {
 
     val pullToRefreshState = rememberPullToRefreshState()
 
-    val completedItems = remember(allCoursework, courses) {
+    val completedItems = remember(allCoursework, courses, currentDayEpoch) {
         val filtered = BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses).filter { it.isCompleted }
         filtered.sortedWith { first, second ->
             when {
@@ -179,6 +193,51 @@ fun MainScreen() {
                 second.dueEpochMillis != null -> 1
                 else -> first.title.compareTo(second.title, ignoreCase = true)
             }
+        }
+    }
+
+    val onToggleTomorrowCompletion = remember(scope, repository) {
+        { id: String, completed: Boolean ->
+            if (id.startsWith("note_")) {
+                val noteId = id.removePrefix("note_")
+                scope.launch { repository.togglePersonalNoteCompletion(noteId, completed) }
+            } else {
+                scope.launch { repository.toggleTaskCompletion(id, completed) }
+            }
+            Unit
+        }
+    }
+
+    val onToggleTaskCompletion = remember(scope, repository) {
+        { id: String, completed: Boolean ->
+            if (id.startsWith("note_")) {
+                val noteId = id.removePrefix("note_")
+                scope.launch { repository.togglePersonalNoteCompletion(noteId, completed) }
+            } else {
+                scope.launch { repository.toggleTaskCompletion(id, completed) }
+            }
+            Unit
+        }
+    }
+
+    val onTogglePersonalNoteCompletion = remember(scope, repository) {
+        { noteId: String, completed: Boolean ->
+            scope.launch { repository.togglePersonalNoteCompletion(noteId, completed) }
+            Unit
+        }
+    }
+
+    val onSavePersonalNote = remember(scope, repository) {
+        { note: PersonalNote ->
+            scope.launch { repository.savePersonalNote(note) }
+            Unit
+        }
+    }
+
+    val onDeletePersonalNote = remember(scope, repository) {
+        { noteId: String ->
+            scope.launch { repository.deletePersonalNote(noteId) }
+            Unit
         }
     }
 
@@ -485,14 +544,8 @@ fun MainScreen() {
                         0 -> TomorrowHomeworkScreen(
                             tomorrowItems = tomorrowItems,
                             courseworkIdsWithNotes = courseworkIdsWithNotes,
-                            onToggleCompletion = { id, completed ->
-                                if (id.startsWith("note_")) {
-                                    val noteId = id.removePrefix("note_")
-                                    scope.launch { repository.togglePersonalNoteCompletion(noteId, completed) }
-                                } else {
-                                    scope.launch { repository.toggleTaskCompletion(id, completed) }
-                                }
-                            },
+                            currentDayEpoch = currentDayEpoch,
+                            onToggleCompletion = onToggleTomorrowCompletion,
                             onSelectAssignment = { coursework ->
                                 if (coursework.id.startsWith("note_")) {
                                     selectedTabIndex = 3
@@ -505,9 +558,8 @@ fun MainScreen() {
                             allCoursework = allCoursework,
                             courses = courses,
                             courseworkIdsWithNotes = courseworkIdsWithNotes,
-                            onToggleCompletion = { id, completed ->
-                                scope.launch { repository.toggleTaskCompletion(id, completed) }
-                            },
+                            currentDayEpoch = currentDayEpoch,
+                            onToggleCompletion = onToggleTaskCompletion,
                             onSelectAssignment = { coursework ->
                                 selectedCourseworkId = coursework.id
                             }
@@ -515,9 +567,7 @@ fun MainScreen() {
                         2 -> CompletedHomeworkScreen(
                             completedItems = completedItems,
                             courseworkIdsWithNotes = courseworkIdsWithNotes,
-                            onToggleCompletion = { id, completed ->
-                                scope.launch { repository.toggleTaskCompletion(id, completed) }
-                            },
+                            onToggleCompletion = onToggleTaskCompletion,
                             onSelectAssignment = { coursework ->
                                 selectedCourseworkId = coursework.id
                             }
@@ -525,15 +575,9 @@ fun MainScreen() {
                         3 -> PersonalNotesScreen(
                             notes = personalNotes,
                             courses = courses,
-                            onToggleCompletion = { noteId, completed ->
-                                scope.launch { repository.togglePersonalNoteCompletion(noteId, completed) }
-                            },
-                            onSaveNote = { note ->
-                                scope.launch { repository.savePersonalNote(note) }
-                            },
-                            onDeleteNote = { noteId ->
-                                scope.launch { repository.deletePersonalNote(noteId) }
-                            }
+                            onToggleCompletion = onTogglePersonalNoteCompletion,
+                            onSaveNote = onSavePersonalNote,
+                            onDeleteNote = onDeletePersonalNote
                         )
                     }
                 }
@@ -553,8 +597,14 @@ fun MainScreen() {
         )
     }
 
-    val activeSelectedCoursework = selectedCourseworkId?.let { id ->
-        allCoursework.find { it.id == id }
+    val activeSelectedCoursework = remember(selectedCourseworkId, allCoursework) {
+        selectedCourseworkId?.let { id -> allCoursework.find { it.id == id } }
+    }
+
+    LaunchedEffect(selectedCourseworkId, allCoursework) {
+        if (selectedCourseworkId != null && allCoursework.isNotEmpty() && activeSelectedCoursework == null) {
+            selectedCourseworkId = null
+        }
     }
 
     if (activeSelectedCoursework != null) {

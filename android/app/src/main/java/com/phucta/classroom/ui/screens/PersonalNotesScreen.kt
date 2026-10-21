@@ -134,7 +134,7 @@ fun PersonalNotesScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val searchTokens = remember(normalizedQuery) {
-        normalizedQuery.split("\\s+".toRegex()).filter { it.isNotBlank() }
+        com.phucta.classroom.data.model.tokenizeSearchQuery(normalizedQuery)
     }
 
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
@@ -174,17 +174,22 @@ fun PersonalNotesScreen(
         }
 
         if (searchTokens.isNotEmpty()) {
-            matches.sortedWith(
-                compareByDescending<PersonalNote> { note ->
-                    com.phucta.classroom.data.model.calculateSearchRelevance(
-                        queryTokens = searchTokens,
-                        rawNormalizedQuery = normalizedQuery,
-                        title = note.title,
-                        courseName = note.courseName,
-                        content = note.content
-                    )
-                }.then(defaultComparator)
-            )
+            val scores = IntArray(matches.size) { index ->
+                val note = matches[index]
+                com.phucta.classroom.data.model.calculateSearchRelevance(
+                    queryTokens = searchTokens,
+                    rawNormalizedQuery = normalizedQuery,
+                    title = note.title,
+                    courseName = note.courseName,
+                    content = note.content
+                )
+            }
+            val indices = Array(matches.size) { it }
+            indices.sortWith { a, b ->
+                val scoreDiff = scores[b].compareTo(scores[a])
+                if (scoreDiff != 0) scoreDiff else defaultComparator.compare(matches[a], matches[b])
+            }
+            indices.map { matches[it] }
         } else {
             matches.sortedWith(defaultComparator)
         }
@@ -356,7 +361,11 @@ fun PersonalNotesScreen(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(filteredNotes, key = { it.id }) { note ->
+                    items(
+                        items = filteredNotes,
+                        key = { it.id },
+                        contentType = { "personal_note" }
+                    ) { note ->
                         PersonalNoteCard(
                             note = note,
                             onToggle = { onToggleCompletion(note.id, !note.isCompleted) },
@@ -536,7 +545,7 @@ private fun PersonalNoteCard(
         label = "noteTitleAlpha"
     )
 
-    var titleLayoutResult by remember(note.id, note.title) { mutableStateOf<TextLayoutResult?>(null) }
+    val titleLayoutResultHolder = remember(note.id, note.title) { arrayOfNulls<TextLayoutResult>(1) }
 
     Row(
         modifier = modifier
@@ -580,20 +589,18 @@ private fun PersonalNoteCard(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                if (note.isCompleted || iconScale.value > 0.01f) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Hoàn thành",
-                        tint = Color.White,
-                        modifier = Modifier
-                            .size(15.dp)
-                            .graphicsLayer {
-                                scaleX = iconScale.value
-                                scaleY = iconScale.value
-                                alpha = iconAlpha.value
-                            }
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Hoàn thành",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(15.dp)
+                        .graphicsLayer {
+                            scaleX = iconScale.value
+                            scaleY = iconScale.value
+                            alpha = iconAlpha.value
+                        }
+                )
             }
         }
 
@@ -619,7 +626,7 @@ private fun PersonalNoteCard(
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         color = titleColor,
-                        onTextLayout = { titleLayoutResult = it },
+                        onTextLayout = { titleLayoutResultHolder[0] = it },
                         modifier = Modifier
                             .weight(1f)
                             .graphicsLayer { alpha = titleAlpha.value }
@@ -627,7 +634,7 @@ private fun PersonalNoteCard(
                                 drawContent()
                                 val progress = strikethroughProgress.value
                                 if (progress > 0.001f) {
-                                    val layout = titleLayoutResult
+                                    val layout = titleLayoutResultHolder[0]
                                     if (layout != null) {
                                         for (i in 0 until layout.lineCount) {
                                             val lineTop = layout.getLineTop(i)

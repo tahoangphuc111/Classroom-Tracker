@@ -323,7 +323,7 @@ public extension Coursework {
         guard !tokens.isEmpty else { return 0 }
         let normTitle = title.normalizedForVietnameseSearch()
         let normCourse = courseName.normalizedForVietnameseSearch()
-        let normDesc = (description ?? "").normalizedForVietnameseSearch()
+        let normDesc = (description?.isEmpty ?? true) ? "" : description!.normalizedForVietnameseSearch()
 
         var score = 0
         if normTitle == rawNormalizedQuery {

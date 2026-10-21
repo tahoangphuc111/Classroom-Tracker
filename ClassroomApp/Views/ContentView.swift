@@ -1,5 +1,6 @@
 import SwiftUI
 import WidgetKit
+import Combine
 #if os(macOS)
 import AppKit
 #elseif os(iOS)
@@ -462,14 +463,13 @@ public struct ContentView: View {
         let matchingItems = baseList.filter { item in
             tokens.allSatisfy { item.searchIndex.contains($0) }
         }
-        return matchingItems.sorted { first, second in
-            let score1 = first.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)
-            let score2 = second.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)
-            if score1 != score2 {
-                return score1 > score2
+        let scored = matchingItems.map { ($0, $0.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)) }
+        return scored.sorted { first, second in
+            if first.1 != second.1 {
+                return first.1 > second.1
             }
-            return first < second
-        }
+            return first.0 < second.0
+        }.map(\.0)
     }
 
     private var baseFilteredList: [Coursework] {
@@ -632,6 +632,16 @@ public struct ContentView: View {
                         }
                     }
                 }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                refreshData()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name.NSSystemTimeZoneDidChange)) { _ in
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                refreshData()
             }
         }
         .onChange(of: authService.authErrorMessage) {
@@ -3388,11 +3398,19 @@ public struct ContentView: View {
         guard !ids.isEmpty else { return }
         triggerHapticFeedback()
 
+        var notesChanged = false
         for id in ids {
             if let index = allCoursework.firstIndex(where: { $0.id == id }) {
                 allCoursework[index].status = .turnedIn
                 allCoursework[index].isManuallyCompleted = true
+            } else if id.hasPrefix("note_") {
+                let noteId = String(id.dropFirst(5))
+                ClassroomStorage.shared.togglePersonalNoteCompletion(id: noteId)
+                notesChanged = true
             }
+        }
+        if notesChanged {
+            self.personalNotes = ClassroomStorage.shared.loadPersonalNotes()
         }
 
         withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
@@ -3407,7 +3425,7 @@ public struct ContentView: View {
         reminderService.updateReminderContent()
 
         showToast(
-            title: "Đã hoàn thành \(ids.count) bài tập!",
+            title: "Đã hoàn thành \(ids.count) mục!",
             icon: "checkmark.circle.fill",
             tint: .green
         )
@@ -3461,9 +3479,20 @@ public struct ContentView: View {
             self.personalNotes = ClassroomStorage.shared.loadPersonalNotes()
             withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                 recomputeBuckets()
-                if let updated = buckets.tomorrow.first(where: { $0.id == item.id }) {
-                    if selectedCoursework?.id == item.id {
+                if selectedCoursework?.id == item.id {
+                    if let updated = buckets.tomorrow.first(where: { $0.id == item.id }) {
                         selectedCoursework = updated
+                    } else if let note = personalNotes.first(where: { $0.id == noteId }) {
+                        selectedCoursework = Coursework(
+                            id: "note_\(note.id)",
+                            courseId: note.courseId ?? "personal_note",
+                            courseName: note.courseName ?? "Ghi chú",
+                            title: note.title,
+                            description: note.content,
+                            dueDate: note.dueDate,
+                            status: note.isCompleted ? .turnedIn : .pending,
+                            isManuallyCompleted: note.isCompleted
+                        )
                     }
                 }
             }

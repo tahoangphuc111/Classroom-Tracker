@@ -93,17 +93,16 @@ public struct PersonalNotesView: View {
                 result = result.filter { note in
                     tokens.allSatisfy { note.searchIndex.contains($0) }
                 }
-                return result.sorted { first, second in
-                    let score1 = first.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)
-                    let score2 = second.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)
-                    if score1 != score2 {
-                        return score1 > score2
+                let scored = result.map { ($0, $0.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)) }
+                return scored.sorted { first, second in
+                    if first.1 != second.1 {
+                        return first.1 > second.1
                     }
-                    if first.isCompleted != second.isCompleted {
-                        return !first.isCompleted
+                    if first.0.isCompleted != second.0.isCompleted {
+                        return !first.0.isCompleted
                     }
-                    return first.updatedAt > second.updatedAt
-                }
+                    return first.0.updatedAt > second.0.updatedAt
+                }.map(\.0)
             }
         }
 
@@ -1083,14 +1082,12 @@ public struct CreateOrEditNoteSheet: View {
         let selectedCourse = courses.first(where: { $0.id == selectedCourseId })
 
         let isDone: Bool
-        if let existing = existingNote {
-            if !finalChecklist.isEmpty && finalChecklist.allSatisfy({ $0.isCompleted }) {
-                isDone = true
-            } else {
-                isDone = existing.isCompleted
-            }
+        if !finalChecklist.isEmpty {
+            isDone = finalChecklist.allSatisfy({ $0.isCompleted })
+        } else if let existing = existingNote {
+            isDone = existing.isCompleted
         } else {
-            isDone = !finalChecklist.isEmpty && finalChecklist.allSatisfy({ $0.isCompleted })
+            isDone = false
         }
 
         let finalNote = PersonalNote(

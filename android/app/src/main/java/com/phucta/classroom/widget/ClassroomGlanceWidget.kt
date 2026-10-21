@@ -114,7 +114,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     modifier = GlanceModifier
                         .fillMaxSize()
                         .cornerRadius(18.dp)
-                        .background(R.drawable.bg_widget_sky)
+                        .background(ImageProvider(R.drawable.bg_widget_sky))
                         .clickable(actionStartActivity<MainActivity>())
                         .padding(if (isSmall) 7.dp else 9.dp)
                 ) {
@@ -174,7 +174,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     Box(
                         modifier = GlanceModifier
                             .fillMaxWidth()
-                            .background(R.drawable.bg_widget_card)
+                            .background(ImageProvider(R.drawable.bg_widget_card))
                             .padding(horizontal = 6.dp, vertical = 6.dp)
                     ) {
                         Column(
@@ -248,7 +248,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         modifier = GlanceModifier
                             .defaultWeight()
                             .fillMaxWidth()
-                            .background(R.drawable.bg_widget_card_large)
+                            .background(ImageProvider(R.drawable.bg_widget_card_large))
                             .padding(horizontal = 14.dp, vertical = 10.dp)
                     ) {
                         Column(
@@ -318,7 +318,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         modifier = GlanceModifier
                             .defaultWeight()
                             .fillMaxHeight()
-                            .background(R.drawable.bg_widget_card)
+                            .background(ImageProvider(R.drawable.bg_widget_card))
                             .padding(horizontal = 10.dp, vertical = 8.dp)
                     ) {
                         Column(
@@ -444,7 +444,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 modifier = GlanceModifier
                     .defaultWeight()
                     .fillMaxWidth()
-                    .background(R.drawable.bg_widget_card)
+                    .background(ImageProvider(R.drawable.bg_widget_card))
                     .padding(horizontal = 7.dp, vertical = 6.dp)
             ) {
                 if (displayItems.isEmpty()) {
@@ -732,7 +732,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 modifier = GlanceModifier
                     .defaultWeight()
                     .fillMaxHeight()
-                    .background(R.drawable.bg_widget_card)
+                    .background(ImageProvider(R.drawable.bg_widget_card))
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Column(
@@ -1145,7 +1145,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 modifier = GlanceModifier
                     .defaultWeight()
                     .fillMaxWidth()
-                    .background(R.drawable.bg_widget_card_large)
+                    .background(ImageProvider(R.drawable.bg_widget_card_large))
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Column(

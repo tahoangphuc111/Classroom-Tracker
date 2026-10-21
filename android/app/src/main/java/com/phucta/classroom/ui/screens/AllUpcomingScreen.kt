@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phucta.classroom.data.model.ClassroomDateUtils
 import com.phucta.classroom.data.model.Course
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.normalizeForVietnameseSearch
@@ -71,7 +72,8 @@ fun AllUpcomingScreen(
     onToggleCompletion: (String, Boolean) -> Unit,
     onSelectAssignment: (Coursework) -> Unit,
     modifier: Modifier = Modifier,
-    courseworkIdsWithNotes: Set<String> = emptySet()
+    courseworkIdsWithNotes: Set<String> = emptySet(),
+    currentDayEpoch: Long = ClassroomDateUtils.startOfToday
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedSubjectCategory by rememberSaveable { mutableStateOf<String?>(null) }
@@ -108,30 +110,42 @@ fun AllUpcomingScreen(
     }
 
     val availableSubjectCategories = remember(activeCoursework) {
-        activeCoursework.map { SubjectArtHelper.category(it.courseName, it.title) }
-            .filter { it != SubjectCategory.OTHER }
-            .distinct()
-            .sortedBy { it.name }
+        val categories = java.util.EnumSet.noneOf(SubjectCategory::class.java)
+        for (item in activeCoursework) {
+            val cat = SubjectArtHelper.category(item.courseName, item.title)
+            if (cat != SubjectCategory.OTHER) {
+                categories.add(cat)
+            }
+        }
+        categories.sortedBy { it.name }
     }
 
     val searchTokens = remember(normalizedQuery) {
-        normalizedQuery.split("\\s+".toRegex()).filter { it.isNotBlank() }
+        com.phucta.classroom.data.model.tokenizeSearchQuery(normalizedQuery)
     }
 
     val filteredItems = remember(activeCoursework, searchTokens, selectedSubjectCategory) {
-        var items = activeCoursework
-        if (selectedSubjectCategory != null) {
-            items = items.filter { SubjectArtHelper.category(it.courseName, it.title).name == selectedSubjectCategory }
-        }
-        if (searchTokens.isNotEmpty()) {
-            items = items.filter { item ->
-                searchTokens.all { token -> item.searchIndex.contains(token) }
+        if (selectedSubjectCategory == null && searchTokens.isEmpty()) {
+            activeCoursework
+        } else {
+            val targetCategory = selectedSubjectCategory?.let {
+                runCatching { SubjectCategory.valueOf(it) }.getOrNull()
+            }
+            activeCoursework.filter { item ->
+                if (targetCategory != null && SubjectArtHelper.category(item.courseName, item.title) != targetCategory) {
+                    return@filter false
+                }
+                if (searchTokens.isNotEmpty()) {
+                    for (token in searchTokens) {
+                        if (!item.searchIndex.contains(token)) return@filter false
+                    }
+                }
+                true
             }
         }
-        items
     }
 
-    val buckets = remember(filteredItems, searchTokens, normalizedQuery) {
+    val buckets = remember(filteredItems, searchTokens, normalizedQuery, currentDayEpoch) {
         BaoBaiBucketingUtils.computeBuckets(
             items = filteredItems,
             searchTokens = searchTokens,
@@ -424,7 +438,11 @@ fun AllUpcomingScreen(
                             )
                         )
                     }
-                    items(buckets.overdue, key = { it.id }) { item ->
+                    items(
+                        items = buckets.overdue,
+                        key = { it.id },
+                        contentType = { "assignment_card" }
+                    ) { item ->
                         AssignmentCard(
                             coursework = item,
                             hasNote = courseworkIdsWithNotes.contains(item.id),
@@ -454,7 +472,11 @@ fun AllUpcomingScreen(
                             )
                         )
                     }
-                    items(buckets.today, key = { it.id }) { item ->
+                    items(
+                        items = buckets.today,
+                        key = { it.id },
+                        contentType = { "assignment_card" }
+                    ) { item ->
                         AssignmentCard(
                             coursework = item,
                             hasNote = courseworkIdsWithNotes.contains(item.id),
@@ -484,7 +506,11 @@ fun AllUpcomingScreen(
                             )
                         )
                     }
-                    items(buckets.tomorrow, key = { it.id }) { item ->
+                    items(
+                        items = buckets.tomorrow,
+                        key = { it.id },
+                        contentType = { "assignment_card" }
+                    ) { item ->
                         AssignmentCard(
                             coursework = item,
                             hasNote = courseworkIdsWithNotes.contains(item.id),
@@ -514,7 +540,11 @@ fun AllUpcomingScreen(
                             )
                         )
                     }
-                    items(buckets.laterUpcoming, key = { it.id }) { item ->
+                    items(
+                        items = buckets.laterUpcoming,
+                        key = { it.id },
+                        contentType = { "assignment_card" }
+                    ) { item ->
                         AssignmentCard(
                             coursework = item,
                             hasNote = courseworkIdsWithNotes.contains(item.id),
@@ -544,7 +574,11 @@ fun AllUpcomingScreen(
                             )
                         )
                     }
-                    items(buckets.noDueDate, key = { it.id }) { item ->
+                    items(
+                        items = buckets.noDueDate,
+                        key = { it.id },
+                        contentType = { "assignment_card" }
+                    ) { item ->
                         AssignmentCard(
                             coursework = item,
                             hasNote = courseworkIdsWithNotes.contains(item.id),
@@ -574,7 +608,11 @@ fun AllUpcomingScreen(
                             )
                         )
                     }
-                    items(buckets.completed, key = { it.id }) { item ->
+                    items(
+                        items = buckets.completed,
+                        key = { it.id },
+                        contentType = { "assignment_card" }
+                    ) { item ->
                         AssignmentCard(
                             coursework = item,
                             hasNote = courseworkIdsWithNotes.contains(item.id),

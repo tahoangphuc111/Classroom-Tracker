@@ -28,6 +28,7 @@ object ClassroomDateUtils {
     private var cachedTimeZoneId: String = ""
 
     private val timeOnlyCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
+    private val fullDueDateCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
 
     private fun checkTimeZone() {
         val currentTzId = TimeZone.getDefault().id
@@ -36,6 +37,7 @@ object ClassroomDateUtils {
                 if (currentTzId != cachedTimeZoneId) {
                     cachedTimeZoneId = currentTzId
                     timeOnlyCache.clear()
+                    fullDueDateCache.clear()
                     cachedStartOfToday = 0L
                     cacheExpirationTime = 0L
                 }
@@ -122,11 +124,19 @@ object ClassroomDateUtils {
 
     fun buildFormattedFullDueDate(dueEpochMillis: Long?): String {
         if (dueEpochMillis == null) return "Không có hạn nộp"
+        checkTimeZone()
+        val cached = fullDueDateCache[dueEpochMillis]
+        if (cached != null) return cached
+
         val formatted = synchronized(fullDueDateFormat) {
             fullDueDateFormat.timeZone = TimeZone.getDefault()
             fullDueDateFormat.format(Date(dueEpochMillis))
         }
-        return formatted.replaceFirstChar { if (it.isLowerCase()) it.titlecase(VIETNAMESE_LOCALE) else it.toString() }
+        val result = formatted.replaceFirstChar { if (it.isLowerCase()) it.titlecase(VIETNAMESE_LOCALE) else it.toString() }
+        if (fullDueDateCache.size < 1000) {
+            fullDueDateCache[dueEpochMillis] = result
+        }
+        return result
     }
 
     fun isDueToday(dueEpochMillis: Long?): Boolean {
