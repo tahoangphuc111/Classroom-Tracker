@@ -75,7 +75,6 @@ public struct ClassroomTimelineProvider: TimelineProvider {
 
         var nextRefresh = Calendar.autoupdatingCurrent.date(byAdding: .minute, value: 15, to: currentDate) ?? currentDate.addingTimeInterval(900)
 
-        // Refresh at midnight so due dates update on day rollover
         let calendar = Calendar.autoupdatingCurrent
         let startOfToday = calendar.startOfDay(for: currentDate)
         if let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
@@ -88,7 +87,6 @@ public struct ClassroomTimelineProvider: TimelineProvider {
             nextRefresh = earliestDueDate
         }
 
-        // Enforce a minimum 5-minute floor to prevent WidgetKit timeline exhaustion and system throttling
         let minimumRefreshDate = currentDate.addingTimeInterval(300)
         if nextRefresh < minimumRefreshDate {
             nextRefresh = minimumRefreshDate

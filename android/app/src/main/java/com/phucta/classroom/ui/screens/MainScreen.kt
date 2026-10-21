@@ -33,7 +33,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -103,7 +102,15 @@ import com.phucta.classroom.ui.components.EmberFlameCanvas
 import com.phucta.classroom.ui.components.HomeworkDetailBottomSheet
 import com.phucta.classroom.ui.components.SubjectBadgePill
 import com.phucta.classroom.ui.theme.ChunkyColor
+import androidx.compose.runtime.Immutable
 import kotlinx.coroutines.launch
+
+@Immutable
+private data class MainScreenCourseworkState(
+    val tomorrowItems: List<Coursework> = emptyList(),
+    val completedItems: List<Coursework> = emptyList(),
+    val upcomingIncompleteCount: Int = 0
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -159,32 +166,19 @@ fun MainScreen() {
         }
     }
 
-    val tomorrowItems = remember(allCoursework, courses, personalNotes, currentDayEpoch) {
-        BaoBaiBucketingUtils.getTomorrowCoursework(
+    val courseworkState = remember(
+        allCoursework,
+        courses,
+        personalNotes,
+        currentDayEpoch
+    ) {
+        val active = BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses)
+        val tomorrow = BaoBaiBucketingUtils.getTomorrowCoursework(
             items = allCoursework,
             courses = courses,
             personalNotes = personalNotes
         )
-    }
-
-    val tomorrowIncompleteCount = remember(tomorrowItems) { tomorrowItems.count { !it.isCompleted } }
-    val upcomingIncompleteCount = remember(allCoursework, courses, currentDayEpoch) {
-        BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses).count { !it.isCompleted }
-    }
-    val incompleteNotesCount = remember(personalNotes, currentDayEpoch) {
-        personalNotes.count { it.courseworkId == null && !it.isCompleted }
-    }
-    val courseworkIdsWithNotes = remember(personalNotes) {
-        personalNotes.filter { it.courseworkId != null && it.content.isNotBlank() }
-            .mapNotNull { it.courseworkId }
-            .toSet()
-    }
-
-    val pullToRefreshState = rememberPullToRefreshState()
-
-    val completedItems = remember(allCoursework, courses, currentDayEpoch) {
-        val filtered = BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses).filter { it.isCompleted }
-        filtered.sortedWith { first, second ->
+        val completed = active.filter { it.isCompleted }.sortedWith { first, second ->
             when {
                 first.dueEpochMillis != null && second.dueEpochMillis != null -> {
                     second.dueEpochMillis.compareTo(first.dueEpochMillis)
@@ -194,7 +188,38 @@ fun MainScreen() {
                 else -> first.title.compareTo(second.title, ignoreCase = true)
             }
         }
+        val upcomingCount = active.count { !it.isCompleted }
+        MainScreenCourseworkState(
+            tomorrowItems = tomorrow,
+            completedItems = completed,
+            upcomingIncompleteCount = upcomingCount
+        )
     }
+
+    val tomorrowItems = courseworkState.tomorrowItems
+    val completedItems = courseworkState.completedItems
+    val upcomingIncompleteCount = courseworkState.upcomingIncompleteCount
+
+    val tomorrowIncompleteCount = remember(tomorrowItems) {
+        tomorrowItems.count { !it.isCompleted }
+    }
+
+    val incompleteNotesCount = remember(personalNotes) {
+        personalNotes.count { it.courseworkId == null && !it.isCompleted }
+    }
+
+    val courseworkIdsWithNotes = remember(personalNotes) {
+        val set = HashSet<String>()
+        for (note in personalNotes) {
+            val cid = note.courseworkId
+            if (cid != null && note.content.isNotBlank()) {
+                set.add(cid)
+            }
+        }
+        set
+    }
+
+    val pullToRefreshState = rememberPullToRefreshState()
 
     val onToggleTomorrowCompletion = remember(scope, repository) {
         { id: String, completed: Boolean ->
@@ -241,6 +266,22 @@ fun MainScreen() {
         }
     }
 
+    val onSelectTomorrowAssignment = remember {
+        { coursework: Coursework ->
+            if (coursework.id.startsWith("note_")) {
+                selectedTabIndex = 3
+            } else {
+                selectedCourseworkId = coursework.id
+            }
+        }
+    }
+
+    val onSelectUpcomingOrCompletedAssignment = remember {
+        { coursework: Coursework ->
+            selectedCourseworkId = coursework.id
+        }
+    }
+
     if (isAuthenticated || isDemoMode) {
         ModalNavigationDrawer(
         drawerState = drawerState,
@@ -284,7 +325,11 @@ fun MainScreen() {
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 24.dp)
                     ) {
-                        items(courses, key = { it.id }) { course ->
+                        items(
+                            items = courses,
+                            key = { it.id },
+                            contentType = { "course_filter_item" }
+                        ) { course ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
@@ -300,14 +345,14 @@ fun MainScreen() {
                                             }
                                         }
                                     )
-                                    .padding(horizontal = 20.dp, vertical = 10.dp)
+                                    .padding(horizontal = 20.dp, vertical = 12.dp)
                             ) {
                                 SubjectBadgePill(courseName = course.name)
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = course.name,
                                     fontWeight = FontWeight.SemiBold,
-                                    fontSize = 13.5.sp,
+                                    fontSize = 14.sp,
                                     color = ChunkyColor.TextPrimary,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -389,7 +434,7 @@ fun MainScreen() {
                             Text(
                                 text = "Báo bài",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.5.sp,
+                                fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -425,7 +470,7 @@ fun MainScreen() {
                             Text(
                                 text = "Sắp tới",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.5.sp,
+                                fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -446,7 +491,7 @@ fun MainScreen() {
                             Text(
                                 text = "Đã xong",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.5.sp,
+                                fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -482,7 +527,7 @@ fun MainScreen() {
                             Text(
                                 text = "Ghi chú",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.5.sp,
+                                fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -546,13 +591,7 @@ fun MainScreen() {
                             courseworkIdsWithNotes = courseworkIdsWithNotes,
                             currentDayEpoch = currentDayEpoch,
                             onToggleCompletion = onToggleTomorrowCompletion,
-                            onSelectAssignment = { coursework ->
-                                if (coursework.id.startsWith("note_")) {
-                                    selectedTabIndex = 3
-                                } else {
-                                    selectedCourseworkId = coursework.id
-                                }
-                            }
+                            onSelectAssignment = onSelectTomorrowAssignment
                         )
                         1 -> AllUpcomingScreen(
                             allCoursework = allCoursework,
@@ -560,17 +599,13 @@ fun MainScreen() {
                             courseworkIdsWithNotes = courseworkIdsWithNotes,
                             currentDayEpoch = currentDayEpoch,
                             onToggleCompletion = onToggleTaskCompletion,
-                            onSelectAssignment = { coursework ->
-                                selectedCourseworkId = coursework.id
-                            }
+                            onSelectAssignment = onSelectUpcomingOrCompletedAssignment
                         )
                         2 -> CompletedHomeworkScreen(
                             completedItems = completedItems,
                             courseworkIdsWithNotes = courseworkIdsWithNotes,
                             onToggleCompletion = onToggleTaskCompletion,
-                            onSelectAssignment = { coursework ->
-                                selectedCourseworkId = coursework.id
-                            }
+                            onSelectAssignment = onSelectUpcomingOrCompletedAssignment
                         )
                         3 -> PersonalNotesScreen(
                             notes = personalNotes,
@@ -739,12 +774,12 @@ private fun WelcomeLoginScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             androidx.compose.material3.TextButton(onClick = onDemoMode) {
                 Text(
                     text = "Xem thử dữ liệu mẫu",
-                    fontSize = 13.5.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = ChunkyColor.TextMuted
                 )

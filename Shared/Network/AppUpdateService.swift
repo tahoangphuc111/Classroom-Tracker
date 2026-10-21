@@ -5,7 +5,6 @@ import AppKit
 import UIKit
 #endif
 
-
 @MainActor
 public final class AppUpdateService: ObservableObject {
     public static let shared = AppUpdateService()
@@ -46,7 +45,6 @@ public final class AppUpdateService: ObservableObject {
     public func checkForUpdates(isUserInitiated: Bool = false) async {
         guard !isChecking else { return }
 
-        // Throttle background checks to every 4 hours to avoid hitting GitHub rate limits
         if !isUserInitiated {
             let lastCheck = UserDefaults.standard.double(forKey: lastCheckKey)
             if lastCheck > 0 && Date().timeIntervalSince1970 - lastCheck < 14400 {
@@ -69,7 +67,7 @@ public final class AppUpdateService: ObservableObject {
         var request = URLRequest(url: url)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("ClassroomTracker/\(currentVersion) (Macintosh; Apple Silicon)", forHTTPHeaderField: "User-Agent")
-        
+
         let token = githubToken
         if !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -87,7 +85,6 @@ public final class AppUpdateService: ObservableObject {
             UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastCheckKey)
 
             if httpResponse.statusCode == 304 {
-                // 304 Not Modified: already on latest version
                 self.updateAvailable = false
                 self.statusMessage = "Bạn đang dùng phiên bản mới nhất (v\(currentVersion))."
                 return
@@ -240,7 +237,6 @@ public final class AppUpdateService: ObservableObject {
             if num1 < num2 { return false }
         }
 
-        // If numeric portions are equal (e.g. 0.5 vs 0.5 Beta), a stable release is newer than a pre-release
         if currPre && !remotePre {
             return true
         }

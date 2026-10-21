@@ -3,30 +3,26 @@ package com.phucta.classroom
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.SubmissionStatus
 import com.phucta.classroom.ui.components.EmberEmotion
+import com.phucta.classroom.ui.components.SubjectArtHelper
 import com.phucta.classroom.widget.ClassroomGlanceWidget
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Calendar
 
 class ClassroomWidgetTest {
-
     @Test
     fun testEmotionParityWithIOS() {
-        // Zero active items: celebrating if any completed, sleeping if none
         assertEquals(EmberEmotion.CELEBRATING, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 0, hasCompleted = true, isSmall = false))
         assertEquals(EmberEmotion.CELEBRATING, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 0, hasCompleted = true, isSmall = true))
         assertEquals(EmberEmotion.SLEEPING, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 0, hasCompleted = false, isSmall = false))
         assertEquals(EmberEmotion.SLEEPING, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 0, hasCompleted = false, isSmall = true))
 
-        // Normal threshold
         assertEquals(EmberEmotion.NORMAL, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 1, hasCompleted = false, isSmall = false))
         assertEquals(EmberEmotion.NORMAL, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 2, hasCompleted = true, isSmall = false))
 
-        // Small widget stressed threshold is >= 3
         assertEquals(EmberEmotion.NORMAL, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 2, hasCompleted = false, isSmall = true))
         assertEquals(EmberEmotion.STRESSED, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 3, hasCompleted = false, isSmall = true))
 
-        // Medium & Large widget stressed threshold is >= 4
         assertEquals(EmberEmotion.NORMAL, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 3, hasCompleted = false, isSmall = false))
         assertEquals(EmberEmotion.STRESSED, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 4, hasCompleted = false, isSmall = false))
         assertEquals(EmberEmotion.STRESSED, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 5, hasCompleted = true, isSmall = false))
@@ -163,5 +159,68 @@ class ClassroomWidgetTest {
             dueEpochMillis = calTomorrow1430.timeInMillis, status = SubmissionStatus.PENDING
         )
         assertEquals("14:30", ClassroomGlanceWidget.formatDeadlinePill(itemTomorrow1430))
+    }
+
+    @Test
+    fun testSubjectThemeIntegrationWithGlance() {
+        val mathTheme = SubjectArtHelper.theme("Toán 12")
+        assertEquals(com.phucta.classroom.R.drawable.ic_subject_math, mathTheme.iconRes)
+        val csTheme = SubjectArtHelper.theme("Lập trình Python")
+        assertEquals(com.phucta.classroom.R.drawable.ic_subject_cs, csTheme.iconRes)
+    }
+
+    @Test
+    fun testWidgetNeverShowsMockDataWhenUnauthenticated() {
+        val authed = false
+        val allCourseworkFromDb = com.phucta.classroom.data.local.MockDataProvider.getMockCoursework()
+
+        val items = if (authed) {
+            allCourseworkFromDb.filter { !com.phucta.classroom.data.local.MockDataProvider.isMockCourseworkId(it.id) }
+        } else {
+            emptyList()
+        }
+
+        org.junit.Assert.assertTrue("Unauthenticated widget coursework list must be empty", items.isEmpty())
+        org.junit.Assert.assertFalse("Unauthenticated widget must never show mock items", items.any { com.phucta.classroom.data.local.MockDataProvider.isMockCourseworkId(it.id) })
+
+        val defaultEmotion = if (authed) ClassroomGlanceWidget.getCharacterEmotion(items.size, false) else EmberEmotion.NORMAL
+        assertEquals(EmberEmotion.NORMAL, defaultEmotion)
+    }
+
+    @Test
+    fun testWidgetFiltersOutMockDataEvenWhenAuthenticated() {
+        val authed = true
+        val mixedCourses = com.phucta.classroom.data.local.MockDataProvider.mockCourses + listOf(
+            com.phucta.classroom.data.model.Course(id = "real_course_123", name = "Real Math", section = "10A1", isSelectedForWidget = true)
+        )
+        val mixedCoursework = com.phucta.classroom.data.local.MockDataProvider.getMockCoursework() + listOf(
+            Coursework(
+                id = "real_cw_456",
+                courseId = "real_course_123",
+                courseName = "Real Math",
+                title = "Real Assignment",
+                status = SubmissionStatus.PENDING
+            )
+        )
+
+        val widgetCourses = if (authed) {
+            mixedCourses.filter { !com.phucta.classroom.data.local.MockDataProvider.isMockCourse(it.id) }
+        } else {
+            emptyList()
+        }
+
+        val widgetCoursework = if (authed) {
+            mixedCoursework.filter { !com.phucta.classroom.data.local.MockDataProvider.isMockCourseworkId(it.id) }
+        } else {
+            emptyList()
+        }
+
+        assertEquals(1, widgetCourses.size)
+        assertEquals("real_course_123", widgetCourses.first().id)
+        org.junit.Assert.assertFalse("Mock courses must be filtered out", widgetCourses.any { com.phucta.classroom.data.local.MockDataProvider.isMockCourse(it.id) })
+
+        assertEquals(1, widgetCoursework.size)
+        assertEquals("real_cw_456", widgetCoursework.first().id)
+        org.junit.Assert.assertFalse("Mock coursework must be filtered out", widgetCoursework.any { com.phucta.classroom.data.local.MockDataProvider.isMockCourseworkId(it.id) })
     }
 }

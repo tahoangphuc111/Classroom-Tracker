@@ -7,7 +7,6 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class SubjectArtHelperTest {
-
     @Test
     fun testStandardSubjectMatching() {
         assertEquals(SubjectCategory.MATH, SubjectArtHelper.category("Toán Giải tích 12"))
@@ -37,7 +36,6 @@ class SubjectArtHelperTest {
 
     @Test
     fun testNegativeTokenGuards_Physics() {
-        // "Quản lý", "Xử lý", and "Tâm lý" must not be categorized as physics.
         assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Quản lý Dự án Phần mềm"))
         assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Xử lý Tín hiệu Số"))
         assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Tâm lý học Đại cương"))
@@ -46,24 +44,20 @@ class SubjectArtHelperTest {
 
     @Test
     fun testNegativeTokenGuards_Chemistry() {
-        // "Văn hóa" and "Hóa đơn" must not be categorized as chemistry.
         assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Văn hóa Việt Nam"))
         assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Hóa đơn và Chứng từ"))
     }
 
     @Test
     fun testNegativeTokenGuards_Biology() {
-        // "Học sinh", "Sinh viên", and "Sinh hoạt" must not be categorized as biology.
         assertNotEquals(SubjectCategory.BIOLOGY, SubjectArtHelper.category("Sinh hoạt Lớp Chủ nhiệm"))
     }
 
     @Test
     fun testNegativeTokenGuards_History() {
-        // "Sử dụng" and "Lịch sự" must not be categorized as history.
         assertNotEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Sử dụng phần mềm văn phòng"))
         assertNotEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Lịch sự trong giao tiếp"))
 
-        // Legitimate history courses should match
         assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Lịch sử Việt Nam"))
         assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Sử 12"))
     }
@@ -104,8 +98,7 @@ class SubjectArtHelperTest {
     fun testThemeColorUniqueness() {
         val categories = SubjectCategory.values()
         val colors = categories.map { SubjectArtHelper.themeColor(it) }
-        
-        // Ensure no adjacent categories share duplicate colors (e.g. Math, Lit, Civics, History, Economics are separated)
+
         assertNotEquals(SubjectArtHelper.themeColor(SubjectCategory.MATH), SubjectArtHelper.themeColor(SubjectCategory.LITERATURE))
         assertNotEquals(SubjectArtHelper.themeColor(SubjectCategory.MATH), SubjectArtHelper.themeColor(SubjectCategory.HISTORY_OR_GEOGRAPHY))
         assertNotEquals(SubjectArtHelper.themeColor(SubjectCategory.MATH), SubjectArtHelper.themeColor(SubjectCategory.ECONOMICS))
@@ -146,5 +139,59 @@ class SubjectArtHelperTest {
             isDueTomorrow = false
         )
         assertEquals(com.phucta.classroom.ui.theme.ChunkyColor.CompletedBadgeText, completedColors.text)
+    }
+
+    @Test
+    fun testSubjectIconCoverage() {
+        SubjectCategory.values().forEach { category ->
+            val iconRes = SubjectArtHelper.iconForCategory(category)
+            org.junit.Assert.assertTrue("Icon res should be non-zero for $category", iconRes != 0)
+        }
+        val theme = SubjectArtHelper.theme("Toán")
+        org.junit.Assert.assertEquals(R.drawable.ic_subject_math, theme.iconRes)
+    }
+
+    @Test
+    fun testQuanTriMang_ClassifiesAsNetworking_NotEconomics() {
+        val category = SubjectArtHelper.category("Quản trị mạng")
+        assertEquals(SubjectCategory.NETWORKING, category)
+        assertNotEquals(SubjectCategory.ECONOMICS, category)
+    }
+
+    @Test
+    fun testDienToan_DoesNotClassifyAsMath() {
+        assertNotEquals(SubjectCategory.MATH, SubjectArtHelper.category("Điện toán đám mây"))
+        assertNotEquals(SubjectCategory.MATH, SubjectArtHelper.category("Khoa học điện toán"))
+    }
+
+    @Test
+    fun testLyLuan_DoesNotClassifyAsPhysics() {
+        assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Lý luận chính trị"))
+        assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Lí luận văn học"))
+    }
+
+    @Test
+    fun testAoHoaSoHoa_DoesNotClassifyAsChemistry() {
+        assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Ảo hóa hệ thống"))
+        assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Số hóa dữ liệu doanh nghiệp"))
+    }
+
+    @Test
+    fun testVanBanLuanVan_DoesNotClassifyAsLiterature() {
+        assertNotEquals(SubjectCategory.LITERATURE, SubjectArtHelper.category("Soạn thảo văn bản"))
+        assertNotEquals(SubjectCategory.LITERATURE, SubjectArtHelper.category("Hướng dẫn viết Luận văn"))
+    }
+
+    @Test
+    fun testUnaccentedCoreSubjectTokens() {
+        assertEquals(SubjectCategory.MATH, SubjectArtHelper.category("Toan 12"))
+        assertEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Ly 11"))
+        assertEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Hoa 10"))
+        assertEquals(SubjectCategory.LITERATURE, SubjectArtHelper.category("Van 12"))
+        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Su 11"))
+        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Dia 10"))
+
+        val diaTheme = SubjectArtHelper.theme("Dia 10")
+        assertEquals("ĐỊA", diaTheme.badgeCode)
     }
 }

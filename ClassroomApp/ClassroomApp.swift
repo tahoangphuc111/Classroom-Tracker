@@ -32,7 +32,6 @@ final class ClassroomAppDelegate: NSObject, NSApplicationDelegate, UNUserNotific
             }
         }
 
-        // Auto-sync every 15 minutes
         backgroundSyncTimer = Timer.scheduledTimer(withTimeInterval: 900, repeats: true) { _ in
             Task { @MainActor in
                 if GoogleOAuthService.shared.isAuthenticated {

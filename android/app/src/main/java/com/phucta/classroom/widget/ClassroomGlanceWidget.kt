@@ -48,7 +48,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class ClassroomGlanceWidget : GlanceAppWidget() {
-
     override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -90,10 +89,9 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     emptyList()
                 }
 
-                // Pre-warm Ember bitmap cache on IO thread so Glance composables render without latency
                 val activeCount = items.count { !it.isCompleted }
                 val hasCompleted = items.any { it.isCompleted }
-                listOf(38, 44, 62, 68, 70).forEach { sizeDp ->
+                listOf(44, 76, 78).forEach { sizeDp ->
                     val emotion = getCharacterEmotion(activeCount, hasCompleted, isSmall = sizeDp <= 44)
                     EmberWidgetBitmapHelper.getEmberBitmap(context, sizeDp, if (authed) emotion else EmberEmotion.NORMAL)
                 }
@@ -110,11 +108,17 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 val isSmall = currentSize.width < 200.dp
                 val isLarge = currentSize.height >= 180.dp && !isSmall
 
+                val skyBg = when {
+                    isSmall -> R.drawable.bg_widget_sky
+                    isLarge -> R.drawable.bg_widget_sky_large
+                    else -> R.drawable.bg_widget_sky_medium
+                }
+
                 Box(
                     modifier = GlanceModifier
                         .fillMaxSize()
                         .cornerRadius(18.dp)
-                        .background(ImageProvider(R.drawable.bg_widget_sky))
+                        .background(ImageProvider(skyBg))
                         .clickable(actionStartActivity<MainActivity>())
                         .padding(if (isSmall) 7.dp else 9.dp)
                 ) {
@@ -211,35 +215,37 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     modifier = GlanceModifier.fillMaxSize()
                 ) {
                     Row(
-                        modifier = GlanceModifier.fillMaxWidth().height(68.dp),
+                        modifier = GlanceModifier.fillMaxWidth().height(90.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 68, EmberEmotion.NORMAL)
+                        Spacer(modifier = GlanceModifier.width(18.dp))
+                        val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 78, EmberEmotion.NORMAL)
                         Image(
                             provider = ImageProvider(emberBitmap),
                             contentDescription = "Ember mascot",
-                            modifier = GlanceModifier.size(68.dp)
+                            modifier = GlanceModifier.size(78.dp)
                         )
-                        Spacer(modifier = GlanceModifier.width(12.dp))
+                        Spacer(modifier = GlanceModifier.width(14.dp))
                         Column {
                             Text(
                                 text = "BÁO BÀI NGÀY MAI",
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.ButterYellow),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 11.5.sp
+                                    fontSize = 13.sp
                                 )
                             )
-                            Spacer(modifier = GlanceModifier.height(2.dp))
+                            Spacer(modifier = GlanceModifier.height(4.dp))
                             Text(
                                 text = "Chưa đăng nhập",
                                 style = TextStyle(
                                     color = ColorProvider(Color.White),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 20.sp
+                                    fontSize = 24.sp
                                 )
                             )
                         }
+                        Spacer(modifier = GlanceModifier.defaultWeight())
                     }
 
                     Spacer(modifier = GlanceModifier.height(6.dp))
@@ -259,7 +265,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             Image(
                                 provider = ImageProvider(R.drawable.ic_widget_person),
                                 contentDescription = "Sign in",
-                                modifier = GlanceModifier.size(34.dp)
+                                modifier = GlanceModifier.size(42.dp)
                             )
                             Spacer(modifier = GlanceModifier.height(8.dp))
                             Text(
@@ -267,7 +273,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextPrimary),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 13.5.sp
+                                    fontSize = 15.sp
                                 )
                             )
                             Spacer(modifier = GlanceModifier.height(4.dp))
@@ -277,7 +283,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextMuted),
                                     fontWeight = FontWeight.Medium,
-                                    fontSize = 11.sp
+                                    fontSize = 11.5.sp
                                 )
                             )
                         }
@@ -291,15 +297,15 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
-                        modifier = GlanceModifier.width(88.dp),
+                        modifier = GlanceModifier.width(98.dp).fillMaxHeight(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 62, EmberEmotion.NORMAL)
+                        val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 76, EmberEmotion.NORMAL)
                         Image(
                             provider = ImageProvider(emberBitmap),
                             contentDescription = "Ember mascot",
-                            modifier = GlanceModifier.size(62.dp)
+                            modifier = GlanceModifier.size(76.dp)
                         )
                         Spacer(modifier = GlanceModifier.height(4.dp))
                         Text(
@@ -307,7 +313,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 10.5.sp
+                                fontSize = 10.sp
                             )
                         )
                     }
@@ -329,7 +335,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             Image(
                                 provider = ImageProvider(R.drawable.ic_widget_person),
                                 contentDescription = "Sign in",
-                                modifier = GlanceModifier.size(24.dp)
+                                modifier = GlanceModifier.size(26.dp)
                             )
                             Spacer(modifier = GlanceModifier.height(4.dp))
                             Text(
@@ -337,7 +343,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextPrimary),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.5.sp
+                                    fontSize = 13.sp
                                 )
                             )
                             Spacer(modifier = GlanceModifier.height(2.dp))
@@ -385,7 +391,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         style = TextStyle(
                             color = ColorProvider(Color.White),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 26.sp
+                            fontSize = 28.sp
                         )
                     )
                     Spacer(modifier = GlanceModifier.width(4.dp))
@@ -403,7 +409,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 9.sp
+                                fontSize = 9.5.sp
                             )
                         )
                     }
@@ -421,7 +427,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     color = ColorProvider(Color.White),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 8.sp
+                                    fontSize = 8.5.sp
                                 )
                             )
                         }
@@ -430,11 +436,11 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
 
                 Spacer(modifier = GlanceModifier.defaultWeight())
 
-                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 38, emotion)
+                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 44, emotion)
                 Image(
                     provider = ImageProvider(emberBitmap),
                     contentDescription = "Ember mascot",
-                    modifier = GlanceModifier.size(38.dp)
+                    modifier = GlanceModifier.size(44.dp)
                 )
             }
 
@@ -492,20 +498,18 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         ) {
                             Box(
                                 modifier = GlanceModifier
-                                    .cornerRadius(4.dp)
-                                    .background(theme.color)
-                                    .padding(horizontal = 4.dp, vertical = 1.5.dp)
+                                    .size(22.dp)
+                                    .cornerRadius(6.dp)
+                                    .background(theme.color),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = theme.badgeCode,
-                                    style = TextStyle(
-                                        color = ColorProvider(Color.White),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 8.5.sp
-                                    )
+                                Image(
+                                    provider = ImageProvider(theme.iconRes),
+                                    contentDescription = null,
+                                    modifier = GlanceModifier.size(12.dp)
                                 )
                             }
-                            Spacer(modifier = GlanceModifier.width(4.dp))
+                            Spacer(modifier = GlanceModifier.width(5.dp))
                             Text(
                                 text = item.courseName,
                                 maxLines = 1,
@@ -513,7 +517,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     color = ColorProvider(theme.color),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp
+                                    fontSize = 12.5.sp
                                 )
                             )
                             Spacer(modifier = GlanceModifier.width(3.dp))
@@ -550,11 +554,11 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
 
                         Text(
                             text = item.title.ifEmpty { item.courseName },
-                            maxLines = 2,
+                            maxLines = 3,
                             style = TextStyle(
                                 color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.5.sp
+                                fontSize = 14.5.sp
                             )
                         )
 
@@ -574,7 +578,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else if (item.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted),
                                     fontWeight = FontWeight.Medium,
-                                    fontSize = 9.sp
+                                    fontSize = 9.5.sp
                                 )
                             )
                         }
@@ -592,20 +596,18 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             ) {
                                 Box(
                                     modifier = GlanceModifier
-                                        .cornerRadius(4.dp)
-                                        .background(theme.color)
-                                        .padding(horizontal = 4.dp, vertical = 1.5.dp)
+                                        .size(21.dp)
+                                        .cornerRadius(5.5.dp)
+                                        .background(theme.color),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = theme.badgeCode,
-                                        style = TextStyle(
-                                            color = ColorProvider(Color.White),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 8.sp
-                                        )
+                                    Image(
+                                        provider = ImageProvider(theme.iconRes),
+                                        contentDescription = null,
+                                        modifier = GlanceModifier.size(11.dp)
                                     )
                                 }
-                                Spacer(modifier = GlanceModifier.width(5.dp))
+                                Spacer(modifier = GlanceModifier.width(6.dp))
                                 Column(
                                     modifier = GlanceModifier.defaultWeight()
                                 ) {
@@ -615,7 +617,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                         style = TextStyle(
                                             color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 11.5.sp
+                                            fontSize = 12.sp
                                         )
                                     )
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -624,7 +626,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                             maxLines = 1,
                                             style = TextStyle(
                                                 color = ColorProvider(ChunkyColor.TextMuted),
-                                                fontSize = 9.sp
+                                                fontSize = 9.5.sp
                                             )
                                         )
                                         Text(
@@ -640,7 +642,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                             style = TextStyle(
                                                 color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else if (item.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted),
                                                 fontWeight = FontWeight.Medium,
-                                                fontSize = 9.sp
+                                                fontSize = 9.5.sp
                                             )
                                         )
                                     }
@@ -681,11 +683,11 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
-                modifier = GlanceModifier.width(92.dp).fillMaxHeight(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = GlanceModifier.width(98.dp).fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
+                    modifier = GlanceModifier.padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -693,7 +695,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         style = TextStyle(
                             color = ColorProvider(Color.White),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 30.sp
+                            fontSize = 32.sp
                         )
                     )
                     Spacer(modifier = GlanceModifier.width(4.dp))
@@ -701,7 +703,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_seal_check),
                             contentDescription = "Completed",
-                            modifier = GlanceModifier.size(15.dp)
+                            modifier = GlanceModifier.size(16.dp)
                         )
                     } else {
                         Text(
@@ -716,13 +718,13 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     }
                 }
 
-                Spacer(modifier = GlanceModifier.height(2.dp))
+                Spacer(modifier = GlanceModifier.defaultWeight())
 
-                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 68, emotion)
+                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 76, emotion)
                 Image(
                     provider = ImageProvider(emberBitmap),
                     contentDescription = "Ember mascot",
-                    modifier = GlanceModifier.size(68.dp)
+                    modifier = GlanceModifier.size(76.dp).padding(bottom = 6.dp)
                 )
             }
 
@@ -747,7 +749,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.TextMuted),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 9.5.sp
+                                fontSize = 10.sp
                             )
                         )
 
@@ -844,20 +846,18 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             ) {
                                 Box(
                                     modifier = GlanceModifier
-                                        .cornerRadius(5.dp)
-                                        .background(theme.color)
-                                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                                        .size(30.dp)
+                                        .cornerRadius(8.dp)
+                                        .background(theme.color),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = theme.badgeCode,
-                                        style = TextStyle(
-                                            color = ColorProvider(Color.White),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 9.sp
-                                        )
+                                    Image(
+                                        provider = ImageProvider(theme.iconRes),
+                                        contentDescription = null,
+                                        modifier = GlanceModifier.size(16.dp)
                                     )
                                 }
-                                Spacer(modifier = GlanceModifier.width(6.dp))
+                                Spacer(modifier = GlanceModifier.width(8.dp))
                                 Text(
                                     text = item.courseName,
                                     maxLines = 1,
@@ -865,7 +865,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                     style = TextStyle(
                                         color = ColorProvider(theme.color),
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
+                                        fontSize = 13.5.sp
                                     )
                                 )
                                 Spacer(modifier = GlanceModifier.width(4.dp))
@@ -874,13 +874,13 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                         modifier = GlanceModifier
                                             .cornerRadius(8.dp)
                                             .background(ChunkyColor.SuccessGreen.copy(alpha = 0.12f))
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            .padding(horizontal = 7.dp, vertical = 3.dp)
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Image(
                                                 provider = ImageProvider(R.drawable.ic_widget_check_circle),
                                                 contentDescription = "Done",
-                                                modifier = GlanceModifier.size(10.dp)
+                                                modifier = GlanceModifier.size(11.dp)
                                             )
                                             Spacer(modifier = GlanceModifier.width(3.dp))
                                             Text(
@@ -888,7 +888,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                                 style = TextStyle(
                                                     color = ColorProvider(ChunkyColor.SuccessGreen),
                                                     fontWeight = FontWeight.Bold,
-                                                    fontSize = 9.sp
+                                                    fontSize = 9.5.sp
                                                 )
                                             )
                                         }
@@ -898,7 +898,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                         modifier = GlanceModifier
                                             .cornerRadius(8.dp)
                                             .background(if (item.isUrgent) ChunkyColor.UrgentAccent.copy(alpha = 0.12f) else Color(0x0F000000))
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            .padding(horizontal = 7.dp, vertical = 3.dp)
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Image(
@@ -920,7 +920,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 }
                             }
 
-                            Spacer(modifier = GlanceModifier.height(3.dp))
+                            Spacer(modifier = GlanceModifier.height(4.dp))
 
                             Text(
                                 text = item.title.ifEmpty { item.courseName },
@@ -928,11 +928,11 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 13.5.sp
+                                    fontSize = 15.sp
                                 )
                             )
 
-                            Spacer(modifier = GlanceModifier.height(2.dp))
+                            Spacer(modifier = GlanceModifier.height(3.dp))
 
                             val descSnippet = item.description?.lines()?.firstOrNull { it.isNotBlank() }?.trim().orEmpty()
                             val subtitleText = descSnippet.ifEmpty {
@@ -946,12 +946,20 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextMuted),
                                     fontWeight = FontWeight.Medium,
-                                    fontSize = 10.sp
+                                    fontSize = 11.sp
                                 )
                             )
                         }
                     } else {
                         val itemsToShow = displayItems.take(3)
+                        val isTwoItems = displayItems.size <= 2
+                        val badgeSize = if (isTwoItems) 28 else 25
+                        val cornerRad = if (isTwoItems) 6.5f else 6f
+                        val iconSize = if (isTwoItems) 13 else 12
+                        val titleFontSize = if (isTwoItems) 13.5 else 12.5
+                        val subFontSize = if (isTwoItems) 10.5 else 9.5
+                        val tagFontSize = if (isTwoItems) 10.0 else 9.0
+
                         Column(
                             modifier = GlanceModifier.defaultWeight().fillMaxWidth()
                         ) {
@@ -963,20 +971,18 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 ) {
                                     Box(
                                         modifier = GlanceModifier
-                                            .cornerRadius(5.dp)
-                                            .background(theme.color)
-                                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                                            .size(badgeSize.dp)
+                                            .cornerRadius(cornerRad.dp)
+                                            .background(theme.color),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Text(
-                                            text = theme.badgeCode,
-                                            style = TextStyle(
-                                                color = ColorProvider(Color.White),
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 8.5.sp
-                                            )
+                                        Image(
+                                            provider = ImageProvider(theme.iconRes),
+                                            contentDescription = null,
+                                            modifier = GlanceModifier.size(iconSize.dp)
                                         )
                                     }
-                                    Spacer(modifier = GlanceModifier.width(6.dp))
+                                    Spacer(modifier = GlanceModifier.width(9.dp))
                                     Column(
                                         modifier = GlanceModifier.defaultWeight()
                                     ) {
@@ -986,7 +992,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                             style = TextStyle(
                                                 color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
                                                 fontWeight = FontWeight.Bold,
-                                                fontSize = 12.sp
+                                                fontSize = titleFontSize.sp
                                             )
                                         )
                                         Text(
@@ -994,7 +1000,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                             maxLines = 1,
                                             style = TextStyle(
                                                 color = ColorProvider(ChunkyColor.TextMuted),
-                                                fontSize = 9.5.sp
+                                                fontSize = subFontSize.sp
                                             )
                                         )
                                     }
@@ -1003,7 +1009,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                         Image(
                                             provider = ImageProvider(R.drawable.ic_widget_check_circle),
                                             contentDescription = "Done",
-                                            modifier = GlanceModifier.size(12.dp)
+                                            modifier = GlanceModifier.size(13.dp)
                                         )
                                     } else {
                                         val timeText = formatDeadlinePill(item)
@@ -1011,14 +1017,14 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                             modifier = GlanceModifier
                                                 .cornerRadius(7.dp)
                                                 .background(if (item.isUrgent) ChunkyColor.UrgentAccent.copy(alpha = 0.12f) else Color(0x0F000000))
-                                                .padding(horizontal = 5.dp, vertical = 1.5.dp)
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
                                         ) {
                                             Text(
                                                 text = timeText,
                                                 style = TextStyle(
                                                     color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else ChunkyColor.TextMuted),
                                                     fontWeight = FontWeight.Bold,
-                                                    fontSize = 9.sp
+                                                    fontSize = tagFontSize.sp
                                                 )
                                             )
                                         }
@@ -1052,17 +1058,19 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
             modifier = GlanceModifier.fillMaxSize()
         ) {
             Row(
-                modifier = GlanceModifier.fillMaxWidth().height(72.dp),
+                modifier = GlanceModifier.fillMaxWidth().height(90.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 70, emotion)
+                Spacer(modifier = GlanceModifier.width(18.dp))
+
+                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 78, emotion)
                 Image(
                     provider = ImageProvider(emberBitmap),
                     contentDescription = "Ember mascot",
-                    modifier = GlanceModifier.size(70.dp)
+                    modifier = GlanceModifier.size(78.dp)
                 )
 
-                Spacer(modifier = GlanceModifier.width(12.dp))
+                Spacer(modifier = GlanceModifier.width(14.dp))
 
                 Column {
                     Row(
@@ -1073,21 +1081,21 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             style = TextStyle(
                                 color = ColorProvider(Color.White),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 34.sp
+                                fontSize = 40.sp
                             )
                         )
-                        Spacer(modifier = GlanceModifier.width(6.dp))
+                        Spacer(modifier = GlanceModifier.width(7.dp))
                         Text(
                             text = if (activeItems.isEmpty()) "HOÀN TẤT" else "CẦN NỘP",
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
+                                fontSize = 15.sp
                             )
                         )
                     }
 
-                    Spacer(modifier = GlanceModifier.height(3.dp))
+                    Spacer(modifier = GlanceModifier.height(4.dp))
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically
@@ -1146,7 +1154,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     .defaultWeight()
                     .fillMaxWidth()
                     .background(ImageProvider(R.drawable.bg_widget_card_large))
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
                 Column(
                     modifier = GlanceModifier.fillMaxSize()
@@ -1160,7 +1168,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.TextMuted),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp
+                                fontSize = 10.5.sp
                             )
                         )
 
@@ -1178,7 +1186,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                     style = TextStyle(
                                         color = ColorProvider(ChunkyColor.UrgentAccent),
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 9.sp
+                                        fontSize = 10.sp
                                     )
                                 )
                             }
@@ -1246,20 +1254,18 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             ) {
                                 Box(
                                     modifier = GlanceModifier
-                                        .cornerRadius(7.dp)
-                                        .background(theme.color)
-                                        .padding(horizontal = 7.dp, vertical = 3.dp)
+                                        .size(48.dp)
+                                        .cornerRadius(13.dp)
+                                        .background(theme.color),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = theme.badgeCode,
-                                        style = TextStyle(
-                                            color = ColorProvider(Color.White),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 11.sp
-                                        )
+                                    Image(
+                                        provider = ImageProvider(theme.iconRes),
+                                        contentDescription = null,
+                                        modifier = GlanceModifier.size(24.dp)
                                     )
                                 }
-                                Spacer(modifier = GlanceModifier.width(8.dp))
+                                Spacer(modifier = GlanceModifier.width(12.dp))
                                 Column(
                                     modifier = GlanceModifier.defaultWeight()
                                 ) {
@@ -1269,7 +1275,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                         style = TextStyle(
                                             color = ColorProvider(theme.color),
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 13.5.sp
+                                            fontSize = 16.5.sp
                                         )
                                     )
                                     Text(
@@ -1277,7 +1283,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                         maxLines = 1,
                                         style = TextStyle(
                                             color = ColorProvider(ChunkyColor.TextMuted),
-                                            fontSize = 10.sp
+                                            fontSize = 11.sp
                                         )
                                     )
                                 }
@@ -1317,9 +1323,9 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 }
                             }
 
-                            Spacer(modifier = GlanceModifier.height(5.dp))
+                            Spacer(modifier = GlanceModifier.height(6.dp))
                             Box(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ChunkyColor.Hairline)) {}
-                            Spacer(modifier = GlanceModifier.height(5.dp))
+                            Spacer(modifier = GlanceModifier.height(6.dp))
 
                             Text(
                                 text = item.title.ifEmpty { item.courseName },
@@ -1327,7 +1333,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 15.5.sp
+                                    fontSize = 18.sp
                                 )
                             )
 
@@ -1344,12 +1350,40 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextMuted),
                                     fontWeight = FontWeight.Medium,
-                                    fontSize = 11.5.sp
+                                    fontSize = 12.sp
                                 )
                             )
                         }
                     } else {
                         val itemsToShow = displayItems.take(4)
+                        val count = itemsToShow.count()
+                        val badgeSize = when (count) {
+                            2 -> 44
+                            3 -> 38
+                            else -> 32
+                        }
+                        val cornerRad = when (count) {
+                            2 -> 11f
+                            3 -> 9f
+                            else -> 8f
+                        }
+                        val iconSize = when (count) {
+                            2 -> 22
+                            3 -> 18
+                            else -> 15
+                        }
+                        val titleFontSize = when (count) {
+                            2 -> 17.5
+                            3 -> 15.5
+                            else -> 14.0
+                        }
+                        val tagFontSize = when (count) {
+                            2 -> 12.0
+                            3 -> 11.0
+                            else -> 10.0
+                        }
+                        val subFontSize = maxOf(9.5, titleFontSize - 3.5)
+
                         Column(
                             modifier = GlanceModifier.defaultWeight().fillMaxWidth()
                         ) {
@@ -1361,20 +1395,18 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 ) {
                                     Box(
                                         modifier = GlanceModifier
-                                            .cornerRadius(5.dp)
-                                            .background(theme.color)
-                                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                                            .size(badgeSize.dp)
+                                            .cornerRadius(cornerRad.dp)
+                                            .background(theme.color),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Text(
-                                            text = theme.badgeCode,
-                                            style = TextStyle(
-                                                color = ColorProvider(Color.White),
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 8.5.sp
-                                            )
+                                        Image(
+                                            provider = ImageProvider(theme.iconRes),
+                                            contentDescription = null,
+                                            modifier = GlanceModifier.size(iconSize.dp)
                                         )
                                     }
-                                    Spacer(modifier = GlanceModifier.width(7.dp))
+                                    Spacer(modifier = GlanceModifier.width(14.dp))
                                     Column(
                                         modifier = GlanceModifier.defaultWeight()
                                     ) {
@@ -1384,7 +1416,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                             style = TextStyle(
                                                 color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
                                                 fontWeight = FontWeight.Bold,
-                                                fontSize = 12.5.sp
+                                                fontSize = titleFontSize.sp
                                             )
                                         )
                                         Text(
@@ -1392,7 +1424,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                             maxLines = 1,
                                             style = TextStyle(
                                                 color = ColorProvider(ChunkyColor.TextMuted),
-                                                fontSize = 9.5.sp
+                                                fontSize = subFontSize.sp
                                             )
                                         )
                                     }
@@ -1416,7 +1448,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                                 style = TextStyle(
                                                     color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else ChunkyColor.TextMuted),
                                                     fontWeight = FontWeight.Bold,
-                                                    fontSize = 9.5.sp
+                                                    fontSize = tagFontSize.sp
                                                 )
                                             )
                                         }

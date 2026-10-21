@@ -1,16 +1,22 @@
 package com.phucta.classroom.ui.screens
 
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,28 +35,40 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Upcoming
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import com.phucta.classroom.ui.components.SectionHeaderPill
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phucta.classroom.data.model.Coursework
+import com.phucta.classroom.domain.BaoBaiShareHelper
 import com.phucta.classroom.ui.components.AssignmentCard
 import com.phucta.classroom.ui.components.EmberEmotion
 import com.phucta.classroom.ui.components.EmberFlameCanvas
+import com.phucta.classroom.ui.components.SectionHeaderPill
 import com.phucta.classroom.ui.theme.ChunkyColor
+
+private val ItemPlacementSpring = spring<IntOffset>(dampingRatio = 0.82f, stiffness = 380f)
+private val ItemFadeSpring = spring<Float>(dampingRatio = 0.82f, stiffness = 380f)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -62,6 +80,7 @@ fun TomorrowHomeworkScreen(
     courseworkIdsWithNotes: Set<String> = emptySet(),
     currentDayEpoch: Long = com.phucta.classroom.data.model.ClassroomDateUtils.startOfToday
 ) {
+    val context = LocalContext.current
     val incompleteCount = remember(tomorrowItems) { tomorrowItems.count { !it.isCompleted } }
     val isAllDone = remember(tomorrowItems, incompleteCount) { tomorrowItems.isNotEmpty() && incompleteCount == 0 }
     val hasTomorrowTasks = remember(tomorrowItems, currentDayEpoch) { tomorrowItems.any { it.isDueTomorrow } }
@@ -80,14 +99,35 @@ fun TomorrowHomeworkScreen(
         }
     }
 
+    val celebrationScale = remember { Animatable(0.92f) }
+    LaunchedEffect(isAllDone) {
+        if (isAllDone) {
+            celebrationScale.snapTo(0.92f)
+            celebrationScale.animateTo(
+                targetValue = 1.04f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+            celebrationScale.animateTo(
+                targetValue = 1.0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            )
+        }
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .background(ChunkyColor.WindowBackground),
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item(key = "tomorrow_summary_card") {
+        item(key = "tomorrow_summary_card", contentType = "summary_card") {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -121,7 +161,7 @@ fun TomorrowHomeworkScreen(
                                 Text(
                                     text = "Không có bài tập cho ngày mai. Nghỉ ngơi nhé!",
                                     color = Color.White.copy(alpha = 0.95f),
-                                    fontSize = 13.5.sp,
+                                    fontSize = 14.sp,
                                     lineHeight = 18.sp
                                 )
                             } else if (isAllDone) {
@@ -140,7 +180,7 @@ fun TomorrowHomeworkScreen(
                                 Text(
                                     text = doneMessage,
                                     color = Color.White.copy(alpha = 0.95f),
-                                    fontSize = 13.5.sp,
+                                    fontSize = 14.sp,
                                     lineHeight = 18.sp
                                 )
                             } else {
@@ -159,7 +199,7 @@ fun TomorrowHomeworkScreen(
                                 Text(
                                     text = "Còn $incompleteCount bài tập cần nộp.",
                                     color = Color.White.copy(alpha = 0.95f),
-                                    fontSize = 13.5.sp,
+                                    fontSize = 14.sp,
                                     lineHeight = 18.sp
                                 )
                             }
@@ -167,7 +207,7 @@ fun TomorrowHomeworkScreen(
                     }
 
                     if (tomorrowItems.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         Column(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -187,10 +227,76 @@ fun TomorrowHomeworkScreen(
                                     fontSize = 12.sp
                                 )
                             }
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
                             HomeworkProgressBar(
                                 progressFraction = progressFraction,
                                 isAllDone = isAllDone
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White.copy(alpha = 0.22f))
+                                .border(1.dp, Color.White.copy(alpha = 0.40f), RoundedCornerShape(8.dp))
+                                .clickable {
+                                    val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(tomorrowItems)
+                                    BaoBaiShareHelper.copyToClipboard(context, baoBaiText)
+                                    Toast.makeText(context, "Đã sao chép báo bài!", Toast.LENGTH_SHORT).show()
+                                }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Sao chép báo bài",
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Sao chép",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White.copy(alpha = 0.22f))
+                                .border(1.dp, Color.White.copy(alpha = 0.40f), RoundedCornerShape(8.dp))
+                                .clickable {
+                                    val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(tomorrowItems)
+                                    val shareIntent = BaoBaiShareHelper.createShareIntent(baoBaiText, "Báo bài ngày mai")
+                                    val chooser = Intent.createChooser(shareIntent, "Chia sẻ báo bài qua")
+                                    context.startActivity(chooser)
+                                }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Chia sẻ báo bài",
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Chia sẻ",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
                             )
                         }
                     }
@@ -199,13 +305,13 @@ fun TomorrowHomeworkScreen(
         }
 
         if (tomorrowItems.isEmpty()) {
-            item(key = "empty_state_card") {
+            item(key = "empty_state_card", contentType = "empty_state") {
                 Box(
                     modifier = Modifier
                         .animateItem(
-                            fadeInSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
-                            placementSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
-                            fadeOutSpec = spring(dampingRatio = 0.82f, stiffness = 380f)
+                            fadeInSpec = ItemFadeSpring,
+                            placementSpec = ItemPlacementSpring,
+                            fadeOutSpec = ItemFadeSpring
                         )
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
@@ -234,7 +340,7 @@ fun TomorrowHomeworkScreen(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Bạn có thể thư giãn hoặc tự ôn tập theo lịch riêng nhé!",
-                            fontSize = 13.5.sp,
+                            fontSize = 14.sp,
                             color = ChunkyColor.TextMuted,
                             textAlign = TextAlign.Center,
                             lineHeight = 18.sp
@@ -244,7 +350,7 @@ fun TomorrowHomeworkScreen(
             }
         } else {
             if (isAllDone) {
-                item(key = "celebration_banner") {
+                item(key = "celebration_banner", contentType = "celebration_banner") {
                     val bannerText = when {
                         hasTomorrowTasks -> "Đã hoàn thành toàn bộ bài tập ngày mai!"
                         hasTodayTasks -> "Đã hoàn thành toàn bộ bài tập hôm nay!"
@@ -253,15 +359,19 @@ fun TomorrowHomeworkScreen(
                     Box(
                         modifier = Modifier
                             .animateItem(
-                                fadeInSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = spring(dampingRatio = 0.82f, stiffness = 380f)
+                                fadeInSpec = ItemFadeSpring,
+                                placementSpec = ItemPlacementSpring,
+                                fadeOutSpec = ItemFadeSpring
                             )
+                            .graphicsLayer {
+                                scaleX = celebrationScale.value
+                                scaleY = celebrationScale.value
+                            }
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .background(ChunkyColor.SuccessGreen.copy(alpha = 0.08f))
                             .border(1.dp, ChunkyColor.SuccessGreen.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
@@ -270,7 +380,7 @@ fun TomorrowHomeworkScreen(
                                 tint = ChunkyColor.SuccessGreen,
                                 modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = bannerText,
                                 fontWeight = FontWeight.SemiBold,
@@ -282,7 +392,7 @@ fun TomorrowHomeworkScreen(
                 }
             }
 
-            item(key = "section_header") {
+            item(key = "section_header", contentType = "section_header") {
                 val (sectionTitle, sectionIcon, sectionColor) = when {
                     hasTomorrowTasks -> Triple("BÀI TẬP NGÀY MAI", Icons.Default.CalendarToday, ChunkyColor.HeaderTomorrow)
                     hasTodayTasks -> Triple("BÀI TẬP HÔM NAY", Icons.Default.Schedule, ChunkyColor.HeaderToday)
@@ -294,9 +404,9 @@ fun TomorrowHomeworkScreen(
                     icon = sectionIcon,
                     color = sectionColor,
                     modifier = Modifier.animateItem(
-                        fadeInSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
-                        placementSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
-                        fadeOutSpec = spring(dampingRatio = 0.82f, stiffness = 380f)
+                        fadeInSpec = ItemFadeSpring,
+                        placementSpec = ItemPlacementSpring,
+                        fadeOutSpec = ItemFadeSpring
                     )
                 )
             }
@@ -306,15 +416,24 @@ fun TomorrowHomeworkScreen(
                 key = { it.id },
                 contentType = { "assignment_card" }
             ) { item ->
+                val currentItem by rememberUpdatedState(item)
+                val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
+                val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
+                val onToggle = remember(item.id) {
+                    { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
+                }
+                val onClickCard = remember(item.id) {
+                    { currentOnSelectAssignment(currentItem) }
+                }
                 AssignmentCard(
                     coursework = item,
                     hasNote = courseworkIdsWithNotes.contains(item.id),
-                    onToggleCompletion = { completed -> onToggleCompletion(item.id, completed) },
-                    onClick = { onSelectAssignment(item) },
+                    onToggleCompletion = onToggle,
+                    onClick = onClickCard,
                     modifier = Modifier.animateItem(
-                        fadeInSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
-                        placementSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
-                        fadeOutSpec = spring(dampingRatio = 0.82f, stiffness = 380f)
+                        fadeInSpec = ItemFadeSpring,
+                        placementSpec = ItemPlacementSpring,
+                        fadeOutSpec = ItemFadeSpring
                     )
                 )
             }
@@ -338,6 +457,24 @@ private fun FloatingEmberHero(
         ),
         label = "emberFloat"
     )
+    val breatheScaleX = emberTransition.animateFloat(
+        initialValue = 0.985f,
+        targetValue = 1.015f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "emberBreatheX"
+    )
+    val breatheScaleY = emberTransition.animateFloat(
+        initialValue = 1.015f,
+        targetValue = 0.985f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "emberBreatheY"
+    )
 
     EmberFlameCanvas(
         size = 72.dp,
@@ -345,6 +482,8 @@ private fun FloatingEmberHero(
         isUrgent = isUrgent,
         modifier = modifier.graphicsLayer {
             translationY = emberFloatOffset.value
+            scaleX = breatheScaleX.value
+            scaleY = breatheScaleY.value
         }
     )
 }
@@ -355,27 +494,31 @@ private fun HomeworkProgressBar(
     isAllDone: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val animatedProgress by animateFloatAsState(
+    val animatedProgress = animateFloatAsState(
         targetValue = progressFraction.coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
         label = "progressAnim"
     )
 
-    Box(
+    val barColor = if (isAllDone) Color(0xFF6EE7B7) else Color.White
+    val trackColor = Color.White.copy(alpha = 0.25f)
+
+    Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(6.dp)
-            .clip(RoundedCornerShape(3.dp))
-            .background(Color.White.copy(alpha = 0.25f))
+            .height(8.dp)
     ) {
-        val clampedProgress = animatedProgress.coerceIn(0f, 1f)
-        if (clampedProgress > 0.001f) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(clampedProgress)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(if (isAllDone) Color(0xFF6EE7B7) else Color.White)
+        val cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
+        drawRoundRect(
+            color = trackColor,
+            cornerRadius = cornerRadius
+        )
+        val progress = animatedProgress.value.coerceIn(0f, 1f)
+        if (progress > 0.001f) {
+            drawRoundRect(
+                color = barColor,
+                size = Size(width = size.width * progress, height = size.height),
+                cornerRadius = cornerRadius
             )
         }
     }

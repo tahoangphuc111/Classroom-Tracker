@@ -17,7 +17,6 @@ class ClassroomGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
         super.onReceive(context, intent)
         when (intent.action) {
             Intent.ACTION_TIMEZONE_CHANGED -> {
-                // Clear JVM's cached default timezone so java.util.TimeZone.getDefault() reads the new system timezone
                 TimeZone.setDefault(null)
                 triggerWidgetUpdate(context)
             }
@@ -37,7 +36,6 @@ class ClassroomGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
                     ClassroomGlanceWidget().update(context, glanceId)
                 }
             } catch (_: Exception) {
-                // Ignore transient errors during rapid system broadcast dispatch
             } finally {
                 pendingResult.finish()
             }

@@ -18,7 +18,6 @@ import java.io.IOException
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "classroom_settings")
 
 class ClassroomPreferences(private val context: Context) {
-
     companion object {
         val KEY_USER_EMAIL = stringPreferencesKey("cached_user_email")
         val KEY_USER_NAME = stringPreferencesKey("cached_user_name")

@@ -49,10 +49,10 @@ object ChunkyColor {
     val CompletedBadgeBorder = Color(0xFFBBF7D0)
 
     val HeaderOverdue = Color(0xFFDC2626)
-    val HeaderToday = Color(0xFFEA580C)
-    val HeaderTomorrow = Color(0xFF0284C7)
+    val HeaderToday = Color(0xFFC2410C)
+    val HeaderTomorrow = Color(0xFF0369A1)
     val HeaderUpcoming = Color(0xFF475569)
-    val HeaderCompleted = Color(0xFF16A34A)
+    val HeaderCompleted = Color(0xFF15803D)
 
     val SkyGradient = Brush.linearGradient(
         colors = listOf(SkyTop, SkyBottom)

@@ -43,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,11 +59,16 @@ import com.phucta.classroom.domain.BaoBaiBucketingUtils
 import com.phucta.classroom.ui.components.AssignmentCard
 import com.phucta.classroom.ui.theme.ChunkyColor
 
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+
+private val ItemPlacementSpring = spring<IntOffset>(dampingRatio = 0.82f, stiffness = 380f)
+private val ItemFadeSpring = spring<Float>(dampingRatio = 0.82f, stiffness = 380f)
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -161,7 +167,7 @@ fun AllUpcomingScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Tìm bài tập...", fontSize = 14.5.sp) },
+            placeholder = { Text("Tìm bài tập...", fontSize = 14.sp) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = ChunkyColor.TextMuted) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
@@ -182,22 +188,22 @@ fun AllUpcomingScreen(
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
         )
 
         if (availableSubjectCategories.isNotEmpty()) {
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 6.dp),
+                    .padding(bottom = 8.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                item {
+                item(key = "all_categories", contentType = "filter_chip") {
                     FilterChip(
                         selected = selectedSubjectCategory == null,
                         onClick = { selectedSubjectCategory = null },
-                        label = { Text("Tất cả", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold) },
+                        label = { Text("Tất cả", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
                         colors = FilterChipDefaults.filterChipColors(
                             containerColor = ChunkyColor.SurfaceWhite,
                             labelColor = ChunkyColor.TextPrimary,
@@ -214,7 +220,11 @@ fun AllUpcomingScreen(
                         )
                     )
                 }
-                items(availableSubjectCategories, key = { it.name }) { cat ->
+                items(
+                    items = availableSubjectCategories,
+                    key = { it.name },
+                    contentType = { "filter_chip" }
+                ) { cat ->
                     val themeColor = SubjectArtHelper.themeColor(cat)
                     val badge = SubjectArtHelper.badgeCode(cat, "", null)
                     val isSelected = selectedSubjectCategory == cat.name
@@ -226,7 +236,7 @@ fun AllUpcomingScreen(
                         label = {
                             Text(
                                 text = badge,
-                                fontSize = 12.5.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         },
@@ -312,7 +322,7 @@ fun AllUpcomingScreen(
                             Spacer(modifier = Modifier.height(14.dp))
                             OutlinedButton(
                                 onClick = { selectedSubjectCategory = null },
-                                shape = RoundedCornerShape(10.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 border = BorderStroke(1.dp, ChunkyColor.SkyBottom.copy(alpha = 0.6f)),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = ChunkyColor.SkyBottom
@@ -321,7 +331,7 @@ fun AllUpcomingScreen(
                                 Text(
                                     text = "Xoá bộ lọc môn",
                                     fontWeight = FontWeight.SemiBold,
-                                    fontSize = 13.5.sp
+                                    fontSize = 14.sp
                                 )
                             }
                         } else {
@@ -331,7 +341,7 @@ fun AllUpcomingScreen(
                                 fontSize = 16.sp,
                                 color = ChunkyColor.TextPrimary
                             )
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = if (searchQuery.isNotBlank()) {
                                     "Không có bài tập nào khớp với từ khóa \"$searchQuery\"."
@@ -378,7 +388,7 @@ fun AllUpcomingScreen(
                                 modifier = Modifier.size(28.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = if (selectedSubjectCategory != null) "Không có bài tập môn $selectedSubjectCategoryDisplayName cần nộp!" else "Không có bài tập cần nộp!",
                             fontWeight = FontWeight.Bold,
@@ -386,7 +396,7 @@ fun AllUpcomingScreen(
                             color = ChunkyColor.TextPrimary,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = if (selectedSubjectCategory != null) {
                                 "Tất cả bài tập môn $selectedSubjectCategoryDisplayName đã được đánh dấu hoàn thành xuất sắc."
@@ -399,10 +409,10 @@ fun AllUpcomingScreen(
                             lineHeight = 18.sp
                         )
                         if (selectedSubjectCategory != null) {
-                            Spacer(modifier = Modifier.height(14.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
                             OutlinedButton(
                                 onClick = { selectedSubjectCategory = null },
-                                shape = RoundedCornerShape(10.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 border = BorderStroke(1.dp, ChunkyColor.SkyBottom.copy(alpha = 0.6f)),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = ChunkyColor.SkyBottom
@@ -411,7 +421,7 @@ fun AllUpcomingScreen(
                                 Text(
                                     text = "Xoá bộ lọc môn",
                                     fontWeight = FontWeight.SemiBold,
-                                    fontSize = 13.5.sp
+                                    fontSize = 14.sp
                                 )
                             }
                         }
@@ -421,21 +431,23 @@ fun AllUpcomingScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 28.dp),
+                contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (buckets.overdue.isNotEmpty()) {
-                    item(key = "header_overdue") {
+                    item(key = "header_overdue", contentType = "section_header") {
                         SectionHeaderPill(
                             title = "QUÁ HẠN",
                             count = buckets.overdue.size,
                             icon = Icons.Default.Warning,
                             color = ChunkyColor.HeaderOverdue,
-                            modifier = Modifier.animateItem(
-                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
-                            )
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .animateItem(
+                                    fadeInSpec = ItemFadeSpring,
+                                    placementSpec = ItemPlacementSpring,
+                                    fadeOutSpec = ItemFadeSpring
+                                )
                         )
                     }
                     items(
@@ -443,33 +455,43 @@ fun AllUpcomingScreen(
                         key = { it.id },
                         contentType = { "assignment_card" }
                     ) { item ->
+                        val currentItem by rememberUpdatedState(item)
+                        val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
+                        val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
+                        val onToggle = remember(item.id) {
+                            { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
+                        }
+                        val onClickCard = remember(item.id) {
+                            { currentOnSelectAssignment(currentItem) }
+                        }
                         AssignmentCard(
                             coursework = item,
                             hasNote = courseworkIdsWithNotes.contains(item.id),
-                            onToggleCompletion = { onToggleCompletion(item.id, it) },
-                            onClick = { onSelectAssignment(item) },
+                            onToggleCompletion = onToggle,
+                            onClick = onClickCard,
                             modifier = Modifier.animateItem(
-                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                                fadeInSpec = ItemFadeSpring,
+                                placementSpec = ItemPlacementSpring,
+                                fadeOutSpec = ItemFadeSpring
                             )
                         )
                     }
-                    item(key = "spacer_overdue") { Spacer(modifier = Modifier.height(6.dp)) }
                 }
 
                 if (buckets.today.isNotEmpty()) {
-                    item(key = "header_today") {
+                    item(key = "header_today", contentType = "section_header") {
                         SectionHeaderPill(
                             title = "HÔM NAY",
                             count = buckets.today.size,
                             icon = Icons.Default.Schedule,
                             color = ChunkyColor.HeaderToday,
-                            modifier = Modifier.animateItem(
-                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
-                            )
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .animateItem(
+                                    fadeInSpec = ItemFadeSpring,
+                                    placementSpec = ItemPlacementSpring,
+                                    fadeOutSpec = ItemFadeSpring
+                                )
                         )
                     }
                     items(
@@ -477,33 +499,43 @@ fun AllUpcomingScreen(
                         key = { it.id },
                         contentType = { "assignment_card" }
                     ) { item ->
+                        val currentItem by rememberUpdatedState(item)
+                        val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
+                        val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
+                        val onToggle = remember(item.id) {
+                            { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
+                        }
+                        val onClickCard = remember(item.id) {
+                            { currentOnSelectAssignment(currentItem) }
+                        }
                         AssignmentCard(
                             coursework = item,
                             hasNote = courseworkIdsWithNotes.contains(item.id),
-                            onToggleCompletion = { onToggleCompletion(item.id, it) },
-                            onClick = { onSelectAssignment(item) },
+                            onToggleCompletion = onToggle,
+                            onClick = onClickCard,
                             modifier = Modifier.animateItem(
-                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                                fadeInSpec = ItemFadeSpring,
+                                placementSpec = ItemPlacementSpring,
+                                fadeOutSpec = ItemFadeSpring
                             )
                         )
                     }
-                    item(key = "spacer_today") { Spacer(modifier = Modifier.height(6.dp)) }
                 }
 
                 if (buckets.tomorrow.isNotEmpty()) {
-                    item(key = "header_tomorrow") {
+                    item(key = "header_tomorrow", contentType = "section_header") {
                         SectionHeaderPill(
                             title = "NGÀY MAI",
                             count = buckets.tomorrow.size,
                             icon = Icons.Default.CalendarToday,
                             color = ChunkyColor.HeaderTomorrow,
-                            modifier = Modifier.animateItem(
-                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
-                            )
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .animateItem(
+                                    fadeInSpec = ItemFadeSpring,
+                                    placementSpec = ItemPlacementSpring,
+                                    fadeOutSpec = ItemFadeSpring
+                                )
                         )
                     }
                     items(
@@ -511,33 +543,43 @@ fun AllUpcomingScreen(
                         key = { it.id },
                         contentType = { "assignment_card" }
                     ) { item ->
+                        val currentItem by rememberUpdatedState(item)
+                        val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
+                        val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
+                        val onToggle = remember(item.id) {
+                            { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
+                        }
+                        val onClickCard = remember(item.id) {
+                            { currentOnSelectAssignment(currentItem) }
+                        }
                         AssignmentCard(
                             coursework = item,
                             hasNote = courseworkIdsWithNotes.contains(item.id),
-                            onToggleCompletion = { onToggleCompletion(item.id, it) },
-                            onClick = { onSelectAssignment(item) },
+                            onToggleCompletion = onToggle,
+                            onClick = onClickCard,
                             modifier = Modifier.animateItem(
-                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                                fadeInSpec = ItemFadeSpring,
+                                placementSpec = ItemPlacementSpring,
+                                fadeOutSpec = ItemFadeSpring
                             )
                         )
                     }
-                    item(key = "spacer_tomorrow") { Spacer(modifier = Modifier.height(6.dp)) }
                 }
 
                 if (buckets.laterUpcoming.isNotEmpty()) {
-                    item(key = "header_later") {
+                    item(key = "header_later", contentType = "section_header") {
                         SectionHeaderPill(
                             title = "SẮP TỚI",
                             count = buckets.laterUpcoming.size,
                             icon = Icons.Default.Upcoming,
                             color = ChunkyColor.HeaderUpcoming,
-                            modifier = Modifier.animateItem(
-                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
-                            )
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .animateItem(
+                                    fadeInSpec = ItemFadeSpring,
+                                    placementSpec = ItemPlacementSpring,
+                                    fadeOutSpec = ItemFadeSpring
+                                )
                         )
                     }
                     items(
@@ -545,33 +587,43 @@ fun AllUpcomingScreen(
                         key = { it.id },
                         contentType = { "assignment_card" }
                     ) { item ->
+                        val currentItem by rememberUpdatedState(item)
+                        val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
+                        val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
+                        val onToggle = remember(item.id) {
+                            { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
+                        }
+                        val onClickCard = remember(item.id) {
+                            { currentOnSelectAssignment(currentItem) }
+                        }
                         AssignmentCard(
                             coursework = item,
                             hasNote = courseworkIdsWithNotes.contains(item.id),
-                            onToggleCompletion = { onToggleCompletion(item.id, it) },
-                            onClick = { onSelectAssignment(item) },
+                            onToggleCompletion = onToggle,
+                            onClick = onClickCard,
                             modifier = Modifier.animateItem(
-                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                                fadeInSpec = ItemFadeSpring,
+                                placementSpec = ItemPlacementSpring,
+                                fadeOutSpec = ItemFadeSpring
                             )
                         )
                     }
-                    item(key = "spacer_later") { Spacer(modifier = Modifier.height(6.dp)) }
                 }
 
                 if (buckets.noDueDate.isNotEmpty()) {
-                    item(key = "header_no_due_date") {
+                    item(key = "header_no_due_date", contentType = "section_header") {
                         SectionHeaderPill(
                             title = "KHÔNG CÓ HẠN",
                             count = buckets.noDueDate.size,
                             icon = Icons.AutoMirrored.Filled.HelpOutline,
                             color = ChunkyColor.HeaderUpcoming,
-                            modifier = Modifier.animateItem(
-                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
-                            )
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .animateItem(
+                                    fadeInSpec = ItemFadeSpring,
+                                    placementSpec = ItemPlacementSpring,
+                                    fadeOutSpec = ItemFadeSpring
+                                )
                         )
                     }
                     items(
@@ -579,33 +631,43 @@ fun AllUpcomingScreen(
                         key = { it.id },
                         contentType = { "assignment_card" }
                     ) { item ->
+                        val currentItem by rememberUpdatedState(item)
+                        val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
+                        val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
+                        val onToggle = remember(item.id) {
+                            { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
+                        }
+                        val onClickCard = remember(item.id) {
+                            { currentOnSelectAssignment(currentItem) }
+                        }
                         AssignmentCard(
                             coursework = item,
                             hasNote = courseworkIdsWithNotes.contains(item.id),
-                            onToggleCompletion = { onToggleCompletion(item.id, it) },
-                            onClick = { onSelectAssignment(item) },
+                            onToggleCompletion = onToggle,
+                            onClick = onClickCard,
                             modifier = Modifier.animateItem(
-                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                                fadeInSpec = ItemFadeSpring,
+                                placementSpec = ItemPlacementSpring,
+                                fadeOutSpec = ItemFadeSpring
                             )
                         )
                     }
                 }
 
                 if (searchQuery.isNotBlank() && buckets.completed.isNotEmpty()) {
-                    item(key = "header_completed") {
-                        Spacer(modifier = Modifier.height(6.dp))
+                    item(key = "header_completed", contentType = "section_header") {
                         SectionHeaderPill(
                             title = "ĐÃ HOÀN THÀNH",
                             count = buckets.completed.size,
                             icon = Icons.Default.CheckCircle,
                             color = ChunkyColor.HeaderCompleted,
-                            modifier = Modifier.animateItem(
-                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
-                            )
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .animateItem(
+                                    fadeInSpec = ItemFadeSpring,
+                                    placementSpec = ItemPlacementSpring,
+                                    fadeOutSpec = ItemFadeSpring
+                                )
                         )
                     }
                     items(
@@ -613,15 +675,24 @@ fun AllUpcomingScreen(
                         key = { it.id },
                         contentType = { "assignment_card" }
                     ) { item ->
+                        val currentItem by rememberUpdatedState(item)
+                        val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
+                        val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
+                        val onToggle = remember(item.id) {
+                            { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
+                        }
+                        val onClickCard = remember(item.id) {
+                            { currentOnSelectAssignment(currentItem) }
+                        }
                         AssignmentCard(
                             coursework = item,
                             hasNote = courseworkIdsWithNotes.contains(item.id),
-                            onToggleCompletion = { onToggleCompletion(item.id, it) },
-                            onClick = { onSelectAssignment(item) },
+                            onToggleCompletion = onToggle,
+                            onClick = onClickCard,
                             modifier = Modifier.animateItem(
-                                fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                                fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                                fadeInSpec = ItemFadeSpring,
+                                placementSpec = ItemPlacementSpring,
+                                fadeOutSpec = ItemFadeSpring
                             )
                         )
                     }

@@ -7,6 +7,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,10 +15,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.ripple
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.window.DialogProperties
@@ -221,7 +225,7 @@ fun PersonalNotesScreen(
                         Text(
                             text = "Tất cả",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.5.sp,
+                            fontSize = 14.sp,
                             color = if (selectedStatusTab == 0) ChunkyColor.SkyBottom else ChunkyColor.TextMuted
                         )
                     }
@@ -233,7 +237,7 @@ fun PersonalNotesScreen(
                         Text(
                             text = "Đang làm",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.5.sp,
+                            fontSize = 14.sp,
                             color = if (selectedStatusTab == 1) ChunkyColor.HeaderToday else ChunkyColor.TextMuted
                         )
                     }
@@ -245,7 +249,7 @@ fun PersonalNotesScreen(
                         Text(
                             text = "Đã xong",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.5.sp,
+                            fontSize = 14.sp,
                             color = if (selectedStatusTab == 2) ChunkyColor.HeaderCompleted else ChunkyColor.TextMuted
                         )
                     }
@@ -258,12 +262,12 @@ fun PersonalNotesScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.background(ChunkyColor.WindowBackground)
                 ) {
-                    item {
+                    item(key = "all_courses", contentType = "filter_chip") {
                         val isAllSelected = selectedCourseId == null
                         FilterChip(
                             selected = isAllSelected,
                             onClick = { selectedCourseId = null },
-                            label = { Text("Tất cả môn", fontSize = 12.5.sp, fontWeight = if (isAllSelected) FontWeight.Bold else FontWeight.Medium) },
+                            label = { Text("Tất cả môn", fontSize = 12.sp, fontWeight = if (isAllSelected) FontWeight.Bold else FontWeight.Medium) },
                             border = FilterChipDefaults.filterChipBorder(
                                 enabled = true,
                                 selected = isAllSelected,
@@ -278,14 +282,18 @@ fun PersonalNotesScreen(
                             )
                         )
                     }
-                    items(courses, key = { it.id }) { course ->
+                    items(
+                        items = courses,
+                        key = { it.id },
+                        contentType = { "filter_chip" }
+                    ) { course ->
                         val isSelected = selectedCourseId == course.id
                         FilterChip(
                             selected = isSelected,
                             onClick = {
                                 selectedCourseId = if (selectedCourseId == course.id) null else course.id
                             },
-                            label = { Text(course.name, fontSize = 12.5.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
+                            label = { Text(course.name, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
                             border = FilterChipDefaults.filterChipBorder(
                                 enabled = true,
                                 selected = isSelected,
@@ -346,10 +354,10 @@ fun PersonalNotesScreen(
                             fontSize = 18.sp,
                             color = ChunkyColor.TextPrimary
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = if (searchQuery.isNotBlank()) "Thử tìm kiếm với từ khóa khác hoặc xoá bộ lọc." else "Nhấn nút + bên dưới để tạo ghi chú mới cho việc học nhé!",
-                            fontSize = 13.5.sp,
+                            fontSize = 14.sp,
                             color = ChunkyColor.TextMuted,
                             textAlign = TextAlign.Center
                         )
@@ -359,7 +367,7 @@ fun PersonalNotesScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(
                         items = filteredNotes,
@@ -444,20 +452,27 @@ private fun PersonalNoteCard(
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val view = LocalView.current
 
-    // Tactile card press animation with snappy spring (deferred to draw phase)
     val cardInteractionSource = remember { MutableInteractionSource() }
     val isCardPressed by cardInteractionSource.collectIsPressedAsState()
-    val cardScale = animateFloatAsState(
-        targetValue = if (isCardPressed) 0.985f else 1.0f,
+    val cardScaleX = animateFloatAsState(
+        targetValue = if (isCardPressed) 1.01f else 1.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            stiffness = 400f
         ),
-        label = "noteCardScale"
+        label = "noteCardScaleX"
+    )
+    val cardScaleY = animateFloatAsState(
+        targetValue = if (isCardPressed) 0.97f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = 400f
+        ),
+        label = "noteCardScaleY"
     )
 
-    // Checkbox press feedback & elastic bounce/scale pop (1.15f -> 1.0f)
     val checkInteractionSource = remember { MutableInteractionSource() }
     val isCheckPressed by checkInteractionSource.collectIsPressedAsState()
     val checkPressScale = animateFloatAsState(
@@ -508,35 +523,37 @@ private fun PersonalNoteCard(
         label = "noteIconScale"
     )
 
+    val iconRotation = animateFloatAsState(
+        targetValue = if (note.isCompleted) 0f else -12f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "noteIconRotation"
+    )
+
     val iconAlpha = animateFloatAsState(
         targetValue = if (note.isCompleted) 1.0f else 0.0f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "noteIconAlpha"
     )
 
-    val checkBgColor by animateColorAsState(
+    val checkBgColor = animateColorAsState(
         targetValue = if (note.isCompleted) ChunkyColor.SuccessGreen else Color.Transparent,
         animationSpec = tween(durationMillis = 200),
         label = "noteCheckBgColor"
     )
 
-    val checkBorderColor by animateColorAsState(
+    val checkBorderColor = animateColorAsState(
         targetValue = if (note.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted.copy(alpha = 0.5f),
         animationSpec = tween(durationMillis = 200),
         label = "noteCheckBorderColor"
     )
 
-    // Smooth strikethrough transition & color fade
     val strikethroughProgress = animateFloatAsState(
         targetValue = if (note.isCompleted) 1.0f else 0.0f,
         animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
         label = "noteStrikethroughProgress"
-    )
-
-    val titleColor by animateColorAsState(
-        targetValue = if (note.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary,
-        animationSpec = tween(durationMillis = 220),
-        label = "noteTitleColor"
     )
 
     val titleAlpha = animateFloatAsState(
@@ -551,24 +568,36 @@ private fun PersonalNoteCard(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
-                scaleX = cardScale.value
-                scaleY = cardScale.value
+                scaleX = cardScaleX.value
+                scaleY = cardScaleY.value
             }
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(ChunkyColor.SurfaceWhite)
-            .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(14.dp)),
+            .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(12.dp)),
         verticalAlignment = Alignment.Top
     ) {
         Box(
             modifier = Modifier
-                .padding(start = 6.dp, top = 4.dp)
-                .size(44.dp)
+                .padding(start = 4.dp, top = 2.dp)
+                .size(48.dp)
                 .clip(CircleShape)
                 .clickable(
                     interactionSource = checkInteractionSource,
-                    indication = ripple(bounded = false, radius = 20.dp),
+                    indication = ripple(bounded = false, radius = 22.dp),
                     role = Role.Checkbox,
-                    onClick = onToggle
+                    onClick = {
+                        val newCompleted = !note.isCompleted
+                        if (newCompleted) {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            } else {
+                                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                            }
+                        } else {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        }
+                        onToggle()
+                    }
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -580,13 +609,15 @@ private fun PersonalNoteCard(
                         scaleX = combinedScale
                         scaleY = combinedScale
                     }
-                    .clip(CircleShape)
-                    .background(color = checkBgColor)
-                    .border(
-                        1.5.dp,
-                        color = checkBorderColor,
-                        shape = CircleShape
-                    ),
+                    .drawBehind {
+                        val strokeWidthPx = 2.dp.toPx()
+                        drawCircle(color = checkBgColor.value)
+                        drawCircle(
+                            color = checkBorderColor.value,
+                            radius = (size.minDimension - strokeWidthPx) / 2f,
+                            style = Stroke(width = strokeWidthPx)
+                        )
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -594,10 +625,11 @@ private fun PersonalNoteCard(
                     contentDescription = "Hoàn thành",
                     tint = Color.White,
                     modifier = Modifier
-                        .size(15.dp)
+                        .size(16.dp)
                         .graphicsLayer {
                             scaleX = iconScale.value
                             scaleY = iconScale.value
+                            rotationZ = iconRotation.value
                             alpha = iconAlpha.value
                         }
                 )
@@ -607,13 +639,13 @@ private fun PersonalNoteCard(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(topEnd = 14.dp, bottomEnd = 14.dp))
+                .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
                 .clickable(
                     interactionSource = cardInteractionSource,
                     indication = ripple(),
                     onClick = onEdit
                 )
-                .padding(start = 4.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+                .padding(start = 4.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.Top
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -625,7 +657,7 @@ private fun PersonalNoteCard(
                         text = note.title,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = titleColor,
+                        color = ChunkyColor.TextPrimary,
                         onTextLayout = { titleLayoutResultHolder[0] = it },
                         modifier = Modifier
                             .weight(1f)
@@ -647,7 +679,7 @@ private fun PersonalNoteCard(
                                                 color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
                                                 start = Offset(lineLeft, y),
                                                 end = Offset(endX, y),
-                                                strokeWidth = 1.75.dp.toPx(),
+                                                strokeWidth = 2.dp.toPx(),
                                                 cap = StrokeCap.Round
                                             )
                                         }
@@ -658,7 +690,7 @@ private fun PersonalNoteCard(
                                             color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
                                             start = Offset(0f, y),
                                             end = Offset(endX, y),
-                                            strokeWidth = 1.75.dp.toPx(),
+                                            strokeWidth = 2.dp.toPx(),
                                             cap = StrokeCap.Round
                                         )
                                     }
@@ -672,7 +704,7 @@ private fun PersonalNoteCard(
                             text = "Ngày mai",
                             isCompleted = note.isCompleted,
                             isDueTomorrow = true,
-                            fontSize = 11.5.sp,
+                            fontSize = 12.sp,
                             modifier = Modifier.padding(top = 1.dp)
                         )
                     } else if (note.isDueToday) {
@@ -681,7 +713,7 @@ private fun PersonalNoteCard(
                             text = "Hôm nay",
                             isCompleted = note.isCompleted,
                             isDueToday = true,
-                            fontSize = 11.5.sp,
+                            fontSize = 12.sp,
                             modifier = Modifier.padding(top = 1.dp)
                         )
                     } else if (note.dueEpochMillis != null) {
@@ -690,7 +722,7 @@ private fun PersonalNoteCard(
                         DueDateBadge(
                             text = dateStr,
                             isCompleted = note.isCompleted,
-                            fontSize = 11.5.sp,
+                            fontSize = 12.sp,
                             modifier = Modifier.padding(top = 1.dp)
                         )
                     }
@@ -700,7 +732,7 @@ private fun PersonalNoteCard(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = note.content,
-                        fontSize = 13.5.sp,
+                        fontSize = 14.sp,
                         color = if (note.isCompleted) ChunkyColor.TextMuted.copy(alpha = 0.7f) else ChunkyColor.TextMuted,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis
@@ -713,7 +745,7 @@ private fun PersonalNoteCard(
                 }
             }
 
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
             Box {
                 IconButton(
@@ -809,10 +841,10 @@ private fun CreateOrEditNoteDialog(
                     onValueChange = { title = it },
                     label = { Text("Tiêu đề ghi chú") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(12.dp)
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
                     value = content,
@@ -821,7 +853,7 @@ private fun CreateOrEditNoteDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(110.dp),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(12.dp)
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -834,28 +866,28 @@ private fun CreateOrEditNoteDialog(
                 )
 
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
                     item {
                         FilterChip(
                             selected = dueDateMode == 0,
                             onClick = { dueDateMode = 0 },
-                            label = { Text("Không hạn", fontSize = 11.5.sp) }
+                            label = { Text("Không hạn", fontSize = 12.sp) }
                         )
                     }
                     item {
                         FilterChip(
                             selected = dueDateMode == 1,
                             onClick = { dueDateMode = 1 },
-                            label = { Text("Hôm nay", fontSize = 11.5.sp) }
+                            label = { Text("Hôm nay", fontSize = 12.sp) }
                         )
                     }
                     item {
                         FilterChip(
                             selected = dueDateMode == 2,
                             onClick = { dueDateMode = 2 },
-                            label = { Text("Ngày mai", fontSize = 11.5.sp) }
+                            label = { Text("Ngày mai", fontSize = 12.sp) }
                         )
                     }
                     if (hasCustomDueDate) {
@@ -863,7 +895,7 @@ private fun CreateOrEditNoteDialog(
                             FilterChip(
                                 selected = dueDateMode == 3,
                                 onClick = { dueDateMode = 3 },
-                                label = { Text("Ngày khác ($customDateStr)", fontSize = 11.5.sp) }
+                                label = { Text("Ngày khác ($customDateStr)", fontSize = 12.sp) }
                             )
                         }
                     }
@@ -878,21 +910,21 @@ private fun CreateOrEditNoteDialog(
                         color = ChunkyColor.TextPrimary
                     )
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.padding(top = 4.dp)
                     ) {
                         item {
                             FilterChip(
                                 selected = selectedCourseId.isEmpty(),
                                 onClick = { selectedCourseId = "" },
-                                label = { Text("Không gắn", fontSize = 11.5.sp) }
+                                label = { Text("Không gắn", fontSize = 12.sp) }
                             )
                         }
-                        items(courses) { course ->
+                        items(courses, key = { it.id }) { course ->
                             FilterChip(
                                 selected = selectedCourseId == course.id,
                                 onClick = { selectedCourseId = course.id },
-                                label = { Text(course.name, fontSize = 11.5.sp) }
+                                label = { Text(course.name, fontSize = 12.sp) }
                             )
                         }
                     }

@@ -3,7 +3,6 @@ import Foundation
 import AppKit
 #endif
 
-
 public final class SafeSocketHandle: @unchecked Sendable {
     private var fd: Int32
     private let lock = NSLock()
@@ -152,7 +151,6 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                     var authCode: String?
                     var oauthError: String?
 
-                    // Tách chính xác request URI giữa "GET " và " HTTP/"
                     if let uriStart = requestString.range(of: "GET ")?.upperBound,
                        let uriEnd = requestString.range(of: " HTTP/")?.lowerBound,
                        uriStart < uriEnd {
@@ -165,7 +163,6 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                             oauthError = components.queryItems?.first(where: { $0.name == "error" })?.value
                         }
 
-                        // Fallback parse query params nếu URLComponents trả về nil hoặc bị lỗi do ký tự đặc biệt
                         if authCode == nil && oauthError == nil {
                             let queryString: String
                             if let qIndex = uri.firstIndex(of: "?") {
@@ -351,4 +348,3 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
     }
 }
 }
-

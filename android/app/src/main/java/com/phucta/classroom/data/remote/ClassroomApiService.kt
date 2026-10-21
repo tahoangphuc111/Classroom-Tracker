@@ -5,6 +5,7 @@ import com.phucta.classroom.data.model.Course
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.SubmissionStatus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -87,33 +88,23 @@ class ClassroomApiService(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    /**
-     * Executes HTTP requests with exponential backoff on HTTP 429 (Too Many Requests / 10 QPS) or HTTP 503.
-     */
-    private fun executeWithRetry(request: Request, maxRetries: Int = 2): okhttp3.Response {
+    private suspend fun executeWithRetry(request: Request, maxRetries: Int = 2): okhttp3.Response {
         var attempt = 0
         while (true) {
             val response = httpClient.newCall(request).execute()
             if ((response.code == 429 || response.code == 503) && attempt < maxRetries) {
                 response.close()
                 attempt++
-                val backoffMillis = 500L * (1 shl attempt) // 1000ms, 2000ms
-                try {
-                    Thread.sleep(backoffMillis)
-                } catch (e: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    throw IOException("Bị gián đoạn khi chờ thử lại API rate-limit", e)
-                }
+                val backoffMillis = 500L * (1 shl attempt)
+                delay(backoffMillis)
                 continue
             }
             return response
         }
     }
-
     suspend fun fetchActiveCourses(accessToken: String): List<Course> = withContext(Dispatchers.IO) {
         val coursesMap = LinkedHashMap<String, Course>()
         var lastError: Exception? = null
-
         try {
             val studentCourses = fetchCoursesPage(accessToken, filterKey = "studentId", filterValue = "me", courseState = "ACTIVE")
             for (course in studentCourses) {
@@ -122,7 +113,6 @@ class ClassroomApiService(
         } catch (e: Exception) {
             lastError = e
         }
-
         try {
             val teacherCourses = fetchCoursesPage(accessToken, filterKey = "teacherId", filterValue = "me", courseState = "ACTIVE")
             for (course in teacherCourses) {
@@ -131,8 +121,6 @@ class ClassroomApiService(
         } catch (e: Exception) {
             if (lastError == null) lastError = e
         }
-
-        // Fallback for admins and creators without an explicit role filter
         if (coursesMap.isEmpty()) {
             try {
                 val adminCourses = fetchCoursesPage(accessToken, filterKey = null, filterValue = null, courseState = "ACTIVE")
@@ -143,8 +131,6 @@ class ClassroomApiService(
                 if (lastError == null) lastError = e
             }
         }
-
-        // Fallback if courses have states other than ACTIVE
         if (coursesMap.isEmpty() && lastError == null) {
             try {
                 val studentAllStateCourses = fetchCoursesPage(accessToken, filterKey = "studentId", filterValue = "me", courseState = null)
@@ -159,15 +145,12 @@ class ClassroomApiService(
                 }
             } catch (_: Exception) {}
         }
-
         if (coursesMap.isEmpty() && lastError != null) {
             throw lastError
         }
-
         return@withContext coursesMap.values.toList()
     }
-
-    private fun fetchCoursesPage(
+    private suspend fun fetchCoursesPage(
         accessToken: String,
         filterKey: String?,
         filterValue: String?,
@@ -176,11 +159,9 @@ class ClassroomApiService(
         val pageCourses = mutableListOf<Course>()
         var pageToken: String? = null
         var pageCount = 0
-
         do {
             val urlBuilder = "https://classroom.googleapis.com/v1/courses".toHttpUrl().newBuilder()
                 .addQueryParameter("pageSize", "50")
-
             if (courseState != null) {
                 urlBuilder.addQueryParameter("courseStates", courseState)
             }
@@ -190,12 +171,10 @@ class ClassroomApiService(
             if (!pageToken.isNullOrBlank()) {
                 urlBuilder.addQueryParameter("pageToken", pageToken)
             }
-
             val request = Request.Builder()
                 .url(urlBuilder.build())
                 .addHeader("Authorization", "Bearer $accessToken")
                 .build()
-
             val (shouldContinue, newPageToken) = try {
                 executeWithRetry(request).use { response ->
                     if (!response.isSuccessful) {
@@ -204,7 +183,6 @@ class ClassroomApiService(
                         }
                         return@use Pair(false, null)
                     }
-
                     val body = response.body?.string() ?: return@use Pair(false, null)
                     val decoded = json.decodeFromString<GoogleCoursesResponse>(body)
                     decoded.courses?.forEach { item ->
@@ -233,15 +211,12 @@ class ClassroomApiService(
             pageToken = newPageToken
             pageCount++
         } while (pageToken != null && pageCount < 10)
-
         return pageCourses
     }
-
     suspend fun fetchCourseworkForCourse(course: Course, accessToken: String): List<Coursework> = withContext(Dispatchers.IO) {
         val rawItems = fetchRawCoursework(course.id, accessToken)
         val submissionsMap = fetchSubmissionsMap(course.id, accessToken)
         val now = System.currentTimeMillis()
-
         return@withContext rawItems.map { raw ->
             val submission = submissionsMap[raw.id]
             val dueEpoch = ClassroomDateUtils.parseGoogleDueDateTime(
@@ -253,7 +228,6 @@ class ClassroomApiService(
                 seconds = raw.dueTime?.seconds,
                 hasDueTime = raw.dueTime != null
             )
-
             val status: SubmissionStatus = when (submission?.state) {
                 "TURNED_IN", "STUDENT_EDITED_AFTER_TURN_IN" -> SubmissionStatus.TURNED_IN
                 "RETURNED" -> SubmissionStatus.RETURNED
@@ -265,7 +239,6 @@ class ClassroomApiService(
                     }
                 }
             }
-
             Coursework(
                 id = raw.id,
                 courseId = course.id,
@@ -279,26 +252,21 @@ class ClassroomApiService(
             )
         }
     }
-
-    private fun fetchRawCoursework(courseId: String, accessToken: String): List<GoogleCourseworkRawItem> {
+    private suspend fun fetchRawCoursework(courseId: String, accessToken: String): List<GoogleCourseworkRawItem> {
         val allItems = mutableListOf<GoogleCourseworkRawItem>()
         var pageToken: String? = null
         var pageCount = 0
-
         do {
             val urlBuilder = "https://classroom.googleapis.com/v1/courses/$courseId/courseWork".toHttpUrl().newBuilder()
                 .addQueryParameter("courseWorkStates", "PUBLISHED")
                 .addQueryParameter("pageSize", "50")
-
             if (!pageToken.isNullOrBlank()) {
                 urlBuilder.addQueryParameter("pageToken", pageToken)
             }
-
             val request = Request.Builder()
                 .url(urlBuilder.build())
                 .addHeader("Authorization", "Bearer $accessToken")
                 .build()
-
             val (shouldContinue, newPageToken) = try {
                 executeWithRetry(request).use { response ->
                     if (!response.isSuccessful) {
@@ -321,18 +289,14 @@ class ClassroomApiService(
             pageToken = newPageToken
             pageCount++
         } while (pageToken != null && pageCount < 10)
-
-        // Retry without PUBLISHED filter if nothing came back (matching Swift implementation)
         if (allItems.isEmpty()) {
             try {
                 val urlBuilder = "https://classroom.googleapis.com/v1/courses/$courseId/courseWork".toHttpUrl().newBuilder()
                     .addQueryParameter("pageSize", "50")
-
                 val request = Request.Builder()
                     .url(urlBuilder.build())
                     .addHeader("Authorization", "Bearer $accessToken")
                     .build()
-
                 executeWithRetry(request).use { response ->
                     if (response.isSuccessful) {
                         response.body?.string()?.let { body ->
@@ -343,34 +307,26 @@ class ClassroomApiService(
                 }
             } catch (_: Exception) {}
         }
-
         return allItems
     }
-
-    private fun fetchSubmissionsMap(courseId: String, accessToken: String): Map<String, GoogleSubmissionItem> {
+    private suspend fun fetchSubmissionsMap(courseId: String, accessToken: String): Map<String, GoogleSubmissionItem> {
         val map = mutableMapOf<String, GoogleSubmissionItem>()
         var pageToken: String? = null
         var pageCount = 0
-
         do {
             val urlBuilder = "https://classroom.googleapis.com/v1/courses/$courseId/courseWork/-/studentSubmissions".toHttpUrl().newBuilder()
                 .addQueryParameter("userId", "me")
                 .addQueryParameter("pageSize", "50")
-
             if (!pageToken.isNullOrBlank()) {
                 urlBuilder.addQueryParameter("pageToken", pageToken)
             }
-
             val request = Request.Builder()
                 .url(urlBuilder.build())
                 .addHeader("Authorization", "Bearer $accessToken")
                 .build()
-
             val (shouldContinue, newPageToken) = try {
                 executeWithRetry(request).use { response ->
                     if (!response.isSuccessful) {
-                        // Submissions endpoint failure (e.g. 403 Forbidden when user is teacher/observer, or 404)
-                        // should NOT fail fetching coursework items
                         return@use Pair(false, null)
                     }
                     val body = response.body?.string() ?: return@use Pair(false, null)
@@ -384,14 +340,12 @@ class ClassroomApiService(
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                // Submissions fetch error should not crash coursework retrieval
                 Pair(false, null)
             }
             if (!shouldContinue) break
             pageToken = newPageToken
             pageCount++
         } while (pageToken != null && pageCount < 10)
-
         return map
     }
 }

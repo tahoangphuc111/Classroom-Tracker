@@ -3,6 +3,7 @@ package com.phucta.classroom.ui.components
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -22,6 +23,54 @@ enum class EmberEmotion {
     CELEBRATING
 }
 
+private val GlossColor = Color.White.copy(alpha = 0.45f)
+private val EyeColor = Color(0xFF1E2430)
+private val BlushColor = Color(0xFFFF8595).copy(alpha = 0.65f)
+private val Z1Color = Color.White.copy(alpha = 0.85f)
+private val Z2Color = Color.White.copy(alpha = 0.95f)
+private val SweatDropColor = Color(0xFF61C7FF).copy(alpha = 0.9f)
+private val SweatGlintColor = Color.White.copy(alpha = 0.8f)
+
+private val OuterBrushColors = listOf(ChunkyColor.EmberTop, ChunkyColor.EmberBottom)
+private val InnerBrushColors = listOf(ChunkyColor.EmberCore, ChunkyColor.EmberTop)
+
+private class FlamePathCache {
+    var cachedW: Float = -1f
+    var cachedH: Float = -1f
+    var cachedIsUrgent: Boolean = false
+    var cachedIsSleeping: Boolean = false
+    val outerPath: Path = Path()
+    val innerPath: Path = Path()
+    val glossPath: Path = Path()
+
+    fun update(w: Float, h: Float, isUrgent: Boolean, isSleeping: Boolean) {
+        if (cachedW == w && cachedH == h && cachedIsUrgent == isUrgent && cachedIsSleeping == isSleeping) {
+            return
+        }
+        val sizeChanged = cachedW != w || cachedH != h
+        cachedW = w
+        cachedH = h
+        cachedIsUrgent = isUrgent
+        cachedIsSleeping = isSleeping
+
+        outerPath.reset()
+        buildOuterFlamePathTo(outerPath, w, h, isUrgent, isSleeping)
+
+        innerPath.reset()
+        buildInnerFlamePathTo(innerPath, w, h, isSleeping)
+
+        if (sizeChanged) {
+            glossPath.reset()
+            glossPath.moveTo(w * 0.58f, h * 0.11f)
+            glossPath.cubicTo(
+                w * 0.52f, h * 0.11f,
+                w * 0.43f, h * 0.18f,
+                w * 0.39f, h * 0.25f
+            )
+        }
+    }
+}
+
 @Composable
 fun EmberFlameCanvas(
     modifier: Modifier = Modifier,
@@ -29,6 +78,8 @@ fun EmberFlameCanvas(
     emotion: EmberEmotion = EmberEmotion.NORMAL,
     isUrgent: Boolean = false
 ) {
+    val pathCache = remember { FlamePathCache() }
+
     Spacer(
         modifier = modifier
             .size(size)
@@ -37,42 +88,30 @@ fun EmberFlameCanvas(
                 val h = this.size.height
 
                 val isSleeping = emotion == EmberEmotion.SLEEPING
-                val outerPath = buildOuterFlamePath(w, h, isUrgent, isSleeping)
-                val outerBrush = Brush.verticalGradient(
-                    colors = listOf(ChunkyColor.EmberTop, ChunkyColor.EmberBottom)
-                )
+                pathCache.update(w, h, isUrgent, isSleeping)
+                val outerPath = pathCache.outerPath
+                val outerBrush = Brush.verticalGradient(colors = OuterBrushColors)
 
-                val innerPath = buildInnerFlamePath(w, h, isSleeping)
-                val innerBrush = Brush.verticalGradient(
-                    colors = listOf(ChunkyColor.EmberCore, ChunkyColor.EmberTop)
-                )
+                val innerPath = pathCache.innerPath
+                val innerBrush = Brush.verticalGradient(colors = InnerBrushColors)
 
-                val glossPath = Path().apply {
-                    moveTo(w * 0.58f, h * 0.11f)
-                    cubicTo(
-                        w * 0.52f, h * 0.11f,
-                        w * 0.43f, h * 0.18f,
-                        w * 0.39f, h * 0.25f
-                    )
-                }
-                val glossColor = Color.White.copy(alpha = 0.45f)
+                val glossPath = pathCache.glossPath
                 val glossStroke = Stroke(width = w * 0.035f, cap = StrokeCap.Round)
-
-                val eyeColor = Color(0xFF1E2430)
-                val blushColor = Color(0xFFFF8595).copy(alpha = 0.65f)
 
                 val mouthPath: Path
                 val mouthStroke: Stroke
                 var leftEyePath: Path? = null
                 var rightEyePath: Path? = null
-                var eyeStroke: Stroke? = null
+                val eyeStroke: Stroke
                 var z1Path: Path? = null
                 var z2Path: Path? = null
-                var zStroke: Stroke? = null
+                val zStroke = Stroke(width = w * 0.025f, cap = StrokeCap.Round)
                 var sweatPath: Path? = null
+                val sweatGlintCenter = Offset(w * 0.74f, h * 0.52f)
 
                 when (emotion) {
                     EmberEmotion.NORMAL -> {
+                        eyeStroke = Stroke(width = w * 0.035f, cap = StrokeCap.Round)
                         mouthPath = Path().apply {
                             moveTo(w * 0.46f, h * 0.66f)
                             quadraticTo(w * 0.50f, h * 0.70f, w * 0.54f, h * 0.66f)
@@ -108,9 +147,9 @@ fun EmberFlameCanvas(
                             lineTo(w * 0.80f, h * 0.35f)
                             lineTo(w * 0.86f, h * 0.35f)
                         }
-                        zStroke = Stroke(width = w * 0.025f, cap = StrokeCap.Round)
                     }
                     EmberEmotion.STRESSED -> {
+                        eyeStroke = Stroke(width = w * 0.035f, cap = StrokeCap.Round)
                         mouthPath = Path().apply {
                             moveTo(w * 0.44f, h * 0.68f)
                             quadraticTo(w * 0.47f, h * 0.65f, w * 0.50f, h * 0.68f)
@@ -162,48 +201,53 @@ fun EmberFlameCanvas(
                 val leftBlushCenterCelebrating = Offset(w * 0.33f, h * 0.64f)
                 val rightBlushCenterCelebrating = Offset(w * 0.67f, h * 0.64f)
 
+                val eyeRadius = w * 0.045f
+                val pupilRadius = w * 0.018f
+                val stressedEyeRadius = w * 0.052f
+                val stressedPupilRadius = w * 0.015f
+                val blushRadiusSleeping = w * 0.04f
+                val blushRadiusCelebrating = w * 0.045f
+                val sweatGlintRadius = w * 0.012f
+
                 onDrawBehind {
                     drawPath(path = outerPath, brush = outerBrush)
                     drawPath(path = innerPath, brush = innerBrush)
-                    drawPath(path = glossPath, color = glossColor, style = glossStroke)
+                    drawPath(path = glossPath, color = GlossColor, style = glossStroke)
 
                     when (emotion) {
                         EmberEmotion.NORMAL -> {
-                            drawCircle(color = eyeColor, radius = w * 0.045f, center = leftEyeCenter)
-                            drawCircle(color = Color.White, radius = w * 0.018f, center = leftPupilCenter)
-                            drawCircle(color = eyeColor, radius = w * 0.045f, center = rightEyeCenter)
-                            drawCircle(color = Color.White, radius = w * 0.018f, center = rightPupilCenter)
-                            drawPath(path = mouthPath, color = eyeColor, style = mouthStroke)
+                            drawCircle(color = EyeColor, radius = eyeRadius, center = leftEyeCenter)
+                            drawCircle(color = Color.White, radius = pupilRadius, center = leftPupilCenter)
+                            drawCircle(color = EyeColor, radius = eyeRadius, center = rightEyeCenter)
+                            drawCircle(color = Color.White, radius = pupilRadius, center = rightPupilCenter)
+                            drawPath(path = mouthPath, color = EyeColor, style = mouthStroke)
                         }
                         EmberEmotion.SLEEPING -> {
-                            val activeEyeStroke = eyeStroke ?: Stroke(width = w * 0.035f, cap = StrokeCap.Round)
-                            val activeZStroke = zStroke ?: Stroke(width = w * 0.025f, cap = StrokeCap.Round)
-                            leftEyePath?.let { drawPath(path = it, color = eyeColor, style = activeEyeStroke) }
-                            rightEyePath?.let { drawPath(path = it, color = eyeColor, style = activeEyeStroke) }
-                            drawCircle(color = blushColor, radius = w * 0.04f, center = leftBlushCenterSleeping)
-                            drawCircle(color = blushColor, radius = w * 0.04f, center = rightBlushCenterSleeping)
-                            drawPath(path = mouthPath, color = eyeColor, style = mouthStroke)
-                            z1Path?.let { drawPath(path = it, color = Color.White.copy(alpha = 0.85f), style = activeZStroke) }
-                            z2Path?.let { drawPath(path = it, color = Color.White.copy(alpha = 0.95f), style = activeZStroke) }
+                            leftEyePath?.let { drawPath(path = it, color = EyeColor, style = eyeStroke) }
+                            rightEyePath?.let { drawPath(path = it, color = EyeColor, style = eyeStroke) }
+                            drawCircle(color = BlushColor, radius = blushRadiusSleeping, center = leftBlushCenterSleeping)
+                            drawCircle(color = BlushColor, radius = blushRadiusSleeping, center = rightBlushCenterSleeping)
+                            drawPath(path = mouthPath, color = EyeColor, style = mouthStroke)
+                            z1Path?.let { drawPath(path = it, color = Z1Color, style = zStroke) }
+                            z2Path?.let { drawPath(path = it, color = Z2Color, style = zStroke) }
                         }
                         EmberEmotion.STRESSED -> {
-                            drawCircle(color = eyeColor, radius = w * 0.052f, center = stressedLeftEyeCenter)
-                            drawCircle(color = Color.White, radius = w * 0.015f, center = stressedLeftPupilCenter)
-                            drawCircle(color = eyeColor, radius = w * 0.052f, center = stressedRightEyeCenter)
-                            drawCircle(color = Color.White, radius = w * 0.015f, center = stressedRightPupilCenter)
-                            drawPath(path = mouthPath, color = eyeColor, style = mouthStroke)
+                            drawCircle(color = EyeColor, radius = stressedEyeRadius, center = stressedLeftEyeCenter)
+                            drawCircle(color = Color.White, radius = stressedPupilRadius, center = stressedLeftPupilCenter)
+                            drawCircle(color = EyeColor, radius = stressedEyeRadius, center = stressedRightEyeCenter)
+                            drawCircle(color = Color.White, radius = stressedPupilRadius, center = stressedRightPupilCenter)
+                            drawPath(path = mouthPath, color = EyeColor, style = mouthStroke)
                             sweatPath?.let {
-                                drawPath(path = it, color = Color(0xFF61C7FF).copy(alpha = 0.9f))
-                                drawCircle(color = Color.White.copy(alpha = 0.8f), radius = w * 0.012f, center = Offset(w * 0.74f, h * 0.52f))
+                                drawPath(path = it, color = SweatDropColor)
+                                drawCircle(color = SweatGlintColor, radius = sweatGlintRadius, center = sweatGlintCenter)
                             }
                         }
                         EmberEmotion.CELEBRATING -> {
-                            val activeEyeStroke = eyeStroke ?: Stroke(width = w * 0.035f, cap = StrokeCap.Round)
-                            leftEyePath?.let { drawPath(path = it, color = eyeColor, style = activeEyeStroke) }
-                            rightEyePath?.let { drawPath(path = it, color = eyeColor, style = activeEyeStroke) }
-                            drawCircle(color = blushColor, radius = w * 0.045f, center = leftBlushCenterCelebrating)
-                            drawCircle(color = blushColor, radius = w * 0.045f, center = rightBlushCenterCelebrating)
-                            drawPath(path = mouthPath, color = eyeColor, style = mouthStroke)
+                            leftEyePath?.let { drawPath(path = it, color = EyeColor, style = eyeStroke) }
+                            rightEyePath?.let { drawPath(path = it, color = EyeColor, style = eyeStroke) }
+                            drawCircle(color = BlushColor, radius = blushRadiusCelebrating, center = leftBlushCenterCelebrating)
+                            drawCircle(color = BlushColor, radius = blushRadiusCelebrating, center = rightBlushCenterCelebrating)
+                            drawPath(path = mouthPath, color = EyeColor, style = mouthStroke)
                         }
                     }
                 }
@@ -212,8 +256,13 @@ fun EmberFlameCanvas(
 }
 
 private fun buildOuterFlamePath(w: Float, h: Float, isUrgent: Boolean, isSleeping: Boolean): Path {
-    val cx = w * 0.50f
     val path = Path()
+    buildOuterFlamePathTo(path, w, h, isUrgent, isSleeping)
+    return path
+}
+
+private fun buildOuterFlamePathTo(path: Path, w: Float, h: Float, isUrgent: Boolean, isSleeping: Boolean) {
+    val cx = w * 0.50f
 
     path.moveTo(cx, h * 0.91f)
     path.cubicTo(
@@ -261,12 +310,16 @@ private fun buildOuterFlamePath(w: Float, h: Float, isUrgent: Boolean, isSleepin
         cx, h * 0.91f
     )
     path.close()
-    return path
 }
 
 private fun buildInnerFlamePath(w: Float, h: Float, isSleeping: Boolean): Path {
-    val cx = w * 0.50f
     val path = Path()
+    buildInnerFlamePathTo(path, w, h, isSleeping)
+    return path
+}
+
+private fun buildInnerFlamePathTo(path: Path, w: Float, h: Float, isSleeping: Boolean) {
+    val cx = w * 0.50f
 
     path.moveTo(cx, h * 0.86f)
     path.cubicTo(
@@ -310,5 +363,4 @@ private fun buildInnerFlamePath(w: Float, h: Float, isSleeping: Boolean): Path {
         cx, h * 0.86f
     )
     path.close()
-    return path
 }

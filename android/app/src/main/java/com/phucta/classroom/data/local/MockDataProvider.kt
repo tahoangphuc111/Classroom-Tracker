@@ -6,7 +6,6 @@ import com.phucta.classroom.data.model.SubmissionStatus
 import java.util.Calendar
 
 object MockDataProvider {
-
     val mockCourses: List<Course> = listOf(
         Course(id = "c1", name = "Nhập môn Lập trình", section = "CS101", descriptionHeading = "Khoa học Máy tính", isSelectedForWidget = true),
         Course(id = "c2", name = "Tiếng Anh Tổng quát", section = "ENG01", descriptionHeading = "Kỹ năng Giao tiếp & Thuyết trình", isSelectedForWidget = true),
@@ -18,7 +17,6 @@ object MockDataProvider {
         val now = System.currentTimeMillis()
         val cal = Calendar.getInstance()
 
-        // Tomorrow at 17:30
         cal.timeInMillis = now
         cal.add(Calendar.DAY_OF_YEAR, 1)
         cal.set(Calendar.HOUR_OF_DAY, 17)
@@ -26,20 +24,17 @@ object MockDataProvider {
         cal.set(Calendar.SECOND, 0)
         val tomorrowAfternoon = cal.timeInMillis
 
-        // Tomorrow at 23:59 (Cuối ngày)
         cal.set(Calendar.HOUR_OF_DAY, 23)
         cal.set(Calendar.MINUTE, 59)
         cal.set(Calendar.SECOND, 0)
         val tomorrowNight = cal.timeInMillis
 
-        // In 3 days
         cal.timeInMillis = now
         cal.add(Calendar.DAY_OF_YEAR, 3)
         cal.set(Calendar.HOUR_OF_DAY, 23)
         cal.set(Calendar.MINUTE, 59)
         val inThreeDays = cal.timeInMillis
 
-        // In 5 days
         cal.timeInMillis = now
         cal.add(Calendar.DAY_OF_YEAR, 5)
         cal.set(Calendar.HOUR_OF_DAY, 23)

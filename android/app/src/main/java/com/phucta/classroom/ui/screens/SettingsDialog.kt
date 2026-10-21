@@ -116,7 +116,7 @@ fun SettingsDialog(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(ChunkyColor.WindowBackground)
-                        .padding(14.dp)
+                        .padding(16.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
@@ -175,7 +175,7 @@ fun SettingsDialog(
                             enabled = !isSyncing,
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SkyBottom),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             if (isSyncing) {
                                 CircularProgressIndicator(
@@ -185,16 +185,16 @@ fun SettingsDialog(
                                 )
                             } else {
                                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text("Đồng bộ ngay", fontWeight = FontWeight.SemiBold)
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
 
                         OutlinedButton(
                             onClick = { showLogoutConfirmation = true },
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("Đăng xuất", color = ChunkyColor.UrgentAccent)
                         }
@@ -204,7 +204,7 @@ fun SettingsDialog(
                         onClick = onSignIn,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SkyBottom),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Text("Đăng nhập bằng Google", fontWeight = FontWeight.Bold)
                     }
@@ -220,7 +220,7 @@ fun SettingsDialog(
                         .clip(RoundedCornerShape(12.dp))
                         .background(ChunkyColor.WindowBackground)
                         .clickable { isAdvancedExpanded = !isAdvancedExpanded }
-                        .padding(horizontal = 14.dp, vertical = 12.dp)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -232,17 +232,17 @@ fun SettingsDialog(
                             tint = ChunkyColor.TextMuted,
                             modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Tùy chọn nâng cao",
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.5.sp,
+                                fontSize = 14.sp,
                                 color = ChunkyColor.TextPrimary
                             )
                             Text(
                                 text = "Cấu hình Google Client ID riêng",
-                                fontSize = 11.5.sp,
+                                fontSize = 12.sp,
                                 color = ChunkyColor.TextMuted
                             )
                         }
@@ -259,14 +259,14 @@ fun SettingsDialog(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 10.dp)
+                            .padding(top = 8.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(ChunkyColor.WindowBackground.copy(alpha = 0.5f))
-                            .padding(14.dp)
+                            .padding(16.dp)
                     ) {
                         Text(
                             text = "Ứng dụng đã có sẵn Google Client ID mặc định. Bạn chỉ cần cấu hình nếu muốn dùng Client ID riêng từ Google Cloud Console.",
-                            fontSize = 11.5.sp,
+                            fontSize = 12.sp,
                             color = ChunkyColor.TextMuted,
                             lineHeight = 16.sp
                         )
@@ -281,7 +281,7 @@ fun SettingsDialog(
                             label = { Text("Google Client ID") },
                             placeholder = { Text("Để trống để dùng Client ID mặc định", fontSize = 12.sp) },
                             singleLine = true,
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = ChunkyColor.SkyBottom,
                                 unfocusedBorderColor = ChunkyColor.CardBorder,
@@ -290,7 +290,7 @@ fun SettingsDialog(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         OutlinedTextField(
                             value = customClientSecret,
@@ -301,7 +301,7 @@ fun SettingsDialog(
                             label = { Text("Client Secret (Tùy chọn)") },
                             placeholder = { Text("Để trống nếu dùng mặc định", fontSize = 12.sp) },
                             singleLine = true,
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = ChunkyColor.SkyBottom,
                                 unfocusedBorderColor = ChunkyColor.CardBorder,
@@ -333,13 +333,13 @@ fun SettingsDialog(
                                     onSaveCustomCredentials(null, null)
                                     credentialsMessage = "Đã khôi phục Client ID mặc định"
                                 },
-                                shape = RoundedCornerShape(10.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text("Mặc định", fontSize = 13.sp)
                             }
 
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
 
                             Button(
                                 onClick = {
@@ -351,7 +351,7 @@ fun SettingsDialog(
                                 },
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SkyBottom),
-                                shape = RoundedCornerShape(10.dp)
+                                shape = RoundedCornerShape(12.dp)
                             ) {
                                 Text("Lưu Client ID", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             }
@@ -384,7 +384,7 @@ fun SettingsDialog(
                 Text(
                     text = "Toàn bộ dữ liệu bài tập đã lưu trên thiết bị sẽ được xoá. Bạn có thể đăng nhập lại bất kỳ lúc nào.",
                     color = ChunkyColor.TextMuted,
-                    fontSize = 13.5.sp
+                    fontSize = 14.sp
                 )
             },
             confirmButton = {

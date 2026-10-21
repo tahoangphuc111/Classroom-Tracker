@@ -109,7 +109,6 @@ public struct StandardEmberFlameOuter: Shape {
     }
 }
 
-// Backward compatibility alias
 public typealias Concept1FlameOuter = StandardEmberFlameOuter
 
 public struct StandardEmberFlameInner: Shape {

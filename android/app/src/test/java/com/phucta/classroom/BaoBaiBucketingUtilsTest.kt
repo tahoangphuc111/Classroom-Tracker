@@ -1,6 +1,9 @@
 package com.phucta.classroom
 
+import com.phucta.classroom.data.local.toCoursework
+import com.phucta.classroom.data.model.ClassroomDateUtils
 import com.phucta.classroom.data.model.Coursework
+import com.phucta.classroom.data.model.PersonalNote
 import com.phucta.classroom.data.model.SubmissionStatus
 import com.phucta.classroom.domain.BaoBaiBucketingUtils
 import org.junit.Assert.assertEquals
@@ -10,7 +13,6 @@ import org.junit.Test
 import java.util.Calendar
 
 class BaoBaiBucketingUtilsTest {
-
     @Test
     fun testSorting_IncompleteFirst() {
         val now = System.currentTimeMillis()
@@ -32,7 +34,7 @@ class BaoBaiBucketingUtilsTest {
         )
 
         val sorted = BaoBaiBucketingUtils.sortCoursework(listOf(item1, item2))
-        assertEquals("2", sorted.first().id) // Incomplete first
+        assertEquals("2", sorted.first().id)
         assertEquals("1", sorted.last().id)
     }
 
@@ -71,7 +73,7 @@ class BaoBaiBucketingUtilsTest {
     @Test
     fun testBaoBaiFallback_WhenTomorrowEmpty() {
         val cal = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_YEAR, 4) // In 4 days
+            add(Calendar.DAY_OF_YEAR, 4)
         }
         val inFourDays = cal.timeInMillis
 
@@ -84,7 +86,6 @@ class BaoBaiBucketingUtilsTest {
             status = SubmissionStatus.PENDING
         )
 
-        // Tomorrow is empty, should fallback to future upcoming task
         val fallbackBatch = BaoBaiBucketingUtils.getTomorrowCoursework(listOf(futureTask))
         assertFalse(fallbackBatch.isEmpty())
         assertEquals("future_task", fallbackBatch.first().id)
@@ -93,12 +94,12 @@ class BaoBaiBucketingUtilsTest {
     @Test
     fun testBaoBaiTomorrowPriority_DoesNotMixPastOverdue() {
         val cal = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_YEAR, -2) // 2 days ago (overdue)
+            add(Calendar.DAY_OF_YEAR, -2)
         }
         val pastDue = cal.timeInMillis
 
         cal.timeInMillis = System.currentTimeMillis()
-        cal.add(Calendar.DAY_OF_YEAR, 1) // Tomorrow
+        cal.add(Calendar.DAY_OF_YEAR, 1)
         val tomorrow = cal.timeInMillis
 
         val taskOverdue = Coursework(
@@ -126,7 +127,7 @@ class BaoBaiBucketingUtilsTest {
     @Test
     fun testBaoBai_OverdueIsConsideredCompleted_AndNotShownAsPending() {
         val cal = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_YEAR, -1) // Yesterday
+            add(Calendar.DAY_OF_YEAR, -1)
         }
         val yesterday = cal.timeInMillis
 
@@ -139,7 +140,6 @@ class BaoBaiBucketingUtilsTest {
             status = SubmissionStatus.PENDING
         )
 
-        // Triết lý: Cứ hết hạn thì tính là đã hoàn thành
         assertTrue(taskOverdue.isCompleted)
         assertFalse(taskOverdue.isOverdue)
 
@@ -288,7 +288,6 @@ class BaoBaiBucketingUtilsTest {
 
     @Test
     fun testReconciliation_RemoteUnsubmitResetsToPending() {
-        // Previously turned in on Classroom (isManuallyCompleted = false, status = TURNED_IN)
         val cachedFromPreviousTurnIn = Coursework(
             id = "task_hw1",
             courseId = "c1",
@@ -298,7 +297,6 @@ class BaoBaiBucketingUtilsTest {
             isManuallyCompleted = false
         )
 
-        // Student un-submits on Classroom web, incoming coursework is now PENDING
         val incomingFromSync = Coursework(
             id = "task_hw1",
             courseId = "c1",
@@ -323,7 +321,6 @@ class BaoBaiBucketingUtilsTest {
 
     @Test
     fun testReconciliation_LocalManualCompletionPreserved() {
-        // Student manually tapped checkbox in app (isManuallyCompleted = true)
         val locallyChecked = Coursework(
             id = "task_hw2",
             courseId = "c1",
@@ -333,7 +330,6 @@ class BaoBaiBucketingUtilsTest {
             isManuallyCompleted = true
         )
 
-        // Google Classroom API still returns PENDING because it wasn't submitted via Classroom
         val incomingFromSync = Coursework(
             id = "task_hw2",
             courseId = "c1",
@@ -355,5 +351,307 @@ class BaoBaiBucketingUtilsTest {
         assertEquals("Manual local completion must be preserved during sync", SubmissionStatus.TURNED_IN, reconciled.status)
         assertTrue(reconciled.isManuallyCompleted)
         assertTrue(reconciled.isCompleted)
+    }
+
+    @Test
+    fun testReconciliation_LocalCompletionOverridesRemoteSync() {
+        fun merge(latest: Coursework?, incoming: Coursework): Coursework {
+            if (latest != null) {
+                val localIsManuallyCompleted = latest.isManuallyCompleted
+                val localIsCompleted = localIsManuallyCompleted ||
+                        latest.status == SubmissionStatus.TURNED_IN ||
+                        latest.status == SubmissionStatus.RETURNED
+
+                val incomingIsPendingOrLate = incoming.status == SubmissionStatus.PENDING ||
+                        incoming.status == SubmissionStatus.LATE
+
+                val shouldPreserveLocalStatus = incomingIsPendingOrLate && localIsCompleted
+
+                val resolvedStatus = if (shouldPreserveLocalStatus) latest.status else incoming.status
+                val resolvedManuallyCompleted = localIsManuallyCompleted || incoming.isManuallyCompleted
+
+                return incoming.copy(
+                    status = resolvedStatus,
+                    isManuallyCompleted = resolvedManuallyCompleted
+                )
+            } else {
+                return incoming
+            }
+        }
+
+        val localManual = Coursework(id = "1", courseId = "c", courseName = "Math", title = "T1", status = SubmissionStatus.TURNED_IN, isManuallyCompleted = true)
+        val incomingPending = Coursework(id = "1", courseId = "c", courseName = "Math", title = "T1", status = SubmissionStatus.PENDING, isManuallyCompleted = false)
+        val res1 = merge(localManual, incomingPending)
+        assertEquals(SubmissionStatus.TURNED_IN, res1.status)
+        assertTrue(res1.isManuallyCompleted)
+
+        val incomingLate = Coursework(id = "1", courseId = "c", courseName = "Math", title = "T1", status = SubmissionStatus.LATE, isManuallyCompleted = false)
+        val res2 = merge(localManual, incomingLate)
+        assertEquals(SubmissionStatus.TURNED_IN, res2.status)
+        assertTrue(res2.isManuallyCompleted)
+
+        val incomingTurnedIn = Coursework(id = "1", courseId = "c", courseName = "Math", title = "T1", status = SubmissionStatus.TURNED_IN, isManuallyCompleted = false)
+        val res3 = merge(localManual, incomingTurnedIn)
+        assertEquals(SubmissionStatus.TURNED_IN, res3.status)
+        assertTrue(res3.isManuallyCompleted)
+
+        val localTurnedIn = Coursework(id = "2", courseId = "c", courseName = "Math", title = "T2", status = SubmissionStatus.TURNED_IN, isManuallyCompleted = false)
+        val incomingPending2 = Coursework(id = "2", courseId = "c", courseName = "Math", title = "T2", status = SubmissionStatus.PENDING, isManuallyCompleted = false)
+        val res4 = merge(localTurnedIn, incomingPending2)
+        assertEquals(SubmissionStatus.TURNED_IN, res4.status)
+
+        val localPending = Coursework(id = "3", courseId = "c", courseName = "Math", title = "T3", status = SubmissionStatus.PENDING, isManuallyCompleted = false)
+        val res5 = merge(localPending, incomingTurnedIn)
+        assertEquals(SubmissionStatus.TURNED_IN, res5.status)
+        assertFalse(res5.isManuallyCompleted)
+    }
+
+    @Test
+    fun testBaoBaiFallback_TodayCompletedTasksIncludedWhenIncludeCompletedTrue() {
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 30)
+        }
+        val taskTodayCompleted = Coursework(
+            id = "today_done",
+            courseId = "c1",
+            courseName = "Hóa",
+            title = "Hóa hữu cơ",
+            dueEpochMillis = cal.timeInMillis,
+            status = SubmissionStatus.TURNED_IN
+        )
+
+        val batchWithCompleted = BaoBaiBucketingUtils.getTomorrowCoursework(
+            listOf(taskTodayCompleted),
+            includeCompleted = true
+        )
+        assertEquals(1, batchWithCompleted.size)
+        assertEquals("today_done", batchWithCompleted.first().id)
+
+        val batchWithoutCompleted = BaoBaiBucketingUtils.getTomorrowCoursework(
+            listOf(taskTodayCompleted),
+            includeCompleted = false
+        )
+        assertTrue(batchWithoutCompleted.isEmpty())
+    }
+
+    @Test
+    fun testCourseworkBuckets_WidgetItems() {
+        val dueTomorrow = ClassroomDateUtils.startOfTomorrow + 3600_000L
+        val taskTomorrow = Coursework(
+            id = "tomorrow_task",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "Toán 12",
+            dueEpochMillis = dueTomorrow,
+            status = SubmissionStatus.PENDING
+        )
+
+        val buckets = BaoBaiBucketingUtils.computeBuckets(listOf(taskTomorrow))
+        assertEquals(1, buckets.widgetItems.size)
+        assertEquals("tomorrow_task", buckets.widgetItems.first().id)
+        assertEquals(
+            buckets.widgetItems,
+            BaoBaiBucketingUtils.getTomorrowCoursework(listOf(taskTomorrow), includeCompleted = true)
+        )
+    }
+
+    @Test
+    fun testSorting_SearchFilter_PreFiltersUsingSearchIndex() {
+        val item1 = Coursework(
+            id = "1",
+            courseId = "c1",
+            courseName = "Vật lý",
+            title = "Dao động điều hòa"
+        )
+        val item2 = Coursework(
+            id = "2",
+            courseId = "c1",
+            courseName = "Hóa học",
+            title = "Este lipit"
+        )
+
+        val filtered = BaoBaiBucketingUtils.sortCoursework(
+            items = listOf(item1, item2),
+            searchTokens = listOf("dao", "dong"),
+            rawNormalizedQuery = "dao dong"
+        )
+        assertEquals(1, filtered.size)
+        assertEquals("1", filtered.first().id)
+    }
+
+    @Test
+    fun testFilterByActiveCourses_FastPath_WhenAllCoursesActive() {
+        val course1 = com.phucta.classroom.data.model.Course(id = "c1", name = "Toán", isSelectedForWidget = true)
+        val course2 = com.phucta.classroom.data.model.Course(id = "c2", name = "Lý", isSelectedForWidget = true)
+
+        val task1 = Coursework(id = "t1", courseId = "c1", courseName = "Toán", title = "Toán 1")
+        val task2 = Coursework(id = "t2", courseId = "c2", courseName = "Lý", title = "Lý 1")
+        val items = listOf(task1, task2)
+
+        val result = BaoBaiBucketingUtils.filterByActiveCourses(items, listOf(course1, course2))
+        org.junit.Assert.assertSame(items, result)
+    }
+
+    @Test
+    fun testToCourseworkExtension_MapsFieldsProperly() {
+        val entity = com.phucta.classroom.data.local.CourseworkEntity(
+            id = "cw_test",
+            courseId = "course_1",
+            courseName = "Hóa học",
+            title = "Phản ứng este hóa",
+            description = "Chi tiết bài tập",
+            alternateLink = "https://classroom.google.com/test",
+            dueEpochMillis = 1700000000000L,
+            status = "turnedIn",
+            maxPoints = 10.0,
+            isManuallyCompleted = true,
+            searchIndex = "hoa hoc phan ung este hoa chi tiet bai tap"
+        )
+        val coursework = entity.toCoursework()
+        assertEquals("cw_test", coursework.id)
+        assertEquals("course_1", coursework.courseId)
+        assertEquals("Hóa học", coursework.courseName)
+        assertEquals("Phản ứng este hóa", coursework.title)
+        assertEquals(SubmissionStatus.TURNED_IN, coursework.status)
+        assertEquals(true, coursework.isManuallyCompleted)
+        assertEquals("hoa hoc", coursework.normalizedCourseName)
+        assertEquals("phan ung este hoa", coursework.normalizedTitle)
+
+        val list = listOf(entity)
+        val courseworkList = list.toCoursework()
+        assertEquals(1, courseworkList.size)
+        assertEquals("cw_test", courseworkList[0].id)
+    }
+
+    @Test
+    fun testSortCoursework_DoesNotMutateCallerArrayList() {
+        val now = System.currentTimeMillis()
+        val itemA = Coursework(id = "item_a", courseId = "c1", courseName = "Toán", title = "A Task", dueEpochMillis = now + 1000)
+        val itemB = Coursework(id = "item_b", courseId = "c1", courseName = "Toán", title = "B Task", dueEpochMillis = now + 5000)
+
+        val callerList = arrayListOf(itemB, itemA)
+        val sorted = BaoBaiBucketingUtils.sortCoursework(callerList)
+
+        assertEquals("item_a", sorted[0].id)
+        assertEquals("item_b", sorted[1].id)
+
+        assertEquals("item_b", callerList[0].id)
+        assertEquals("item_a", callerList[1].id)
+    }
+
+    @Test
+    fun testToCourseworkList_CachesNormalizedCourseNames() {
+        val entity1 = com.phucta.classroom.data.local.CourseworkEntity(
+            id = "cw_1",
+            courseId = "c1",
+            courseName = "Vật lý nâng cao",
+            title = "Bài tập cơ học",
+            status = "pending",
+            searchIndex = "vat ly nang cao bai tap co hoc"
+        )
+        val entity2 = com.phucta.classroom.data.local.CourseworkEntity(
+            id = "cw_2",
+            courseId = "c1",
+            courseName = "Vật lý nâng cao",
+            title = "Bài tập nhiệt học",
+            status = "pending",
+            searchIndex = "vat ly nang cao bai tap nhiet hoc"
+        )
+
+        val list = listOf(entity1, entity2).toCoursework()
+        assertEquals(2, list.size)
+        assertEquals("vat ly nang cao", list[0].normalizedCourseName)
+        assertEquals("vat ly nang cao", list[1].normalizedCourseName)
+    }
+
+    @Test
+    fun testClassroomRepository_ReconcileCoursework_GuaranteesLocalCompletionOverridesSync() {
+        val localManualDone = Coursework(
+            id = "cw_sync_1",
+            courseId = "c1",
+            courseName = "Tin học",
+            title = "Lập trình Kotlin",
+            status = SubmissionStatus.TURNED_IN,
+            isManuallyCompleted = true
+        )
+        val incomingPending = Coursework(
+            id = "cw_sync_1",
+            courseId = "c1",
+            courseName = "Tin học",
+            title = "Lập trình Kotlin (cập nhật từ Google)",
+            status = SubmissionStatus.PENDING,
+            isManuallyCompleted = false
+        )
+
+        val res1 = com.phucta.classroom.data.repository.ClassroomRepository.reconcileCoursework(localManualDone, incomingPending)
+        assertEquals("Local completion must override remote PENDING sync", SubmissionStatus.TURNED_IN, res1.status)
+        assertTrue("isManuallyCompleted must remain true", res1.isManuallyCompleted)
+        assertTrue("isCompleted must remain true", res1.isCompleted)
+        assertEquals("Lập trình Kotlin (cập nhật từ Google)", res1.title)
+
+        val incomingLate = incomingPending.copy(status = SubmissionStatus.LATE)
+        val res2 = com.phucta.classroom.data.repository.ClassroomRepository.reconcileCoursework(localManualDone, incomingLate)
+        assertEquals("Local completion must override remote LATE sync", SubmissionStatus.TURNED_IN, res2.status)
+        assertTrue("isManuallyCompleted must remain true", res2.isManuallyCompleted)
+
+        val incomingTurnedIn = incomingPending.copy(status = SubmissionStatus.TURNED_IN)
+        val res3 = com.phucta.classroom.data.repository.ClassroomRepository.reconcileCoursework(localManualDone, incomingTurnedIn)
+        assertEquals("Status remains TURNED_IN", SubmissionStatus.TURNED_IN, res3.status)
+        assertTrue("isManuallyCompleted preserved", res3.isManuallyCompleted)
+
+        val localUnchecked = localManualDone.copy(status = SubmissionStatus.PENDING, isManuallyCompleted = false)
+        val res4 = com.phucta.classroom.data.repository.ClassroomRepository.reconcileCoursework(localUnchecked, incomingPending)
+        assertEquals("Unchecked task remains PENDING", SubmissionStatus.PENDING, res4.status)
+        assertFalse("isManuallyCompleted remains false", res4.isManuallyCompleted)
+
+        val res5 = com.phucta.classroom.data.repository.ClassroomRepository.reconcileCoursework(null, incomingPending)
+        assertEquals(incomingPending, res5)
+    }
+
+    @Test
+    fun testPersonalNotesCheckmark_TogglingReflectsInTomorrowCoursework() {
+        val cal = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, 14)
+            set(Calendar.MINUTE, 0)
+        }
+        val noteTomorrow = PersonalNote(
+            id = "note_hw_chem",
+            courseId = "c1",
+            courseName = "Hóa",
+            title = "Làm bài tập trắc nghiệm",
+            dueEpochMillis = cal.timeInMillis,
+            isCompleted = false
+        )
+
+        val listBefore = BaoBaiBucketingUtils.getTomorrowCoursework(
+            items = emptyList(),
+            personalNotes = listOf(noteTomorrow),
+            includeCompleted = true
+        )
+        assertEquals(1, listBefore.size)
+        assertEquals("note_note_hw_chem", listBefore[0].id)
+        assertEquals(SubmissionStatus.PENDING, listBefore[0].status)
+        assertFalse(listBefore[0].isCompleted)
+
+        val completedNote = noteTomorrow.copy(isCompleted = true)
+        val listAfter = BaoBaiBucketingUtils.getTomorrowCoursework(
+            items = emptyList(),
+            personalNotes = listOf(completedNote),
+            includeCompleted = true
+        )
+        assertEquals(1, listAfter.size)
+        assertEquals("note_note_hw_chem", listAfter[0].id)
+        assertEquals(SubmissionStatus.TURNED_IN, listAfter[0].status)
+        assertTrue(listAfter[0].isManuallyCompleted)
+        assertTrue(listAfter[0].isCompleted)
+
+        val listPendingOnly = BaoBaiBucketingUtils.getTomorrowCoursework(
+            items = emptyList(),
+            personalNotes = listOf(completedNote),
+            includeCompleted = false
+        )
+        assertTrue("Completed note must be excluded when includeCompleted is false", listPendingOnly.isEmpty())
     }
 }

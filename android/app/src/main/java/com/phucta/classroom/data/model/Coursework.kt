@@ -16,23 +16,20 @@ data class Coursework(
     val status: SubmissionStatus = SubmissionStatus.PENDING,
     val maxPoints: Double? = null,
     val isManuallyCompleted: Boolean = false,
-    val searchIndex: String = buildSearchIndex(title, courseName, description)
+    val normalizedTitle: String = title.normalizeForVietnameseSearch(),
+    val normalizedCourseName: String = courseName.normalizeForVietnameseSearch(),
+    val searchIndex: String = buildNormalizedSearchIndex(normalizedTitle, normalizedCourseName, description)
 ) {
     val timeOnlyString: String
         get() = ClassroomDateUtils.buildTimeOnlyString(dueEpochMillis)
     val formattedFullDueDate: String
         get() = ClassroomDateUtils.buildFormattedFullDueDate(dueEpochMillis)
 
-    /**
-     * Triết lý ứng dụng: Cứ hết hạn thì tính là đã hoàn thành.
-     * Mọi bài tập có hạn nộp trong quá khứ (dueEpochMillis < now) đều được tính là đã hoàn thành.
-     */
     val isCompleted: Boolean
         get() = status == SubmissionStatus.TURNED_IN ||
                 status == SubmissionStatus.RETURNED ||
                 isManuallyCompleted ||
                 (dueEpochMillis != null && dueEpochMillis < System.currentTimeMillis())
-
     val destinationURL: String
         get() = alternateLink ?: "https://classroom.google.com"
 
@@ -42,7 +39,6 @@ data class Coursework(
             val interval = dueEpochMillis - System.currentTimeMillis()
             return interval in 1..(12 * 3600 * 1000)
         }
-
     val isOverdue: Boolean
         get() = false
 
@@ -83,11 +79,18 @@ data class Coursework(
             SubmissionStatus.LATE -> "Đã hoàn thành"
             SubmissionStatus.PENDING -> if (isCompleted) "Đã hoàn thành" else "Chưa nộp"
         }
-
     companion object {
         fun buildSearchIndex(title: String, courseName: String, description: String?): String {
-            val combined = "$title $courseName ${description ?: ""}"
-            return combined.normalizeForVietnameseSearch()
+            val normTitle = title.normalizeForVietnameseSearch()
+            val normCourse = courseName.normalizeForVietnameseSearch()
+            return buildNormalizedSearchIndex(normTitle, normCourse, description)
+        }
+        fun buildNormalizedSearchIndex(normTitle: String, normCourse: String, description: String?): String {
+            return if (description.isNullOrBlank()) {
+                "$normTitle $normCourse"
+            } else {
+                "$normTitle $normCourse ${description.normalizeForVietnameseSearch()}"
+            }
         }
     }
 }

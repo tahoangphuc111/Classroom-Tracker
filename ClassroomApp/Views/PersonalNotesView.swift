@@ -9,12 +9,12 @@ public struct PersonalNotesView: View {
     public let onSaveNote: (PersonalNote) -> Void
     public let onDeleteNote: (String) -> Void
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var selectedStatusFilter: StatusFilter = .all
     @State private var selectedCourseId: String? = nil
     @State private var activeSheet: ActiveNoteSheet? = nil
     @State private var emptyAppeared: Bool = false
 
-    // Quick To-Do state
     @State private var quickTodoTitle: String = ""
     @State private var quickTodoDue: DueDateMode = .none
     @State private var quickTodoCourseId: String? = nil
@@ -69,7 +69,6 @@ public struct PersonalNotesView: View {
     private var filteredNotes: [PersonalNote] {
         var result = notes.filter { $0.courseworkId == nil }
 
-        // Filter by status
         switch selectedStatusFilter {
         case .all:
             break
@@ -79,12 +78,10 @@ public struct PersonalNotesView: View {
             result = result.filter { $0.isCompleted }
         }
 
-        // Filter by course
         if let courseId = selectedCourseId {
             result = result.filter { $0.courseId == courseId }
         }
 
-        // Filter by search text
         let query = searchText.trimmingCharacters(in: .whitespaces)
         if !query.isEmpty {
             let cleanQuery = query.normalizedForVietnameseSearch()
@@ -106,7 +103,6 @@ public struct PersonalNotesView: View {
             }
         }
 
-        // Sort: Pending first, then by due date or updatedAt
         return result.sorted { first, second in
             if first.isCompleted != second.isCompleted {
                 return !first.isCompleted
@@ -200,37 +196,62 @@ public struct PersonalNotesView: View {
     @ViewBuilder
     private var courseFilterMenu: some View {
         if !courses.isEmpty {
-            Menu {
-                Button("Tất cả môn") {
-                    selectedCourseId = nil
-                }
-                Divider()
-                ForEach(courses) { course in
-                    Button(course.name) {
-                        selectedCourseId = course.id
+            HStack(spacing: 5) {
+                Menu {
+                    Button("Tất cả môn") {
+                        PlatformHaptics.trigger()
+                        selectedCourseId = nil
                     }
+                    Divider()
+                    ForEach(courses) { course in
+                        Button {
+                            PlatformHaptics.trigger()
+                            selectedCourseId = course.id
+                        } label: {
+                            if selectedCourseId == course.id {
+                                Label(course.name, systemImage: "checkmark")
+                            } else {
+                                Text(course.name)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(selectedCourseId != nil ? (courses.first(where: { $0.id == selectedCourseId })?.name ?? "Môn học") : "Môn học")
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(selectedCourseId != nil ? Color.blue.opacity(0.8) : Color.secondary)
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(selectedCourseId != nil ? Color.blue : Color.platformTextPrimary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(selectedCourseId != nil ? Color.blue.opacity(0.12) : Color.platformControlBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(selectedCourseId != nil ? Color.blue.opacity(0.4) : Color.platformCardBorder, lineWidth: 1)
+                    )
                 }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text(selectedCourseId != nil ? (courses.first(where: { $0.id == selectedCourseId })?.name ?? "Môn học") : "Môn học")
-                        .lineLimit(1)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.secondary)
+                .menuStyle(.borderlessButton)
+
+                if selectedCourseId != nil {
+                    Button {
+                        PlatformHaptics.trigger()
+                        selectedCourseId = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Xoá bộ lọc môn")
+                    .accessibilityLabel("Xoá bộ lọc môn")
                 }
-                .font(.system(size: 13, weight: .medium))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.platformControlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(Color.platformCardBorder, lineWidth: 1)
-                )
             }
-            .menuStyle(.borderlessButton)
         }
     }
 
@@ -430,6 +451,8 @@ public struct PersonalNotesView: View {
         let trimmed = quickTodoTitle.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
 
+        PlatformHaptics.trigger()
+
         let cal = Calendar.current
         let computedDue: Date?
         switch quickTodoDue {
@@ -468,55 +491,48 @@ public struct PersonalNotesView: View {
         ScrollView {
             #if os(macOS)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 280, maximum: 440), spacing: 12, alignment: .top)], spacing: 12) {
-                ForEach(filteredNotes) { note in
-                    PersonalNoteRowCard(
-                        note: note,
-                        onToggle: { onToggleCompletion(note.id) },
-                        onToggleChecklistItem: { noteId, itemId in
-                            if let toggle = onToggleChecklistItem {
-                                toggle(noteId, itemId)
-                            } else {
-                                toggleLocalChecklistItem(note: note, itemId: itemId)
-                            }
-                        },
-                        onEdit: { activeSheet = .edit(note) },
-                        onDelete: { onDeleteNote(note.id) }
-                    )
-                    .equatable()
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .scale(scale: 0.95)),
-                        removal: .opacity.combined(with: .scale(scale: 0.95))
-                    ))
-                }
+                notesForEach
             }
             .padding(16)
             .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes.map(\.id))
             #else
-            LazyVStack(spacing: 10) {
-                ForEach(filteredNotes) { note in
-                    PersonalNoteRowCard(
-                        note: note,
-                        onToggle: { onToggleCompletion(note.id) },
-                        onToggleChecklistItem: { noteId, itemId in
-                            if let toggle = onToggleChecklistItem {
-                                toggle(noteId, itemId)
-                            } else {
-                                toggleLocalChecklistItem(note: note, itemId: itemId)
-                            }
-                        },
-                        onEdit: { activeSheet = .edit(note) },
-                        onDelete: { onDeleteNote(note.id) }
-                    )
-                    .equatable()
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .scale(scale: 0.95)),
-                        removal: .opacity.combined(with: .scale(scale: 0.95))
-                    ))
+            if horizontalSizeClass == .regular {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 280, maximum: 440), spacing: 12, alignment: .top)], spacing: 12) {
+                    notesForEach
                 }
+                .padding(16)
+                .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes.map(\.id))
+            } else {
+                LazyVStack(spacing: 10) {
+                    notesForEach
+                }
+                .padding(16)
+                .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes.map(\.id))
             }
-            .padding(16)
-            .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes.map(\.id))
             #endif
+        }
+    }
+
+    private var notesForEach: some View {
+        ForEach(filteredNotes) { note in
+            PersonalNoteRowCard(
+                note: note,
+                onToggle: { onToggleCompletion(note.id) },
+                onToggleChecklistItem: { noteId, itemId in
+                    if let toggle = onToggleChecklistItem {
+                        toggle(noteId, itemId)
+                    } else {
+                        toggleLocalChecklistItem(note: note, itemId: itemId)
+                    }
+                },
+                onEdit: { activeSheet = .edit(note) },
+                onDelete: { onDeleteNote(note.id) }
+            )
+            .equatable()
+            .transition(.asymmetric(
+                insertion: .opacity.combined(with: .scale(scale: 0.95)),
+                removal: .opacity.combined(with: .scale(scale: 0.95))
+            ))
         }
     }
 
@@ -532,37 +548,97 @@ public struct PersonalNotesView: View {
         onSaveNote(updated)
     }
 
+    private var emptyStateInfo: (icon: String, title: String, subtitle: String, buttonTitle: String?, buttonAction: (() -> Void)?) {
+        let trimmedQuery = searchText.trimmingCharacters(in: .whitespaces)
+        if !trimmedQuery.isEmpty {
+            return (
+                icon: "magnifyingglass",
+                title: "Không tìm thấy ghi chú phù hợp",
+                subtitle: "Không có ghi chú nào khớp với từ khoá \"\(trimmedQuery)\". Thử tìm kiếm với từ khoá khác.",
+                buttonTitle: nil,
+                buttonAction: nil
+            )
+        } else if selectedCourseId != nil {
+            let courseName = courses.first(where: { $0.id == selectedCourseId })?.name ?? "môn học này"
+            return (
+                icon: "books.vertical",
+                title: "Không có ghi chú cho môn học",
+                subtitle: "Chưa có việc cần làm hoặc ghi chú nào được gắn cho \(courseName).",
+                buttonTitle: "Xem tất cả môn",
+                buttonAction: {
+                    PlatformHaptics.trigger()
+                    selectedCourseId = nil
+                }
+            )
+        } else if selectedStatusFilter == .pending && notes.contains(where: { $0.courseworkId == nil && $0.isCompleted }) {
+            return (
+                icon: "party.popper.fill",
+                title: "Đã hoàn thành tất cả việc! 🎉",
+                subtitle: "Tuyệt vời! Bạn không còn việc cần làm nào đang chờ xử lý.",
+                buttonTitle: "Xem danh sách đã xong",
+                buttonAction: {
+                    PlatformHaptics.trigger()
+                    selectedStatusFilter = .completed
+                }
+            )
+        } else if selectedStatusFilter == .completed {
+            return (
+                icon: "clock.badge.checkmark",
+                title: "Chưa có việc nào hoàn thành",
+                subtitle: "Các việc cần làm sau khi đánh dấu xong sẽ được lưu trữ tại đây.",
+                buttonTitle: "Xem việc đang làm",
+                buttonAction: {
+                    PlatformHaptics.trigger()
+                    selectedStatusFilter = .pending
+                }
+            )
+        } else {
+            return (
+                icon: "checklist",
+                title: "Chưa có việc cần làm hay ghi chú nào",
+                subtitle: "Thêm việc cần làm (to-do), checklist hoặc dặn dò cho việc học để theo dõi trong Báo bài.",
+                buttonTitle: "Tạo ghi chú / to-do mới",
+                buttonAction: {
+                    activeSheet = .create
+                }
+            )
+        }
+    }
+
     private var emptyStateView: some View {
-        VStack(spacing: 14) {
+        let info = emptyStateInfo
+        return VStack(spacing: 14) {
             Spacer()
-            Image(systemName: "checklist")
+            Image(systemName: info.icon)
                 .font(.system(size: 44))
                 .foregroundStyle(Color.secondary.opacity(0.6))
                 .scaleEffect(emptyAppeared ? 1.0 : 0.88)
 
-            Text(searchText.isEmpty ? "Chưa có việc cần làm hay ghi chú nào" : "Không tìm thấy ghi chú phù hợp")
+            Text(info.title)
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(Color.platformTextPrimary)
 
-            Text(searchText.isEmpty ? "Thêm việc cần làm (to-do), checklist hoặc dặn dò cho việc học để theo dõi trong Báo bài." : "Thử tìm kiếm với từ khóa khác.")
+            Text(info.subtitle)
                 .font(.system(size: 13.5))
                 .foregroundStyle(Color.platformTextSecondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 340)
 
-            if searchText.isEmpty {
+            if let buttonTitle = info.buttonTitle, let buttonAction = info.buttonAction {
                 Button {
-                    activeSheet = .create
+                    buttonAction()
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 13, weight: .bold))
-                        Text("Tạo ghi chú / to-do mới")
+                        if info.icon == "checklist" {
+                            Image(systemName: "plus")
+                                .font(.system(size: 13, weight: .bold))
+                        }
+                        Text(buttonTitle)
                             .font(.system(size: 14, weight: .semibold))
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .controlSize(.regular)
                 .padding(.top, 6)
             }
             Spacer()
@@ -596,8 +672,8 @@ private struct PersonalNoteRowCard: View, Equatable {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Main checkmark button
             Button {
+                PlatformHaptics.trigger()
                 withAnimation(.spring(response: 0.24, dampingFraction: 0.52)) {
                     checkmarkBounce = true
                 }
@@ -642,9 +718,7 @@ private struct PersonalNoteRowCard: View, Equatable {
             .buttonStyle(.plain)
             .padding(.top, 1)
 
-            // Center content area
             VStack(alignment: .leading, spacing: 6) {
-                // Title
                 Text(note.title)
                     .font(.system(size: 15.5, weight: .bold))
                     .foregroundStyle(note.isCompleted ? Color.platformTextSecondary : Color.platformTextPrimary)
@@ -655,7 +729,6 @@ private struct PersonalNoteRowCard: View, Equatable {
                     .multilineTextAlignment(.leading)
                     .animation(.spring(response: 0.28, dampingFraction: 0.8), value: note.isCompleted)
 
-                // Course and due date badges
                 if (note.courseName != nil && !note.courseName!.isEmpty) || note.dueDate != nil {
                     HStack(spacing: 6) {
                         if let courseName = note.courseName, !courseName.isEmpty {
@@ -675,7 +748,6 @@ private struct PersonalNoteRowCard: View, Equatable {
                     }
                 }
 
-                // Checklist count progress pill (if note has checklist)
                 if note.hasChecklist {
                     HStack(spacing: 6) {
                         let doneCount = note.completedChecklistCount
@@ -695,64 +767,57 @@ private struct PersonalNoteRowCard: View, Equatable {
                         .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
 
                         if totalCount > 1 {
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    Capsule()
-                                        .fill(Color.primary.opacity(0.08))
-                                        .frame(height: 4)
+                            Capsule()
+                                .fill(Color.primary.opacity(0.08))
+                                .frame(width: 64, height: 4)
+                                .overlay(alignment: .leading) {
                                     Capsule()
                                         .fill(isAllDone ? Color.green : Color.blue)
                                         .frame(
-                                            width: max(0, min(geo.size.width, geo.size.width * CGFloat(max(0.0, min(1.0, note.checklistProgress))))),
+                                            width: max(0, min(64, 64 * CGFloat(max(0.0, min(1.0, note.checklistProgress))))),
                                             height: 4
                                         )
                                 }
-                            }
-                            .frame(height: 4)
-                            .frame(minWidth: 40, maxWidth: 120)
                         }
                     }
                     .padding(.top, 2)
 
-                    // Interactive Checklist items preview
                     VStack(alignment: .leading, spacing: 4.5) {
                         ForEach(note.checklist.prefix(4)) { item in
-                            HStack(spacing: 7) {
-                                Button {
-                                    onToggleChecklistItem(note.id, item.id)
-                                } label: {
+                            Button {
+                                PlatformHaptics.trigger()
+                                onToggleChecklistItem(note.id, item.id)
+                            } label: {
+                                HStack(spacing: 7) {
                                     Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
                                         .font(.system(size: 13, weight: .semibold))
                                         .foregroundStyle(item.isCompleted ? Color.green : Color.secondary.opacity(0.6))
                                         .frame(width: 16, height: 16)
-                                }
-                                .buttonStyle(.plain)
-                                #if os(iOS)
-                                .frame(width: 28, height: 28)
-                                #else
-                                .frame(width: 22, height: 22)
-                                #endif
-                                .contentShape(Rectangle())
 
-                                Text(item.title)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(item.isCompleted ? Color.platformTextTertiary : Color.platformTextSecondary)
-                                    .strikethrough(item.isCompleted, color: Color.platformTextTertiary)
-                                    .lineLimit(1)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text(item.title)
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(item.isCompleted ? Color.platformTextTertiary : Color.platformTextSecondary)
+                                        .strikethrough(item.isCompleted, color: Color.platformTextTertiary)
+                                        .lineLimit(1)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
+                            #if os(iOS)
+                            .frame(minHeight: 28)
+                            #endif
                         }
                         if note.checklist.count > 4 {
                             Text("+ \(note.checklist.count - 4) mục khác...")
                                 .font(.system(size: 11.5, weight: .medium))
                                 .foregroundStyle(Color.secondary)
-                                .padding(.leading, 29)
+                                .padding(.leading, 23)
                         }
                     }
                     .padding(.top, 2)
                 }
 
-                // Multiline content (if any)
                 if !note.content.isEmpty {
                     Text(note.content)
                         .font(.system(size: 13.5))
@@ -768,7 +833,6 @@ private struct PersonalNoteRowCard: View, Equatable {
                 onEdit()
             }
 
-            // Menu actions
             Menu {
                 Button {
                     onEdit()
@@ -854,6 +918,13 @@ public struct CreateOrEditNoteSheet: View {
     public let onSave: (PersonalNote) -> Void
     public let onCancel: () -> Void
 
+    private enum Field: Hashable {
+        case title
+        case newChecklistItem
+    }
+
+    @FocusState private var focusedField: Field?
+
     @State private var title: String
     @State private var content: String
     @State private var checklist: [ChecklistItem]
@@ -910,17 +981,21 @@ public struct CreateOrEditNoteSheet: View {
             Form {
                 Section("Tiêu đề") {
                     TextField("Tiêu đề ghi chú / việc cần làm", text: $title)
+                        .focused($focusedField, equals: .title)
                 }
 
                 Section {
                     ForEach($checklist) { $item in
-                        HStack(spacing: 10) {
+                        HStack(spacing: 8) {
                             Button {
+                                PlatformHaptics.trigger()
                                 item.isCompleted.toggle()
                             } label: {
                                 Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundStyle(item.isCompleted ? Color.green : Color.secondary)
+                                    .frame(width: 32, height: 32)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
 
@@ -929,14 +1004,21 @@ public struct CreateOrEditNoteSheet: View {
                                 .foregroundStyle(item.isCompleted ? Color.secondary : Color.platformTextPrimary)
 
                             Button(role: .destructive) {
+                                PlatformHaptics.trigger()
                                 checklist.removeAll { $0.id == item.id }
                             } label: {
                                 Image(systemName: "trash")
                                     .font(.system(size: 13))
                                     .foregroundStyle(.secondary.opacity(0.7))
+                                    .frame(width: 32, height: 32)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                         }
+                    }
+                    .onDelete { indices in
+                        PlatformHaptics.trigger()
+                        checklist.remove(atOffsets: indices)
                     }
 
                     HStack(spacing: 8) {
@@ -944,6 +1026,7 @@ public struct CreateOrEditNoteSheet: View {
                             .foregroundStyle(Color.blue)
 
                         TextField("Thêm việc cần làm (nhấn Enter)...", text: $newChecklistItemTitle)
+                            .focused($focusedField, equals: .newChecklistItem)
                             .onSubmit {
                                 addChecklistItem()
                             }
@@ -970,8 +1053,22 @@ public struct CreateOrEditNoteSheet: View {
                 }
 
                 Section("Ghi chú chi tiết (tuỳ chọn)") {
-                    TextEditor(text: $content)
-                        .frame(minHeight: 75)
+                    ZStack(alignment: .topLeading) {
+                        if content.isEmpty {
+                            Text("Nhập chi tiết, tài liệu tham khảo hoặc dặn dò...")
+                                .font(.system(size: 14))
+                                .foregroundStyle(Color.secondary.opacity(0.6))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 8)
+                                .allowsHitTesting(false)
+                        }
+                        TextEditor(text: $content)
+                            .font(.system(size: 14))
+                            .frame(minHeight: 80)
+                            #if os(iOS)
+                            .scrollContentBackground(.hidden)
+                            #endif
+                    }
                 }
 
                 Section("Thiết lập môn học & Báo bài") {
@@ -997,6 +1094,9 @@ public struct CreateOrEditNoteSheet: View {
                 }
             }
             .formStyle(.grouped)
+            #if os(iOS)
+            .scrollDismissesKeyboard(.interactively)
+            #endif
             .navigationTitle(existingNote == nil ? "Ghi chú mới" : "Chỉnh sửa ghi chú")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -1036,6 +1136,10 @@ public struct CreateOrEditNoteSheet: View {
                     } else {
                         selectedDueDateMode = .none
                     }
+                } else {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        focusedField = .title
+                    }
                 }
             }
         }
@@ -1047,20 +1151,22 @@ public struct CreateOrEditNoteSheet: View {
     private func addChecklistItem() {
         let trimmed = newChecklistItemTitle.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
+        PlatformHaptics.trigger()
         checklist.append(ChecklistItem(title: trimmed))
         newChecklistItemTitle = ""
+        focusedField = .newChecklistItem
     }
 
     private func save() {
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
         guard !trimmedTitle.isEmpty else { return }
 
-        // Include any unsaved pending checklist text
         var finalChecklist = checklist
         let pendingItem = newChecklistItemTitle.trimmingCharacters(in: .whitespaces)
         if !pendingItem.isEmpty {
             finalChecklist.append(ChecklistItem(title: pendingItem))
         }
+        finalChecklist = finalChecklist.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
 
         let cal = Calendar.current
         let computedDueDate: Date?

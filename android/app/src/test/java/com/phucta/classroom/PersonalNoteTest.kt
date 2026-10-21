@@ -15,7 +15,6 @@ import org.junit.Test
 import java.util.Calendar
 
 class PersonalNoteTest {
-
     @Test
     fun testPersonalNoteSearchIndex() {
         val note = PersonalNote(
@@ -127,13 +126,11 @@ class PersonalNoteTest {
         )
         assertNotNull(originalWithDue.dueEpochMillis)
 
-        // Clear due date to null
         val cleared = originalWithDue.copy(dueEpochMillis = null)
         assertEquals(null, cleared.dueEpochMillis)
         assertFalse(cleared.isDueToday)
         assertFalse(cleared.isDueTomorrow)
 
-        // Verify entity roundtrip preserves null due date
         val entity = PersonalNoteEntity.fromDomain(cleared)
         assertEquals(null, entity.dueEpochMillis)
         val domain = entity.toDomain()
@@ -195,12 +192,10 @@ class PersonalNoteTest {
 
     @Test
     fun testEmptyContentClearingCondition() {
-        // Simulates coursework-attached note deletion condition
         val existingTitle = "Bài tập Vật Lý hạt nhân"
         val userEnteredContent = "   \n  \t  "
         val trimmed = userEnteredContent.trim()
-        
-        // Even though existing title is not empty, trimmed content is empty so it should qualify for deletion
+
         val shouldDelete = trimmed.isEmpty()
         assertTrue("Coursework attached note with empty trimmed content must be deleted", shouldDelete)
     }

@@ -9,7 +9,6 @@ class ClassroomSyncWorker(
     context: Context,
     workerParams: WorkerParameters
 ) : CoroutineWorker(context, workerParams) {
-
     override suspend fun doWork(): Result {
         val app = applicationContext as? ClassroomApplication ?: return Result.failure()
         if (!app.oauthManager.isAuthenticated.value) {

@@ -29,6 +29,13 @@ object ClassroomDateUtils {
 
     private val timeOnlyCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
     private val fullDueDateCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
+    private val shortDateCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
+
+    private val calendarPool = object : ThreadLocal<Calendar>() {
+        override fun initialValue(): Calendar {
+            return Calendar.getInstance(TimeZone.getDefault(), Locale.US)
+        }
+    }
 
     private fun checkTimeZone() {
         val currentTzId = TimeZone.getDefault().id
@@ -38,6 +45,7 @@ object ClassroomDateUtils {
                     cachedTimeZoneId = currentTzId
                     timeOnlyCache.clear()
                     fullDueDateCache.clear()
+                    shortDateCache.clear()
                     cachedStartOfToday = 0L
                     cacheExpirationTime = 0L
                 }
@@ -47,10 +55,10 @@ object ClassroomDateUtils {
 
     fun ensureDayBoundaries(now: Long = System.currentTimeMillis()) {
         checkTimeZone()
-        if (now >= cacheExpirationTime || cachedStartOfToday == 0L) {
+        if (now < cachedStartOfToday || now >= cacheExpirationTime || cachedStartOfToday == 0L) {
             synchronized(this) {
-                if (now >= cacheExpirationTime || cachedStartOfToday == 0L) {
-                    val cal = Calendar.getInstance().apply {
+                if (now < cachedStartOfToday || now >= cacheExpirationTime || cachedStartOfToday == 0L) {
+                    val cal = Calendar.getInstance(TimeZone.getDefault(), Locale.US).apply {
                         timeInMillis = now
                         set(Calendar.HOUR_OF_DAY, 0)
                         set(Calendar.MINUTE, 0)
@@ -92,10 +100,18 @@ object ClassroomDateUtils {
 
     fun formatShortDate(dueEpochMillis: Long?): String {
         if (dueEpochMillis == null) return "--/--"
-        return synchronized(shortDateFormat) {
+        checkTimeZone()
+        val cached = shortDateCache[dueEpochMillis]
+        if (cached != null) return cached
+
+        val formatted = synchronized(shortDateFormat) {
             shortDateFormat.timeZone = TimeZone.getDefault()
             shortDateFormat.format(Date(dueEpochMillis))
         }
+        if (shortDateCache.size < 1000) {
+            shortDateCache[dueEpochMillis] = formatted
+        }
+        return formatted
     }
 
     fun buildTimeOnlyString(dueEpochMillis: Long?): String {
@@ -104,8 +120,10 @@ object ClassroomDateUtils {
         val cached = timeOnlyCache[dueEpochMillis]
         if (cached != null) return cached
 
-        val cal = Calendar.getInstance()
-        cal.timeInMillis = dueEpochMillis
+        val cal = (calendarPool.get() ?: Calendar.getInstance(TimeZone.getDefault(), Locale.US)).apply {
+            timeZone = TimeZone.getDefault()
+            timeInMillis = dueEpochMillis
+        }
         val hour = cal.get(Calendar.HOUR_OF_DAY)
         val minute = cal.get(Calendar.MINUTE)
         val result = if (hour == 23 && minute >= 55) {
@@ -281,12 +299,6 @@ object ClassroomDateUtils {
         }
     }
 
-    /**
-     * Parses Google Classroom API Date and Time objects.
-     * Google returns `date` and `time` in UTC.
-     * In proto3 JSON, 0-value fields (like hours = 0) are omitted.
-     * If `hasDueTime` is false (or time is null), it represents end of day in the user's LOCAL timezone (23:59:59).
-     */
     fun parseGoogleDueDateTime(
         year: Int?,
         month: Int?,
@@ -297,11 +309,9 @@ object ClassroomDateUtils {
         hasDueTime: Boolean = (hours != null || minutes != null || seconds != null)
     ): Long? {
         if (year == null || month == null || day == null) return null
-
         return if (hasDueTime) {
-            // Google Classroom API TimeOfDay is in UTC; proto3 omits 0 fields
-            val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
-                clear() // Prevent day-of-month overflow from current date
+            val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.US).apply {
+                clear()
                 set(Calendar.YEAR, year)
                 set(Calendar.MONTH, month - 1)
                 set(Calendar.DAY_OF_MONTH, day)
@@ -312,9 +322,8 @@ object ClassroomDateUtils {
             }
             utcCal.timeInMillis
         } else {
-            // End of day in user's local timezone
-            val localCal = Calendar.getInstance().apply {
-                clear() // Prevent day-of-month overflow from current date
+            val localCal = Calendar.getInstance(TimeZone.getDefault(), Locale.US).apply {
+                clear()
                 set(Calendar.YEAR, year)
                 set(Calendar.MONTH, month - 1)
                 set(Calendar.DAY_OF_MONTH, day)

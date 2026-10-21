@@ -838,5 +838,3 @@ public struct DuolingoFlameArtView: View {
 }
 
 public typealias DuolingoMascotView = DuolingoFlameArtView
-
-

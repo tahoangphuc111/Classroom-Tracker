@@ -2,10 +2,16 @@ package com.phucta.classroom.data.local
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.phucta.classroom.data.model.Course
 
-@Entity(tableName = "courses")
+@Entity(
+    tableName = "courses",
+    indices = [
+        Index(value = ["is_selected_for_widget"])
+    ]
+)
 data class CourseEntity(
     @PrimaryKey
     val id: String,

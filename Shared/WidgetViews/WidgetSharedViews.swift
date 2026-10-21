@@ -33,42 +33,27 @@ public struct SubjectArtHelper {
 
     public static func category(for courseName: String, title: String? = nil) -> SubjectCategory {
         cacheLock.lock()
-        if let courseCat = courseCategoryCache[courseName] {
-            if courseCat != .other || title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false {
-                cacheLock.unlock()
-                return courseCat
-            }
-        }
-        cacheLock.unlock()
-
         let courseCat: SubjectCategory
-        cacheLock.lock()
         if let cached = courseCategoryCache[courseName] {
             courseCat = cached
         } else {
-            cacheLock.unlock()
             let computed = computeCategory(for: courseName, title: nil)
-            cacheLock.lock()
             courseCategoryCache[courseName] = computed
             courseCat = computed
         }
-        cacheLock.unlock()
 
         if courseCat != .other || title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false {
+            cacheLock.unlock()
             return courseCat
         }
 
         let key = "\(courseName)|\(title ?? "")"
-        cacheLock.lock()
         if let cached = categoryCache[key] {
             cacheLock.unlock()
             return cached
         }
-        cacheLock.unlock()
 
         let computed = computeCategory(for: courseName, title: title)
-
-        cacheLock.lock()
         categoryCache[key] = computed
         cacheLock.unlock()
 
@@ -92,7 +77,7 @@ public struct SubjectArtHelper {
         case .chemistry: return "HOÁ"
         case .biology: return "SINH"
         case .historyOrGeography:
-            let isDia = courseName.localizedCaseInsensitiveContains("địa") || (title?.localizedCaseInsensitiveContains("địa") == true)
+            let isDia = courseName.localizedCaseInsensitiveContains("địa") || (title?.localizedCaseInsensitiveContains("địa") == true) || courseName.localizedCaseInsensitiveContains("dia") || (title?.localizedCaseInsensitiveContains("dia") == true)
             return isDia ? "ĐỊA" : "SỬ"
         case .literature: return "VĂN"
         case .english: return "ANH"
@@ -130,30 +115,30 @@ public struct SubjectArtHelper {
         let courseTokens = Set(courseLower.components(separatedBy: nonAlphanumericCharacterSet).filter { !$0.isEmpty })
 
         func matchCategory(text: String, tokens: Set<String>) -> SubjectCategory? {
-            if text.contains("toán") || tokens.contains("math") || tokens.contains("maths") || text.contains("giải tích") || text.contains("đại số") || text.contains("hình học") || text.contains("xác suất") || tokens.contains("calculus") || tokens.contains("algebra") || tokens.contains("geometry") || text.contains("lượng giác") || text.contains("đạo hàm") || text.contains("tích phân") || text.contains("toán cao cấp") || text.contains("toán rời rạc") || text.contains("thống kê") || text.contains("vi phân") || text.contains("ma trận") || tokens.contains("trigonometry") || tokens.contains("statistics") || tokens.contains("discrete") {
+            if !text.contains("điện toán") && (text.contains("toán") || tokens.contains("toan") || tokens.contains("math") || tokens.contains("maths") || text.contains("giải tích") || text.contains("đại số") || text.contains("hình học") || text.contains("xác suất") || tokens.contains("calculus") || tokens.contains("algebra") || tokens.contains("geometry") || text.contains("lượng giác") || text.contains("đạo hàm") || text.contains("tích phân") || text.contains("toán cao cấp") || text.contains("toán rời rạc") || text.contains("thống kê") || text.contains("vi phân") || text.contains("ma trận") || tokens.contains("trigonometry") || tokens.contains("statistics") || tokens.contains("discrete")) {
                 return .math
-            } else if text.contains("vật lý") || text.contains("vật lí") || tokens.contains("physics") || text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") || text.contains("cơ học") || text.contains("nhiệt học") || text.contains("quang học") || text.contains("điện từ") || text.contains("vật lý đại cương") || text.contains("vật lí đại cương") || text.contains("dao động") || text.contains("sóng cơ") || tokens.contains("mechanics") || tokens.contains("thermodynamics") || tokens.contains("optics") || ((tokens.contains("lý") || tokens.contains("lí")) && !text.contains("quản lý") && !text.contains("quản lí") && !text.contains("xử lý") && !text.contains("xử lí") && !text.contains("tâm lý") && !text.contains("tâm lí") && !text.contains("pháp lý") && !text.contains("pháp lí") && !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("triết lý") && !text.contains("triết lí") && !text.contains("lý thuyết") && !text.contains("lí thuyết") && !text.contains("lý do") && !text.contains("lí do")) {
+            } else if text.contains("vật lý") || text.contains("vật lí") || tokens.contains("physics") || text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") || text.contains("cơ học") || text.contains("nhiệt học") || text.contains("quang học") || text.contains("điện từ") || text.contains("vật lý đại cương") || text.contains("vật lí đại cương") || text.contains("dao động") || text.contains("sóng cơ") || tokens.contains("mechanics") || tokens.contains("thermodynamics") || tokens.contains("optics") || ((tokens.contains("lý") || tokens.contains("lí") || tokens.contains("ly")) && !text.contains("quản lý") && !text.contains("quản lí") && !text.contains("xử lý") && !text.contains("xử lí") && !text.contains("tâm lý") && !text.contains("tâm lí") && !text.contains("pháp lý") && !text.contains("pháp lí") && !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("triết lý") && !text.contains("triết lí") && !text.contains("lý thuyết") && !text.contains("lí thuyết") && !text.contains("lý luận") && !text.contains("lí luận") && !text.contains("lý do") && !text.contains("lí do")) {
                 return .physics
-            } else if text.contains("hóa học") || text.contains("hoá học") || text.contains("môn hóa") || text.contains("môn hoá") || text.contains("hóa hữu cơ") || text.contains("hoá hữu cơ") || text.contains("hóa vô cơ") || text.contains("hoá vô cơ") || text.contains("hóa đại cương") || text.contains("hoá đại cương") || text.contains("hóa phân tích") || text.contains("hoá phân tích") || tokens.contains("chemistry") || tokens.contains("chem") || tokens.contains("biochemistry") || ((tokens.contains("hóa") || tokens.contains("hoá")) && !text.contains("tự động hóa") && !text.contains("tự động hoá") && !text.contains("tiến hóa") && !text.contains("tiến hoá") && !text.contains("hóa đơn") && !text.contains("hoá đơn") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("tối ưu hóa") && !text.contains("tối ưu hoá") && !text.contains("chuẩn hóa") && !text.contains("chuẩn hoá") && !text.contains("công nghiệp hóa") && !text.contains("công nghiệp hoá") && !text.contains("hiện đại hóa") && !text.contains("hiện đại hoá")) {
+            } else if text.contains("hóa học") || text.contains("hoá học") || text.contains("môn hóa") || text.contains("môn hoá") || text.contains("hóa hữu cơ") || text.contains("hoá hữu cơ") || text.contains("hóa vô cơ") || text.contains("hoá vô cơ") || text.contains("hóa đại cương") || text.contains("hoá đại cương") || text.contains("hóa phân tích") || text.contains("hoá phân tích") || tokens.contains("chemistry") || tokens.contains("chem") || tokens.contains("biochemistry") || ((tokens.contains("hóa") || tokens.contains("hoá") || tokens.contains("hoa")) && !text.contains("tự động hóa") && !text.contains("tự động hoá") && !text.contains("tiến hóa") && !text.contains("tiến hoá") && !text.contains("hóa đơn") && !text.contains("hoá đơn") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("tối ưu hóa") && !text.contains("tối ưu hoá") && !text.contains("chuẩn hóa") && !text.contains("chuẩn hoá") && !text.contains("công nghiệp hóa") && !text.contains("công nghiệp hoá") && !text.contains("hiện đại hóa") && !text.contains("hiện đại hoá") && !text.contains("ảo hóa") && !text.contains("ảo hoá") && !text.contains("số hóa") && !text.contains("số hoá")) {
                 return .chemistry
             } else if text.contains("sinh học") || text.contains("môn sinh") || tokens.contains("biology") || tokens.contains("bio") || text.contains("y học") || text.contains("di truyền") || text.contains("tế bào") || text.contains("vi sinh") || text.contains("sinh thái") || tokens.contains("genetics") || tokens.contains("ecology") || (tokens.contains("sinh") && !text.contains("học sinh") && !text.contains("sinh viên") && !text.contains("sinh hoạt")) {
                 return .biology
-            } else if text.contains("lịch sử") || tokens.contains("history") || (tokens.contains("sử") && !text.contains("sử dụng") && !text.contains("lịch sự")) {
+            } else if text.contains("lịch sử") || tokens.contains("history") || ((tokens.contains("sử") || tokens.contains("su")) && !text.contains("sử dụng") && !text.contains("lịch sự")) {
                 return .historyOrGeography
-            } else if text.contains("địa lý") || text.contains("địa lí") || tokens.contains("geography") || (tokens.contains("địa") && !text.contains("địa chỉ") && !text.contains("địa điểm")) {
+            } else if text.contains("địa lý") || text.contains("địa lí") || tokens.contains("geography") || ((tokens.contains("địa") || tokens.contains("dia")) && !text.contains("địa chỉ") && !text.contains("địa điểm")) {
                 return .historyOrGeography
-            } else if text.contains("ngữ văn") || text.contains("tiếng việt") || tokens.contains("literature") || tokens.contains("writing") || tokens.contains("essay") || (tokens.contains("văn") && !text.contains("văn phòng") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("văn minh")) {
+            } else if text.contains("ngữ văn") || text.contains("tiếng việt") || tokens.contains("literature") || tokens.contains("writing") || tokens.contains("essay") || ((tokens.contains("văn") || tokens.contains("van")) && !text.contains("văn phòng") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("văn minh") && !text.contains("văn bản") && !text.contains("luận văn")) {
                 return .literature
             } else if text.contains("tiếng anh") || tokens.contains("english") || tokens.contains("ielts") || tokens.contains("toeic") || tokens.contains("toefl") || (tokens.contains("anh") && !text.contains("hình ảnh") && !text.contains("âm thanh") && !text.contains("thầy") && !text.contains("cô") && !text.contains("gv")) {
                 return .english
             } else if tokens.contains("gdcd") || text.contains("triết học") || text.contains("chính trị") || text.contains("pháp luật") || text.contains("kinh tế và pháp luật") || tokens.contains("law") || text.contains("tư tưởng") || text.contains("mác - lênin") || text.contains("mác lênin") || text.contains("tư tưởng hồ chí minh") || text.contains("pháp luật đại cương") || (tokens.contains("triết") && !text.contains("triết lý")) {
                 return .civicsOrPhilosophy
-            } else if text.contains("kinh tế") || text.contains("quản trị") || text.contains("tài chính") || text.contains("marketing") || text.contains("kế toán") || tokens.contains("business") || tokens.contains("economics") {
+            } else if text.contains("an ninh mạng") || text.contains("mạng máy tính") || text.contains("an toàn thông tin") || text.contains("hệ thống phân tán") || text.contains("quản trị mạng") || tokens.contains("cybersecurity") || (tokens.contains("mạng") && !text.contains("mạng xã hội")) || tokens.contains("network") || tokens.contains("networking") || tokens.contains("tcp") || tokens.contains("socket") || (tokens.contains("cloud") && !tokens.contains("soundcloud")) {
+                return .networking
+            } else if !text.contains("quản trị mạng") && (text.contains("kinh tế") || text.contains("quản trị") || text.contains("tài chính") || text.contains("marketing") || text.contains("kế toán") || tokens.contains("business") || tokens.contains("economics")) {
                 return .economics
             } else if text.contains("đồ họa") || text.contains("thiết kế") || text.contains("mỹ thuật") || tokens.contains("design") || tokens.contains("ui") || tokens.contains("ux") || (tokens.contains("art") && !tokens.contains("part") && !tokens.contains("smart") && !tokens.contains("start")) || (tokens.contains("vẽ") && !text.contains("bản vẽ kỹ thuật")) {
                 return .artAndDesign
-            } else if text.contains("an ninh mạng") || text.contains("mạng máy tính") || text.contains("an toàn thông tin") || text.contains("hệ thống phân tán") || text.contains("quản trị mạng") || tokens.contains("cybersecurity") || (tokens.contains("mạng") && !text.contains("mạng xã hội")) || tokens.contains("network") || tokens.contains("networking") || tokens.contains("tcp") || tokens.contains("socket") || (tokens.contains("cloud") && !tokens.contains("soundcloud")) {
-                return .networking
             } else if text.contains("lập trình") || text.contains("tin học") || text.contains("di động") || tokens.contains("android") || tokens.contains("ios") || tokens.contains("swift") || tokens.contains("python") || tokens.contains("java") || tokens.contains("cntt") || text.contains("công nghệ thông tin") || tokens.contains("it") || text.contains("thuật toán") || text.contains("cơ sở dữ liệu") || text.contains("khoa học máy tính") || text.contains("cấu trúc dữ liệu") || tokens.contains("ctdl") || tokens.contains("cpp") || tokens.contains("kotlin") || tokens.contains("javascript") || tokens.contains("typescript") || text.contains("trí tuệ nhân tạo") || text.contains("machine learning") || text.contains("hệ điều hành") || text.contains("kiến trúc máy tính") || (tokens.contains("tin") && !text.contains("thông tin") && !text.contains("bản tin") && !text.contains("tin tức") && !text.contains("niềm tin") && !tokens.contains("tự")) {
                 return .computerScience
             } else if text.contains("nhiệm vụ") || tokens.contains("lab") || text.contains("thực hành") || text.contains("bài tập") || tokens.contains("project") || text.contains("dự án") {
@@ -277,138 +262,6 @@ public struct SubjectArtBadgeView: View, Equatable {
             Image(systemName: visualTheme.icon)
                 .font(.system(size: size * 0.52, weight: .semibold))
                 .foregroundStyle(visualTheme.themeColor)
-        }
-    }
-}
-
-public struct SubjectVectorArtComposition: View {
-    let courseName: String
-
-    public init(courseName: String) {
-        self.courseName = courseName
-    }
-
-    public var body: some View {
-        HStack(spacing: 12) {
-            switch SubjectArtHelper.category(for: courseName) {
-            case .math:
-                Image(systemName: "function")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(.white.opacity(0.25))
-                Image(systemName: "ruler")
-                    .font(.system(size: 34, weight: .light))
-                    .foregroundStyle(.white.opacity(0.35))
-                Image(systemName: "chart.xyaxis.line")
-                    .font(.system(size: 40, weight: .light))
-                    .foregroundStyle(.white.opacity(0.4))
-            case .computerScience:
-                Image(systemName: "iphone")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(.white.opacity(0.25))
-                Image(systemName: "curlybraces")
-                    .font(.system(size: 32, weight: .light))
-                    .foregroundStyle(.white.opacity(0.35))
-                Image(systemName: "laptopcomputer")
-                    .font(.system(size: 44, weight: .light))
-                    .foregroundStyle(.white.opacity(0.4))
-            case .networking:
-                Image(systemName: "antenna.radiowaves.left.and.right")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(.white.opacity(0.25))
-                Image(systemName: "server.rack")
-                    .font(.system(size: 34, weight: .light))
-                    .foregroundStyle(.white.opacity(0.35))
-                Image(systemName: "network")
-                    .font(.system(size: 42, weight: .light))
-                    .foregroundStyle(.white.opacity(0.4))
-            case .literature:
-                Image(systemName: "pencil.and.scribble")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(.white.opacity(0.25))
-                Image(systemName: "feather")
-                    .font(.system(size: 32, weight: .light))
-                    .foregroundStyle(.white.opacity(0.35))
-                Image(systemName: "book.pages")
-                    .font(.system(size: 42, weight: .light))
-                    .foregroundStyle(.white.opacity(0.4))
-            case .english:
-                Image(systemName: "character.book.closed")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(.white.opacity(0.25))
-                Image(systemName: "quote.bubble")
-                    .font(.system(size: 32, weight: .light))
-                    .foregroundStyle(.white.opacity(0.35))
-                Image(systemName: "globe.americas")
-                    .font(.system(size: 42, weight: .light))
-                    .foregroundStyle(.white.opacity(0.4))
-            case .civicsOrPhilosophy:
-                Image(systemName: "scroll")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(.white.opacity(0.25))
-                Image(systemName: "shield")
-                    .font(.system(size: 34, weight: .light))
-                    .foregroundStyle(.white.opacity(0.35))
-                Image(systemName: "building.columns")
-                    .font(.system(size: 42, weight: .light))
-                    .foregroundStyle(.white.opacity(0.4))
-            case .physics:
-                Image(systemName: "gauge.with.needle")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(.white.opacity(0.25))
-                Image(systemName: "waveform.path.ecg")
-                    .font(.system(size: 34, weight: .light))
-                    .foregroundStyle(.white.opacity(0.35))
-                Image(systemName: "atom")
-                    .font(.system(size: 42, weight: .light))
-                    .foregroundStyle(.white.opacity(0.4))
-            case .chemistry:
-                Image(systemName: "bubbles.and.sparkles")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(.white.opacity(0.25))
-                Image(systemName: "flame")
-                    .font(.system(size: 34, weight: .light))
-                    .foregroundStyle(.white.opacity(0.35))
-                Image(systemName: "flask")
-                    .font(.system(size: 42, weight: .light))
-                    .foregroundStyle(.white.opacity(0.4))
-            case .biology:
-                Image(systemName: "allergens")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(.white.opacity(0.25))
-                Image(systemName: "dna")
-                    .font(.system(size: 34, weight: .light))
-                    .foregroundStyle(.white.opacity(0.35))
-                Image(systemName: "leaf")
-                    .font(.system(size: 42, weight: .light))
-                    .foregroundStyle(.white.opacity(0.4))
-            case .economics:
-                Image(systemName: "briefcase")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(.white.opacity(0.25))
-                Image(systemName: "chart.bar")
-                    .font(.system(size: 34, weight: .light))
-                    .foregroundStyle(.white.opacity(0.35))
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.system(size: 42, weight: .light))
-                    .foregroundStyle(.white.opacity(0.4))
-            case .historyOrGeography:
-                Image(systemName: "map")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(.white.opacity(0.25))
-                Image(systemName: "building.columns")
-                    .font(.system(size: 34, weight: .light))
-                    .foregroundStyle(.white.opacity(0.35))
-                Image(systemName: "books.vertical")
-                    .font(.system(size: 42, weight: .light))
-                    .foregroundStyle(.white.opacity(0.4))
-            default:
-                Image(systemName: "book.closed")
-                    .font(.system(size: 34, weight: .light))
-                    .foregroundStyle(.white.opacity(0.3))
-                Image(systemName: "books.vertical")
-                    .font(.system(size: 42, weight: .light))
-                    .foregroundStyle(.white.opacity(0.4))
-            }
         }
     }
 }
@@ -646,22 +499,22 @@ public struct WidgetEmptyStateView: View {
 
 // MARK: - Risograph Theme
 public struct RisoTheme {
-    public static let paperLight = Color(red: 0.961, green: 0.949, blue: 0.922)      // #F5F2EB
-    public static let paperCardLight = Color(red: 0.984, green: 0.976, blue: 0.957)  // #FAF9F4
-    public static let inkLight = Color(red: 0.102, green: 0.133, blue: 0.188)        // #1A2230
-    public static let accentLight = Color(red: 0.851, green: 0.263, blue: 0.196)     // #D94332
-    public static let subLight = Color(red: 0.886, green: 0.639, blue: 0.212)        // #E2A336
-    public static let mutedLight = Color(red: 0.490, green: 0.475, blue: 0.435)      // #7D796F
+    public static let paperLight = Color(red: 0.961, green: 0.949, blue: 0.922)
+    public static let paperCardLight = Color(red: 0.984, green: 0.976, blue: 0.957)
+    public static let inkLight = Color(red: 0.102, green: 0.133, blue: 0.188)
+    public static let accentLight = Color(red: 0.851, green: 0.263, blue: 0.196)
+    public static let subLight = Color(red: 0.886, green: 0.639, blue: 0.212)
+    public static let mutedLight = Color(red: 0.490, green: 0.475, blue: 0.435)
     public static let hardShadowLight = Color(red: 0.102, green: 0.133, blue: 0.188)
     public static let gridLineLight = Color(red: 0.102, green: 0.133, blue: 0.188).opacity(0.12)
 
-    public static let paperDark = Color(red: 0.078, green: 0.098, blue: 0.137)       // #141923
-    public static let paperCardDark = Color(red: 0.102, green: 0.133, blue: 0.188)   // #1A2230
-    public static let inkDark = Color(red: 0.925, green: 0.906, blue: 0.863)         // #ECE7DC
-    public static let accentDark = Color(red: 1.000, green: 0.369, blue: 0.302)      // #FF5E4D
-    public static let subDark = Color(red: 0.965, green: 0.729, blue: 0.290)         // #F6BA4A
-    public static let mutedDark = Color(red: 0.525, green: 0.573, blue: 0.643)       // #8692A4
-    public static let hardShadowDark = Color(red: 0.035, green: 0.047, blue: 0.067)  // #090C11
+    public static let paperDark = Color(red: 0.078, green: 0.098, blue: 0.137)
+    public static let paperCardDark = Color(red: 0.102, green: 0.133, blue: 0.188)
+    public static let inkDark = Color(red: 0.925, green: 0.906, blue: 0.863)
+    public static let accentDark = Color(red: 1.000, green: 0.369, blue: 0.302)
+    public static let subDark = Color(red: 0.965, green: 0.729, blue: 0.290)
+    public static let mutedDark = Color(red: 0.525, green: 0.573, blue: 0.643)
+    public static let hardShadowDark = Color(red: 0.035, green: 0.047, blue: 0.067)
     public static let gridLineDark = Color(red: 0.925, green: 0.906, blue: 0.863).opacity(0.12)
 
     public static func paper(for scheme: ColorScheme) -> Color {
@@ -1330,4 +1183,3 @@ public enum WidgetFontSystem {
         .system(size: size, weight: .medium, design: .rounded)
     }
 }
-

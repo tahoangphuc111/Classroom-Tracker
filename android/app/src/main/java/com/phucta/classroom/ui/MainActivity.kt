@@ -17,17 +17,19 @@ import com.phucta.classroom.data.model.ClassroomDateUtils
 import com.phucta.classroom.ui.screens.MainScreen
 import com.phucta.classroom.ui.theme.ChunkyColor
 import com.phucta.classroom.ui.theme.ClassroomTypography
+import androidx.activity.enableEdgeToEdge
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-
     private val app: ClassroomApplication by lazy { applicationContext as ClassroomApplication }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         handleOAuthIntent(intent)
+
+        enableEdgeToEdge()
 
         setContent {
             MaterialTheme(
@@ -37,7 +39,10 @@ class MainActivity : ComponentActivity() {
                     surface = ChunkyColor.SurfaceWhite,
                     onPrimary = ChunkyColor.SurfaceWhite,
                     onBackground = ChunkyColor.TextPrimary,
-                    onSurface = ChunkyColor.TextPrimary
+                    onSurface = ChunkyColor.TextPrimary,
+                    outline = ChunkyColor.CardBorder,
+                    surfaceVariant = ChunkyColor.WindowBackground,
+                    onSurfaceVariant = ChunkyColor.TextMuted
                 ),
                 typography = ClassroomTypography
             ) {
@@ -77,7 +82,6 @@ class MainActivity : ComponentActivity() {
         val scheme = uri.scheme ?: return
 
         if (scheme.contains("googleusercontent") || scheme == "com.phucta.classroom") {
-            // Clear intent data to avoid re-triggering one-time auth code on rotation/recreation
             intent.data = null
             lifecycleScope.launch {
                 val success = app.oauthManager.handleRedirectUri(uri)

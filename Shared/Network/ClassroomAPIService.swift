@@ -63,7 +63,6 @@ public final class ClassroomAPIService: ObservableObject {
             var allCoursework: [Coursework] = []
             let existingCoursework = ClassroomStorage.shared.loadCoursework()
 
-            // Chunk requests to stay under Google's 10 req/s rate limit
             let chunkSize = 2
             for startIndex in stride(from: 0, to: selectedCourses.count, by: chunkSize) {
                 guard GoogleOAuthService.shared.isAuthenticated, !Task.isCancelled else { return }
@@ -85,14 +84,12 @@ public final class ClassroomAPIService: ObservableObject {
                         if let items = result {
                             allCoursework.append(contentsOf: items)
                         } else {
-                            // Keep cached coursework if fetch fails
                             let preserved = existingCoursework.filter { $0.courseId == courseId }
                             allCoursework.append(contentsOf: preserved)
                         }
                     }
                 }
 
-                // Delay between batches to respect rate limits
                 if startIndex + chunkSize < selectedCourses.count {
                     try? await Task.sleep(nanoseconds: 350_000_000)
                 }
@@ -104,7 +101,6 @@ public final class ClassroomAPIService: ObservableObject {
             let preservedItems = existingCoursework.filter { unselectedIds.contains($0.courseId) }
             allCoursework.append(contentsOf: preservedItems)
 
-            // Deduplicate allCoursework by ID while preserving encounter order
             var seenCourseworkIds = Set<String>()
             var uniqueCoursework: [Coursework] = []
             for item in allCoursework {
@@ -114,17 +110,7 @@ public final class ClassroomAPIService: ObservableObject {
                 }
             }
 
-            // Keep local manual completions if locally marked done and not yet completed on Classroom
-            let freshCoursework = ClassroomStorage.shared.loadCoursework()
-            let freshMap = Dictionary(freshCoursework.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
-            let finalCoursework = uniqueCoursework.map { item -> Coursework in
-                var updated = item
-                if let fresh = freshMap[item.id], fresh.isManuallyCompleted, !updated.isCompleted {
-                    updated.status = .turnedIn
-                    updated.isManuallyCompleted = true
-                }
-                return updated
-            }
+            let finalCoursework = ClassroomStorage.shared.reconcileCoursework(incoming: uniqueCoursework)
 
             ClassroomStorage.shared.saveCoursework(finalCoursework)
             ClassroomStorage.shared.saveLastSyncTime(Date())
@@ -140,7 +126,6 @@ public final class ClassroomAPIService: ObservableObject {
         var coursesMap: [String: Course] = [:]
         var lastError: Error?
 
-        // Student courses
         do {
             let studentCourses = try await fetchCoursesPage(accessToken: accessToken, filterKey: "studentId", filterValue: "me", courseState: "ACTIVE")
             for course in studentCourses {
@@ -151,7 +136,6 @@ public final class ClassroomAPIService: ObservableObject {
             lastError = error
         }
 
-        // Teacher courses
         do {
             let teacherCourses = try await fetchCoursesPage(accessToken: accessToken, filterKey: "teacherId", filterValue: "me", courseState: "ACTIVE")
             for course in teacherCourses {
@@ -162,7 +146,6 @@ public final class ClassroomAPIService: ObservableObject {
             if lastError == nil { lastError = error }
         }
 
-        // Fallback for admins/creators without a specific role filter
         if coursesMap.isEmpty {
             do {
                 let adminCourses = try await fetchCoursesPage(accessToken: accessToken, filterKey: nil, filterValue: nil, courseState: "ACTIVE")
@@ -175,7 +158,6 @@ public final class ClassroomAPIService: ObservableObject {
             }
         }
 
-        // Fallback if courses have other states than ACTIVE
         if coursesMap.isEmpty && lastError == nil {
             let studentAllStateCourses = (try? await fetchCoursesPage(accessToken: accessToken, filterKey: "studentId", filterValue: "me", courseState: nil)) ?? []
             for course in studentAllStateCourses {
@@ -397,7 +379,6 @@ public final class ClassroomAPIService: ObservableObject {
             pageCount += 1
         } while pageToken != nil && pageCount < 10
 
-        // Retry without PUBLISHED filter if nothing came back
         if allItems.isEmpty {
             guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses/\(courseId)/courseWork") else { return allItems }
             components.queryItems = [URLQueryItem(name: "pageSize", value: "50")]
@@ -476,7 +457,6 @@ public final class ClassroomAPIService: ObservableObject {
         dateComponents.day = day
 
         if let time {
-            // Classroom API returns TimeOfDay in UTC; proto3 omits 0 fields
             dateComponents.hour = time.hours ?? 0
             dateComponents.minute = time.minutes ?? 0
             dateComponents.second = time.seconds ?? 0

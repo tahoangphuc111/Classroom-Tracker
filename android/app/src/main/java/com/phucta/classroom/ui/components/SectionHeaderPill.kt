@@ -38,16 +38,16 @@ fun SectionHeaderPill(
             .clip(RoundedCornerShape(8.dp))
             .background(color.copy(alpha = 0.08f))
             .border(1.dp, color.copy(alpha = 0.18f), RoundedCornerShape(8.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = color,
-            modifier = Modifier.size(15.dp)
+            modifier = Modifier.size(16.dp)
         )
-        Spacer(modifier = Modifier.width(6.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = title,
             color = color,
@@ -60,7 +60,7 @@ fun SectionHeaderPill(
             modifier = Modifier
                 .clip(CircleShape)
                 .background(color.copy(alpha = 0.14f))
-                .padding(horizontal = 7.5.dp, vertical = 2.dp),
+                .padding(horizontal = 8.dp, vertical = 2.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -68,7 +68,7 @@ fun SectionHeaderPill(
                 color = color,
                 fontFamily = OutfitFontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp
+                fontSize = 12.sp
             )
         }
     }

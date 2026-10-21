@@ -452,7 +452,6 @@ public final class ClassroomStorage: @unchecked Sendable {
             }
         }
 
-        // Never show mock data in widget extensions
         if isAppExtension, let loadedItems = loaded {
             let allMock = !loadedItems.isEmpty && loadedItems.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
             if allMock {
@@ -533,7 +532,6 @@ public final class ClassroomStorage: @unchecked Sendable {
             }
         }
 
-        // Never show mock data in widget extensions
         if isAppExtension, let loadedItems = loaded {
             let allMock = !loadedItems.isEmpty && loadedItems.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
             if allMock {
@@ -679,7 +677,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
 
         var tomorrowFiltered: [Coursework] = []
-        var todayIncomplete: [Coursework] = []
+        var todayFiltered: [Coursework] = []
         var laterUpcoming: [Coursework] = []
         var undated: [Coursework] = []
 
@@ -690,18 +688,12 @@ public final class ClassroomStorage: @unchecked Sendable {
                 continue
             }
 
-            // Triết lý: Cứ hết hạn thì tính là đã hoàn thành.
-            // Các bài tập đã qua hạn (dueDate < now) không còn là bài tập cần giải quyết và không được đưa vào danh sách nhắc nhở widget.
             if dueDate >= startOfTomorrow && dueDate < startOfDayAfter {
                 if isEligible { tomorrowFiltered.append(item) }
-            } else if !item.isCompleted {
-                if dueDate >= now && dueDate < startOfTomorrow {
-                    todayIncomplete.append(item)
-                } else if isEligible && dueDate >= startOfDayAfter {
-                    laterUpcoming.append(item)
-                }
-            } else if isEligible && dueDate >= startOfDayAfter {
-                laterUpcoming.append(item)
+            } else if dueDate >= now && dueDate < startOfTomorrow {
+                if isEligible { todayFiltered.append(item) }
+            } else if dueDate >= startOfDayAfter {
+                if isEligible { laterUpcoming.append(item) }
             }
         }
 
@@ -725,7 +717,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
 
         if !tomorrowFiltered.isEmpty { return sortCoursework(tomorrowFiltered) }
-        if !todayIncomplete.isEmpty { return sortCoursework(todayIncomplete) }
+        if !todayFiltered.isEmpty { return sortCoursework(todayFiltered) }
         if !laterUpcoming.isEmpty { return sortCoursework(laterUpcoming) }
         if !undated.isEmpty { return sortCoursework(undated) }
 
@@ -783,11 +775,46 @@ public final class ClassroomStorage: @unchecked Sendable {
         for i in currentItems.indices {
             if ids.contains(currentItems[i].id) {
                 currentItems[i].status = newStatus
+                if newStatus == .turnedIn || newStatus == .returned {
+                    currentItems[i].isManuallyCompleted = true
+                } else if newStatus == .pending {
+                    currentItems[i].isManuallyCompleted = false
+                }
                 changed = true
             }
         }
         if changed {
             saveCoursework(currentItems)
+        }
+    }
+
+    public func toggleCourseworkCompletion(id: String, completed: Bool? = nil) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var currentItems = loadCoursework()
+        guard let index = currentItems.firstIndex(where: { $0.id == id }) else { return }
+        let newStatus = completed ?? !currentItems[index].isCompleted
+        currentItems[index].isManuallyCompleted = newStatus
+        currentItems[index].status = newStatus ? .turnedIn : .pending
+        saveCoursework(currentItems)
+    }
+
+    public func reconcileCoursework(incoming: [Coursework]) -> [Coursework] {
+        let cached = loadCoursework()
+        let cachedMap = Dictionary(cached.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        return incoming.map { item in
+            guard let fresh = cachedMap[item.id] else { return item }
+            var updated = item
+            let localIsCompleted = fresh.isManuallyCompleted || fresh.status == .turnedIn || fresh.status == .returned
+            let incomingIsPendingOrLate = updated.status == .pending || updated.status == .late
+            if localIsCompleted && incomingIsPendingOrLate {
+                updated.status = fresh.status == .returned ? .returned : .turnedIn
+                updated.isManuallyCompleted = fresh.isManuallyCompleted
+            } else if fresh.isManuallyCompleted {
+                updated.isManuallyCompleted = true
+            }
+            return updated
         }
     }
 
@@ -885,7 +912,6 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     private func ensureInitialData() {
-        // Cold start does not auto-populate mock data so unauthenticated users see clean login screen
     }
 
     public func populateMockDataManually() {

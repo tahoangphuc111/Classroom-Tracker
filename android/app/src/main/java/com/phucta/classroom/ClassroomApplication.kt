@@ -22,7 +22,6 @@ import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
 class ClassroomApplication : Application() {
-
     lateinit var database: ClassroomDatabase
         private set
     lateinit var preferences: ClassroomPreferences

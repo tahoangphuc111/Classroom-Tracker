@@ -16,7 +16,6 @@ data class OAuthTokens(
 }
 
 class TokenStorage(context: Context) {
-
     private val prefs: SharedPreferences by lazy {
         try {
             val masterKey = MasterKey.Builder(context)
@@ -31,7 +30,6 @@ class TokenStorage(context: Context) {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (e: Exception) {
-            // Fallback for devices with KeyStore migration issues
             context.getSharedPreferences("secure_oauth_tokens_fallback", Context.MODE_PRIVATE)
         }
     }

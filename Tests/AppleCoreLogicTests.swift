@@ -14,7 +14,6 @@ struct TestRunner {
     static func main() {
         print("=== Running Apple Core Logic & Model Tests ===")
 
-        // Test 1: resilient decoding of SubmissionStatus with unexpected values
         do {
             let jsonWithUnknownStatus = """
             {
@@ -34,7 +33,6 @@ struct TestRunner {
             assertCondition(false, "Failed to decode Coursework with unknown status: \(error)")
         }
 
-        // Test 2: Codable round-trip with isManuallyCompleted
         do {
             let now = Date()
             let futureDate = now.addingTimeInterval(86400)
@@ -57,7 +55,6 @@ struct TestRunner {
             assertCondition(false, "Codable round-trip error: \(error)")
         }
 
-        // Test 3: Core Philosophy "triết lý: cứ hết hạn thì tính là đã hoàn thành"
         do {
             let now = Date()
             let pastDate = now.addingTimeInterval(-3600)
@@ -74,7 +71,6 @@ struct TestRunner {
             assertCondition(expiredTask.isCompleted == true, "Expired task (dueDate < now) must be considered completed")
         }
 
-        // Test 4: Future Pending Task
         do {
             let now = Date()
             let futureDate = now.addingTimeInterval(3600 * 24)
@@ -91,7 +87,6 @@ struct TestRunner {
             assertCondition(futureTask.isCompleted == false, "Future pending task must NOT be considered completed")
         }
 
-        // Test 5: TurnedIn / Returned status
         do {
             let futureDate = Date().addingTimeInterval(3600 * 24)
             let turnedInTask = Coursework(
@@ -115,7 +110,6 @@ struct TestRunner {
             assertCondition(returnedTask.isCompleted == true, "Returned task must be completed")
         }
 
-        // Test 6: Sorting logic - Incomplete first, then earlier due date, then alphabetical
         do {
             let now = Date()
             let future1 = now.addingTimeInterval(3600)
@@ -159,7 +153,6 @@ struct TestRunner {
             assertCondition(sorted[3].id == "1", "Completed task must be sorted last")
         }
 
-        // Test 7: Active course filtering
         do {
             let courses: [Course] = [
                 Course(id: "c1", name: "Math", isSelectedForWidget: true),
@@ -186,7 +179,6 @@ struct TestRunner {
             assertCondition(filtered.contains { $0.id == "item3" }, "Uncatalogued item must be preserved")
         }
 
-        // Test 8: PersonalNote model, Codable round-trip, search index, and date bucketing
         do {
             let cal = Calendar.autoupdatingCurrent
             let now = Date()
@@ -205,18 +197,15 @@ struct TestRunner {
                 isCompleted: false
             )
 
-            // Search normalization test
             let normalizedQuery = "giai tich".normalizedForVietnameseSearch()
             assertCondition(note.searchIndex.contains(normalizedQuery), "PersonalNote search index must match diacritic-free Vietnamese query")
 
             let queryTitle = "toan hoc".normalizedForVietnameseSearch()
             assertCondition(note.searchIndex.contains(queryTitle), "PersonalNote search index must match course name query")
 
-            // Tomorrow date test
             assertCondition(note.isDueTomorrow, "PersonalNote with tomorrow dueDate must return isDueTomorrow == true")
             assertCondition(!note.isDueToday, "PersonalNote with tomorrow dueDate must return isDueToday == false")
 
-            // Codable round-trip test
             let encoded = try JSONEncoder().encode(note)
             let decoded = try JSONDecoder().decode(PersonalNote.self, from: encoded)
 
@@ -226,7 +215,6 @@ struct TestRunner {
             assertCondition(decoded.content == note.content, "Decoded content must match")
             assertCondition(decoded.isCompleted == false, "Decoded completion state must match")
 
-            // Test 8b: Coursework note clearing test
             var notesList = [
                 PersonalNote(id: "note_cw", courseworkId: "cw_999", courseId: "c1", courseName: "Math", title: "Math HW", content: "Remember to do exercise 4")
             ]
@@ -241,20 +229,16 @@ struct TestRunner {
             assertCondition(false, "PersonalNote test failed: \(error)")
         }
 
-        // Test 9: compactDueString parity formatting
         do {
             let cal = Calendar.autoupdatingCurrent
             let now = Date()
 
-            // 9.1: No due date
             let noDue = Coursework(id: "cw_nodue", courseId: "c1", courseName: "M", title: "T", dueDate: nil, status: .pending)
             assertCondition(noDue.compactDueString == "Không hạn", "No due date must format as 'Không hạn'")
 
-            // 9.2: Completed item
             let completed = Coursework(id: "cw_done", courseId: "c1", courseName: "M", title: "T", dueDate: now.addingTimeInterval(3600), status: .turnedIn)
             assertCondition(completed.compactDueString == "Đã xong", "Completed item must format as 'Đã xong'")
 
-            // 9.3: Today end-of-day (23:59:59)
             var compToday = cal.dateComponents([.year, .month, .day], from: now)
             compToday.hour = 23
             compToday.minute = 59
@@ -264,7 +248,6 @@ struct TestRunner {
                 assertCondition(todayEOD.compactDueString == "Cuối ngày", "Today end-of-day (23:59:59) must format as 'Cuối ngày'")
             }
 
-            // 9.3b: Today 23:55
             var compToday2355 = cal.dateComponents([.year, .month, .day], from: now)
             compToday2355.hour = 23
             compToday2355.minute = 55
@@ -274,7 +257,6 @@ struct TestRunner {
                 assertCondition(today2355Item.compactDueString == "Cuối ngày", "Today 23:55 must format as 'Cuối ngày'")
             }
 
-            // 9.3c: Today future hour (e.g. 20:30)
             var compToday2030 = cal.dateComponents([.year, .month, .day], from: now)
             compToday2030.hour = 20
             compToday2030.minute = 30
@@ -284,7 +266,6 @@ struct TestRunner {
                 assertCondition(today2030Item.compactDueString == "20:30", "Today 20:30 must format as '20:30'")
             }
 
-            // 9.4: Tomorrow end-of-day (23:59:59)
             if let tomorrow = cal.date(byAdding: .day, value: 1, to: now) {
                 var compTomEOD = cal.dateComponents([.year, .month, .day], from: tomorrow)
                 compTomEOD.hour = 23
@@ -295,7 +276,6 @@ struct TestRunner {
                     assertCondition(tomEOD.compactDueString == "Mai", "Tomorrow end-of-day (23:59:59) must format as 'Mai'")
                 }
 
-                // 9.4b: Tomorrow 23:55
                 var compTom2355 = cal.dateComponents([.year, .month, .day], from: tomorrow)
                 compTom2355.hour = 23
                 compTom2355.minute = 55
@@ -305,7 +285,6 @@ struct TestRunner {
                     assertCondition(tom2355.compactDueString == "Mai", "Tomorrow 23:55 must format as 'Mai'")
                 }
 
-                // 9.5: Tomorrow 14:30
                 var compTom1430 = cal.dateComponents([.year, .month, .day], from: tomorrow)
                 compTom1430.hour = 14
                 compTom1430.minute = 30
@@ -317,12 +296,9 @@ struct TestRunner {
             }
         }
 
-        // Test 10: Sync reconciliation parity (local check vs remote unsubmit)
         do {
             let future = Date().addingTimeInterval(86400 * 2)
 
-            // Case A: Item previously turned in on Classroom (isManuallyCompleted: false, status: .turnedIn)
-            // Then student or teacher unsubmitted on Classroom Web -> incoming item has status: .pending, isManuallyCompleted: false
             let cachedRemoteTurnedIn = Coursework(id: "cw_unsubmit", courseId: "c1", courseName: "M", title: "Remote Unsubmit", dueDate: future, status: .turnedIn, isManuallyCompleted: false)
             let incomingUnsubmitted = Coursework(id: "cw_unsubmit", courseId: "c1", courseName: "M", title: "Remote Unsubmit", dueDate: future, status: .pending, isManuallyCompleted: false)
 
@@ -336,8 +312,6 @@ struct TestRunner {
             assertCondition(reconciledA.isManuallyCompleted == false, "Remote unsubmit should have isManuallyCompleted == false")
             assertCondition(reconciledA.isCompleted == false, "Remote unsubmit should evaluate isCompleted == false")
 
-            // Case B: Student manually tapped checkbox in app (isManuallyCompleted: true, status: .turnedIn)
-            // Classroom sync returns status: .pending, isManuallyCompleted: false
             let cachedLocallyChecked = Coursework(id: "cw_local", courseId: "c1", courseName: "M", title: "Local Checked", dueDate: future, status: .turnedIn, isManuallyCompleted: true)
             let incomingPending = Coursework(id: "cw_local", courseId: "c1", courseName: "M", title: "Local Checked", dueDate: future, status: .pending, isManuallyCompleted: false)
 
@@ -352,7 +326,6 @@ struct TestRunner {
             assertCondition(reconciledB.isCompleted == true, "Locally completed task must evaluate isCompleted == true")
         }
 
-        // Test 11: Unauthenticated widget state integrity (no mock coursework leakage)
         do {
             func widgetDisplayItems(isLoggedIn: Bool, items: [Coursework]) -> [Coursework] {
                 isLoggedIn ? items : []
@@ -367,7 +340,6 @@ struct TestRunner {
             assertCondition(!loggedInDisplay.isEmpty, "Logged-in widget must display coursework list")
         }
 
-        // Test 12: Calendar & Timezone formatting stability (Gregorian calendar pinning)
         do {
             var comp = DateComponents()
             comp.year = 2026
@@ -385,7 +357,6 @@ struct TestRunner {
             }
         }
 
-        // Test 13: Personal notes integration in tomorrow coursework
         do {
             let cal = Calendar.autoupdatingCurrent
             let now = Date()
@@ -428,18 +399,15 @@ struct TestRunner {
             let noteItem = tomorrowItems.first { $0.id == "note_standalone_1" }
             assertCondition(noteItem?.compactDueString == "Mai 14:30", "Tomorrow 14:30 note must format as 'Mai 14:30'")
 
-            // Toggle completion
             ClassroomStorage.shared.togglePersonalNoteCompletion(id: "standalone_1")
             let notesAfterToggle = ClassroomStorage.shared.loadPersonalNotes()
             assertCondition(notesAfterToggle.first { $0.id == "standalone_1" }?.isCompleted == true, "Personal note completion must toggle to true")
 
-            // Delete note
             ClassroomStorage.shared.deletePersonalNote(id: "standalone_1")
             let notesAfterDelete = ClassroomStorage.shared.loadPersonalNotes()
             assertCondition(!notesAfterDelete.contains { $0.id == "standalone_1" }, "Personal note must be deleted")
         }
 
-        // Test 15: Coursework Search Relevance Algorithm
         do {
             let itemExactTitle = Coursework(id: "cw_exact", courseId: "c1", courseName: "12A1", title: "Giải tích", description: "Bình thường")
             let itemPrefixTitle = Coursework(id: "cw_prefix", courseId: "c1", courseName: "12A1", title: "Giải tích chương 1", description: "Bình thường")
@@ -456,7 +424,6 @@ struct TestRunner {
             assertCondition(scorePrefix > scoreDesc, "Prefix title match score (\(scorePrefix)) must be higher than description-only match score (\(scoreDesc))")
         }
 
-        // Test 16: PersonalNote Search Relevance Algorithm
         do {
             let noteExact = PersonalNote(id: "n_exact", title: "Hóa học", content: "Nội dung")
             let noteDesc = PersonalNote(id: "n_desc", title: "Ghi nhớ", content: "Cần ôn bài hóa học")
@@ -470,7 +437,6 @@ struct TestRunner {
             assertCondition(scoreExact > scoreDesc, "PersonalNote exact title match score (\(scoreExact)) must be higher than content match score (\(scoreDesc))")
         }
 
-        // Test 17: ChecklistItem & Checklist Auto-Completion Logic
         do {
             let item1 = ChecklistItem(id: "item_1", title: "Mua máy tính Casio", isCompleted: false)
             let item2 = ChecklistItem(id: "item_2", title: "In đề cương", isCompleted: true)
@@ -485,18 +451,15 @@ struct TestRunner {
             assertCondition(noteWithChecklist.completedChecklistCount == 1, "completedChecklistCount must be 1")
             assertCondition(noteWithChecklist.checklistProgress == 0.5, "checklistProgress must be 0.5")
 
-            // Codable test with checklist
             let encodedData = try JSONEncoder().encode(noteWithChecklist)
             let decodedNote = try JSONDecoder().decode(PersonalNote.self, from: encodedData)
             assertCondition(decodedNote.checklist.count == 2, "Decoded note must preserve 2 checklist items")
             assertCondition(decodedNote.checklist[0].title == "Mua máy tính Casio", "Decoded checklist title must match")
             assertCondition(decodedNote.checklist[1].isCompleted == true, "Decoded checklist completion state must match")
 
-            // Search index check
             let query = "may tinh".normalizedForVietnameseSearch()
             assertCondition(decodedNote.searchIndex.contains(query), "PersonalNote search index must include checklist titles")
 
-            // Test storage toggleChecklistItemCompletion
             ClassroomStorage.shared.savePersonalNotes([noteWithChecklist])
             ClassroomStorage.shared.toggleChecklistItemCompletion(noteId: "note_chk_1", itemId: "item_1")
 
@@ -505,17 +468,61 @@ struct TestRunner {
             assertCondition(updatedNote?.checklist.first { $0.id == "item_1" }?.isCompleted == true, "Checklist item 1 must be toggled to completed")
             assertCondition(updatedNote?.isCompleted == true, "Note must auto-complete when all checklist items are done")
 
-            // Untoggle item 2 -> note should revert to incomplete
             ClassroomStorage.shared.toggleChecklistItemCompletion(noteId: "note_chk_1", itemId: "item_2")
             let notesAfterUncheck = ClassroomStorage.shared.loadPersonalNotes()
             let uncompleteNote = notesAfterUncheck.first { $0.id == "note_chk_1" }
             assertCondition(uncompleteNote?.checklist.first { $0.id == "item_2" }?.isCompleted == false, "Checklist item 2 must be toggled to false")
             assertCondition(uncompleteNote?.isCompleted == false, "Note must revert to incomplete when any checklist item is pending")
 
-            // Clean up
             ClassroomStorage.shared.deletePersonalNote(id: "note_chk_1")
         } catch {
             assertCondition(false, "ChecklistItem test failed: \(error)")
+        }
+
+        do {
+            let future = Date().addingTimeInterval(86400 * 3)
+            let testTask = Coursework(
+                id: "cw_storage_test_1",
+                courseId: "c_storage",
+                courseName: "Vật lý",
+                title: "Bài tập con lắc",
+                dueDate: future,
+                status: .pending,
+                isManuallyCompleted: false
+            )
+
+            ClassroomStorage.shared.saveCoursework([testTask])
+
+            ClassroomStorage.shared.toggleCourseworkCompletion(id: "cw_storage_test_1", completed: true)
+            let loaded = ClassroomStorage.shared.loadCoursework()
+            let toggledItem = loaded.first { $0.id == "cw_storage_test_1" }
+            assertCondition(toggledItem?.status == .turnedIn, "Toggled coursework must have status .turnedIn")
+            assertCondition(toggledItem?.isManuallyCompleted == true, "Toggled coursework must have isManuallyCompleted == true")
+            assertCondition(toggledItem?.isCompleted == true, "Toggled coursework must evaluate isCompleted == true")
+
+            let incomingPending = Coursework(
+                id: "cw_storage_test_1",
+                courseId: "c_storage",
+                courseName: "Vật lý",
+                title: "Bài tập con lắc (tiêu đề mới từ Google)",
+                dueDate: future,
+                status: .pending,
+                isManuallyCompleted: false
+            )
+
+            let reconciled = ClassroomStorage.shared.reconcileCoursework(incoming: [incomingPending])
+            assertCondition(reconciled.count == 1, "Reconciled coursework must have 1 item")
+            assertCondition(reconciled[0].status == .turnedIn, "Locally completed task must remain .turnedIn after sync")
+            assertCondition(reconciled[0].isManuallyCompleted == true, "Locally completed task must preserve isManuallyCompleted == true")
+            assertCondition(reconciled[0].title == "Bài tập con lắc (tiêu đề mới từ Google)", "Reconciled item must update remote metadata like title")
+
+            ClassroomStorage.shared.updateCourseworkStatuses(ids: ["cw_storage_test_1"], newStatus: .turnedIn)
+            let loadedAfterUpdate = ClassroomStorage.shared.loadCoursework()
+            assertCondition(loadedAfterUpdate.first { $0.id == "cw_storage_test_1" }?.isManuallyCompleted == true, "updateCourseworkStatuses turnedIn must set isManuallyCompleted = true")
+
+            ClassroomStorage.shared.updateCourseworkStatuses(ids: ["cw_storage_test_1"], newStatus: .pending)
+            let loadedAfterPending = ClassroomStorage.shared.loadCoursework()
+            assertCondition(loadedAfterPending.first { $0.id == "cw_storage_test_1" }?.isManuallyCompleted == false, "updateCourseworkStatuses pending must set isManuallyCompleted = false")
         }
 
         print("=== All Apple Core Logic Tests Passed Successfully! ===")

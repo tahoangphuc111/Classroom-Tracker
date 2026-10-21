@@ -236,23 +236,24 @@ public struct ContentView: View {
             completed: [Coursework] = []
         ) {
             self.tomorrow = tomorrow
-            self.tomorrowStrict = tomorrowStrict.isEmpty ? tomorrow : tomorrowStrict
+            self.tomorrowStrict = tomorrowStrict
             self.today = today
             self.laterUpcoming = laterUpcoming
             self.past = past
             self.noDueDate = noDueDate
             self.completed = completed
-            self.todayAndTomorrow = today + (tomorrowStrict.isEmpty ? tomorrow : tomorrowStrict)
-            self.allUpcoming = today + (tomorrowStrict.isEmpty ? tomorrow : tomorrowStrict) + laterUpcoming + noDueDate
+            self.todayAndTomorrow = today + tomorrowStrict
+            self.allUpcoming = today + tomorrowStrict + laterUpcoming + noDueDate
 
             let tomorrowPending = tomorrow.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
+            let tomorrowStrictPending = tomorrowStrict.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
             let todayPending = today.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
             let laterPending = laterUpcoming.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
             let noDuePending = noDueDate.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
 
             self.tomorrowPendingCount = tomorrowPending
-            self.todayAndTomorrowPendingCount = todayPending + (tomorrowStrict.isEmpty ? tomorrowPending : tomorrowStrict.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) })
-            self.allUpcomingPendingCount = todayPending + (tomorrowStrict.isEmpty ? tomorrowPending : tomorrowStrict.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }) + laterPending + noDuePending
+            self.todayAndTomorrowPendingCount = todayPending + tomorrowStrictPending
+            self.allUpcomingPendingCount = todayPending + tomorrowStrictPending + laterPending + noDuePending
             self.pastPendingCount = past.count
             self.completedCount = completed.count
         }
@@ -584,7 +585,6 @@ public struct ContentView: View {
         .onChange(of: searchText) {
             let list = currentFilteredList
             if let current = selectedCoursework, list.contains(where: { $0.id == current.id }) {
-                // Keep selected coursework if it matches query
             } else if let first = list.first {
                 selectedCoursework = first
                 selectedCourseworkIds = [first.id]
@@ -1258,6 +1258,13 @@ public struct ContentView: View {
                         ClassroomStorage.shared.togglePersonalNoteCompletion(id: id)
                         personalNotes = ClassroomStorage.shared.loadPersonalNotes()
                         recomputeBuckets()
+                        if let note = personalNotes.first(where: { $0.id == id }) {
+                            if note.isCompleted {
+                                showToast(title: "Đã hoàn thành việc cần làm!", subtitle: note.title, icon: "checkmark.circle.fill", tint: .green)
+                            } else {
+                                showToast(title: "Đã chuyển về chưa xong", subtitle: note.title, icon: "arrow.uturn.backward.circle.fill", tint: .orange)
+                            }
+                        }
                     },
                     onToggleChecklistItem: { noteId, itemId in
                         ClassroomStorage.shared.toggleChecklistItemCompletion(noteId: noteId, itemId: itemId)
@@ -1588,20 +1595,38 @@ public struct ContentView: View {
                 .fixedSize()
             } else if category == .notes {
                 let pendingCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(categoryIconColor(category))
-                        .frame(width: 6, height: 6)
-                    Text("\(pendingCount) việc cần làm")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(categoryIconColor(category))
-                        .lineLimit(1)
+                let totalNotes = personalNotes.filter { $0.courseworkId == nil }.count
+                if pendingCount == 0 && totalNotes > 0 {
+                    HStack(spacing: 5) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.green)
+                        Text("Đã xong hết")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(.green)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4.5)
+                    .background(Color.green.opacity(0.12))
+                    .clipShape(Capsule())
+                    .fixedSize()
+                } else {
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(categoryIconColor(category))
+                            .frame(width: 6, height: 6)
+                        Text("\(pendingCount) việc cần làm")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(categoryIconColor(category))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4.5)
+                    .background(categoryIconColor(category).opacity(0.09))
+                    .clipShape(Capsule())
+                    .fixedSize()
                 }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4.5)
-                .background(categoryIconColor(category).opacity(0.09))
-                .clipShape(Capsule())
-                .fixedSize()
             } else {
                 let pendingCount = categoryPendingCount(category)
                 if pendingCount > 0 {
@@ -1689,20 +1714,38 @@ public struct ContentView: View {
                 .fixedSize()
             } else if category == .notes {
                 let pendingCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(categoryIconColor(category))
-                        .frame(width: 6, height: 6)
-                    Text("\(pendingCount) việc cần làm")
-                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(categoryIconColor(category))
-                        .lineLimit(1)
+                let totalNotes = personalNotes.filter { $0.courseworkId == nil }.count
+                if pendingCount == 0 && totalNotes > 0 {
+                    HStack(spacing: 5) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.green)
+                        Text("Đã xong hết")
+                            .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.green)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Color.green.opacity(0.12))
+                    .clipShape(Capsule())
+                    .fixedSize()
+                } else {
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(categoryIconColor(category))
+                            .frame(width: 6, height: 6)
+                        Text("\(pendingCount) việc cần làm")
+                            .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                            .foregroundStyle(categoryIconColor(category))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(categoryIconColor(category).opacity(0.09))
+                    .clipShape(Capsule())
+                    .fixedSize()
                 }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(categoryIconColor(category).opacity(0.09))
-                .clipShape(Capsule())
-                .fixedSize()
             } else {
                 let pendingCount = categoryPendingCount(category)
                 if pendingCount > 0 {
@@ -3499,8 +3542,8 @@ public struct ContentView: View {
             showToast(
                 title: item.isCompleted ? "Đã chuyển về chưa xong" : "Đã hoàn thành ghi chú!",
                 subtitle: item.title,
-                icon: "checkmark.circle.fill",
-                tint: .green
+                icon: item.isCompleted ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill",
+                tint: item.isCompleted ? .orange : .green
             )
         }
     }

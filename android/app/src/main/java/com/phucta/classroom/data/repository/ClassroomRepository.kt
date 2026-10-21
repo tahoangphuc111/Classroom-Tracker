@@ -7,6 +7,7 @@ import com.phucta.classroom.data.local.ClassroomDatabase
 import com.phucta.classroom.data.local.ClassroomPreferences
 import com.phucta.classroom.data.local.CourseEntity
 import com.phucta.classroom.data.local.CourseworkEntity
+import com.phucta.classroom.data.local.toCoursework
 import com.phucta.classroom.data.local.MockDataProvider
 import com.phucta.classroom.data.local.PersonalNoteEntity
 import com.phucta.classroom.data.model.Course
@@ -56,7 +57,7 @@ class ClassroomRepository(
     }
 
     val courseworkFlow: Flow<List<Coursework>> = courseworkDao.observeAllCoursework().map { entities ->
-        entities.map { it.toDomain() }
+        entities.toCoursework()
     }
 
     val personalNotesFlow: Flow<List<PersonalNote>> = personalNoteDao.observeAllNotes().map { entities ->
@@ -64,7 +65,6 @@ class ClassroomRepository(
     }
 
     suspend fun ensureInitialData() = withContext(Dispatchers.IO) {
-        // Cold start does not auto-populate mock data so unauthenticated users see clean login screen
     }
 
     suspend fun populateMockDataManually() = withContext(Dispatchers.IO) {
@@ -84,13 +84,8 @@ class ClassroomRepository(
         notifyWidgetReload()
     }
 
-    /**
-     * Syncs active courses and coursework from Google Classroom.
-     * Preserves locally checked tasks and widget course selections.
-     */
     suspend fun syncAll(): Result<Unit> = withContext(Dispatchers.IO) {
         if (!syncMutex.tryLock()) {
-            // Already syncing, do not pile up redundant background sync requests
             return@withContext Result.success(Unit)
         }
         try {
@@ -98,7 +93,6 @@ class ClassroomRepository(
                 _syncErrorMessage.value = "Chưa kết nối Google."
                 return@withContext Result.failure(IllegalStateException("Chưa kết nối Google."))
             }
-
             _isSyncing.value = true
             _syncErrorMessage.value = null
 
@@ -106,26 +100,19 @@ class ClassroomRepository(
                 val accessToken = oauthManager.getValidAccessToken()
 
                 val fetchedCourses = apiService.fetchActiveCourses(accessToken)
-
                 val existingCourseEntities = courseDao.getAllCourses()
                 val hasOnlyMockCourses = existingCourseEntities.isNotEmpty() &&
                         existingCourseEntities.all { MockDataProvider.isMockCourse(it.id) }
-
-                // Preserve widget selection preferences
                 val existingCourses = if (hasOnlyMockCourses) emptyList() else existingCourseEntities.map { it.toDomain() }
                 val existingSelectionMap = existingCourses.associate { it.id to it.isSelectedForWidget }
-
                 val mergedCourses = fetchedCourses.map { course ->
                     val preservedSelection = existingSelectionMap[course.id] ?: true
                     course.copy(isSelectedForWidget = preservedSelection)
                 }
-
-                // Fetch in small batches to respect Google's rate limits
                 val selectedCourses = mergedCourses.filter { it.isSelectedForWidget }
-                val existingCoursework = if (hasOnlyMockCourses) emptyList() else courseworkDao.getAllCoursework().map { it.toDomain() }
+                val existingCoursework = if (hasOnlyMockCourses) emptyList() else courseworkDao.getAllCoursework().toCoursework()
                 val allCoursework = mutableListOf<Coursework>()
                 var hasAnyFetchErrors = false
-
                 val chunkSize = 2
                 for (chunk in selectedCourses.chunked(chunkSize)) {
                     coroutineScope {
@@ -136,7 +123,6 @@ class ClassroomRepository(
                                 } catch (e: Exception) {
                                     if (e is CancellationException) throw e
                                     hasAnyFetchErrors = true
-                                    // Preserve cached coursework if individual course fetch fails
                                     existingCoursework.filter { it.courseId == course.id }
                                 }
                             }
@@ -144,58 +130,35 @@ class ClassroomRepository(
                         val results = deferredResults.awaitAll()
                         results.forEach { allCoursework.addAll(it) }
                     }
-                    delay(350)
+                    delay(500)
                 }
-
-                // Preserve unselected courses' coursework in cache
                 val unselectedIds = mergedCourses.filter { !it.isSelectedForWidget }.map { it.id }.toSet()
                 val preservedItems = existingCoursework.filter { unselectedIds.contains(it.courseId) }
                 allCoursework.addAll(preservedItems)
-
                 database.withTransaction {
                     if (hasOnlyMockCourses) {
                         courseDao.deleteAllCourses()
                         courseworkDao.deleteAllCoursework()
                     }
-
                     val uniqueCourses = mergedCourses.distinctBy { it.id }
                     courseDao.upsertCourses(uniqueCourses.map { CourseEntity.fromDomain(it) })
 
-                    // Remove deleted or archived courses
                     val activeCourseIds = uniqueCourses.map { it.id }
                     if (activeCourseIds.isNotEmpty()) {
                         courseDao.deleteCoursesNotIn(activeCourseIds)
                     }
-
-                    // Re-read local status to avoid overwriting checkmarks toggled during fetch
-                    val latestCoursework = courseworkDao.getAllCoursework().map { it.toDomain() }
+                    val latestCoursework = courseworkDao.getAllCoursework().toCoursework()
                     val latestStatusMap = latestCoursework.associateBy { it.id }
-
                     val finalCoursework = allCoursework.distinctBy { it.id }.map { incoming ->
-                        val latest = latestStatusMap[incoming.id]
-                        // Only keep local completion if the user explicitly manually checked it off in this app
-                        val wasManuallyCompleted = !incoming.isCompleted &&
-                                (latest?.isManuallyCompleted == true)
-
-                        if (wasManuallyCompleted) {
-                            incoming.copy(
-                                status = SubmissionStatus.TURNED_IN,
-                                isManuallyCompleted = true
-                            )
-                        } else {
-                            incoming
-                        }
+                        reconcileCoursework(latestStatusMap[incoming.id], incoming)
                     }
-
                     courseworkDao.upsertCourseworks(finalCoursework.map { CourseworkEntity.fromDomain(it) })
 
-                    // Remove deleted assignments only if all selected courses fetched successfully without errors
                     val validCourseworkIds = finalCoursework.map { it.id }
                     if (validCourseworkIds.isNotEmpty() && !hasAnyFetchErrors) {
                         courseworkDao.deleteCourseworkNotIn(validCourseworkIds)
                     }
                 }
-
                 preferences.saveLastSyncTime(System.currentTimeMillis())
                 notifyWidgetReload()
                 Result.success(Unit)
@@ -210,7 +173,6 @@ class ClassroomRepository(
             syncMutex.unlock()
         }
     }
-
     suspend fun clearAllData(includePersonalNotes: Boolean = true) = withContext(Dispatchers.IO) {
         database.withTransaction {
             courseDao.deleteAllCourses()
@@ -224,20 +186,16 @@ class ClassroomRepository(
         ensureInitialData()
         notifyWidgetReload()
     }
-
     fun observeNoteForCoursework(courseworkId: String): Flow<PersonalNote?> {
         return personalNoteDao.observeNoteForCoursework(courseworkId).map { it?.toDomain() }
     }
-
     suspend fun getNoteForCoursework(courseworkId: String): PersonalNote? = withContext(Dispatchers.IO) {
         personalNoteDao.getNoteForCoursework(courseworkId)?.toDomain()
     }
-
     suspend fun savePersonalNote(note: PersonalNote) = withContext(Dispatchers.IO) {
         personalNoteDao.upsertNote(PersonalNoteEntity.fromDomain(note))
         notifyWidgetReload()
     }
-
     suspend fun saveNoteForCoursework(
         courseworkId: String,
         courseId: String? = null,
@@ -272,17 +230,14 @@ class ClassroomRepository(
         }
         notifyWidgetReload()
     }
-
     suspend fun togglePersonalNoteCompletion(id: String, isCompleted: Boolean) = withContext(Dispatchers.IO) {
         personalNoteDao.updateCompletionStatus(id, isCompleted)
         notifyWidgetReload()
     }
-
     suspend fun deletePersonalNote(id: String) = withContext(Dispatchers.IO) {
         personalNoteDao.deleteNoteById(id)
         notifyWidgetReload()
     }
-
     suspend fun notifyWidgetReload() {
         try {
             val manager = GlanceAppWidgetManager(context)
@@ -294,6 +249,24 @@ class ClassroomRepository(
             throw e
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+    companion object {
+        fun reconcileCoursework(latest: Coursework?, incoming: Coursework): Coursework {
+            if (latest == null) return incoming
+            val localIsManuallyCompleted = latest.isManuallyCompleted
+            val localIsCompleted = localIsManuallyCompleted ||
+                    latest.status == SubmissionStatus.TURNED_IN ||
+                    latest.status == SubmissionStatus.RETURNED
+            val incomingIsPendingOrLate = incoming.status == SubmissionStatus.PENDING ||
+                    incoming.status == SubmissionStatus.LATE
+            val shouldPreserveLocalStatus = incomingIsPendingOrLate && localIsCompleted
+            val resolvedStatus = if (shouldPreserveLocalStatus) latest.status else incoming.status
+            val resolvedManuallyCompleted = localIsManuallyCompleted || incoming.isManuallyCompleted
+            return incoming.copy(
+                status = resolvedStatus,
+                isManuallyCompleted = resolvedManuallyCompleted
+            )
         }
     }
 }

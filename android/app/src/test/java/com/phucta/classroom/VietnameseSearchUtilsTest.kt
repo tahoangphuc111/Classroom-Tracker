@@ -6,7 +6,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VietnameseSearchUtilsTest {
-
     @Test
     fun testDiacriticRemovalAndNormalizing() {
         val input = "Giải tích & Hình học không gian"
@@ -33,6 +32,42 @@ class VietnameseSearchUtilsTest {
     fun testEmptyAndWhitespace() {
         assertEquals("", "".normalizeForVietnameseSearch())
         assertEquals("toan", "   Toán   ".normalizeForVietnameseSearch())
+    }
+
+    @Test
+    fun testAllVowelsAndAccents() {
+        val accentedA = "aàáảãạăằắẳẵặâầấẩẫậ"
+        assertEquals("aaaaaaaaaaaaaaaaaa", accentedA.normalizeForVietnameseSearch())
+
+        val accentedE = "eèéẻẽẹêềếểễệ"
+        assertEquals("eeeeeeeeeeee", accentedE.normalizeForVietnameseSearch())
+
+        val accentedI = "iìíỉĩị"
+        assertEquals("iiiiii", accentedI.normalizeForVietnameseSearch())
+
+        val accentedO = "oòóỏõọôồốổỗộơờớởỡợ"
+        assertEquals("oooooooooooooooooo", accentedO.normalizeForVietnameseSearch())
+
+        val accentedU = "uùúủũụưừứửữự"
+        assertEquals("uuuuuuuuuuuu", accentedU.normalizeForVietnameseSearch())
+
+        val accentedY = "yỳýỷỹỵ"
+        assertEquals("yyyyyy", accentedY.normalizeForVietnameseSearch())
+
+        val dChar = "dđ"
+        assertEquals("dd", dChar.normalizeForVietnameseSearch())
+    }
+
+    @Test
+    fun testUppercaseVowelsAndAccents() {
+        val uppercaseInput = "TOÁN HỌC VÀ ĐỊA LÝ LỚP 12"
+        assertEquals("toan hoc va dia ly lop 12", uppercaseInput.normalizeForVietnameseSearch())
+    }
+
+    @Test
+    fun testCombiningDiacriticsRemoval() {
+        val nfdString = "To\u0301an"
+        assertEquals("toan", nfdString.normalizeForVietnameseSearch())
     }
 
     @Test
@@ -66,5 +101,67 @@ class VietnameseSearchUtilsTest {
 
         assertTrue("Exact title match must score higher than prefix", exactScore > prefixScore)
         assertTrue("Prefix title match must score higher than content match", prefixScore > contentScore)
+    }
+
+    @Test
+    fun testTokenizeSearchQuery_CharLoopFastSlicing() {
+        assertEquals(emptyList<String>(), com.phucta.classroom.data.model.tokenizeSearchQuery(""))
+        assertEquals(emptyList<String>(), com.phucta.classroom.data.model.tokenizeSearchQuery("   "))
+        assertEquals(listOf("toan"), com.phucta.classroom.data.model.tokenizeSearchQuery("toan"))
+        assertEquals(listOf("toan"), com.phucta.classroom.data.model.tokenizeSearchQuery("  toan  "))
+        assertEquals(
+            listOf("giai", "tich", "12"),
+            com.phucta.classroom.data.model.tokenizeSearchQuery("  giai   tich \t 12 \n ")
+        )
+    }
+
+    @Test
+    fun testNormalizeFastPath_PureAscii() {
+        val pureAscii = "toan hoc 12"
+        val result = pureAscii.normalizeForVietnameseSearch()
+        org.junit.Assert.assertSame(pureAscii, result)
+
+        val singleWord = "algebra"
+        org.junit.Assert.assertSame(singleWord, singleWord.normalizeForVietnameseSearch())
+    }
+
+    @Test
+    fun testCalculateSearchRelevance_PreNormalizedFields() {
+        val tokens = listOf("giai", "tich")
+        val rawQuery = "giai tich"
+        val title = "Giải tích"
+        val normTitle = title.normalizeForVietnameseSearch()
+        val courseName = "Toán 12"
+        val normCourse = courseName.normalizeForVietnameseSearch()
+
+        val scoreWithoutPreNormalized = com.phucta.classroom.data.model.calculateSearchRelevance(
+            queryTokens = tokens,
+            rawNormalizedQuery = rawQuery,
+            title = title,
+            courseName = courseName
+        )
+
+        val scoreWithPreNormalized = com.phucta.classroom.data.model.calculateSearchRelevance(
+            queryTokens = tokens,
+            rawNormalizedQuery = rawQuery,
+            title = title,
+            courseName = courseName,
+            normalizedTitle = normTitle,
+            normalizedCourseName = normCourse
+        )
+
+        assertEquals("Scores must match identically when using pre-normalized fields", scoreWithoutPreNormalized, scoreWithPreNormalized)
+    }
+
+    @Test
+    fun testCoursework_PreNormalizedFieldsStored() {
+        val item = com.phucta.classroom.data.model.Coursework(
+            id = "cw1",
+            courseId = "c1",
+            courseName = "Toán Cao Cấp",
+            title = "Đại số tuyến tính"
+        )
+        assertEquals("dai so tuyen tinh", item.normalizedTitle)
+        assertEquals("toan cao cap", item.normalizedCourseName)
     }
 }

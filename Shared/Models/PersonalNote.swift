@@ -120,7 +120,6 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
         return Calendar.current.isDateInToday(dueDate)
     }
 
-    /// Computes search relevance score based on title, course name, and content.
     public func searchRelevanceScore(for tokens: [String], rawNormalizedQuery: String) -> Int {
         guard !tokens.isEmpty else { return 0 }
         let normTitle = title.normalizedForVietnameseSearch()

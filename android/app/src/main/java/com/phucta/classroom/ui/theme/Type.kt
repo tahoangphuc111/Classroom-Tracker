@@ -24,37 +24,32 @@ val ClassroomTypography = Typography(
     headlineLarge = TextStyle(
         fontFamily = BeVietnamProFontFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
-        color = ChunkyColor.TextPrimary
+        fontSize = 24.sp
     ),
     headlineMedium = TextStyle(
         fontFamily = BeVietnamProFontFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 20.sp,
-        color = ChunkyColor.TextPrimary
+        fontSize = 20.sp
     ),
     titleLarge = TextStyle(
         fontFamily = BeVietnamProFontFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 18.sp,
-        color = ChunkyColor.TextPrimary
+        fontSize = 18.sp
     ),
     titleMedium = TextStyle(
         fontFamily = BeVietnamProFontFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 15.sp,
-        color = ChunkyColor.TextPrimary
+        fontSize = 15.sp
     ),
     bodyLarge = TextStyle(
         fontFamily = BeVietnamProFontFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        color = ChunkyColor.TextPrimary
+        fontSize = 14.sp
     ),
     bodyMedium = TextStyle(
         fontFamily = BeVietnamProFontFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 12.5.sp,
+        fontSize = 12.sp,
         color = ChunkyColor.TextMuted
     ),
     labelSmall = TextStyle(

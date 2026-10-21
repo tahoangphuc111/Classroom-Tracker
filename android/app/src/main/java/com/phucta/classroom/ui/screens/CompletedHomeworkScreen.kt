@@ -17,9 +17,14 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
@@ -32,6 +37,9 @@ import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.ui.components.AssignmentCard
 import com.phucta.classroom.ui.components.SectionHeaderPill
 import com.phucta.classroom.ui.theme.ChunkyColor
+
+private val ItemPlacementSpring = spring<IntOffset>(dampingRatio = 0.82f, stiffness = 380f)
+private val ItemFadeSpring = spring<Float>(dampingRatio = 0.82f, stiffness = 380f)
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -74,17 +82,17 @@ fun CompletedHomeworkScreen(
                             modifier = Modifier.size(28.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Chưa có bài tập hoàn thành",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 17.5.sp,
+                        fontSize = 18.sp,
                         color = ChunkyColor.TextPrimary
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Đánh dấu bài tập đã hoàn thành từ danh sách Báo bài để xem lại tại đây.",
-                        fontSize = 13.5.sp,
+                        fontSize = 14.sp,
                         color = ChunkyColor.TextMuted,
                         textAlign = TextAlign.Center,
                         lineHeight = 18.sp
@@ -100,7 +108,7 @@ fun CompletedHomeworkScreen(
             contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            item(key = "header_completed") {
+            item(key = "header_completed", contentType = "section_header") {
                 SectionHeaderPill(
                     title = "ĐÃ HOÀN THÀNH",
                     count = completedItems.size,
@@ -109,9 +117,9 @@ fun CompletedHomeworkScreen(
                     modifier = Modifier
                         .padding(bottom = 2.dp)
                         .animateItem(
-                            fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                            placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                            fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                            fadeInSpec = ItemFadeSpring,
+                            placementSpec = ItemPlacementSpring,
+                            fadeOutSpec = ItemFadeSpring
                         )
                 )
             }
@@ -120,15 +128,24 @@ fun CompletedHomeworkScreen(
                 key = { it.id },
                 contentType = { "assignment_card" }
             ) { item ->
+                val currentItem by rememberUpdatedState(item)
+                val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
+                val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
+                val onToggle = remember(item.id) {
+                    { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
+                }
+                val onClickCard = remember(item.id) {
+                    { currentOnSelectAssignment(currentItem) }
+                }
                 AssignmentCard(
                     coursework = item,
                     hasNote = courseworkIdsWithNotes.contains(item.id),
-                    onToggleCompletion = { onToggleCompletion(item.id, it) },
-                    onClick = { onSelectAssignment(item) },
+                    onToggleCompletion = onToggle,
+                    onClick = onClickCard,
                     modifier = Modifier.animateItem(
-                        fadeInSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                        placementSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f),
-                        fadeOutSpec = androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = 380f)
+                        fadeInSpec = ItemFadeSpring,
+                        placementSpec = ItemPlacementSpring,
+                        fadeOutSpec = ItemFadeSpring
                     )
                 )
             }

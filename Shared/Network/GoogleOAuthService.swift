@@ -8,7 +8,6 @@ import AppKit
 import UIKit
 #endif
 
-
 import AuthenticationServices
 
 public struct OAuthTokens: Codable, Sendable {
@@ -180,7 +179,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             error = components.queryItems?.first(where: { $0.name == "error" })?.value
         }
 
-        // Fallback thủ công nếu URLComponents thất bại do ký tự đặc biệt
         if code == nil && error == nil {
             let queryString: String
             if let q = url.query {
@@ -228,7 +226,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             let clientId = configuredClientId
             let verifier = self.pendingCodeVerifier ?? loadPendingVerifier() ?? ""
 
-            // Hỗ trợ cả redirectUri của Loopback lẫn Custom URI scheme nếu người dùng dùng Custom Client ID (classroomwidget://oauth-callback)
             let redirectUri: String
             if let pending = self.pendingRedirectUri, !pending.isEmpty {
                 redirectUri = pending
@@ -577,7 +574,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
                 self.currentUserAvatar = userInfo.picture
                 ClassroomStorage.shared.saveUserEmail(userInfo.email)
             } else {
-                // Fallback to openidconnect userinfo
                 if let oidcUrl = URL(string: "https://openidconnect.googleapis.com/v1/userinfo") {
                     var oidcRequest = URLRequest(url: oidcUrl)
                     oidcRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
@@ -680,7 +676,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             return memory
         }
 
-        // Keychain -> UserDefaults -> app group suites -> shared disk cache
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
@@ -800,4 +795,3 @@ private final class WebAuthPresentationContextProvider: NSObject, ASWebAuthentic
     }
     #endif
 }
-

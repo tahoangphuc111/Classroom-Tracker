@@ -116,8 +116,6 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         try container.encode(isManuallyCompleted, forKey: .isManuallyCompleted)
     }
 
-    /// Triết lý ứng dụng: Cứ hết hạn thì tính là đã hoàn thành.
-    /// Mọi bài tập có hạn nộp trong quá khứ (dueDate < now) đều được tính là đã hoàn thành.
     public var isCompleted: Bool {
         if status == .turnedIn || status == .returned || isManuallyCompleted {
             return true
@@ -142,7 +140,6 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     }
 
     public var isOverdue: Bool {
-        // Triết lý: Cứ hết hạn thì tính là đã hoàn thành => Không còn bài tập quá hạn
         false
     }
 
@@ -180,7 +177,6 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     public var isUpcomingTodayOrTomorrow: Bool {
         isDueTodayOrTomorrow && !isCompleted
     }
-
 
     public var friendlyDueString: String {
         guard let dueDate else { return "Không có hạn" }
@@ -317,8 +313,6 @@ public extension String {
 }
 
 public extension Coursework {
-    /// Computes search relevance score based on title, course name, and description.
-    /// Title exact and prefix matches receive highest priority.
     func searchRelevanceScore(for tokens: [String], rawNormalizedQuery: String) -> Int {
         guard !tokens.isEmpty else { return 0 }
         let normTitle = title.normalizedForVietnameseSearch()
