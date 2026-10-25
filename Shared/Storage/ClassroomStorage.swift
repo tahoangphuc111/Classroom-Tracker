@@ -4,21 +4,13 @@ import os
 
 public final class ClassroomStorage: @unchecked Sendable {
     public static let shared = ClassroomStorage()
-    public static var appGroupCandidates: [String] {
-        #if os(iOS)
+    public static let appGroupCandidates: [String] = {
         return [
             "group.com.phucta.classroom",
-            "VGWH8K5259.group.com.phucta.classroom",
-            "4J32CASZVT.group.com.phucta.classroom"
-        ]
-        #else
-        return [
-            "VGWH8K5259.group.com.phucta.classroom",
             "4J32CASZVT.group.com.phucta.classroom",
-            "group.com.phucta.classroom"
+            "VGWH8K5259.group.com.phucta.classroom"
         ]
-        #endif
-    }
+    }()
 
     public static var appGroupId: String {
         appGroupCandidates.first ?? "group.com.phucta.classroom"
@@ -26,7 +18,9 @@ public final class ClassroomStorage: @unchecked Sendable {
 
     public let allUserDefaults: [UserDefaults]
 
+    public static let tokenUserDefaultsKey = "secure_oauth_tokens_cache"
     private let userDefaults: UserDefaults
+    private let userLoggedInKey = "cached_classroom_user_logged_in"
     private let coursesKey = "cached_classroom_courses"
     private let courseworkKey = "cached_classroom_coursework"
     private let coursesTimestampKey = "cached_classroom_courses_timestamp"
@@ -36,14 +30,19 @@ public final class ClassroomStorage: @unchecked Sendable {
     private let personalNotesKey = "cached_classroom_personal_notes"
     private let personalNotesTimestampKey = "cached_classroom_personal_notes_timestamp"
 
+    private static let jsonEncoder = JSONEncoder()
+    private static let jsonDecoder = JSONDecoder()
+
     private var cachedCourses: [Course]?
     private var cachedCoursesTimestamp: Double = 0
     private var cachedCoursework: [Coursework]?
     private var cachedCourseworkTimestamp: Double = 0
     private var cachedPersonalNotes: [PersonalNote]?
     private var cachedPersonalNotesTimestamp: Double = 0
+    private var cachedMetadata: ClassroomSharedMetadata?
     private let lock = NSRecursiveLock()
     private let ioQueue = DispatchQueue(label: "com.phucta.classroom.storage.io", qos: .utility)
+    private static let ioQueueKey = DispatchSpecificKey<Void>()
     private let storageInitializedKey = "cached_classroom_storage_initialized"
     private var lastWidgetReloadTime: TimeInterval = 0
     private var pendingWidgetReloadWorkItem: DispatchWorkItem?
@@ -60,7 +59,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
     }
 
-    public static var sharedStorageDirectories: [URL] {
+    public static let sharedStorageDirectories: [URL] = {
         var dirs: [URL] = []
         for id in ClassroomStorage.appGroupCandidates {
             if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id) {
@@ -84,7 +83,7 @@ public final class ClassroomStorage: @unchecked Sendable {
             }
         }
         return dirs
-    }
+    }()
 
     private var allStorageDirectories: [URL] {
         Self.sharedStorageDirectories
@@ -114,14 +113,24 @@ public final class ClassroomStorage: @unchecked Sendable {
             || (Bundle.main.bundleIdentifier?.contains("widget") == true)
     }
 
-    public func isMockCoursesData(_ data: Data) -> Bool {
-        guard let courses = try? JSONDecoder().decode([Course].self, from: data), !courses.isEmpty else { return false }
+    public static func isMockCourses(_ courses: [Course]) -> Bool {
+        guard !courses.isEmpty else { return false }
         return courses.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
     }
 
-    public func isMockCourseworkData(_ data: Data) -> Bool {
-        guard let items = try? JSONDecoder().decode([Coursework].self, from: data), !items.isEmpty else { return false }
+    public static func isMockCoursework(_ items: [Coursework]) -> Bool {
+        guard !items.isEmpty else { return false }
         return items.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
+    }
+
+    public func isMockCoursesData(_ data: Data) -> Bool {
+        guard let courses = try? Self.jsonDecoder.decode([Course].self, from: data) else { return false }
+        return Self.isMockCourses(courses)
+    }
+
+    public func isMockCourseworkData(_ data: Data) -> Bool {
+        guard let items = try? Self.jsonDecoder.decode([Coursework].self, from: data) else { return false }
+        return Self.isMockCoursework(items)
     }
 
     private func readDataFromDirectories(fileName: String) -> Data? {
@@ -174,20 +183,19 @@ public final class ClassroomStorage: @unchecked Sendable {
             }
         }
 
-        if let bestData {
-            if isAppExtension {
-                if fileName == "cached_classroom_courses.json" && isMockCoursesData(bestData) {
-                    return nil
-                }
-                if fileName == "cached_classroom_coursework.json" && isMockCourseworkData(bestData) {
-                    return nil
-                }
-            }
-        }
         return bestData
     }
 
+    public func flushIOQueue() {
+        if DispatchQueue.getSpecific(key: Self.ioQueueKey) == nil {
+            ioQueue.sync { }
+        }
+    }
+
     public func invalidateMemoryCache() {
+        if DispatchQueue.getSpecific(key: Self.ioQueueKey) == nil {
+            ioQueue.sync { }
+        }
         lock.lock()
         cachedCourses = nil
         cachedCoursesTimestamp = 0
@@ -196,6 +204,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         cachedPersonalNotes = nil
         cachedPersonalNotesTimestamp = 0
         cachedHasUserLoggedIn = nil
+        cachedMetadata = nil
         lock.unlock()
 
         for ud in allUserDefaults {
@@ -204,52 +213,143 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public func loadSharedMetadata() -> ClassroomSharedMetadata? {
+        lock.lock()
+        if !isAppExtension, let cached = cachedMetadata {
+            lock.unlock()
+            return cached
+        }
+        lock.unlock()
+
         if let data = readDataFromDirectories(fileName: "cached_classroom_metadata.json"),
-           let metadata = try? JSONDecoder().decode(ClassroomSharedMetadata.self, from: data) {
+           let metadata = try? Self.jsonDecoder.decode(ClassroomSharedMetadata.self, from: data) {
+            lock.lock()
+            cachedMetadata = metadata
+            lock.unlock()
             return metadata
         }
         return nil
     }
 
     public func saveSharedMetadata(_ metadata: ClassroomSharedMetadata) {
-        if let data = try? JSONEncoder().encode(metadata) {
-            writeDataToAllDirectories(data, fileName: "cached_classroom_metadata.json")
+        lock.lock()
+        cachedMetadata = metadata
+        if metadata.hasUserLoggedIn || (metadata.userEmail != nil && !(metadata.userEmail?.isEmpty ?? true)) {
+            cachedHasUserLoggedIn = true
+        }
+        lock.unlock()
+
+        ioQueue.async { [weak self] in
+            guard let self else { return }
+            if let data = try? Self.jsonEncoder.encode(metadata) {
+                self.writeDataToAllDirectories(data, fileName: "cached_classroom_metadata.json")
+            }
         }
     }
 
     private var cachedHasUserLoggedIn: Bool? = nil
 
     public var hasUserLoggedIn: Bool {
+        lock.lock()
         if !isAppExtension, let cached = cachedHasUserLoggedIn {
+            lock.unlock()
             return cached
         }
-        if let metadata = loadSharedMetadata(), metadata.hasUserLoggedIn {
-            cachedHasUserLoggedIn = true
-            return true
-        }
-        if let email = loadUserEmail(), !email.trimmingCharacters(in: .whitespaces).isEmpty {
-            cachedHasUserLoggedIn = true
-            return true
-        }
-        for dir in allStorageDirectories {
-            let tokenFile = dir.appendingPathComponent("cached_oauth_tokens.json")
-            if FileManager.default.fileExists(atPath: tokenFile.path) {
+        lock.unlock()
+
+        // 1. Direct App Group UserDefaults flag check
+        for ud in allUserDefaults {
+            if ud.bool(forKey: userLoggedInKey) {
+                lock.lock()
                 cachedHasUserLoggedIn = true
+                lock.unlock()
                 return true
             }
         }
+
+        // 2. Token cache existence in App Group UserDefaults
+        for ud in allUserDefaults {
+            if let data = ud.data(forKey: Self.tokenUserDefaultsKey), !data.isEmpty {
+                lock.lock()
+                cachedHasUserLoggedIn = true
+                lock.unlock()
+                return true
+            }
+        }
+
+        // 3. Shared metadata file check
+        if let metadata = loadSharedMetadata(), metadata.hasUserLoggedIn {
+            lock.lock()
+            cachedHasUserLoggedIn = true
+            lock.unlock()
+            return true
+        }
+
+        // 4. Stored user email check
+        if let email = loadUserEmail(), !email.trimmingCharacters(in: .whitespaces).isEmpty {
+            lock.lock()
+            cachedHasUserLoggedIn = true
+            lock.unlock()
+            return true
+        }
+
+        // 5. Non-mock courses existence check
+        let courses = loadCourses()
+        if !courses.isEmpty && !Self.isMockCourses(courses) {
+            lock.lock()
+            cachedHasUserLoggedIn = true
+            lock.unlock()
+            return true
+        }
+
+        // 6. Non-mock coursework existence check
+        let items = loadCoursework()
+        if !items.isEmpty && !Self.isMockCoursework(items) {
+            lock.lock()
+            cachedHasUserLoggedIn = true
+            lock.unlock()
+            return true
+        }
+
+        // 7. Token file existence check in storage directories
+        for dir in allStorageDirectories {
+            let tokenFile = dir.appendingPathComponent("cached_oauth_tokens.json")
+            if FileManager.default.fileExists(atPath: tokenFile.path) {
+                lock.lock()
+                cachedHasUserLoggedIn = true
+                lock.unlock()
+                return true
+            }
+        }
+
+        lock.lock()
         cachedHasUserLoggedIn = false
+        lock.unlock()
         return false
     }
 
     public func saveUserLoggedIn(_ loggedIn: Bool) {
         lock.lock()
         cachedHasUserLoggedIn = loggedIn
-        lock.unlock()
-        var metadata = loadSharedMetadata() ?? ClassroomSharedMetadata()
+        var metadata = cachedMetadata ?? ClassroomSharedMetadata()
         metadata.hasUserLoggedIn = loggedIn
-        saveSharedMetadata(metadata)
-        notifyWidgetReload()
+        cachedMetadata = metadata
+        lock.unlock()
+
+        for ud in allUserDefaults {
+            ud.set(loggedIn, forKey: userLoggedInKey)
+            if !loggedIn {
+                ud.removeObject(forKey: Self.tokenUserDefaultsKey)
+            }
+            ud.synchronize()
+        }
+
+        ioQueue.async { [weak self] in
+            guard let self else { return }
+            if let data = try? Self.jsonEncoder.encode(metadata) {
+                self.writeDataToAllDirectories(data, fileName: "cached_classroom_metadata.json")
+            }
+            self.notifyWidgetReload()
+        }
     }
 
     private init() {
@@ -268,9 +368,13 @@ public final class ClassroomStorage: @unchecked Sendable {
             self.userDefaults = .standard
         }
 
+        self.ioQueue.setSpecific(key: Self.ioQueueKey, value: ())
+
         if !isAppExtension {
-            synchronizeAllStorageLayers()
-            ensureInitialData()
+            ioQueue.async { [weak self] in
+                self?.synchronizeAllStorageLayers()
+                self?.ensureInitialData()
+            }
         }
     }
 
@@ -326,8 +430,8 @@ public final class ClassroomStorage: @unchecked Sendable {
             if let pnData = ud.data(forKey: personalNotesKey), !pnData.isEmpty {
                 if bestPersonalNotesData == nil {
                     bestPersonalNotesData = pnData
-                } else if let currentNotes = try? JSONDecoder().decode([PersonalNote].self, from: bestPersonalNotesData!),
-                          let newNotes = try? JSONDecoder().decode([PersonalNote].self, from: pnData) {
+                } else if let currentNotes = try? Self.jsonDecoder.decode([PersonalNote].self, from: bestPersonalNotesData!),
+                          let newNotes = try? Self.jsonDecoder.decode([PersonalNote].self, from: pnData) {
                     if currentNotes.isEmpty && !newNotes.isEmpty {
                         bestPersonalNotesData = pnData
                     }
@@ -381,7 +485,7 @@ public final class ClassroomStorage: @unchecked Sendable {
             lastSyncTimestamp: bestSyncTime > 0 ? bestSyncTime : Date().timeIntervalSince1970,
             hasUserLoggedIn: isUserLogged
         )
-        if let metaData = try? JSONEncoder().encode(metadata) {
+        if let metaData = try? Self.jsonEncoder.encode(metadata) {
             writeDataToAllDirectories(metaData, fileName: "cached_classroom_metadata.json")
         }
     }
@@ -395,7 +499,7 @@ public final class ClassroomStorage: @unchecked Sendable {
 
         ioQueue.async { [weak self] in
             guard let self else { return }
-            guard let encoded = try? JSONEncoder().encode(courses) else { return }
+            guard let encoded = try? Self.jsonEncoder.encode(courses) else { return }
 
             self.writeDataToAllDirectories(encoded, fileName: "cached_classroom_courses.json")
 
@@ -423,56 +527,48 @@ public final class ClassroomStorage: @unchecked Sendable {
         let memoryTimestamp = cachedCoursesTimestamp
         lock.unlock()
 
-        if !isAppExtension, let memoryCached, memoryTimestamp > 0 {
-            let primaryTime = userDefaults.double(forKey: coursesTimestampKey)
-            if primaryTime <= memoryTimestamp {
-                return memoryCached
-            }
-            let latestTimestamp = getLatestUserDefaultsTimestamp(forKey: coursesTimestampKey)
-            if memoryTimestamp >= latestTimestamp {
-                return memoryCached
-            }
-        }
-
         let latestTimestamp = getLatestUserDefaultsTimestamp(forKey: coursesTimestampKey)
+        if !isAppExtension, let memoryCached, memoryTimestamp > 0, memoryTimestamp >= latestTimestamp {
+            return memoryCached
+        }
 
         var loaded: [Course]?
         if let data = readDataFromDirectories(fileName: "cached_classroom_courses.json") {
-            loaded = try? JSONDecoder().decode([Course].self, from: data)
+            loaded = try? Self.jsonDecoder.decode([Course].self, from: data)
         }
-        for ud in allUserDefaults {
-            if let data = ud.data(forKey: coursesKey),
-               let decoded = try? JSONDecoder().decode([Course].self, from: data),
-               !decoded.isEmpty {
-                let currentIsMock = loaded.map { items in !items.isEmpty && items.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil } } ?? true
-                let newIsMock = !decoded.isEmpty && decoded.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
-                if loaded == nil || loaded?.isEmpty == true || (currentIsMock && !newIsMock) {
-                    loaded = decoded
+        let currentIsMock = loaded.map { Self.isMockCourses($0) } ?? true
+        if loaded == nil || loaded?.isEmpty == true || currentIsMock {
+            for ud in allUserDefaults {
+                if let data = ud.data(forKey: coursesKey),
+                   let decoded = try? Self.jsonDecoder.decode([Course].self, from: data),
+                   !decoded.isEmpty {
+                    let newIsMock = Self.isMockCourses(decoded)
+                    if loaded == nil || loaded?.isEmpty == true || (currentIsMock && !newIsMock) {
+                        loaded = decoded
+                        if !newIsMock { break }
+                    }
                 }
             }
         }
 
-        if isAppExtension, let loadedItems = loaded {
-            let allMock = !loadedItems.isEmpty && loadedItems.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
-            if allMock {
-                loaded = nil
-            }
+        if isAppExtension, let loadedItems = loaded, Self.isMockCourses(loadedItems) {
+            loaded = nil
         }
 
-        let result: [Course]
-        if let loaded, !loaded.isEmpty {
-            result = loaded
-        } else {
-            result = []
-        }
+        let result: [Course] = loaded ?? []
         let effectiveTimestamp = latestTimestamp > 0 ? latestTimestamp : Date().timeIntervalSince1970
 
         lock.lock()
-        cachedCourses = result
-        cachedCoursesTimestamp = effectiveTimestamp
-        lock.unlock()
-
-        return result
+        if cachedCourses == nil || cachedCoursesTimestamp <= effectiveTimestamp {
+            cachedCourses = result
+            cachedCoursesTimestamp = effectiveTimestamp
+            lock.unlock()
+            return result
+        } else {
+            let existing = cachedCourses ?? result
+            lock.unlock()
+            return existing
+        }
     }
 
     public func saveCoursework(_ items: [Coursework]) {
@@ -484,9 +580,19 @@ public final class ClassroomStorage: @unchecked Sendable {
 
         ioQueue.async { [weak self] in
             guard let self else { return }
-            guard let encoded = try? JSONEncoder().encode(items) else { return }
+            guard let encoded = try? Self.jsonEncoder.encode(items) else { return }
 
             self.writeDataToAllDirectories(encoded, fileName: "cached_classroom_coursework.json")
+
+            let cutoff = Date().addingTimeInterval(-48 * 3600)
+            let widgetItems = items.filter { item in
+                if !item.isCompleted { return true }
+                if let due = item.dueDate { return due >= cutoff }
+                return false
+            }
+            if let encodedWidget = try? Self.jsonEncoder.encode(widgetItems) {
+                self.writeDataToAllDirectories(encodedWidget, fileName: "cached_classroom_widget_coursework.json")
+            }
 
             for ud in self.allUserDefaults {
                 ud.set(encoded, forKey: self.courseworkKey)
@@ -503,56 +609,53 @@ public final class ClassroomStorage: @unchecked Sendable {
         let memoryTimestamp = cachedCourseworkTimestamp
         lock.unlock()
 
-        if !isAppExtension, let memoryCached, memoryTimestamp > 0 {
-            let primaryTime = userDefaults.double(forKey: courseworkTimestampKey)
-            if primaryTime <= memoryTimestamp {
-                return memoryCached
-            }
-            let latestTimestamp = getLatestUserDefaultsTimestamp(forKey: courseworkTimestampKey)
-            if memoryTimestamp >= latestTimestamp {
-                return memoryCached
-            }
-        }
-
         let latestTimestamp = getLatestUserDefaultsTimestamp(forKey: courseworkTimestampKey)
+        if !isAppExtension, let memoryCached, memoryTimestamp > 0, memoryTimestamp >= latestTimestamp {
+            return memoryCached
+        }
 
         var loaded: [Coursework]?
-        if let data = readDataFromDirectories(fileName: "cached_classroom_coursework.json") {
-            loaded = try? JSONDecoder().decode([Coursework].self, from: data)
+        if isAppExtension, let data = readDataFromDirectories(fileName: "cached_classroom_widget_coursework.json") {
+            loaded = try? Self.jsonDecoder.decode([Coursework].self, from: data)
         }
-        for ud in allUserDefaults {
-            if let data = ud.data(forKey: courseworkKey),
-               let decoded = try? JSONDecoder().decode([Coursework].self, from: data),
-               !decoded.isEmpty {
-                let currentIsMock = loaded.map { items in !items.isEmpty && items.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil } } ?? true
-                let newIsMock = !decoded.isEmpty && decoded.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
-                if loaded == nil || loaded?.isEmpty == true || (currentIsMock && !newIsMock) {
-                    loaded = decoded
+        if loaded == nil || loaded?.isEmpty == true {
+            if let data = readDataFromDirectories(fileName: "cached_classroom_coursework.json") {
+                loaded = try? Self.jsonDecoder.decode([Coursework].self, from: data)
+            }
+        }
+        let currentIsMock = loaded.map { Self.isMockCoursework($0) } ?? true
+        if loaded == nil || loaded?.isEmpty == true || currentIsMock {
+            for ud in allUserDefaults {
+                if let data = ud.data(forKey: courseworkKey),
+                   let decoded = try? Self.jsonDecoder.decode([Coursework].self, from: data),
+                   !decoded.isEmpty {
+                    let newIsMock = Self.isMockCoursework(decoded)
+                    if loaded == nil || loaded?.isEmpty == true || (currentIsMock && !newIsMock) {
+                        loaded = decoded
+                        if !newIsMock { break }
+                    }
                 }
             }
         }
 
-        if isAppExtension, let loadedItems = loaded {
-            let allMock = !loadedItems.isEmpty && loadedItems.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
-            if allMock {
-                loaded = nil
-            }
+        if isAppExtension, let loadedItems = loaded, Self.isMockCoursework(loadedItems) {
+            loaded = nil
         }
 
-        let result: [Coursework]
-        if let loaded, !loaded.isEmpty {
-            result = loaded
-        } else {
-            result = []
-        }
+        let result: [Coursework] = loaded ?? []
         let effectiveTimestamp = latestTimestamp > 0 ? latestTimestamp : Date().timeIntervalSince1970
 
         lock.lock()
-        cachedCoursework = result
-        cachedCourseworkTimestamp = effectiveTimestamp
-        lock.unlock()
-
-        return result
+        if cachedCoursework == nil || cachedCourseworkTimestamp <= effectiveTimestamp {
+            cachedCoursework = result
+            cachedCourseworkTimestamp = effectiveTimestamp
+            lock.unlock()
+            return result
+        } else {
+            let existing = cachedCoursework ?? result
+            lock.unlock()
+            return existing
+        }
     }
 
     public func filterItemsByActiveCourses(_ items: [Coursework], courses: [Course]? = nil) -> [Coursework] {
@@ -560,8 +663,8 @@ public final class ClassroomStorage: @unchecked Sendable {
         guard !loadedCourses.isEmpty, !items.isEmpty else { return items }
 
         var hasUnselected = false
-        var allCourseIds = Set<String>()
-        var activeCourseIds = Set<String>()
+        var allCourseIds = Set<String>(minimumCapacity: loadedCourses.count)
+        var activeCourseIds = Set<String>(minimumCapacity: loadedCourses.count)
         for course in loadedCourses {
             allCourseIds.insert(course.id)
             if course.isSelectedForWidget {
@@ -574,6 +677,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         if !hasUnselected || activeCourseIds.isEmpty { return items }
 
         var result: [Coursework] = []
+        result.reserveCapacity(items.count)
         var anyMatchesLoadedCourses = false
         for item in items {
             if allCourseIds.contains(item.courseId) {
@@ -648,7 +752,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     public func getTodayAndTomorrowCoursework(includeCompleted: Bool = true) -> [Coursework] {
         let allItems = loadCoursework()
         let relevant = filterItemsByActiveCourses(allItems)
-        let calendar = Calendar.current
+        let calendar = ClassroomDateFormatters.gregorianCalendar
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
         guard let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday) else {
@@ -668,7 +772,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     public func getTomorrowCoursework(items: [Coursework]? = nil, courses: [Course]? = nil, includeCompleted: Bool = true, includeNotes: Bool = true) -> [Coursework] {
         let allItems = items ?? loadCoursework()
         let relevant = filterItemsByActiveCourses(allItems, courses: courses)
-        let calendar = Calendar.current
+        let calendar = ClassroomDateFormatters.gregorianCalendar
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
@@ -677,6 +781,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
 
         var tomorrowFiltered: [Coursework] = []
+        var overdueFiltered: [Coursework] = []
         var todayFiltered: [Coursework] = []
         var laterUpcoming: [Coursework] = []
         var undated: [Coursework] = []
@@ -690,6 +795,8 @@ public final class ClassroomStorage: @unchecked Sendable {
 
             if dueDate >= startOfTomorrow && dueDate < startOfDayAfter {
                 if isEligible { tomorrowFiltered.append(item) }
+            } else if dueDate < now && !item.isCompleted {
+                overdueFiltered.append(item)
             } else if dueDate >= now && dueDate < startOfTomorrow {
                 if isEligible { todayFiltered.append(item) }
             } else if dueDate >= startOfDayAfter {
@@ -717,6 +824,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
 
         if !tomorrowFiltered.isEmpty { return sortCoursework(tomorrowFiltered) }
+        if !overdueFiltered.isEmpty { return sortCoursework(overdueFiltered) }
         if !todayFiltered.isEmpty { return sortCoursework(todayFiltered) }
         if !laterUpcoming.isEmpty { return sortCoursework(laterUpcoming) }
         if !undated.isEmpty { return sortCoursework(undated) }
@@ -735,6 +843,7 @@ public final class ClassroomStorage: @unchecked Sendable {
             cachedPersonalNotesTimestamp = 0
         }
         cachedHasUserLoggedIn = nil
+        cachedMetadata = nil
         lock.unlock()
 
         ioQueue.async { [weak self] in
@@ -742,6 +851,7 @@ public final class ClassroomStorage: @unchecked Sendable {
             for dir in self.allStorageDirectories {
                 try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_courses.json"))
                 try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_coursework.json"))
+                try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_widget_coursework.json"))
                 try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_metadata.json"))
                 if includePersonalNotes {
                     try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_personal_notes.json"))
@@ -755,6 +865,8 @@ public final class ClassroomStorage: @unchecked Sendable {
                 ud.removeObject(forKey: self.courseworkTimestampKey)
                 ud.removeObject(forKey: self.lastSyncKey)
                 ud.removeObject(forKey: self.userEmailKey)
+                ud.removeObject(forKey: self.userLoggedInKey)
+                ud.removeObject(forKey: Self.tokenUserDefaultsKey)
                 if includePersonalNotes {
                     ud.removeObject(forKey: self.personalNotesKey)
                     ud.removeObject(forKey: self.personalNotesTimestampKey)
@@ -802,17 +914,19 @@ public final class ClassroomStorage: @unchecked Sendable {
 
     public func reconcileCoursework(incoming: [Coursework]) -> [Coursework] {
         let cached = loadCoursework()
-        let cachedMap = Dictionary(cached.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        var cachedMap: [String: Coursework] = [:]
+        cachedMap.reserveCapacity(cached.count)
+        for item in cached {
+            cachedMap[item.id] = item
+        }
         return incoming.map { item in
             guard let fresh = cachedMap[item.id] else { return item }
             var updated = item
-            let localIsCompleted = fresh.isManuallyCompleted || fresh.status == .turnedIn || fresh.status == .returned
-            let incomingIsPendingOrLate = updated.status == .pending || updated.status == .late
-            if localIsCompleted && incomingIsPendingOrLate {
-                updated.status = fresh.status == .returned ? .returned : .turnedIn
-                updated.isManuallyCompleted = fresh.isManuallyCompleted
-            } else if fresh.isManuallyCompleted {
+            if fresh.isManuallyCompleted {
                 updated.isManuallyCompleted = true
+                if updated.status == .pending || updated.status == .late {
+                    updated.status = fresh.status == .returned ? .returned : .turnedIn
+                }
             }
             return updated
         }
@@ -820,11 +934,21 @@ public final class ClassroomStorage: @unchecked Sendable {
 
     public func saveLastSyncTime(_ date: Date) {
         let timestamp = date.timeIntervalSince1970
-        var metadata = loadSharedMetadata() ?? ClassroomSharedMetadata()
+        lock.lock()
+        var metadata = cachedMetadata ?? ClassroomSharedMetadata()
         metadata.lastSyncTimestamp = timestamp
-        saveSharedMetadata(metadata)
+        cachedMetadata = metadata
+        lock.unlock()
+
         for ud in allUserDefaults {
             ud.set(timestamp, forKey: lastSyncKey)
+        }
+
+        ioQueue.async { [weak self] in
+            guard let self else { return }
+            if let data = try? Self.jsonEncoder.encode(metadata) {
+                self.writeDataToAllDirectories(data, fileName: "cached_classroom_metadata.json")
+            }
         }
     }
 
@@ -845,17 +969,26 @@ public final class ClassroomStorage: @unchecked Sendable {
         let isPresent = !(email?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
         lock.lock()
         cachedHasUserLoggedIn = isPresent
-        lock.unlock()
-        var metadata = loadSharedMetadata() ?? ClassroomSharedMetadata()
+        var metadata = cachedMetadata ?? ClassroomSharedMetadata()
         metadata.userEmail = email
         metadata.hasUserLoggedIn = isPresent
-        saveSharedMetadata(metadata)
+        cachedMetadata = metadata
+        lock.unlock()
 
         for ud in allUserDefaults {
             if let email {
                 ud.set(email, forKey: userEmailKey)
+                ud.set(true, forKey: userLoggedInKey)
             } else {
                 ud.removeObject(forKey: userEmailKey)
+            }
+            ud.synchronize()
+        }
+
+        ioQueue.async { [weak self] in
+            guard let self else { return }
+            if let data = try? Self.jsonEncoder.encode(metadata) {
+                self.writeDataToAllDirectories(data, fileName: "cached_classroom_metadata.json")
             }
         }
     }
@@ -882,6 +1015,9 @@ public final class ClassroomStorage: @unchecked Sendable {
         pendingWidgetReloadWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
             guard let self else { return }
+            self.lock.lock()
+            self.lastWidgetReloadTime = Date().timeIntervalSince1970
+            self.lock.unlock()
             for ud in self.allUserDefaults {
                 ud.synchronize()
             }
@@ -1018,7 +1154,7 @@ public final class ClassroomStorage: @unchecked Sendable {
 
         ioQueue.async { [weak self] in
             guard let self else { return }
-            guard let encoded = try? JSONEncoder().encode(notes) else { return }
+            guard let encoded = try? Self.jsonEncoder.encode(notes) else { return }
 
             self.writeDataToAllDirectories(encoded, fileName: "cached_classroom_personal_notes.json")
 
@@ -1037,29 +1173,22 @@ public final class ClassroomStorage: @unchecked Sendable {
         let memoryTimestamp = cachedPersonalNotesTimestamp
         lock.unlock()
 
-        if !isAppExtension, let memoryCached, memoryTimestamp > 0 {
-            let primaryTime = userDefaults.double(forKey: personalNotesTimestampKey)
-            if primaryTime <= memoryTimestamp {
-                return memoryCached
-            }
-            let latestTimestamp = getLatestUserDefaultsTimestamp(forKey: personalNotesTimestampKey)
-            if memoryTimestamp >= latestTimestamp {
-                return memoryCached
-            }
-        }
-
         let latestTimestamp = getLatestUserDefaultsTimestamp(forKey: personalNotesTimestampKey)
+        if !isAppExtension, let memoryCached, memoryTimestamp > 0, memoryTimestamp >= latestTimestamp {
+            return memoryCached
+        }
 
         var loaded: [PersonalNote]?
         if let data = readDataFromDirectories(fileName: "cached_classroom_personal_notes.json") {
-            loaded = try? JSONDecoder().decode([PersonalNote].self, from: data)
+            loaded = try? Self.jsonDecoder.decode([PersonalNote].self, from: data)
         }
-        for ud in allUserDefaults {
-            if let data = ud.data(forKey: personalNotesKey),
-               let decoded = try? JSONDecoder().decode([PersonalNote].self, from: data),
-               !decoded.isEmpty {
-                if loaded == nil || loaded?.isEmpty == true {
+        if loaded == nil || loaded?.isEmpty == true {
+            for ud in allUserDefaults {
+                if let data = ud.data(forKey: personalNotesKey),
+                   let decoded = try? Self.jsonDecoder.decode([PersonalNote].self, from: data),
+                   !decoded.isEmpty {
                     loaded = decoded
+                    break
                 }
             }
         }
@@ -1068,11 +1197,16 @@ public final class ClassroomStorage: @unchecked Sendable {
         let effectiveTimestamp = latestTimestamp > 0 ? latestTimestamp : Date().timeIntervalSince1970
 
         lock.lock()
-        cachedPersonalNotes = result
-        cachedPersonalNotesTimestamp = effectiveTimestamp
-        lock.unlock()
-
-        return result
+        if cachedPersonalNotes == nil || cachedPersonalNotesTimestamp <= effectiveTimestamp {
+            cachedPersonalNotes = result
+            cachedPersonalNotesTimestamp = effectiveTimestamp
+            lock.unlock()
+            return result
+        } else {
+            let existing = cachedPersonalNotes ?? result
+            lock.unlock()
+            return existing
+        }
     }
 
     public func getNoteForCoursework(courseworkId: String) -> PersonalNote? {
@@ -1087,6 +1221,9 @@ public final class ClassroomStorage: @unchecked Sendable {
         title: String,
         content: String
     ) {
+        lock.lock()
+        defer { lock.unlock() }
+
         var allNotes = loadPersonalNotes()
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         if let index = allNotes.firstIndex(where: { $0.courseworkId == courseworkId }) {
@@ -1112,12 +1249,18 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public func deletePersonalNote(id: String) {
+        lock.lock()
+        defer { lock.unlock() }
+
         var allNotes = loadPersonalNotes()
         allNotes.removeAll { $0.id == id }
         savePersonalNotes(allNotes)
     }
 
     public func togglePersonalNoteCompletion(id: String) {
+        lock.lock()
+        defer { lock.unlock() }
+
         var allNotes = loadPersonalNotes()
         if let index = allNotes.firstIndex(where: { $0.id == id }) {
             allNotes[index].isCompleted.toggle()
@@ -1135,6 +1278,9 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public func toggleChecklistItemCompletion(noteId: String, itemId: String) {
+        lock.lock()
+        defer { lock.unlock() }
+
         var allNotes = loadPersonalNotes()
         guard let noteIndex = allNotes.firstIndex(where: { $0.id == noteId }) else { return }
         guard let itemIndex = allNotes[noteIndex].checklist.firstIndex(where: { $0.id == itemId }) else { return }
@@ -1154,7 +1300,7 @@ public final class ClassroomStorage: @unchecked Sendable {
 
     public func getTomorrowPersonalNotes(notes: [PersonalNote]? = nil, includeCompleted: Bool = false) -> [PersonalNote] {
         let allNotes = notes ?? loadPersonalNotes()
-        let calendar = Calendar.current
+        let calendar = ClassroomDateFormatters.gregorianCalendar
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),

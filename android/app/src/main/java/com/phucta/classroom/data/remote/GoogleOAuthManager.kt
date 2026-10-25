@@ -39,7 +39,7 @@ private data class TokenResponse(
 )
 
 class GoogleOAuthManager(
-    private val context: Context,
+    context: Context,
     private val preferences: ClassroomPreferences,
     private val tokenStorage: TokenStorage,
     private val httpClient: OkHttpClient = OkHttpClient()

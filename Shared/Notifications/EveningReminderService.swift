@@ -3,13 +3,14 @@ import Foundation
 import Combine
 
 @MainActor
-public final class EveningReminderService: ObservableObject, @unchecked Sendable {
+public final class EveningReminderService: ObservableObject {
     public static let shared = EveningReminderService()
 
     public nonisolated static let notificationIdentifier = "com.phucta.classroom.evening_bao_bai_reminder"
     private let enabledKey = "classroom_evening_reminder_enabled"
     private let hourKey = "classroom_evening_reminder_hour"
     private let minuteKey = "classroom_evening_reminder_minute"
+    private var scheduleTask: Task<Void, Never>?
 
     @Published public var isEnabled: Bool {
         didSet {
@@ -78,8 +79,11 @@ public final class EveningReminderService: ObservableObject, @unchecked Sendable
     }
 
     public func setReminderTime(hour: Int, minute: Int) {
-        self.reminderHour = max(0, min(23, hour))
-        self.reminderMinute = max(0, min(59, minute))
+        let clampedHour = max(0, min(23, hour))
+        let clampedMinute = max(0, min(59, minute))
+        guard clampedHour != self.reminderHour || clampedMinute != self.reminderMinute else { return }
+        self.reminderHour = clampedHour
+        self.reminderMinute = clampedMinute
     }
 
     public func scheduleReminder() {
@@ -88,8 +92,9 @@ public final class EveningReminderService: ObservableObject, @unchecked Sendable
             return
         }
 
-        Task { @MainActor [weak self] in
-            guard let self = self else { return }
+        scheduleTask?.cancel()
+        scheduleTask = Task { @MainActor [weak self] in
+            guard let self, !Task.isCancelled else { return }
             await self.performScheduleReminder()
         }
     }
@@ -132,6 +137,8 @@ public final class EveningReminderService: ObservableObject, @unchecked Sendable
     }
 
     public func cancelReminder() {
+        scheduleTask?.cancel()
+        scheduleTask = nil
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.notificationIdentifier])
     }
 

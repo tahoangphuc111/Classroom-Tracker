@@ -65,6 +65,7 @@ class ClassroomWidgetTest {
     fun testSectionCapsuleLabels() {
         assertEquals("Hôm nay & mai", ClassroomGlanceWidget.getSectionCapsuleLabel("HÔM NAY & MAI"))
         assertEquals("Hôm nay", ClassroomGlanceWidget.getSectionCapsuleLabel("HÔM NAY"))
+        assertEquals("Quá hạn", ClassroomGlanceWidget.getSectionCapsuleLabel("QUÁ HẠN"))
         assertEquals("Sắp tới", ClassroomGlanceWidget.getSectionCapsuleLabel("SẮP TỚI"))
         assertEquals("Ngày mai", ClassroomGlanceWidget.getSectionCapsuleLabel("NGÀY MAI"))
         assertEquals("Ngày mai", ClassroomGlanceWidget.getSectionCapsuleLabel("UNKNOWN"))

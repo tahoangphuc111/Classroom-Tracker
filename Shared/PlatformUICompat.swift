@@ -88,19 +88,67 @@ public enum PlatformClipboard {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
         #elseif os(iOS)
-        UIPasteboard.general.string = text
+        if Thread.isMainThread {
+            UIPasteboard.general.string = text
+        } else {
+            DispatchQueue.main.async {
+                UIPasteboard.general.string = text
+            }
+        }
         #endif
     }
 }
 
 public enum PlatformHaptics {
-    public static func trigger() {
+    public enum FeedbackStyle {
+        case light
+        case medium
+        case heavy
+        case selection
+        case success
+        case warning
+        case error
+    }
+
+    public static func trigger(_ style: FeedbackStyle = .medium) {
         #if os(macOS)
-        NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
+        switch style {
+        case .error, .warning:
+            NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+        default:
+            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
+        }
         #elseif os(iOS)
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.prepare()
-        generator.impactOccurred()
+        let action = {
+            switch style {
+            case .light:
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+            case .medium:
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.impactOccurred()
+            case .heavy:
+                let generator = UIImpactFeedbackGenerator(style: .heavy)
+                generator.impactOccurred()
+            case .selection:
+                let generator = UISelectionFeedbackGenerator()
+                generator.selectionChanged()
+            case .success:
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+            case .warning:
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.warning)
+            case .error:
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.error)
+            }
+        }
+        if Thread.isMainThread {
+            action()
+        } else {
+            DispatchQueue.main.async(execute: action)
+        }
         #endif
     }
 }

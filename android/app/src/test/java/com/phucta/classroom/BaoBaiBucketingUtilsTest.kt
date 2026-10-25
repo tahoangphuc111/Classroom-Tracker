@@ -607,6 +607,18 @@ class BaoBaiBucketingUtilsTest {
 
         val res5 = com.phucta.classroom.data.repository.ClassroomRepository.reconcileCoursework(null, incomingPending)
         assertEquals(incomingPending, res5)
+
+        // Case 6: Remote unsubmit without offline checkmark must revert to PENDING
+        val localRemoteTurnedInNotManual = localManualDone.copy(status = SubmissionStatus.TURNED_IN, isManuallyCompleted = false)
+        val res6 = com.phucta.classroom.data.repository.ClassroomRepository.reconcileCoursework(localRemoteTurnedInNotManual, incomingPending)
+        assertEquals("Remote unsubmit without local manual check must revert to PENDING", SubmissionStatus.PENDING, res6.status)
+        assertFalse("isManuallyCompleted must remain false", res6.isManuallyCompleted)
+
+        // Case 7: Remote unsubmit WITH offline checkmark must preserve TURNED_IN
+        val localRemoteTurnedInManual = localManualDone.copy(status = SubmissionStatus.TURNED_IN, isManuallyCompleted = true)
+        val res7 = com.phucta.classroom.data.repository.ClassroomRepository.reconcileCoursework(localRemoteTurnedInManual, incomingPending)
+        assertEquals("Remote unsubmit with local manual check must stay TURNED_IN", SubmissionStatus.TURNED_IN, res7.status)
+        assertTrue("isManuallyCompleted must remain true", res7.isManuallyCompleted)
     }
 
     @Test

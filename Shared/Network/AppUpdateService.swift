@@ -22,6 +22,7 @@ public final class AppUpdateService: ObservableObject {
     private let tokenKey = "com.phucta.classroomwidget.github_token"
     private let etagKey = "com.phucta.classroomwidget.github_etag"
     private let lastCheckKey = "com.phucta.classroomwidget.last_update_check"
+    private nonisolated static let jsonDecoder = JSONDecoder()
 
     private var latestAssetId: Int? = nil
     private var latestDownloadUrl: URL? = nil
@@ -117,7 +118,7 @@ public final class AppUpdateService: ObservableObject {
                 UserDefaults.standard.set(newEtag, forKey: etagKey)
             }
 
-            let release = try JSONDecoder().decode(GitHubReleaseResponse.self, from: data)
+            let release = try Self.jsonDecoder.decode(GitHubReleaseResponse.self, from: data)
             let remoteVersion = release.tagName.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
             let isNewer = isVersion(remoteVersion, newerThan: currentVersion)
 

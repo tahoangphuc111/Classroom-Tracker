@@ -1,5 +1,6 @@
 import SwiftUI
 import WidgetKit
+import os
 
 public enum SubjectCategory: Sendable {
     case math
@@ -26,36 +27,48 @@ public struct SubjectArtHelper {
         public let bannerBackground: Color
     }
 
-    private static let cacheLock = NSLock()
+    private static var cacheLock = os_unfair_lock_s()
     private static var courseCategoryCache: [String: SubjectCategory] = [:]
     private static var categoryCache: [String: SubjectCategory] = [:]
-    private static let nonAlphanumericCharacterSet = CharacterSet.alphanumerics.inverted
+    private static var courseBadgeCache: [String: String] = [:]
 
     public static func category(for courseName: String, title: String? = nil) -> SubjectCategory {
-        cacheLock.lock()
+        os_unfair_lock_lock(&cacheLock)
         let courseCat: SubjectCategory
         if let cached = courseCategoryCache[courseName] {
             courseCat = cached
+            os_unfair_lock_unlock(&cacheLock)
         } else {
+            os_unfair_lock_unlock(&cacheLock)
             let computed = computeCategory(for: courseName, title: nil)
+            os_unfair_lock_lock(&cacheLock)
+            if courseCategoryCache.count >= 2048 {
+                courseCategoryCache.removeAll()
+            }
             courseCategoryCache[courseName] = computed
             courseCat = computed
+            os_unfair_lock_unlock(&cacheLock)
         }
 
-        if courseCat != .other || title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false {
-            cacheLock.unlock()
+        if courseCat != .other || title == nil || title!.isEmpty {
             return courseCat
         }
 
         let key = "\(courseName)|\(title ?? "")"
+        os_unfair_lock_lock(&cacheLock)
         if let cached = categoryCache[key] {
-            cacheLock.unlock()
+            os_unfair_lock_unlock(&cacheLock)
             return cached
         }
+        os_unfair_lock_unlock(&cacheLock)
 
         let computed = computeCategory(for: courseName, title: title)
+        os_unfair_lock_lock(&cacheLock)
+        if categoryCache.count >= 2048 {
+            categoryCache.removeAll()
+        }
         categoryCache[key] = computed
-        cacheLock.unlock()
+        os_unfair_lock_unlock(&cacheLock)
 
         return computed
     }
@@ -76,9 +89,6 @@ public struct SubjectArtHelper {
         case .physics: return "LÝ"
         case .chemistry: return "HOÁ"
         case .biology: return "SINH"
-        case .historyOrGeography:
-            let isDia = courseName.localizedCaseInsensitiveContains("địa") || (title?.localizedCaseInsensitiveContains("địa") == true) || courseName.localizedCaseInsensitiveContains("dia") || (title?.localizedCaseInsensitiveContains("dia") == true)
-            return isDia ? "ĐỊA" : "SỬ"
         case .literature: return "VĂN"
         case .english: return "ANH"
         case .civicsOrPhilosophy: return "GDCD"
@@ -87,6 +97,24 @@ public struct SubjectArtHelper {
         case .computerScience: return "TIN"
         case .networking: return "MẠNG"
         case .generalAssignment: return "BTH"
+        case .historyOrGeography:
+            os_unfair_lock_lock(&cacheLock)
+            if let cached = courseBadgeCache[courseName] {
+                os_unfair_lock_unlock(&cacheLock)
+                return cached
+            }
+            os_unfair_lock_unlock(&cacheLock)
+
+            let isDia = courseName.localizedCaseInsensitiveContains("địa") || (title?.localizedCaseInsensitiveContains("địa") == true) || courseName.localizedCaseInsensitiveContains("dia") || (title?.localizedCaseInsensitiveContains("dia") == true)
+            let code = isDia ? "ĐỊA" : "SỬ"
+
+            os_unfair_lock_lock(&cacheLock)
+            if courseBadgeCache.count >= 2048 {
+                courseBadgeCache.removeAll()
+            }
+            courseBadgeCache[courseName] = code
+            os_unfair_lock_unlock(&cacheLock)
+            return code
         case .other:
             let cleaned = courseName.trimmingCharacters(in: .whitespacesAndNewlines)
             if cleaned.count >= 3 {
@@ -107,51 +135,139 @@ public struct SubjectArtHelper {
         return badgeCode(for: cat, courseName: courseName, title: title)
     }
 
+    private struct TokenFlags: OptionSet {
+        let rawValue: UInt64
+
+        static let math = TokenFlags(rawValue: 1 << 0)
+        static let physics = TokenFlags(rawValue: 1 << 1)
+        static let chemistry = TokenFlags(rawValue: 1 << 2)
+        static let biology = TokenFlags(rawValue: 1 << 3)
+        static let history = TokenFlags(rawValue: 1 << 4)
+        static let geography = TokenFlags(rawValue: 1 << 5)
+        static let literature = TokenFlags(rawValue: 1 << 6)
+        static let english = TokenFlags(rawValue: 1 << 7)
+        static let civics = TokenFlags(rawValue: 1 << 8)
+        static let networking = TokenFlags(rawValue: 1 << 9)
+        static let economics = TokenFlags(rawValue: 1 << 10)
+        static let art = TokenFlags(rawValue: 1 << 11)
+        static let cs = TokenFlags(rawValue: 1 << 12)
+        static let assignment = TokenFlags(rawValue: 1 << 13)
+
+        static let ly = TokenFlags(rawValue: 1 << 14)
+        static let hoa = TokenFlags(rawValue: 1 << 15)
+        static let sinh = TokenFlags(rawValue: 1 << 16)
+        static let su = TokenFlags(rawValue: 1 << 17)
+        static let dia = TokenFlags(rawValue: 1 << 18)
+        static let van = TokenFlags(rawValue: 1 << 19)
+        static let anh = TokenFlags(rawValue: 1 << 20)
+        static let triet = TokenFlags(rawValue: 1 << 21)
+        static let mang = TokenFlags(rawValue: 1 << 22)
+        static let cloud = TokenFlags(rawValue: 1 << 23)
+        static let soundcloud = TokenFlags(rawValue: 1 << 24)
+        static let artOnly = TokenFlags(rawValue: 1 << 25)
+        static let artExcludedWord = TokenFlags(rawValue: 1 << 26)
+        static let ve = TokenFlags(rawValue: 1 << 27)
+        static let tin = TokenFlags(rawValue: 1 << 28)
+        static let tu = TokenFlags(rawValue: 1 << 29)
+    }
+
+    private static let tokenMap: [Substring: TokenFlags] = [
+        "toan": .math, "math": .math, "maths": .math, "calculus": .math, "algebra": .math,
+        "geometry": .math, "trigonometry": .math, "statistics": .math, "discrete": .math,
+        "physics": .physics, "mechanics": .physics, "thermodynamics": .physics, "optics": .physics,
+        "ly": .ly, "lý": .ly, "lí": .ly,
+        "chemistry": .chemistry, "chem": .chemistry, "biochemistry": .chemistry,
+        "hoa": .hoa, "hóa": .hoa, "hoá": .hoa,
+        "biology": .biology, "bio": .biology, "genetics": .biology, "ecology": .biology,
+        "sinh": .sinh,
+        "history": .history, "su": .su, "sử": .su,
+        "geography": .geography, "dia": .dia, "địa": .dia,
+        "literature": .literature, "writing": .literature, "essay": .literature,
+        "van": .van, "văn": .van,
+        "english": .english, "ielts": .english, "toeic": .english, "toefl": .english,
+        "anh": .anh,
+        "gdcd": .civics, "law": .civics, "triet": .triet, "triết": .triet,
+        "cybersecurity": .networking, "network": .networking, "networking": .networking,
+        "tcp": .networking, "socket": .networking, "cloud": .cloud, "soundcloud": .soundcloud,
+        "mang": .mang, "mạng": .mang,
+        "business": .economics, "economics": .economics,
+        "design": .art, "ui": .art, "ux": .art,
+        "art": .artOnly, "part": .artExcludedWord, "smart": .artExcludedWord, "start": .artExcludedWord,
+        "ve": .ve, "vẽ": .ve,
+        "android": .cs, "ios": .cs, "swift": .cs, "python": .cs, "java": .cs,
+        "cntt": .cs, "it": .cs, "ctdl": .cs, "cpp": .cs, "kotlin": .cs,
+        "javascript": .cs, "typescript": .cs, "tin": .tin, "tu": .tu, "tự": .tu,
+        "lab": .assignment, "project": .assignment
+    ]
+
+    private static func scanTokenFlags(in text: String) -> TokenFlags {
+        var flags: TokenFlags = []
+        var start: String.Index? = nil
+        for i in text.indices {
+            let ch = text[i]
+            if ch.isLetter || ch.isNumber {
+                if start == nil { start = i }
+            } else if let s = start {
+                if let flag = tokenMap[text[s..<i]] {
+                    flags.insert(flag)
+                }
+                start = nil
+            }
+        }
+        if let s = start {
+            if let flag = tokenMap[text[s...]] {
+                flags.insert(flag)
+            }
+        }
+        return flags
+    }
+
     private static func computeCategory(for courseName: String, title: String? = nil) -> SubjectCategory {
-        let titleLower = (title ?? "").lowercased()
-        let titleTokens = Set(titleLower.components(separatedBy: nonAlphanumericCharacterSet).filter { !$0.isEmpty })
-
-        let courseLower = courseName.lowercased()
-        let courseTokens = Set(courseLower.components(separatedBy: nonAlphanumericCharacterSet).filter { !$0.isEmpty })
-
-        func matchCategory(text: String, tokens: Set<String>) -> SubjectCategory? {
-            if !text.contains("điện toán") && (text.contains("toán") || tokens.contains("toan") || tokens.contains("math") || tokens.contains("maths") || text.contains("giải tích") || text.contains("đại số") || text.contains("hình học") || text.contains("xác suất") || tokens.contains("calculus") || tokens.contains("algebra") || tokens.contains("geometry") || text.contains("lượng giác") || text.contains("đạo hàm") || text.contains("tích phân") || text.contains("toán cao cấp") || text.contains("toán rời rạc") || text.contains("thống kê") || text.contains("vi phân") || text.contains("ma trận") || tokens.contains("trigonometry") || tokens.contains("statistics") || tokens.contains("discrete")) {
+        func matchCategory(text: String, flags: TokenFlags) -> SubjectCategory? {
+            if !text.contains("điện toán") && (text.contains("toán") || flags.contains(.math) || text.contains("giải tích") || text.contains("đại số") || text.contains("hình học") || text.contains("xác suất") || text.contains("lượng giác") || text.contains("đạo hàm") || text.contains("tích phân") || text.contains("toán cao cấp") || text.contains("toán rời rạc") || text.contains("thống kê") || text.contains("vi phân") || text.contains("ma trận")) {
                 return .math
-            } else if text.contains("vật lý") || text.contains("vật lí") || tokens.contains("physics") || text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") || text.contains("cơ học") || text.contains("nhiệt học") || text.contains("quang học") || text.contains("điện từ") || text.contains("vật lý đại cương") || text.contains("vật lí đại cương") || text.contains("dao động") || text.contains("sóng cơ") || tokens.contains("mechanics") || tokens.contains("thermodynamics") || tokens.contains("optics") || ((tokens.contains("lý") || tokens.contains("lí") || tokens.contains("ly")) && !text.contains("quản lý") && !text.contains("quản lí") && !text.contains("xử lý") && !text.contains("xử lí") && !text.contains("tâm lý") && !text.contains("tâm lí") && !text.contains("pháp lý") && !text.contains("pháp lí") && !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("triết lý") && !text.contains("triết lí") && !text.contains("lý thuyết") && !text.contains("lí thuyết") && !text.contains("lý luận") && !text.contains("lí luận") && !text.contains("lý do") && !text.contains("lí do")) {
+            } else if text.contains("vật lý") || text.contains("vật lí") || flags.contains(.physics) || text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") || text.contains("cơ học") || text.contains("nhiệt học") || text.contains("quang học") || text.contains("điện từ") || text.contains("vật lý đại cương") || text.contains("vật lí đại cương") || text.contains("dao động") || text.contains("sóng cơ") || (flags.contains(.ly) && !text.contains("quản lý") && !text.contains("quản lí") && !text.contains("xử lý") && !text.contains("xử lí") && !text.contains("tâm lý") && !text.contains("tâm lí") && !text.contains("pháp lý") && !text.contains("pháp lí") && !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("triết lý") && !text.contains("triết lí") && !text.contains("lý thuyết") && !text.contains("lí thuyết") && !text.contains("lý luận") && !text.contains("lí luận") && !text.contains("lý do") && !text.contains("lí do")) {
                 return .physics
-            } else if text.contains("hóa học") || text.contains("hoá học") || text.contains("môn hóa") || text.contains("môn hoá") || text.contains("hóa hữu cơ") || text.contains("hoá hữu cơ") || text.contains("hóa vô cơ") || text.contains("hoá vô cơ") || text.contains("hóa đại cương") || text.contains("hoá đại cương") || text.contains("hóa phân tích") || text.contains("hoá phân tích") || tokens.contains("chemistry") || tokens.contains("chem") || tokens.contains("biochemistry") || ((tokens.contains("hóa") || tokens.contains("hoá") || tokens.contains("hoa")) && !text.contains("tự động hóa") && !text.contains("tự động hoá") && !text.contains("tiến hóa") && !text.contains("tiến hoá") && !text.contains("hóa đơn") && !text.contains("hoá đơn") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("tối ưu hóa") && !text.contains("tối ưu hoá") && !text.contains("chuẩn hóa") && !text.contains("chuẩn hoá") && !text.contains("công nghiệp hóa") && !text.contains("công nghiệp hoá") && !text.contains("hiện đại hóa") && !text.contains("hiện đại hoá") && !text.contains("ảo hóa") && !text.contains("ảo hoá") && !text.contains("số hóa") && !text.contains("số hoá")) {
+            } else if text.contains("hóa học") || text.contains("hoá học") || text.contains("môn hóa") || text.contains("môn hoá") || text.contains("hóa hữu cơ") || text.contains("hoá hữu cơ") || text.contains("hóa vô cơ") || text.contains("hoá vô cơ") || text.contains("hóa đại cương") || text.contains("hoá đại cương") || text.contains("hóa phân tích") || text.contains("hoá phân tích") || flags.contains(.chemistry) || (flags.contains(.hoa) && !text.contains("tự động hóa") && !text.contains("tự động hoá") && !text.contains("tiến hóa") && !text.contains("tiến hoá") && !text.contains("tiêu hóa") && !text.contains("tiêu hoá") && !text.contains("hóa đơn") && !text.contains("hoá đơn") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("tối ưu hóa") && !text.contains("tối ưu hoá") && !text.contains("chuẩn hóa") && !text.contains("chuẩn hoá") && !text.contains("công nghiệp hóa") && !text.contains("công nghiệp hoá") && !text.contains("hiện đại hóa") && !text.contains("hiện đại hoá") && !text.contains("ảo hóa") && !text.contains("ảo hoá") && !text.contains("số hóa") && !text.contains("số hoá")) {
                 return .chemistry
-            } else if text.contains("sinh học") || text.contains("môn sinh") || tokens.contains("biology") || tokens.contains("bio") || text.contains("y học") || text.contains("di truyền") || text.contains("tế bào") || text.contains("vi sinh") || text.contains("sinh thái") || tokens.contains("genetics") || tokens.contains("ecology") || (tokens.contains("sinh") && !text.contains("học sinh") && !text.contains("sinh viên") && !text.contains("sinh hoạt")) {
+            } else if text.contains("sinh học") || text.contains("môn sinh") || flags.contains(.biology) || text.contains("y học") || text.contains("di truyền") || text.contains("tế bào") || text.contains("vi sinh") || text.contains("sinh thái") || text.contains("tiêu hóa") || text.contains("tiêu hoá") || (flags.contains(.sinh) && !text.contains("học sinh") && !text.contains("sinh viên") && !text.contains("sinh hoạt")) {
                 return .biology
-            } else if text.contains("lịch sử") || tokens.contains("history") || ((tokens.contains("sử") || tokens.contains("su")) && !text.contains("sử dụng") && !text.contains("lịch sự")) {
+            } else if text.contains("lịch sử") || flags.contains(.history) || (flags.contains(.su) && !text.contains("sử dụng") && !text.contains("lịch sự")) {
                 return .historyOrGeography
-            } else if text.contains("địa lý") || text.contains("địa lí") || tokens.contains("geography") || ((tokens.contains("địa") || tokens.contains("dia")) && !text.contains("địa chỉ") && !text.contains("địa điểm")) {
+            } else if text.contains("địa lý") || text.contains("địa lí") || flags.contains(.geography) || (flags.contains(.dia) && !text.contains("địa chỉ") && !text.contains("địa điểm")) {
                 return .historyOrGeography
-            } else if text.contains("ngữ văn") || text.contains("tiếng việt") || tokens.contains("literature") || tokens.contains("writing") || tokens.contains("essay") || ((tokens.contains("văn") || tokens.contains("van")) && !text.contains("văn phòng") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("văn minh") && !text.contains("văn bản") && !text.contains("luận văn")) {
+            } else if text.contains("ngữ văn") || text.contains("tiếng việt") || flags.contains(.literature) || (flags.contains(.van) && !text.contains("văn phòng") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("văn minh") && !text.contains("văn bản") && !text.contains("luận văn")) {
                 return .literature
-            } else if text.contains("tiếng anh") || tokens.contains("english") || tokens.contains("ielts") || tokens.contains("toeic") || tokens.contains("toefl") || (tokens.contains("anh") && !text.contains("hình ảnh") && !text.contains("âm thanh") && !text.contains("thầy") && !text.contains("cô") && !text.contains("gv")) {
+            } else if text.contains("tiếng anh") || flags.contains(.english) || (flags.contains(.anh) && !text.contains("hình ảnh") && !text.contains("âm thanh") && !text.contains("thầy") && !text.contains("cô") && !text.contains("gv")) {
                 return .english
-            } else if tokens.contains("gdcd") || text.contains("triết học") || text.contains("chính trị") || text.contains("pháp luật") || text.contains("kinh tế và pháp luật") || tokens.contains("law") || text.contains("tư tưởng") || text.contains("mác - lênin") || text.contains("mác lênin") || text.contains("tư tưởng hồ chí minh") || text.contains("pháp luật đại cương") || (tokens.contains("triết") && !text.contains("triết lý")) {
+            } else if flags.contains(.civics) || text.contains("triết học") || text.contains("chính trị") || text.contains("pháp luật") || text.contains("kinh tế và pháp luật") || text.contains("tư tưởng") || text.contains("mác - lênin") || text.contains("mác lênin") || text.contains("tư tưởng hồ chí minh") || text.contains("pháp luật đại cương") || (flags.contains(.triet) && !text.contains("triết lý")) {
                 return .civicsOrPhilosophy
-            } else if text.contains("an ninh mạng") || text.contains("mạng máy tính") || text.contains("an toàn thông tin") || text.contains("hệ thống phân tán") || text.contains("quản trị mạng") || tokens.contains("cybersecurity") || (tokens.contains("mạng") && !text.contains("mạng xã hội")) || tokens.contains("network") || tokens.contains("networking") || tokens.contains("tcp") || tokens.contains("socket") || (tokens.contains("cloud") && !tokens.contains("soundcloud")) {
+            } else if text.contains("an ninh mạng") || text.contains("mạng máy tính") || text.contains("an toàn thông tin") || text.contains("hệ thống phân tán") || text.contains("quản trị mạng") || flags.contains(.networking) || (flags.contains(.mang) && !text.contains("mạng xã hội")) || (flags.contains(.cloud) && !flags.contains(.soundcloud)) {
                 return .networking
-            } else if !text.contains("quản trị mạng") && (text.contains("kinh tế") || text.contains("quản trị") || text.contains("tài chính") || text.contains("marketing") || text.contains("kế toán") || tokens.contains("business") || tokens.contains("economics")) {
+            } else if !text.contains("quản trị mạng") && (text.contains("kinh tế") || text.contains("quản trị") || text.contains("tài chính") || text.contains("marketing") || text.contains("kế toán") || flags.contains(.economics)) {
                 return .economics
-            } else if text.contains("đồ họa") || text.contains("thiết kế") || text.contains("mỹ thuật") || tokens.contains("design") || tokens.contains("ui") || tokens.contains("ux") || (tokens.contains("art") && !tokens.contains("part") && !tokens.contains("smart") && !tokens.contains("start")) || (tokens.contains("vẽ") && !text.contains("bản vẽ kỹ thuật")) {
+            } else if text.contains("đồ họa") || text.contains("thiết kế") || text.contains("mỹ thuật") || flags.contains(.art) || (flags.contains(.artOnly) && !flags.contains(.artExcludedWord)) || (flags.contains(.ve) && !text.contains("bản vẽ kỹ thuật")) {
                 return .artAndDesign
-            } else if text.contains("lập trình") || text.contains("tin học") || text.contains("di động") || tokens.contains("android") || tokens.contains("ios") || tokens.contains("swift") || tokens.contains("python") || tokens.contains("java") || tokens.contains("cntt") || text.contains("công nghệ thông tin") || tokens.contains("it") || text.contains("thuật toán") || text.contains("cơ sở dữ liệu") || text.contains("khoa học máy tính") || text.contains("cấu trúc dữ liệu") || tokens.contains("ctdl") || tokens.contains("cpp") || tokens.contains("kotlin") || tokens.contains("javascript") || tokens.contains("typescript") || text.contains("trí tuệ nhân tạo") || text.contains("machine learning") || text.contains("hệ điều hành") || text.contains("kiến trúc máy tính") || (tokens.contains("tin") && !text.contains("thông tin") && !text.contains("bản tin") && !text.contains("tin tức") && !text.contains("niềm tin") && !tokens.contains("tự")) {
+            } else if text.contains("lập trình") || text.contains("tin học") || text.contains("di động") || flags.contains(.cs) || text.contains("công nghệ thông tin") || text.contains("thuật toán") || text.contains("cơ sở dữ liệu") || text.contains("khoa học máy tính") || text.contains("cấu trúc dữ liệu") || text.contains("trí tuệ nhân tạo") || text.contains("machine learning") || text.contains("hệ điều hành") || text.contains("kiến trúc máy tính") || (flags.contains(.tin) && !text.contains("thông tin") && !text.contains("bản tin") && !text.contains("tin tức") && !text.contains("niềm tin") && !flags.contains(.tu)) {
                 return .computerScience
-            } else if text.contains("nhiệm vụ") || tokens.contains("lab") || text.contains("thực hành") || text.contains("bài tập") || tokens.contains("project") || text.contains("dự án") {
+            } else if text.contains("nhiệm vụ") || flags.contains(.assignment) || text.contains("thực hành") || text.contains("bài tập") || text.contains("dự án") {
                 return .generalAssignment
             }
             return nil
         }
 
-        if let matched = matchCategory(text: courseLower, tokens: courseTokens) {
+        let courseLower = courseName.lowercased()
+        let courseFlags = scanTokenFlags(in: courseLower)
+        if let matched = matchCategory(text: courseLower, flags: courseFlags) {
             return matched
         }
-        if !titleLower.isEmpty, let matched = matchCategory(text: titleLower, tokens: titleTokens) {
-            return matched
+
+        if let title, !title.isEmpty {
+            let titleLower = title.lowercased()
+            let titleFlags = scanTokenFlags(in: titleLower)
+            if let matched = matchCategory(text: titleLower, flags: titleFlags) {
+                return matched
+            }
         }
         return .other
     }
@@ -250,12 +366,17 @@ public struct SubjectArtBadgeView: View, Equatable {
 
     public var body: some View {
         let visualTheme = SubjectArtHelper.theme(for: courseName, title: title)
+        let cornerRadius = size * 0.28
+        let isDark = colorScheme == .dark
+        let bgOpacity: Double = isDark ? 0.28 : 0.16
+        let strokeOpacity: Double = isDark ? 0.55 : 0.38
+
         ZStack {
-            RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                .fill(visualTheme.themeColor.opacity(colorScheme == .dark ? 0.28 : 0.16))
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(visualTheme.themeColor.opacity(bgOpacity))
                 .overlay(
-                    RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                        .stroke(visualTheme.themeColor.opacity(colorScheme == .dark ? 0.55 : 0.38), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(visualTheme.themeColor.opacity(strokeOpacity), lineWidth: 1)
                 )
                 .frame(width: size, height: size)
 
@@ -479,10 +600,10 @@ public struct DueBadgeView: View, Equatable {
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(badgeColor.opacity(0.12))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .stroke(badgeColor.opacity(0.25), lineWidth: 1)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(badgeColor.opacity(0.25), lineWidth: 1)
+                )
         )
     }
 }
@@ -1024,7 +1145,7 @@ public struct RisoEmptyStateDeskView: View {
             .frame(width: 86, height: 86)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Ngày mai rảnh rồi")
+                Text("Ngày mai rảnh rồi!")
                     .font(.system(size: 15, weight: .heavy, design: .serif))
                     .foregroundStyle(ink)
                     .lineLimit(1)
@@ -1181,5 +1302,14 @@ public enum WidgetFontSystem {
 
     public static func meta(size: CGFloat) -> Font {
         .system(size: size, weight: .medium, design: .rounded)
+    }
+}
+
+public extension Coursework {
+    var badgeCode: String {
+        SubjectArtHelper.badgeCode(for: courseName, title: title)
+    }
+    var subjectCategory: SubjectCategory {
+        SubjectArtHelper.category(for: courseName, title: title)
     }
 }

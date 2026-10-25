@@ -16,21 +16,22 @@ data class OAuthTokens(
 }
 
 class TokenStorage(context: Context) {
+    private val appContext = context.applicationContext
     private val prefs: SharedPreferences by lazy {
         try {
-            val masterKey = MasterKey.Builder(context)
+            val masterKey = MasterKey.Builder(appContext)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build()
 
             EncryptedSharedPreferences.create(
-                context,
+                appContext,
                 "secure_oauth_tokens",
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (e: Exception) {
-            context.getSharedPreferences("secure_oauth_tokens_fallback", Context.MODE_PRIVATE)
+            appContext.getSharedPreferences("secure_oauth_tokens_fallback", Context.MODE_PRIVATE)
         }
     }
 

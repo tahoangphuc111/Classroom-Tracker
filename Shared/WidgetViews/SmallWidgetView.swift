@@ -21,6 +21,8 @@ public struct SmallWidgetView: View {
             return "HÔM NAY"
         } else if hasTomorrow {
             return "NGÀY MAI"
+        } else if pending.contains(where: { $0.dueDate != nil && $0.dueDate! < Date() }) {
+            return "QUÁ HẠN"
         } else if !pending.isEmpty {
             return "SẮP TỚI"
         } else if courseworkList.contains(where: \.isDueToday) {
@@ -88,6 +90,7 @@ public struct SmallWidgetView: View {
                                     .font(.system(size: 9.5, weight: .bold, design: .rounded))
                                     .foregroundStyle(ChunkyTheme.butterYellow)
                                     .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
                             }
 
                             if extraCount > 0 {
@@ -98,6 +101,7 @@ public struct SmallWidgetView: View {
                                     .padding(.vertical, 1.5)
                                     .background(ChunkyTheme.urgentAccent)
                                     .clipShape(Capsule())
+                                    .fixedSize()
                             }
                         }
 
@@ -126,7 +130,7 @@ public struct SmallWidgetView: View {
                 }
             }
         }
-        .widgetURL(primaryItem?.destinationURL)
+        .widgetURL(isLoggedIn ? primaryItem?.destinationURL : URL(string: "classroomwidget://login"))
         .unredacted()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -179,15 +183,17 @@ public struct SmallWidgetView: View {
         VStack(spacing: 3) {
             HStack(spacing: 4) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
-                Text("Rảnh rồi!")
-                    .font(WidgetFontSystem.sectionHeader(size: 13))
+                Text("Ngày mai rảnh rồi!")
+                    .font(WidgetFontSystem.sectionHeader(size: 11))
                     .tracking(0.0)
                     .foregroundStyle(ChunkyTheme.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             Text("Nghỉ ngơi nhé")
-                .font(WidgetFontSystem.meta(size: 10.5))
+                .font(WidgetFontSystem.meta(size: 9.5))
                 .tracking(0.0)
                 .foregroundStyle(ChunkyTheme.textMuted)
         }

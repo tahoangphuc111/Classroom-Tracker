@@ -28,10 +28,7 @@ public struct ClassroomTimelineProvider: TimelineProvider {
             return ClassroomEntry(date: Date(), courseworkList: [], isLoggedIn: false)
         }
         let real = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
-        if !real.isEmpty {
-            return ClassroomEntry(date: Date(), courseworkList: real, isLoggedIn: true)
-        }
-        return ClassroomEntry(date: Date(), courseworkList: ClassroomStorage.mockCoursework, isLoggedIn: true)
+        return ClassroomEntry(date: Date(), courseworkList: real, isLoggedIn: true)
     }
 
     public func getSnapshot(in context: Context, completion: @escaping (ClassroomEntry) -> Void) {
@@ -73,21 +70,28 @@ public struct ClassroomTimelineProvider: TimelineProvider {
         let currentDate = Date()
         let currentEntry = ClassroomEntry(date: currentDate, courseworkList: displayItems, isLoggedIn: isLoggedIn)
 
-        var nextRefresh = Calendar.autoupdatingCurrent.date(byAdding: .minute, value: 15, to: currentDate) ?? currentDate.addingTimeInterval(900)
-
         let calendar = Calendar.autoupdatingCurrent
+
+        guard isLoggedIn else {
+            let nextRefresh = currentDate.addingTimeInterval(900)
+            completion(Timeline(entries: [currentEntry], policy: .after(nextRefresh)))
+            return
+        }
+
+        var nextRefresh = calendar.date(byAdding: .minute, value: 45, to: currentDate) ?? currentDate.addingTimeInterval(2700)
+
         let startOfToday = calendar.startOfDay(for: currentDate)
         if let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
            startOfTomorrow > currentDate, startOfTomorrow < nextRefresh {
-            nextRefresh = startOfTomorrow
+            nextRefresh = startOfTomorrow.addingTimeInterval(1)
         }
 
         if let earliestDueDate = displayItems.compactMap(\.dueDate).filter({ $0 > currentDate }).min(),
            earliestDueDate < nextRefresh {
-            nextRefresh = earliestDueDate
+            nextRefresh = earliestDueDate.addingTimeInterval(1)
         }
 
-        let minimumRefreshDate = currentDate.addingTimeInterval(300)
+        let minimumRefreshDate = currentDate.addingTimeInterval(900)
         if nextRefresh < minimumRefreshDate {
             nextRefresh = minimumRefreshDate
         }

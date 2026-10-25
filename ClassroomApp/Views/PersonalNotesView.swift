@@ -85,21 +85,40 @@ public struct PersonalNotesView: View {
         let query = searchText.trimmingCharacters(in: .whitespaces)
         if !query.isEmpty {
             let cleanQuery = query.normalizedForVietnameseSearch()
-            let tokens = cleanQuery.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+            let tokens = cleanQuery.searchQueryTokens()
             if !tokens.isEmpty {
-                result = result.filter { note in
-                    tokens.allSatisfy { note.searchIndex.contains($0) }
+                var scored: [(item: PersonalNote, score: Int)] = []
+                scored.reserveCapacity(result.count)
+                let tokenCount = tokens.count
+                for note in result {
+                    let index = note.searchIndex
+                    var matchesAll = true
+                    for t in 0..<tokenCount {
+                        if !index.contains(tokens[t]) {
+                            matchesAll = false
+                            break
+                        }
+                    }
+                    if matchesAll {
+                        scored.append((item: note, score: note.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)))
+                    }
                 }
-                let scored = result.map { ($0, $0.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)) }
-                return scored.sorted { first, second in
-                    if first.1 != second.1 {
-                        return first.1 > second.1
+                guard !scored.isEmpty else { return [] }
+                scored.sort { first, second in
+                    if first.score != second.score {
+                        return first.score > second.score
                     }
-                    if first.0.isCompleted != second.0.isCompleted {
-                        return !first.0.isCompleted
+                    if first.item.isCompleted != second.item.isCompleted {
+                        return !first.item.isCompleted
                     }
-                    return first.0.updatedAt > second.0.updatedAt
-                }.map(\.0)
+                    return first.item.updatedAt > second.item.updatedAt
+                }
+                var sortedNotes: [PersonalNote] = []
+                sortedNotes.reserveCapacity(scored.count)
+                for entry in scored {
+                    sortedNotes.append(entry.item)
+                }
+                return sortedNotes
             }
         }
 
@@ -436,7 +455,7 @@ public struct PersonalNotesView: View {
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(quickTodoTitle.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary.opacity(0.35) : Color.blue)
                 #if os(iOS)
-                .frame(width: 36, height: 36)
+                .frame(width: 44, height: 44)
                 #else
                 .frame(width: 28, height: 28)
                 #endif
@@ -494,23 +513,23 @@ public struct PersonalNotesView: View {
                 notesForEach
             }
             .padding(16)
-            .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes.map(\.id))
             #else
             if horizontalSizeClass == .regular {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 280, maximum: 440), spacing: 12, alignment: .top)], spacing: 12) {
                     notesForEach
                 }
                 .padding(16)
-                .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes.map(\.id))
             } else {
                 LazyVStack(spacing: 10) {
                     notesForEach
                 }
                 .padding(16)
-                .animation(.spring(response: 0.32, dampingFraction: 0.8), value: filteredNotes.map(\.id))
             }
             #endif
         }
+        #if os(iOS)
+        .scrollDismissesKeyboard(.interactively)
+        #endif
     }
 
     private var notesForEach: some View {
@@ -709,7 +728,7 @@ private struct PersonalNoteRowCard: View, Equatable {
                     }
                 }
                 #if os(iOS)
-                .frame(width: 38, height: 38)
+                .frame(width: 44, height: 44)
                 #else
                 .frame(width: 28, height: 28)
                 #endif
@@ -805,7 +824,7 @@ private struct PersonalNoteRowCard: View, Equatable {
                             }
                             .buttonStyle(.plain)
                             #if os(iOS)
-                            .frame(minHeight: 28)
+                            .frame(minHeight: 34)
                             #endif
                         }
                         if note.checklist.count > 4 {
@@ -849,7 +868,7 @@ private struct PersonalNoteRowCard: View, Equatable {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.secondary)
                     #if os(iOS)
-                    .frame(width: 38, height: 38)
+                    .frame(width: 44, height: 44)
                     #else
                     .frame(width: 28, height: 28)
                     #endif
@@ -875,10 +894,14 @@ private struct PersonalNoteRowCard: View, Equatable {
         }
     }
 
-    private func formattedDateString(from date: Date) -> String {
+    private static let cardDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "d/M"
-        return formatter.string(from: date)
+        return formatter
+    }()
+
+    private func formattedDateString(from date: Date) -> String {
+        Self.cardDateFormatter.string(from: date)
     }
 
     @ViewBuilder
@@ -994,7 +1017,11 @@ public struct CreateOrEditNoteSheet: View {
                                 Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundStyle(item.isCompleted ? Color.green : Color.secondary)
+                                    #if os(iOS)
+                                    .frame(width: 44, height: 44)
+                                    #else
                                     .frame(width: 32, height: 32)
+                                    #endif
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -1002,6 +1029,9 @@ public struct CreateOrEditNoteSheet: View {
                             TextField("Nội dung mục...", text: $item.title)
                                 .strikethrough(item.isCompleted, color: Color.secondary)
                                 .foregroundStyle(item.isCompleted ? Color.secondary : Color.platformTextPrimary)
+                                .onSubmit {
+                                    focusedField = .newChecklistItem
+                                }
 
                             Button(role: .destructive) {
                                 PlatformHaptics.trigger()
@@ -1010,7 +1040,11 @@ public struct CreateOrEditNoteSheet: View {
                                 Image(systemName: "trash")
                                     .font(.system(size: 13))
                                     .foregroundStyle(.secondary.opacity(0.7))
+                                    #if os(iOS)
+                                    .frame(width: 44, height: 44)
+                                    #else
                                     .frame(width: 32, height: 32)
+                                    #endif
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -1145,6 +1179,9 @@ public struct CreateOrEditNoteSheet: View {
         }
         #if os(macOS)
         .frame(minWidth: 460, minHeight: 460)
+        #elseif os(iOS)
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
         #endif
     }
 

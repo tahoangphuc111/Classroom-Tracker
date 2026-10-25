@@ -44,6 +44,27 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
     public static let shared = LoopbackOAuthServer()
     private init() {}
 
+    private final class ContinuationGuard: @unchecked Sendable {
+        private let lock = NSLock()
+        private var isResumed = false
+
+        func resumeOnce(returning value: String, continuation: CheckedContinuation<String, Error>) {
+            lock.lock()
+            defer { lock.unlock() }
+            guard !isResumed else { return }
+            isResumed = true
+            continuation.resume(returning: value)
+        }
+
+        func resumeOnce(throwing error: Error, continuation: CheckedContinuation<String, Error>) {
+            lock.lock()
+            defer { lock.unlock() }
+            guard !isResumed else { return }
+            isResumed = true
+            continuation.resume(throwing: error)
+        }
+    }
+
     public func startServer() throws -> ActiveLoopbackServer {
         let serverFd = socket(AF_INET, SOCK_STREAM, 0)
         guard serverFd >= 0 else {
@@ -96,6 +117,7 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
     }
 
     public func waitForAuthorizationCode(server: ActiveLoopbackServer, timeoutSeconds: Int = 180) async throws -> String {
+        let resumeGuard = ContinuationGuard()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
@@ -135,7 +157,7 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                         var buffer = [CChar](repeating: 0, count: 4096)
                         let bytesRead = recv(clientFd, &buffer, buffer.count - 1, 0)
                     if bytesRead <= 0 {
-                        close(clientFd)
+                        Darwin.close(clientFd)
                         continue
                     }
 
@@ -144,7 +166,7 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                     if requestString.contains("GET /favicon.ico") {
                         let notFoundResponse = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
                         _ = notFoundResponse.withCString { send(clientFd, $0, strlen($0), 0) }
-                        close(clientFd)
+                        Darwin.close(clientFd)
                         continue
                     }
 
@@ -251,7 +273,10 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                         _ = errorResponse.withCString { send(clientFd, $0, strlen($0), 0) }
                         Darwin.close(clientFd)
                         server.handle.close()
-                        continuation.resume(throwing: NSError(domain: "LoopbackOAuthServer", code: -7, userInfo: [NSLocalizedDescriptionKey: "Đăng nhập Google bị hủy: \(oauthError)"]))
+                        resumeGuard.resumeOnce(
+                            throwing: NSError(domain: "LoopbackOAuthServer", code: -7, userInfo: [NSLocalizedDescriptionKey: "Đăng nhập Google bị hủy: \(oauthError)"]),
+                            continuation: continuation
+                        )
                         return
                     }
 
@@ -327,7 +352,7 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                             NSApplication.shared.activate(ignoringOtherApps: true)
                         }
                         #endif
-                        continuation.resume(returning: authCode)
+                        resumeGuard.resumeOnce(returning: authCode, continuation: continuation)
                         return
                     }
 
@@ -337,9 +362,12 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                 let wasCancelled = server.handle.rawDescriptor == -1
                 server.handle.close()
                 if wasCancelled {
-                    continuation.resume(throwing: CancellationError())
+                    resumeGuard.resumeOnce(throwing: CancellationError(), continuation: continuation)
                 } else {
-                    continuation.resume(throwing: NSError(domain: "LoopbackOAuthServer", code: -4, userInfo: [NSLocalizedDescriptionKey: "Hết thời gian chờ đăng nhập (Timeout). Vui lòng thử lại."]))
+                    resumeGuard.resumeOnce(
+                        throwing: NSError(domain: "LoopbackOAuthServer", code: -4, userInfo: [NSLocalizedDescriptionKey: "Hết thời gian chờ đăng nhập (Timeout). Vui lòng thử lại."]),
+                        continuation: continuation
+                    )
                 }
             }
         }

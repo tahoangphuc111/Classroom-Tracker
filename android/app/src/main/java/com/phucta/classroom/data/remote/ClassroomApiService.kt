@@ -93,9 +93,14 @@ class ClassroomApiService(
         while (true) {
             val response = httpClient.newCall(request).execute()
             if ((response.code == 429 || response.code == 503) && attempt < maxRetries) {
+                val retryAfter = response.header("Retry-After")?.toLongOrNull()
                 response.close()
                 attempt++
-                val backoffMillis = 500L * (1 shl attempt)
+                val backoffMillis = if (retryAfter != null && retryAfter > 0) {
+                    retryAfter * 1000L
+                } else {
+                    500L * (1 shl attempt)
+                }
                 delay(backoffMillis)
                 continue
             }

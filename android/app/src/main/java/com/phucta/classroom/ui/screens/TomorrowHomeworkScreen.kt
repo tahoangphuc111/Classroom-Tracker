@@ -14,6 +14,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,9 +24,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,12 +56,15 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phucta.classroom.R
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.domain.BaoBaiShareHelper
 import com.phucta.classroom.ui.components.AssignmentCard
@@ -81,6 +87,8 @@ fun TomorrowHomeworkScreen(
     currentDayEpoch: Long = com.phucta.classroom.data.model.ClassroomDateUtils.startOfToday
 ) {
     val context = LocalContext.current
+    val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
+    val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
     val incompleteCount = remember(tomorrowItems) { tomorrowItems.count { !it.isCompleted } }
     val isAllDone = remember(tomorrowItems, incompleteCount) { tomorrowItems.isNotEmpty() && incompleteCount == 0 }
     val hasTomorrowTasks = remember(tomorrowItems, currentDayEpoch) { tomorrowItems.any { it.isDueTomorrow } }
@@ -127,6 +135,18 @@ fun TomorrowHomeworkScreen(
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        if (tomorrowItems.isNotEmpty()) {
+            item(key = "tomorrow_hero_banner", contentType = "hero_banner") {
+                TomorrowEditorialHeroCard(
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = ItemFadeSpring,
+                        placementSpec = ItemPlacementSpring,
+                        fadeOutSpec = ItemFadeSpring
+                    )
+                )
+            }
+        }
+
         item(key = "tomorrow_summary_card", contentType = "summary_card") {
             Box(
                 modifier = Modifier
@@ -243,6 +263,7 @@ fun TomorrowHomeworkScreen(
                     ) {
                         Row(
                             modifier = Modifier
+                                .heightIn(min = 36.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color.White.copy(alpha = 0.22f))
                                 .border(1.dp, Color.White.copy(alpha = 0.40f), RoundedCornerShape(8.dp))
@@ -251,7 +272,7 @@ fun TomorrowHomeworkScreen(
                                     BaoBaiShareHelper.copyToClipboard(context, baoBaiText)
                                     Toast.makeText(context, "Đã sao chép báo bài!", Toast.LENGTH_SHORT).show()
                                 }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                .padding(horizontal = 12.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -273,6 +294,7 @@ fun TomorrowHomeworkScreen(
 
                         Row(
                             modifier = Modifier
+                                .heightIn(min = 36.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color.White.copy(alpha = 0.22f))
                                 .border(1.dp, Color.White.copy(alpha = 0.40f), RoundedCornerShape(8.dp))
@@ -282,7 +304,7 @@ fun TomorrowHomeworkScreen(
                                     val chooser = Intent.createChooser(shareIntent, "Chia sẻ báo bài qua")
                                     context.startActivity(chooser)
                                 }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                .padding(horizontal = 12.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -324,13 +346,15 @@ fun TomorrowHomeworkScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = ChunkyColor.SkyBottom,
-                            modifier = Modifier.size(36.dp)
+                        Image(
+                            painter = painterResource(id = R.drawable.empty_state_all_caught_up),
+                            contentDescription = "Không có bài tập ngày mai",
+                            modifier = Modifier
+                                .size(136.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Fit
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
                         Text(
                             text = "Không có bài tập ngày mai",
                             fontWeight = FontWeight.Bold,
@@ -416,14 +440,11 @@ fun TomorrowHomeworkScreen(
                 key = { it.id },
                 contentType = { "assignment_card" }
             ) { item ->
-                val currentItem by rememberUpdatedState(item)
-                val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
-                val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
                 val onToggle = remember(item.id) {
                     { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
                 }
-                val onClickCard = remember(item.id) {
-                    { currentOnSelectAssignment(currentItem) }
+                val onClickCard = remember(item) {
+                    { currentOnSelectAssignment(item) }
                 }
                 AssignmentCard(
                     coursework = item,
@@ -521,5 +542,27 @@ private fun HomeworkProgressBar(
                 cornerRadius = cornerRadius
             )
         }
+    }
+}
+
+@Composable
+private fun TomorrowEditorialHeroCard(
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFF5EFE6))
+            .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.hero_bao_bai_modernist),
+            contentDescription = "Minh họa Báo bài Ngày mai",
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f),
+            contentScale = ContentScale.Crop
+        )
     }
 }

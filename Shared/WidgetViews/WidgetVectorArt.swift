@@ -580,8 +580,6 @@ public struct DuolingoFontHelper {
 }
 
 public struct DuolingoFlameArtView: View {
-    @State private var isBreathing: Bool = false
-
     public init() {}
 
     public var body: some View {
@@ -826,12 +824,6 @@ public struct DuolingoFlameArtView: View {
                     Circle().path(in: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)),
                     with: .color(Color(red: 0.50, green: 0.95, blue: 1.0))
                 )
-            }
-        }
-        .offset(y: isBreathing ? -1.5 : 1.5)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
-                isBreathing = true
             }
         }
     }

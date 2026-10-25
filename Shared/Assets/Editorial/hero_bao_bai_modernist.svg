@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-labelledby="hero-title hero-desc">
+  <title id="hero-title">Báo bài Ngày mai — Modernist Flat-Collage</title>
+  <desc id="hero-desc">Tranh minh họa phong cách modernist gouache collage cho Classroom Tracker: Học sinh tập trung hoàn thành sổ báo bài buổi tối dưới ánh đèn bàn ấm áp.</desc>
+
+  <defs>
+    <!-- g-env: Window & lamp subtle hand-cut edge + paper grain -->
+    <filter id="g-env" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="101" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="3" xChannelSelector="R" yChannelSelector="G" result="cut"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.005 0.03" numOctaves="3" seed="107" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="gray"/>
+      <feComposite in="cut" in2="gray" operator="arithmetic" k1="0.10" k2="0.96" k3="0" k4="0"/>
+    </filter>
+
+    <!-- g-desk: Wooden desk plane texture -->
+    <filter id="g-desk" x="-3%" y="-3%" width="106%" height="106%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="203" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="3" xChannelSelector="R" yChannelSelector="G" result="cut"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.032 0.006" numOctaves="3" seed="209" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="gray"/>
+      <feComposite in="cut" in2="gray" operator="arithmetic" k1="0.12" k2="0.95" k3="0" k4="0"/>
+    </filter>
+
+    <!-- g-figure: Student silhouette -->
+    <filter id="g-figure" x="-3%" y="-3%" width="106%" height="106%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="401" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="2.5" xChannelSelector="R" yChannelSelector="G" result="cut"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.014 0.02" numOctaves="3" seed="409" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="gray"/>
+      <feComposite in="cut" in2="gray" operator="arithmetic" k1="0.10" k2="0.97" k3="0" k4="0"/>
+    </filter>
+
+    <!-- g-paper: Notebook cut-paper -->
+    <filter id="g-paper" x="-3%" y="-3%" width="106%" height="106%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.024" numOctaves="2" seed="503" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="2" xChannelSelector="R" yChannelSelector="G" result="cut"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.02 0.012" numOctaves="3" seed="509" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="gray"/>
+      <feComposite in="cut" in2="gray" operator="arithmetic" k1="0.10" k2="0.97" k3="0" k4="0"/>
+    </filter>
+
+    <!-- g-accent: Matte Vermilion Gouache filter -->
+    <filter id="g-accent" x="-3%" y="-3%" width="106%" height="106%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="2" seed="601" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="1.8" xChannelSelector="R" yChannelSelector="G" result="cut"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.018 0.018" numOctaves="3" seed="607" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="gray"/>
+      <feComposite in="cut" in2="gray" operator="arithmetic" k1="0.12" k2="0.95" k3="0" k4="0"/>
+    </filter>
+  </defs>
+
+  <!-- LAYER 0: Canvas Ground (Linen Wall Substrate, Left 42% Quiet Zone) -->
+  <rect x="-40" y="-40" width="1680" height="980" fill="#F5EFE6"/>
+
+  <!-- LAYER 1: Background Twilight Window & Lamp -->
+  <g id="system-env" filter="url(#g-env)">
+    <!-- Window frame on right (x: 799 to 1557, y: 44 to 462) -->
+    <polygon points="799,44 1557,44 1557,462 799,462" fill="#4A5D6E"/>
+    
+    <!-- Architectural window mullion dividing the two panes -->
+    <polygon points="1326,44 1344,44 1344,462 1326,462" fill="#F5EFE6"/>
+
+    <!-- Waning crescent moon in right pane -->
+    <path d="M 1446,99 L 1455,111 L 1461,126 L 1461,146 L 1455,161 L 1441,177 L 1419,187 L 1438,193 L 1458,193 L 1475,183 L 1486,171 L 1491,158 L 1491,137 L 1484,119 L 1477,111 L 1464,103 Z" fill="#F5EFE6"/>
+
+    <!-- Bauhaus Desk Lamp Structure (Articulated arm from left window frame) -->
+    <path d="M 1036,224 L 973,172 L 952,134 L 914,150 L 923,186 L 799,269 L 799,284 L 924,200 L 927,204 L 921,275 Z" fill="#23272A"/>
+    
+    <!-- Warm lamplight illumination cone -->
+    <polygon points="921,275 1036,224 1120,574 890,574" fill="#FEEBA4"/>
+  </g>
+
+  <!-- LAYER 2: Desk Plane Structure -->
+  <g id="system-desk" filter="url(#g-desk)">
+    <!-- Solid warm ochre wooden desk surface -->
+    <polygon points="0,574 1640,574 1640,900 0,900" fill="#C98642"/>
+    <!-- Under-desk depth edge -->
+    <polygon points="0,880 1640,880 1640,940 0,940" fill="#3A2518"/>
+  </g>
+
+  <!-- LAYER 3: The Student Figure (Body & Head) -->
+  <g id="system-figure" filter="url(#g-figure)">
+    <!-- Left Jacket & Arm -->
+    <path d="M 1131,318 L 1119,317 L 1119,322 L 1097,341 L 1044,351 L 1012,364 L 951,432 L 892,513 L 887,513 L 860,556 L 858,595 L 883,622 L 974,639 L 974,607 L 987,577 L 1003,572 L 977,559 L 1014,519 L 1015,615 L 1171,615 L 1152,419 L 1128,377 L 1126,348 L 1135,329 Z" fill="#244B7A"/>
+
+    <!-- Right Jacket & Arm -->
+    <path d="M 1259,355 L 1242,380 L 1215,400 L 1208,411 L 1171,615 L 1246,615 L 1221,583 L 1233,594 L 1236,639 L 1381,638 L 1416,626 L 1429,615 L 1433,603 L 1432,562 L 1391,478 L 1369,443 L 1325,389 Z" fill="#244B7A"/>
+
+    <!-- White Shirt Inset / Collar (Clean crisp geometric V-neck dipping from chin) -->
+    <polygon points="1205,417 1155,417 1171,573" fill="#FAF7F2"/>
+
+    <!-- Neck & Face -->
+    <path d="M 1145,286 L 1140,303 L 1140,318 L 1144,326 L 1135,332 L 1131,346 L 1133,380 L 1155,416 L 1170,421 L 1203,417 L 1208,403 L 1237,380 L 1269,335 L 1269,317 L 1234,310 L 1201,287 L 1179,295 L 1161,311 L 1157,307 L 1161,297 L 1159,284 Z" fill="#ECD5C1"/>
+    
+    <!-- Modernist Obsidian Haircut -->
+    <path d="M 1148,250 L 1134,289 L 1132,315 L 1135,326 L 1141,325 L 1137,312 L 1141,290 L 1146,282 L 1157,279 L 1163,285 L 1161,307 L 1179,293 L 1201,285 L 1235,307 L 1274,314 L 1273,332 L 1278,328 L 1291,298 L 1289,274 L 1279,249 L 1251,226 L 1234,217 L 1178,220 Z" fill="#23272A"/>
+  </g>
+
+  <!-- LAYER 4: The Open Assignment Notebook (Sổ Báo Bài) -->
+  <g id="system-notebook" filter="url(#g-paper)">
+    <!-- Dark outer notebook backing cover -->
+    <polygon points="963,636 1383,641 1383,781 963,781" fill="#1C2128"/>
+    
+    <!-- Open Left Page (Ivory cream) -->
+    <path d="M 974,606 L 1173,618 L 1176,774 Q 1075,760 974,773 Z" fill="#FAF7EC"/>
+    <!-- Open Right Page (Warm ivory) -->
+    <path d="M 1173,618 L 1372,630 L 1372,767 Q 1264,755 1176,774 Z" fill="#F5EFE1"/>
+    <!-- Center spine crease fold -->
+    <polygon points="1172,618 1175,618 1175,774 1172,774" fill="#D2C9B6"/>
+
+    <!-- Bold Completed Checkmark stamped on left page -->
+    <path d="M 1090,652 L 1118,683 L 1105,695 L 1088,674 L 1037,732 L 1020,724 Z" fill="#D73E29" filter="url(#g-accent)"/>
+  </g>
+
+  <!-- LAYER 5: The Hands Resting Naturally on Notebook & Desk -->
+  <g id="system-hands" filter="url(#g-figure)">
+    <!-- Left Hand: Flat, relaxed palm holding the notebook margin -->
+    <path d="M 989,580 L 987,591 L 978,607 L 979,628 L 983,634 L 992,635 L 1016,646 L 1061,644 L 1066,629 L 1066,618 L 1060,608 L 1048,593 L 1026,580 L 1002,576 Z" fill="#ECD5C1"/>
+
+    <!-- Right Hand: Resting gently across the top fold and right page -->
+    <path d="M 1114,633 L 1143,637 L 1159,634 L 1187,625 L 1211,633 L 1233,628 L 1228,591 L 1168,587 L 1128,609 L 1121,616 Z" fill="#ECD5C1"/>
+  </g>
+</svg>

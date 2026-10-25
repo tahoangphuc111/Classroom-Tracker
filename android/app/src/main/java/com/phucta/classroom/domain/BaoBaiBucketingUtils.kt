@@ -19,8 +19,31 @@ object BaoBaiBucketingUtils {
         val completed: List<Coursework> = emptyList(),
         val widgetItems: List<Coursework> = emptyList()
     ) {
-        val todayAndTomorrow: List<Coursework> = today + tomorrow
-        val allUpcoming: List<Coursework> = today + tomorrow + laterUpcoming + noDueDate
+        val todayAndTomorrow: List<Coursework> by lazy(LazyThreadSafetyMode.NONE) {
+            val sToday = today.size
+            val sTomorrow = tomorrow.size
+            if (sToday == 0) tomorrow
+            else if (sTomorrow == 0) today
+            else {
+                val list = ArrayList<Coursework>(sToday + sTomorrow)
+                list.addAll(today)
+                list.addAll(tomorrow)
+                list
+            }
+        }
+
+        val allUpcoming: List<Coursework> by lazy(LazyThreadSafetyMode.NONE) {
+            val total = today.size + tomorrow.size + laterUpcoming.size + noDueDate.size
+            if (total == 0) emptyList()
+            else {
+                val list = ArrayList<Coursework>(total)
+                list.addAll(today)
+                list.addAll(tomorrow)
+                list.addAll(laterUpcoming)
+                list.addAll(noDueDate)
+                list
+            }
+        }
     }
 
     val COURSEWORK_COMPARATOR = Comparator<Coursework> { first, second ->
@@ -31,17 +54,43 @@ object BaoBaiBucketingUtils {
         }
         val d1 = first.dueEpochMillis
         val d2 = second.dueEpochMillis
-        val dueDiff = when {
-            d1 != null && d2 != null -> if (d1 < d2) -1 else if (d1 > d2) 1 else 0
-            d1 != null -> -1
-            d2 != null -> 1
-            else -> 0
+        if (d1 != null) {
+            if (d2 != null) {
+                val diff = d1.compareTo(d2)
+                if (diff != 0) return@Comparator diff
+            } else {
+                return@Comparator -1
+            }
+        } else if (d2 != null) {
+            return@Comparator 1
         }
-        if (dueDiff != 0) return@Comparator dueDiff
 
         val titleDiff = first.title.compareTo(second.title, ignoreCase = true)
         if (titleDiff != 0) titleDiff else first.id.compareTo(second.id)
     }
+
+    val SAME_STATUS_COURSEWORK_COMPARATOR = Comparator<Coursework> { first, second ->
+        val d1 = first.dueEpochMillis
+        val d2 = second.dueEpochMillis
+        if (d1 != null) {
+            if (d2 != null) {
+                val diff = d1.compareTo(d2)
+                if (diff != 0) return@Comparator diff
+            } else {
+                return@Comparator -1
+            }
+        } else if (d2 != null) {
+            return@Comparator 1
+        }
+
+        val titleDiff = first.title.compareTo(second.title, ignoreCase = true)
+        if (titleDiff != 0) titleDiff else first.id.compareTo(second.id)
+    }
+
+    private class ScoredCoursework(
+        val item: Coursework,
+        val score: Int
+    )
 
     fun sortCoursework(
         items: List<Coursework>,
@@ -67,13 +116,26 @@ object BaoBaiBucketingUtils {
                     filteredItems.add(item)
                 }
             }
-            val filteredCount = filteredItems.size
-            if (filteredCount == 0) return emptyList()
-            if (filteredCount == 1) return filteredItems
+            return sortPreFiltered(filteredItems, searchTokens, rawNormalizedQuery, COURSEWORK_COMPARATOR)
+        }
+        val copy = ArrayList<Coursework>(itemCount)
+        copy.addAll(items)
+        copy.sortWith(COURSEWORK_COMPARATOR)
+        return copy
+    }
 
-            val scores = IntArray(filteredCount) { index ->
-                val item = filteredItems[index]
-                com.phucta.classroom.data.model.calculateSearchRelevance(
+    private fun sortPreFiltered(
+        items: ArrayList<Coursework>,
+        searchTokens: List<String>,
+        rawNormalizedQuery: String,
+        comparator: Comparator<Coursework>
+    ): List<Coursework> {
+        val count = items.size
+        if (count <= 1) return items
+        if (searchTokens.isNotEmpty()) {
+            val scoredItems = Array(count) { index ->
+                val item = items[index]
+                val score = com.phucta.classroom.data.model.calculateSearchRelevance(
                     queryTokens = searchTokens,
                     rawNormalizedQuery = rawNormalizedQuery,
                     title = item.title,
@@ -82,27 +144,20 @@ object BaoBaiBucketingUtils {
                     normalizedTitle = item.normalizedTitle,
                     normalizedCourseName = item.normalizedCourseName
                 )
+                ScoredCoursework(item, score)
             }
-            val indices = Array(filteredCount) { it }
-            indices.sortWith { a, b ->
-                val scoreA = scores[a]
-                val scoreB = scores[b]
-                val scoreDiff = if (scoreB > scoreA) 1 else if (scoreB < scoreA) -1 else 0
-                if (scoreDiff != 0) scoreDiff else COURSEWORK_COMPARATOR.compare(filteredItems[a], filteredItems[b])
+            scoredItems.sortWith { a, b ->
+                val diff = b.score.compareTo(a.score)
+                if (diff != 0) diff else comparator.compare(a.item, b.item)
             }
-            val result = ArrayList<Coursework>(filteredCount)
-            for (i in 0 until filteredCount) {
-                result.add(filteredItems[indices[i]])
+            val result = ArrayList<Coursework>(count)
+            for (i in 0 until count) {
+                result.add(scoredItems[i].item)
             }
             return result
         }
-        if (searchTokens.isEmpty()) {
-            val copy = ArrayList<Coursework>(itemCount)
-            copy.addAll(items)
-            copy.sortWith(COURSEWORK_COMPARATOR)
-            return copy
-        }
-        return items.sortedWith(COURSEWORK_COMPARATOR)
+        items.sortWith(comparator)
+        return items
     }
 
     private fun sortInternal(
@@ -110,13 +165,7 @@ object BaoBaiBucketingUtils {
         searchTokens: List<String>,
         rawNormalizedQuery: String
     ): List<Coursework> {
-        val count = items.size
-        if (count <= 1) return items
-        if (searchTokens.isNotEmpty()) {
-            return sortCoursework(items, searchTokens, rawNormalizedQuery)
-        }
-        items.sortWith(COURSEWORK_COMPARATOR)
-        return items
+        return sortPreFiltered(items, searchTokens, rawNormalizedQuery, COURSEWORK_COMPARATOR)
     }
 
     private data class CourseFilterCache(
@@ -211,10 +260,11 @@ object BaoBaiBucketingUtils {
         val now = System.currentTimeMillis()
         val startOfTomorrow = ClassroomDateUtils.startOfTomorrow
         val startOfDayAfter = ClassroomDateUtils.startOfDayAfter
-        val tomorrowFiltered = ArrayList<Coursework>()
-        val todayFiltered = ArrayList<Coursework>()
-        val upcomingFiltered = ArrayList<Coursework>()
-        val undatedFiltered = ArrayList<Coursework>()
+        val estCap = maxOf(4, relevant.size shr 2)
+        val tomorrowFiltered = ArrayList<Coursework>(estCap)
+        val todayFiltered = ArrayList<Coursework>(estCap)
+        val upcomingFiltered = ArrayList<Coursework>(estCap)
+        val undatedFiltered = ArrayList<Coursework>(estCap)
         val count = relevant.size
         for (i in 0 until count) {
             val item = relevant[i]
@@ -298,12 +348,13 @@ object BaoBaiBucketingUtils {
         val now = System.currentTimeMillis()
         val startOfTomorrow = ClassroomDateUtils.startOfTomorrow
         val startOfDayAfter = ClassroomDateUtils.startOfDayAfter
-        val overdue = ArrayList<Coursework>()
-        val today = ArrayList<Coursework>()
-        val tomorrow = ArrayList<Coursework>()
-        val later = ArrayList<Coursework>()
-        val noDate = ArrayList<Coursework>()
-        val completed = ArrayList<Coursework>()
+        val estCapacity = maxOf(16, totalCount shr 2)
+        val overdue = ArrayList<Coursework>(estCapacity)
+        val today = ArrayList<Coursework>(estCapacity)
+        val tomorrow = ArrayList<Coursework>(estCapacity)
+        val later = ArrayList<Coursework>(estCapacity)
+        val noDate = ArrayList<Coursework>(estCapacity)
+        val completed = ArrayList<Coursework>(estCapacity)
         var completedTomorrowCount = 0
         var completedTodayCount = 0
         var completedLaterCount = 0
@@ -456,20 +507,33 @@ object BaoBaiBucketingUtils {
             }
             else -> emptyList()
         }
+        val sortedOverdue = sortPreFiltered(overdue, searchTokens, rawNormalizedQuery, SAME_STATUS_COURSEWORK_COMPARATOR)
+        val sortedToday = sortPreFiltered(today, searchTokens, rawNormalizedQuery, SAME_STATUS_COURSEWORK_COMPARATOR)
+        val sortedTomorrow = sortPreFiltered(tomorrow, searchTokens, rawNormalizedQuery, SAME_STATUS_COURSEWORK_COMPARATOR)
+        val sortedLater = sortPreFiltered(later, searchTokens, rawNormalizedQuery, SAME_STATUS_COURSEWORK_COMPARATOR)
+        val sortedNoDate = sortPreFiltered(noDate, searchTokens, rawNormalizedQuery, SAME_STATUS_COURSEWORK_COMPARATOR)
+        val sortedCompleted = sortPreFiltered(completed, searchTokens, rawNormalizedQuery, SAME_STATUS_COURSEWORK_COMPARATOR)
+
         val sortedWidgetItems = if (tomorrowCandidates.isEmpty()) {
             emptyList()
-        } else if (tomorrowCandidates === tomorrow || tomorrowCandidates === today || tomorrowCandidates === later || tomorrowCandidates === noDate) {
-            sortCoursework(tomorrowCandidates, searchTokens, rawNormalizedQuery)
+        } else if (tomorrowCandidates === tomorrow) {
+            sortedTomorrow
+        } else if (tomorrowCandidates === today) {
+            sortedToday
+        } else if (tomorrowCandidates === later) {
+            sortedLater
+        } else if (tomorrowCandidates === noDate) {
+            sortedNoDate
         } else {
-            sortInternal(tomorrowCandidates as ArrayList<Coursework>, searchTokens, rawNormalizedQuery)
+            sortPreFiltered(tomorrowCandidates as ArrayList<Coursework>, searchTokens, rawNormalizedQuery, COURSEWORK_COMPARATOR)
         }
         return CourseworkBuckets(
-            overdue = sortInternal(overdue, searchTokens, rawNormalizedQuery),
-            today = sortInternal(today, searchTokens, rawNormalizedQuery),
-            tomorrow = sortInternal(tomorrow, searchTokens, rawNormalizedQuery),
-            laterUpcoming = sortInternal(later, searchTokens, rawNormalizedQuery),
-            noDueDate = sortInternal(noDate, searchTokens, rawNormalizedQuery),
-            completed = sortInternal(completed, searchTokens, rawNormalizedQuery),
+            overdue = sortedOverdue,
+            today = sortedToday,
+            tomorrow = sortedTomorrow,
+            laterUpcoming = sortedLater,
+            noDueDate = sortedNoDate,
+            completed = sortedCompleted,
             widgetItems = sortedWidgetItems
         )
     }

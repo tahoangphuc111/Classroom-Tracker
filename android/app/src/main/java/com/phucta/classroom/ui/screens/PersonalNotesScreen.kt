@@ -16,6 +16,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.ripple
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
@@ -374,11 +375,20 @@ fun PersonalNotesScreen(
                         key = { it.id },
                         contentType = { "personal_note" }
                     ) { note ->
+                        val onToggle = remember(note.id, note.isCompleted) {
+                            { onToggleCompletion(note.id, !note.isCompleted) }
+                        }
+                        val onEdit = remember(note) {
+                            { noteToEdit = note }
+                        }
+                        val onDelete = remember(note.id) {
+                            { onDeleteNote(note.id) }
+                        }
                         PersonalNoteCard(
                             note = note,
-                            onToggle = { onToggleCompletion(note.id, !note.isCompleted) },
-                            onEdit = { noteToEdit = note },
-                            onDelete = { onDeleteNote(note.id) },
+                            onToggle = onToggle,
+                            onEdit = onEdit,
+                            onDelete = onDelete,
                             modifier = Modifier.animateItem(
                                 fadeInSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
                                 placementSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
@@ -580,7 +590,6 @@ private fun PersonalNoteCard(
             modifier = Modifier
                 .padding(start = 4.dp, top = 2.dp)
                 .size(48.dp)
-                .clip(CircleShape)
                 .clickable(
                     interactionSource = checkInteractionSource,
                     indication = ripple(bounded = false, radius = 22.dp),
@@ -609,14 +618,18 @@ private fun PersonalNoteCard(
                         scaleX = combinedScale
                         scaleY = combinedScale
                     }
-                    .drawBehind {
+                    .drawWithCache {
                         val strokeWidthPx = 2.dp.toPx()
-                        drawCircle(color = checkBgColor.value)
-                        drawCircle(
-                            color = checkBorderColor.value,
-                            radius = (size.minDimension - strokeWidthPx) / 2f,
-                            style = Stroke(width = strokeWidthPx)
-                        )
+                        val stroke = Stroke(width = strokeWidthPx)
+                        val radius = (size.minDimension - strokeWidthPx) / 2f
+                        onDrawBehind {
+                            drawCircle(color = checkBgColor.value)
+                            drawCircle(
+                                color = checkBorderColor.value,
+                                radius = radius,
+                                style = stroke
+                            )
+                        }
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -662,37 +675,40 @@ private fun PersonalNoteCard(
                         modifier = Modifier
                             .weight(1f)
                             .graphicsLayer { alpha = titleAlpha.value }
-                            .drawWithContent {
-                                drawContent()
-                                val progress = strikethroughProgress.value
-                                if (progress > 0.001f) {
-                                    val layout = titleLayoutResultHolder[0]
-                                    if (layout != null) {
-                                        for (i in 0 until layout.lineCount) {
-                                            val lineTop = layout.getLineTop(i)
-                                            val lineBottom = layout.getLineBottom(i)
-                                            val lineLeft = layout.getLineLeft(i)
-                                            val lineRight = layout.getLineRight(i)
-                                            val y = (lineTop + lineBottom) / 2f
-                                            val endX = lineLeft + (lineRight - lineLeft) * progress
+                            .drawWithCache {
+                                val strokeWidthPx = 2.dp.toPx()
+                                onDrawWithContent {
+                                    drawContent()
+                                    val progress = strikethroughProgress.value
+                                    if (progress > 0.001f) {
+                                        val layout = titleLayoutResultHolder[0]
+                                        if (layout != null) {
+                                            for (i in 0 until layout.lineCount) {
+                                                val lineTop = layout.getLineTop(i)
+                                                val lineBottom = layout.getLineBottom(i)
+                                                val lineLeft = layout.getLineLeft(i)
+                                                val lineRight = layout.getLineRight(i)
+                                                val y = (lineTop + lineBottom) / 2f
+                                                val endX = lineLeft + (lineRight - lineLeft) * progress
+                                                drawLine(
+                                                    color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
+                                                    start = Offset(lineLeft, y),
+                                                    end = Offset(endX, y),
+                                                    strokeWidth = strokeWidthPx,
+                                                    cap = StrokeCap.Round
+                                                )
+                                            }
+                                        } else {
+                                            val y = size.height / 2f
+                                            val endX = size.width * progress
                                             drawLine(
                                                 color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
-                                                start = Offset(lineLeft, y),
+                                                start = Offset(0f, y),
                                                 end = Offset(endX, y),
-                                                strokeWidth = 2.dp.toPx(),
+                                                strokeWidth = strokeWidthPx,
                                                 cap = StrokeCap.Round
                                             )
                                         }
-                                    } else {
-                                        val y = size.height / 2f
-                                        val endX = size.width * progress
-                                        drawLine(
-                                            color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
-                                            start = Offset(0f, y),
-                                            end = Offset(endX, y),
-                                            strokeWidth = 2.dp.toPx(),
-                                            cap = StrokeCap.Round
-                                        )
                                     }
                                 }
                             }
@@ -750,13 +766,13 @@ private fun PersonalNoteCard(
             Box {
                 IconButton(
                     onClick = { showMenu = true },
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
                         contentDescription = "Tùy chọn",
                         tint = ChunkyColor.TextMuted,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
@@ -818,10 +834,13 @@ private fun CreateOrEditNoteDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        ),
         modifier = Modifier
             .fillMaxWidth(0.92f)
-            .heightIn(max = 620.dp)
+            .heightIn(max = 560.dp)
             .imePadding(),
         title = {
             Text(
@@ -991,7 +1010,7 @@ private fun CreateOrEditNoteDialog(
                     scaleX = saveScale
                     scaleY = saveScale
                 },
-                enabled = title.isNotBlank(),
+                enabled = title.trim().isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SkyBottom)
             ) {
                 Text("Lưu ghi chú")

@@ -17,7 +17,9 @@ import java.io.IOException
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "classroom_settings")
 
-class ClassroomPreferences(private val context: Context) {
+class ClassroomPreferences(context: Context) {
+    private val appContext = context.applicationContext
+
     companion object {
         val KEY_USER_EMAIL = stringPreferencesKey("cached_user_email")
         val KEY_USER_NAME = stringPreferencesKey("cached_user_name")
@@ -31,7 +33,7 @@ class ClassroomPreferences(private val context: Context) {
         const val BUNDLED_CLIENT_SECRET = "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"
     }
 
-    private val safePreferencesFlow: Flow<Preferences> = context.dataStore.data
+    private val safePreferencesFlow: Flow<Preferences> = appContext.dataStore.data
         .catch { exception ->
             if (exception is IOException) {
                 emit(emptyPreferences())
@@ -60,7 +62,7 @@ class ClassroomPreferences(private val context: Context) {
     val customClientSecretFlow: Flow<String?> = safePreferencesFlow.map { it[KEY_CUSTOM_CLIENT_SECRET] }
 
     suspend fun saveUserProfile(email: String?, name: String?, avatar: String?) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             if (email != null) prefs[KEY_USER_EMAIL] = email else prefs.remove(KEY_USER_EMAIL)
             if (name != null) prefs[KEY_USER_NAME] = name else prefs.remove(KEY_USER_NAME)
             if (avatar != null) prefs[KEY_USER_AVATAR] = avatar else prefs.remove(KEY_USER_AVATAR)
@@ -69,11 +71,11 @@ class ClassroomPreferences(private val context: Context) {
     }
 
     suspend fun saveLastSyncTime(timestamp: Long) {
-        context.dataStore.edit { it[KEY_LAST_SYNC_TIMESTAMP] = timestamp }
+        appContext.dataStore.edit { it[KEY_LAST_SYNC_TIMESTAMP] = timestamp }
     }
 
     suspend fun saveCustomCredentials(clientId: String?, clientSecret: String?) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             if (!clientId.isNullOrBlank()) prefs[KEY_CUSTOM_CLIENT_ID] = clientId.trim() else prefs.remove(KEY_CUSTOM_CLIENT_ID)
             if (!clientSecret.isNullOrBlank()) prefs[KEY_CUSTOM_CLIENT_SECRET] = clientSecret.trim() else prefs.remove(KEY_CUSTOM_CLIENT_SECRET)
         }
@@ -90,7 +92,7 @@ class ClassroomPreferences(private val context: Context) {
     }
 
     suspend fun clear() {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs.remove(KEY_USER_EMAIL)
             prefs.remove(KEY_USER_NAME)
             prefs.remove(KEY_USER_AVATAR)

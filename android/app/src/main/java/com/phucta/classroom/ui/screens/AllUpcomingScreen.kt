@@ -83,6 +83,8 @@ fun AllUpcomingScreen(
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedSubjectCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
+    val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForVietnameseSearch() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -455,14 +457,11 @@ fun AllUpcomingScreen(
                         key = { it.id },
                         contentType = { "assignment_card" }
                     ) { item ->
-                        val currentItem by rememberUpdatedState(item)
-                        val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
-                        val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
                         val onToggle = remember(item.id) {
                             { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
                         }
-                        val onClickCard = remember(item.id) {
-                            { currentOnSelectAssignment(currentItem) }
+                        val onClickCard = remember(item) {
+                            { currentOnSelectAssignment(item) }
                         }
                         AssignmentCard(
                             coursework = item,
@@ -499,14 +498,11 @@ fun AllUpcomingScreen(
                         key = { it.id },
                         contentType = { "assignment_card" }
                     ) { item ->
-                        val currentItem by rememberUpdatedState(item)
-                        val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
-                        val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
                         val onToggle = remember(item.id) {
                             { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
                         }
-                        val onClickCard = remember(item.id) {
-                            { currentOnSelectAssignment(currentItem) }
+                        val onClickCard = remember(item) {
+                            { currentOnSelectAssignment(item) }
                         }
                         AssignmentCard(
                             coursework = item,
@@ -543,14 +539,11 @@ fun AllUpcomingScreen(
                         key = { it.id },
                         contentType = { "assignment_card" }
                     ) { item ->
-                        val currentItem by rememberUpdatedState(item)
-                        val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
-                        val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
                         val onToggle = remember(item.id) {
                             { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
                         }
-                        val onClickCard = remember(item.id) {
-                            { currentOnSelectAssignment(currentItem) }
+                        val onClickCard = remember(item) {
+                            { currentOnSelectAssignment(item) }
                         }
                         AssignmentCard(
                             coursework = item,
@@ -587,14 +580,11 @@ fun AllUpcomingScreen(
                         key = { it.id },
                         contentType = { "assignment_card" }
                     ) { item ->
-                        val currentItem by rememberUpdatedState(item)
-                        val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
-                        val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
                         val onToggle = remember(item.id) {
                             { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
                         }
-                        val onClickCard = remember(item.id) {
-                            { currentOnSelectAssignment(currentItem) }
+                        val onClickCard = remember(item) {
+                            { currentOnSelectAssignment(item) }
                         }
                         AssignmentCard(
                             coursework = item,
@@ -631,14 +621,11 @@ fun AllUpcomingScreen(
                         key = { it.id },
                         contentType = { "assignment_card" }
                     ) { item ->
-                        val currentItem by rememberUpdatedState(item)
-                        val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
-                        val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
                         val onToggle = remember(item.id) {
                             { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
                         }
-                        val onClickCard = remember(item.id) {
-                            { currentOnSelectAssignment(currentItem) }
+                        val onClickCard = remember(item) {
+                            { currentOnSelectAssignment(item) }
                         }
                         AssignmentCard(
                             coursework = item,
@@ -675,14 +662,11 @@ fun AllUpcomingScreen(
                         key = { it.id },
                         contentType = { "assignment_card" }
                     ) { item ->
-                        val currentItem by rememberUpdatedState(item)
-                        val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
-                        val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
                         val onToggle = remember(item.id) {
                             { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
                         }
-                        val onClickCard = remember(item.id) {
-                            { currentOnSelectAssignment(currentItem) }
+                        val onClickCard = remember(item) {
+                            { currentOnSelectAssignment(item) }
                         }
                         AssignmentCard(
                             coursework = item,

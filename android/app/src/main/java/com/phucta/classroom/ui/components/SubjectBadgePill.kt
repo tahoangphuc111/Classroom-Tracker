@@ -9,12 +9,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phucta.classroom.ui.theme.OutfitFontFamily
+
+private val BadgeShape = RoundedCornerShape(6.dp)
 
 @Composable
 fun SubjectBadgePill(
@@ -28,8 +29,7 @@ fun SubjectBadgePill(
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(theme.color)
+            .background(theme.color, shape = BadgeShape)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {

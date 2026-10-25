@@ -13,16 +13,7 @@ import java.util.concurrent.Future
 class SubjectClassificationBenchmark {
     companion object {
         fun clearSubjectCaches() {
-            try {
-                val helperClass = SubjectArtHelper::class.java
-                val courseCacheField = helperClass.getDeclaredField("courseCategoryCache").apply { isAccessible = true }
-                val compoundCacheField = helperClass.getDeclaredField("compoundCategoryCache").apply { isAccessible = true }
-                val themeCacheField = helperClass.getDeclaredField("themeCache").apply { isAccessible = true }
-
-                (courseCacheField.get(null) as? ConcurrentHashMap<*, *>)?.clear()
-                (compoundCacheField.get(null) as? ConcurrentHashMap<*, *>)?.clear()
-                (themeCacheField.get(null) as? ConcurrentHashMap<*, *>)?.clear()
-            } catch (ignored: Exception) {}
+            SubjectArtHelper.clearCaches()
         }
     }
 

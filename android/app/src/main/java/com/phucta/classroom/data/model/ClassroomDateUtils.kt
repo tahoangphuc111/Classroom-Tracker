@@ -25,11 +25,14 @@ object ClassroomDateUtils {
     @Volatile
     private var cacheExpirationTime: Long = 0L
     @Volatile
+    private var cachedTimeZone: TimeZone? = null
+    @Volatile
     private var cachedTimeZoneId: String = ""
 
     private val timeOnlyCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
     private val fullDueDateCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
     private val shortDateCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
+    private val dayAndDateCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
 
     private val calendarPool = object : ThreadLocal<Calendar>() {
         override fun initialValue(): Calendar {
@@ -37,19 +40,43 @@ object ClassroomDateUtils {
         }
     }
 
+    private val utcCalendarPool = object : ThreadLocal<Calendar>() {
+        override fun initialValue(): Calendar {
+            return Calendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.US)
+        }
+    }
+
     private fun checkTimeZone() {
-        val currentTzId = TimeZone.getDefault().id
-        if (currentTzId != cachedTimeZoneId) {
-            synchronized(this) {
-                if (currentTzId != cachedTimeZoneId) {
-                    cachedTimeZoneId = currentTzId
-                    timeOnlyCache.clear()
-                    fullDueDateCache.clear()
-                    shortDateCache.clear()
-                    cachedStartOfToday = 0L
-                    cacheExpirationTime = 0L
+        val currentTz = TimeZone.getDefault()
+        if (currentTz !== cachedTimeZone) {
+            val currentTzId = currentTz.id
+            if (currentTzId != cachedTimeZoneId) {
+                synchronized(this) {
+                    if (currentTzId != cachedTimeZoneId) {
+                        cachedTimeZone = currentTz
+                        cachedTimeZoneId = currentTzId
+                        timeOnlyCache.clear()
+                        fullDueDateCache.clear()
+                        shortDateCache.clear()
+                        dayAndDateCache.clear()
+                        cachedStartOfToday = 0L
+                        cacheExpirationTime = 0L
+                    }
                 }
+            } else {
+                cachedTimeZone = currentTz
             }
+        }
+    }
+
+    fun clearCaches() {
+        synchronized(this) {
+            timeOnlyCache.clear()
+            fullDueDateCache.clear()
+            shortDateCache.clear()
+            dayAndDateCache.clear()
+            cachedStartOfToday = 0L
+            cacheExpirationTime = 0L
         }
     }
 
@@ -58,7 +85,8 @@ object ClassroomDateUtils {
         if (now < cachedStartOfToday || now >= cacheExpirationTime || cachedStartOfToday == 0L) {
             synchronized(this) {
                 if (now < cachedStartOfToday || now >= cacheExpirationTime || cachedStartOfToday == 0L) {
-                    val cal = Calendar.getInstance(TimeZone.getDefault(), Locale.US).apply {
+                    val cal = (calendarPool.get() ?: Calendar.getInstance(TimeZone.getDefault(), Locale.US)).apply {
+                        timeZone = TimeZone.getDefault()
                         timeInMillis = now
                         set(Calendar.HOUR_OF_DAY, 0)
                         set(Calendar.MINUTE, 0)
@@ -104,13 +132,33 @@ object ClassroomDateUtils {
         val cached = shortDateCache[dueEpochMillis]
         if (cached != null) return cached
 
-        val formatted = synchronized(shortDateFormat) {
-            shortDateFormat.timeZone = TimeZone.getDefault()
-            shortDateFormat.format(Date(dueEpochMillis))
+        val cal = (calendarPool.get() ?: Calendar.getInstance(TimeZone.getDefault(), Locale.US)).apply {
+            timeZone = TimeZone.getDefault()
+            timeInMillis = dueEpochMillis
         }
-        if (shortDateCache.size < 1000) {
-            shortDateCache[dueEpochMillis] = formatted
+        val day = cal.get(Calendar.DAY_OF_MONTH)
+        val month = cal.get(Calendar.MONTH) + 1
+        val formatted = "$day/$month"
+        if (shortDateCache.size >= 2048) {
+            shortDateCache.clear()
         }
+        shortDateCache[dueEpochMillis] = formatted
+        return formatted
+    }
+
+    fun formatDayAndDate(dueEpochMillis: Long): String {
+        checkTimeZone()
+        val cached = dayAndDateCache[dueEpochMillis]
+        if (cached != null) return cached
+
+        val formatted = synchronized(dayAndDateFormat) {
+            dayAndDateFormat.timeZone = TimeZone.getDefault()
+            dayAndDateFormat.format(Date(dueEpochMillis))
+        }
+        if (dayAndDateCache.size >= 2048) {
+            dayAndDateCache.clear()
+        }
+        dayAndDateCache[dueEpochMillis] = formatted
         return formatted
     }
 
@@ -129,14 +177,16 @@ object ClassroomDateUtils {
         val result = if (hour == 23 && minute >= 55) {
             "Cuối ngày"
         } else {
-            synchronized(timeOnlyFormat) {
-                timeOnlyFormat.timeZone = TimeZone.getDefault()
-                timeOnlyFormat.format(Date(dueEpochMillis))
-            }
+            val h1 = ((hour / 10) + 48).toChar()
+            val h2 = ((hour % 10) + 48).toChar()
+            val m1 = ((minute / 10) + 48).toChar()
+            val m2 = ((minute % 10) + 48).toChar()
+            String(charArrayOf(h1, h2, ':', m1, m2))
         }
-        if (timeOnlyCache.size < 1000) {
-            timeOnlyCache[dueEpochMillis] = result
+        if (timeOnlyCache.size >= 2048) {
+            timeOnlyCache.clear()
         }
+        timeOnlyCache[dueEpochMillis] = result
         return result
     }
 
@@ -151,9 +201,10 @@ object ClassroomDateUtils {
             fullDueDateFormat.format(Date(dueEpochMillis))
         }
         val result = formatted.replaceFirstChar { if (it.isLowerCase()) it.titlecase(VIETNAMESE_LOCALE) else it.toString() }
-        if (fullDueDateCache.size < 1000) {
-            fullDueDateCache[dueEpochMillis] = result
+        if (fullDueDateCache.size >= 1000) {
+            fullDueDateCache.clear()
         }
+        fullDueDateCache[dueEpochMillis] = result
         return result
     }
 
@@ -182,23 +233,25 @@ object ClassroomDateUtils {
 
     fun friendlyDueString(dueEpochMillis: Long?, isCompleted: Boolean): String {
         if (dueEpochMillis == null) return "Không có hạn"
+        ensureDayBoundaries()
+        val startToday = cachedStartOfToday
+        val startTomorrow = cachedStartOfTomorrow
+        val startDayAfter = cachedStartOfDayAfter
+
         val time = buildTimeOnlyString(dueEpochMillis)
         val isEndOfDay = (time == "Cuối ngày")
-        val overdue = isOverdue(dueEpochMillis, isCompleted)
-        val today = isDueToday(dueEpochMillis)
-        val tomorrow = isDueTomorrow(dueEpochMillis)
-        val past = isPast(dueEpochMillis)
-        val date = Date(dueEpochMillis)
+        val now = System.currentTimeMillis()
+        val overdue = !isCompleted && dueEpochMillis < now
+        val today = dueEpochMillis in startToday until startTomorrow
+        val tomorrow = dueEpochMillis in startTomorrow until startDayAfter
+        val past = dueEpochMillis < startToday
 
         return when {
             overdue -> {
                 if (today) {
                     if (isEndOfDay) "Quá hạn (hôm nay)" else "Quá hạn ($time)"
                 } else {
-                    val dayStr = synchronized(shortDateFormat) {
-                        shortDateFormat.timeZone = TimeZone.getDefault()
-                        shortDateFormat.format(date)
-                    }
+                    val dayStr = formatShortDate(dueEpochMillis)
                     "Quá hạn ($dayStr)"
                 }
             }
@@ -209,17 +262,11 @@ object ClassroomDateUtils {
                 if (isEndOfDay) "Hết ngày mai" else "Ngày mai, $time"
             }
             past -> {
-                val dayStr = synchronized(shortDateFormat) {
-                    shortDateFormat.timeZone = TimeZone.getDefault()
-                    shortDateFormat.format(date)
-                }
+                val dayStr = formatShortDate(dueEpochMillis)
                 "Đã qua ($dayStr)"
             }
             else -> {
-                val dayStr = synchronized(dayAndDateFormat) {
-                    dayAndDateFormat.timeZone = TimeZone.getDefault()
-                    dayAndDateFormat.format(date)
-                }
+                val dayStr = formatDayAndDate(dueEpochMillis)
                 if (isEndOfDay) "$dayStr (hết ngày)" else "$dayStr, $time"
             }
         }
@@ -277,23 +324,26 @@ object ClassroomDateUtils {
     ): String {
         if (dueEpochMillis == null) return "Không hạn"
         if (isCompleted) return "Đã nộp"
+        ensureDayBoundaries()
+        val startToday = cachedStartOfToday
+        val startTomorrow = cachedStartOfTomorrow
+        val startDayAfter = cachedStartOfDayAfter
+
         val time = precomputedTimeOnly ?: buildTimeOnlyString(dueEpochMillis)
         val isEndOfDay = (time == "Cuối ngày")
-        val overdue = isOverdue(dueEpochMillis, isCompleted)
-        val today = isDueToday(dueEpochMillis)
-        val tomorrow = isDueTomorrow(dueEpochMillis)
-        val past = isPast(dueEpochMillis)
+        val now = System.currentTimeMillis()
+        val today = dueEpochMillis in startToday until startTomorrow
+        val tomorrow = dueEpochMillis in startTomorrow until startDayAfter
+        val overdue = dueEpochMillis < now
+        val past = dueEpochMillis < startToday
 
         return when {
+            overdue -> "Quá hạn"
             today -> if (isEndOfDay) "Cuối ngày" else time
             tomorrow -> if (isEndOfDay) "Mai" else "Mai $time"
-            overdue -> "Quá hạn"
             past -> "Đã qua"
             else -> {
-                val dayStr = synchronized(shortDateFormat) {
-                    shortDateFormat.timeZone = TimeZone.getDefault()
-                    shortDateFormat.format(Date(dueEpochMillis))
-                }
+                val dayStr = formatShortDate(dueEpochMillis)
                 if (isEndOfDay) dayStr else "$dayStr $time"
             }
         }
@@ -310,7 +360,7 @@ object ClassroomDateUtils {
     ): Long? {
         if (year == null || month == null || day == null) return null
         return if (hasDueTime) {
-            val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.US).apply {
+            val utcCal = (utcCalendarPool.get() ?: Calendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.US)).apply {
                 clear()
                 set(Calendar.YEAR, year)
                 set(Calendar.MONTH, month - 1)
@@ -322,7 +372,8 @@ object ClassroomDateUtils {
             }
             utcCal.timeInMillis
         } else {
-            val localCal = Calendar.getInstance(TimeZone.getDefault(), Locale.US).apply {
+            val localCal = (calendarPool.get() ?: Calendar.getInstance(TimeZone.getDefault(), Locale.US)).apply {
+                timeZone = TimeZone.getDefault()
                 clear()
                 set(Calendar.YEAR, year)
                 set(Calendar.MONTH, month - 1)

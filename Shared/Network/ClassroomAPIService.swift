@@ -63,6 +63,10 @@ public final class ClassroomAPIService: ObservableObject {
             var allCoursework: [Coursework] = []
             let existingCoursework = ClassroomStorage.shared.loadCoursework()
 
+            if !selectedCourses.isEmpty {
+                try? await Task.sleep(nanoseconds: 300_000_000)
+            }
+
             let chunkSize = 2
             for startIndex in stride(from: 0, to: selectedCourses.count, by: chunkSize) {
                 guard GoogleOAuthService.shared.isAuthenticated, !Task.isCancelled else { return }
@@ -91,7 +95,7 @@ public final class ClassroomAPIService: ObservableObject {
                 }
 
                 if startIndex + chunkSize < selectedCourses.count {
-                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    try? await Task.sleep(nanoseconds: 600_000_000)
                 }
             }
 
@@ -114,6 +118,7 @@ public final class ClassroomAPIService: ObservableObject {
 
             ClassroomStorage.shared.saveCoursework(finalCoursework)
             ClassroomStorage.shared.saveLastSyncTime(Date())
+            ClassroomStorage.shared.saveUserLoggedIn(true)
         } catch {
             if Task.isCancelled || (error as? URLError)?.code == .cancelled {
                 return
@@ -122,7 +127,7 @@ public final class ClassroomAPIService: ObservableObject {
         }
     }
 
-    private func fetchActiveCourses(accessToken: String) async throws -> [Course] {
+    private nonisolated func fetchActiveCourses(accessToken: String) async throws -> [Course] {
         var coursesMap: [String: Course] = [:]
         var lastError: Error?
 
@@ -176,7 +181,7 @@ public final class ClassroomAPIService: ObservableObject {
         return Array(coursesMap.values)
     }
 
-    private func dataWithRetry(for request: URLRequest, maxRetries: Int = 2) async throws -> (Data, URLResponse) {
+    private nonisolated func dataWithRetry(for request: URLRequest, maxRetries: Int = 2) async throws -> (Data, URLResponse) {
         var attempt = 0
         while true {
             let (data, response): (Data, URLResponse)
@@ -197,8 +202,12 @@ public final class ClassroomAPIService: ObservableObject {
                (httpResponse.statusCode == 429 || httpResponse.statusCode == 503),
                attempt < maxRetries {
                 attempt += 1
-                let delay = UInt64(500_000_000) * (1 << attempt)
-                try await Task.sleep(nanoseconds: delay)
+                var delayNs = UInt64(500_000_000) * (1 << attempt)
+                if let retryAfterHeader = httpResponse.value(forHTTPHeaderField: "Retry-After"),
+                   let seconds = Double(retryAfterHeader), seconds > 0 {
+                    delayNs = UInt64(seconds * 1_000_000_000)
+                }
+                try await Task.sleep(nanoseconds: delayNs)
                 continue
             }
 
@@ -206,7 +215,7 @@ public final class ClassroomAPIService: ObservableObject {
         }
     }
 
-    private func fetchCoursesPage(
+    private nonisolated func fetchCoursesPage(
         accessToken: String,
         filterKey: String?,
         filterValue: String?,
@@ -268,7 +277,7 @@ public final class ClassroomAPIService: ObservableObject {
                 }
             }
 
-            let decoded = try JSONDecoder().decode(GoogleCoursesListResponse.self, from: data)
+            let decoded = try Self.jsonDecoder.decode(GoogleCoursesListResponse.self, from: data)
             if let items = decoded.courses {
                 let mapped = items.compactMap { item -> Course? in
                     guard let id = item.id, !id.isEmpty, let name = item.name, !name.isEmpty else { return nil }
@@ -291,7 +300,7 @@ public final class ClassroomAPIService: ObservableObject {
         return courses
     }
 
-    private func fetchCourseworkForCourse(course: Course, accessToken: String) async throws -> [Coursework] {
+    private nonisolated func fetchCourseworkForCourse(course: Course, accessToken: String) async throws -> [Coursework] {
         async let rawCourseworkFetch = fetchRawCoursework(courseId: course.id, accessToken: accessToken)
         async let submissionsMapFetch = fetchSubmissionsMap(courseId: course.id, accessToken: accessToken)
 
@@ -338,7 +347,7 @@ public final class ClassroomAPIService: ObservableObject {
         }
     }
 
-    private func fetchRawCoursework(courseId: String, accessToken: String) async throws -> [GoogleCourseworkRawItem] {
+    private nonisolated func fetchRawCoursework(courseId: String, accessToken: String) async throws -> [GoogleCourseworkRawItem] {
         var allItems: [GoogleCourseworkRawItem] = []
         var pageToken: String? = nil
         var pageCount = 0
@@ -369,7 +378,7 @@ public final class ClassroomAPIService: ObservableObject {
                 break
             }
 
-            if let decoded = try? JSONDecoder().decode(GoogleCourseworkListResponse.self, from: data),
+            if let decoded = try? Self.jsonDecoder.decode(GoogleCourseworkListResponse.self, from: data),
                let items = decoded.courseWork {
                 allItems.append(contentsOf: items)
                 pageToken = decoded.nextPageToken
@@ -388,7 +397,7 @@ public final class ClassroomAPIService: ObservableObject {
                 request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
                 if let (data, response) = try? await dataWithRetry(for: request),
                    let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode),
-                   let decoded = try? JSONDecoder().decode(GoogleCourseworkListResponse.self, from: data),
+                   let decoded = try? Self.jsonDecoder.decode(GoogleCourseworkListResponse.self, from: data),
                    let items = decoded.courseWork {
                     allItems.append(contentsOf: items)
                 }
@@ -398,7 +407,7 @@ public final class ClassroomAPIService: ObservableObject {
         return allItems
     }
 
-    private func fetchSubmissionsMap(courseId: String, accessToken: String) async -> [String: GoogleSubmissionItem] {
+    private nonisolated func fetchSubmissionsMap(courseId: String, accessToken: String) async -> [String: GoogleSubmissionItem] {
         var map: [String: GoogleSubmissionItem] = [:]
         var pageToken: String? = nil
         var pageCount = 0
@@ -424,7 +433,7 @@ public final class ClassroomAPIService: ObservableObject {
                 guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
                     break
                 }
-                let decoded = try JSONDecoder().decode(GoogleSubmissionsListResponse.self, from: data)
+                let decoded = try Self.jsonDecoder.decode(GoogleSubmissionsListResponse.self, from: data)
                 for item in decoded.studentSubmissions ?? [] {
                     if let cwId = item.courseWorkId, !cwId.isEmpty {
                         map[cwId] = item
@@ -440,13 +449,21 @@ public final class ClassroomAPIService: ObservableObject {
         return map
     }
 
-    private static let utcCalendar: Calendar = {
+    private nonisolated static let jsonDecoder = JSONDecoder()
+
+    private nonisolated static let utcCalendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC") ?? .gmt
         return calendar
     }()
 
-    private func parseGoogleDueDate(date: GoogleDateItem?, time: GoogleTimeItem?) -> Date? {
+    private nonisolated static let localCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .autoupdatingCurrent
+        return calendar
+    }()
+
+    private nonisolated func parseGoogleDueDate(date: GoogleDateItem?, time: GoogleTimeItem?) -> Date? {
         guard let date, let year = date.year, let month = date.month, let day = date.day else {
             return nil
         }
@@ -465,9 +482,7 @@ public final class ClassroomAPIService: ObservableObject {
             dateComponents.hour = 23
             dateComponents.minute = 59
             dateComponents.second = 59
-            var localCalendar = Calendar(identifier: .gregorian)
-            localCalendar.timeZone = .current
-            return localCalendar.date(from: dateComponents)
+            return Self.localCalendar.date(from: dateComponents)
         }
     }
 }

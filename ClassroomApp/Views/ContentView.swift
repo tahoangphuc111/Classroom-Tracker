@@ -126,11 +126,99 @@ public struct FloatingEmberView: View {
     }
 }
 
+private final class AssignmentListCache {
+    final class CategorizedSectionsResult {
+        let todays: [Coursework]
+        let tomorrows: [Coursework]
+        let laters: [Coursework]
+        let noDueDates: [Coursework]
+
+        init(todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
+            self.todays = todays
+            self.tomorrows = tomorrows
+            self.laters = laters
+            self.noDueDates = noDueDates
+        }
+    }
+
+    private var lastCategory: ContentView.AppFilterCategory?
+    private var lastSearchText: String = ""
+    private var lastSubjectFilter: String = ""
+    private var lastCourseworkCount: Int = -1
+    private var lastCourseworkVersion: Int = -1
+    private var cachedFilteredList: [Coursework] = []
+
+    private var lastSectionsCategory: ContentView.AppFilterCategory?
+    private var lastSectionsListCount: Int = -1
+    private var lastSectionsSearchText: String = ""
+    private var lastSectionsSubjectFilter: String = ""
+    private var lastSectionsCourseworkVersion: Int = -1
+    private var cachedSections: CategorizedSectionsResult = CategorizedSectionsResult(todays: [], tomorrows: [], laters: [], noDueDates: [])
+
+    func filteredList(
+        category: ContentView.AppFilterCategory,
+        searchText: String,
+        subjectFilter: String,
+        courseworkCount: Int,
+        courseworkVersion: Int,
+        compute: () -> [Coursework]
+    ) -> [Coursework] {
+        if lastCategory == category &&
+            lastSearchText == searchText &&
+            lastSubjectFilter == subjectFilter &&
+            lastCourseworkCount == courseworkCount &&
+            lastCourseworkVersion == courseworkVersion {
+            return cachedFilteredList
+        }
+        let result = compute()
+        lastCategory = category
+        lastSearchText = searchText
+        lastSubjectFilter = subjectFilter
+        lastCourseworkCount = courseworkCount
+        lastCourseworkVersion = courseworkVersion
+        cachedFilteredList = result
+        return result
+    }
+
+    func categorizedSections(
+        list: [Coursework],
+        category: ContentView.AppFilterCategory,
+        searchText: String,
+        subjectFilter: String,
+        courseworkVersion: Int,
+        compute: () -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework])
+    ) -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
+        if lastSectionsCategory == category &&
+            lastSectionsListCount == list.count &&
+            lastSectionsSearchText == searchText &&
+            lastSectionsSubjectFilter == subjectFilter &&
+            lastSectionsCourseworkVersion == courseworkVersion {
+            return (cachedSections.todays, cachedSections.tomorrows, cachedSections.laters, cachedSections.noDueDates)
+        }
+        let result = compute()
+        lastSectionsCategory = category
+        lastSectionsListCount = list.count
+        lastSectionsSearchText = searchText
+        lastSectionsSubjectFilter = subjectFilter
+        lastSectionsCourseworkVersion = courseworkVersion
+        cachedSections = CategorizedSectionsResult(
+            todays: result.todays,
+            tomorrows: result.tomorrows,
+            laters: result.laters,
+            noDueDates: result.noDueDates
+        )
+        return result
+    }
+}
+
 public struct ContentView: View {
     @StateObject private var authService = GoogleOAuthService.shared
     @StateObject private var apiService = ClassroomAPIService.shared
     @StateObject private var updateService = AppUpdateService.shared
     @StateObject private var reminderService = EveningReminderService.shared
+
+    @State private var courseworkVersion: Int = 0
+    @State private var listCache = AssignmentListCache()
 
     @State private var courses: [Course] = []
     @State private var allCoursework: [Coursework] = []
@@ -138,6 +226,11 @@ public struct ContentView: View {
     @State private var courseworkNoteEditingText: String = ""
     @State private var courseworkNoteToEditCourseworkId: String? = nil
     @State private var buckets = CourseworkBuckets()
+    @State private var availableSubjectPills: [String] = ["Tất cả"]
+    @State private var completedDisplayLimit: Int = 30
+    @State private var noteCourseworkIds: Set<String> = []
+    @State private var pendingNotesCount: Int = 0
+    @State private var totalIndependentNotesCount: Int = 0
     @State private var selectedFilter: AppFilterCategory = .tomorrow
     @State private var selectedSubjectFilter: String = "Tất cả"
     @State private var selectedCourseworkIds: Set<String> = []
@@ -170,7 +263,6 @@ public struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
-    @Namespace private var tabSwitchNamespace
 
     private var isLandscapePhone: Bool {
         verticalSizeClass == .compact
@@ -263,7 +355,8 @@ public struct ContentView: View {
     public init() {
         #if os(iOS)
         let tabBarAppearance = UITabBarAppearance()
-        tabBarAppearance.configureWithTransparentBackground()
+        tabBarAppearance.configureWithDefaultBackground()
+        tabBarAppearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
 
         let itemAppearance = UITabBarItemAppearance()
         tabBarAppearance.stackedLayoutAppearance = itemAppearance
@@ -321,10 +414,7 @@ public struct ContentView: View {
             }
         }
 
-        let sortWithPendingFirstAscending: (Coursework, Coursework) -> Bool = {
-            if $0.isCompleted != $1.isCompleted {
-                return !$0.isCompleted
-            }
+        let sameStatusDueDateAscending: (Coursework, Coursework) -> Bool = {
             switch ($0.dueDate, $1.dueDate) {
             case let (d1?, d2?):
                 if d1 != d2 { return d1 < d2 }
@@ -356,12 +446,12 @@ public struct ContentView: View {
             }
         }
 
-        tomorrowsStrict.sort(by: sortWithPendingFirstAscending)
-        todays.sort(by: sortWithPendingFirstAscending)
-        laters.sort(by: sortWithPendingFirstAscending)
-        pasts.sort(by: sortWithPendingFirstAscending)
+        tomorrowsStrict.sort(by: sameStatusDueDateAscending)
+        todays.sort(by: sameStatusDueDateAscending)
+        laters.sort(by: sameStatusDueDateAscending)
+        pasts.sort(by: sameStatusDueDateAscending)
         comp.sort(by: dueDateDescending)
-        noDates.sort(by: sortWithPendingFirstAscending)
+        noDates.sort(by: sameStatusDueDateAscending)
 
         let baoBaiItems = ClassroomStorage.shared.getTomorrowCoursework(items: allCoursework, courses: courses, includeCompleted: true)
 
@@ -375,7 +465,17 @@ public struct ContentView: View {
             completed: comp
         )
 
-        if selectedSubjectFilter != "Tất cả" && !availableSubjectPills.contains(selectedSubjectFilter) {
+        self.courseworkVersion &+= 1
+
+        updateAvailableSubjectPills()
+    }
+
+    private func updateAvailableSubjectPills() {
+        let pool = (selectedFilter == .completed) ? self.buckets.completed : self.buckets.allUpcoming
+        let subjects = Set(pool.map(\.badgeCode)).sorted()
+        self.availableSubjectPills = ["Tất cả"] + subjects
+
+        if selectedSubjectFilter != "Tất cả" && !self.availableSubjectPills.contains(selectedSubjectFilter) {
             selectedSubjectFilter = "Tất cả"
         }
     }
@@ -415,27 +515,45 @@ public struct ContentView: View {
 
     private func categoryPendingCount(_ category: AppFilterCategory) -> Int {
         if !searchText.isEmpty {
-            return currentFilteredList(for: category).filter { !$0.isCompleted }.count
+            let query = searchText.trimmingCharacters(in: .whitespaces)
+            let cleanQuery = query.normalizedForVietnameseSearch()
+            let tokens = cleanQuery.searchQueryTokens()
+            guard !tokens.isEmpty else { return 0 }
+            let base = baseFilteredList(for: category)
+            return base.reduce(0) { count, item in
+                if !item.isCompleted && tokens.allSatisfy({ item.searchIndex.contains($0) }) {
+                    return count + 1
+                }
+                return count
+            }
         }
         switch category {
         case .tomorrow:
-            return buckets.tomorrow.filter { !$0.isCompleted }.count
+            return buckets.tomorrowPendingCount
         case .todayAndTomorrow:
-            return buckets.todayAndTomorrow.filter { !$0.isCompleted }.count
+            return buckets.todayAndTomorrowPendingCount
         case .allUpcoming:
-            return buckets.allUpcoming.filter { !$0.isCompleted }.count
+            return buckets.allUpcomingPendingCount
         case .past:
-            return buckets.past.filter { !$0.isCompleted }.count
+            return buckets.pastPendingCount
         case .completed:
-            return buckets.completed.filter { !$0.isCompleted }.count
-        case .notes, .widgetPreview:
+            return buckets.completedCount
+        case .notes:
+            return pendingNotesCount
+        case .widgetPreview:
             return 0
         }
     }
 
     private func categoryHasItems(_ category: AppFilterCategory) -> Bool {
         if !searchText.isEmpty {
-            return !currentFilteredList(for: category).isEmpty
+            let query = searchText.trimmingCharacters(in: .whitespaces)
+            let cleanQuery = query.normalizedForVietnameseSearch()
+            let tokens = cleanQuery.searchQueryTokens()
+            guard !tokens.isEmpty else { return false }
+            return baseFilteredList(for: category).contains { item in
+                tokens.allSatisfy { item.searchIndex.contains($0) }
+            }
         }
         switch category {
         case .tomorrow: return !buckets.tomorrow.isEmpty
@@ -448,29 +566,60 @@ public struct ContentView: View {
     }
 
     private func currentFilteredList(for category: AppFilterCategory) -> [Coursework] {
+        listCache.filteredList(
+            category: category,
+            searchText: searchText,
+            subjectFilter: selectedSubjectFilter,
+            courseworkCount: allCoursework.count,
+            courseworkVersion: courseworkVersion
+        ) {
+            computeFilteredList(for: category)
+        }
+    }
+
+    private func computeFilteredList(for category: AppFilterCategory) -> [Coursework] {
         var baseList = baseFilteredList(for: category)
-        if category == .allUpcoming && selectedSubjectFilter != "Tất cả" {
+        if (category == .allUpcoming || category == .completed) && selectedSubjectFilter != "Tất cả" {
             baseList = baseList.filter { item in
-                SubjectArtHelper.badgeCode(for: item.courseName, title: item.title) == selectedSubjectFilter
+                item.badgeCode == selectedSubjectFilter
             }
         }
         let query = searchText.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return baseList }
 
         let cleanQuery = query.normalizedForVietnameseSearch()
-        let tokens = cleanQuery.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        let tokens = cleanQuery.searchQueryTokens()
         guard !tokens.isEmpty else { return baseList }
 
-        let matchingItems = baseList.filter { item in
-            tokens.allSatisfy { item.searchIndex.contains($0) }
-        }
-        let scored = matchingItems.map { ($0, $0.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)) }
-        return scored.sorted { first, second in
-            if first.1 != second.1 {
-                return first.1 > second.1
+        var scored: [(item: Coursework, score: Int)] = []
+        scored.reserveCapacity(baseList.count)
+        let tokenCount = tokens.count
+        for item in baseList {
+            let index = item.searchIndex
+            var matchesAll = true
+            for t in 0..<tokenCount {
+                if !index.contains(tokens[t]) {
+                    matchesAll = false
+                    break
+                }
             }
-            return first.0 < second.0
-        }.map(\.0)
+            if matchesAll {
+                scored.append((item: item, score: item.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)))
+            }
+        }
+        guard !scored.isEmpty else { return [] }
+        scored.sort { first, second in
+            if first.score != second.score {
+                return first.score > second.score
+            }
+            return first.item < second.item
+        }
+        var result: [Coursework] = []
+        result.reserveCapacity(scored.count)
+        for entry in scored {
+            result.append(entry.item)
+        }
+        return result
     }
 
     private var baseFilteredList: [Coursework] {
@@ -481,15 +630,21 @@ public struct ContentView: View {
         currentFilteredList(for: selectedFilter)
     }
 
-    private var availableSubjectPills: [String] {
-        let subjects = Set(buckets.allUpcoming.map {
-            SubjectArtHelper.badgeCode(for: $0.courseName, title: $0.title)
-        }).sorted()
-        return ["Tất cả"] + subjects
-    }
-
     private func categorizedSections(for list: [Coursework], category: AppFilterCategory? = nil) -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
         let targetCategory = category ?? selectedFilter
+        return listCache.categorizedSections(
+            list: list,
+            category: targetCategory,
+            searchText: searchText,
+            subjectFilter: selectedSubjectFilter,
+            courseworkVersion: courseworkVersion
+        ) {
+            computeCategorizedSections(for: list, category: targetCategory)
+        }
+    }
+
+    private func computeCategorizedSections(for list: [Coursework], category: AppFilterCategory) -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
+        let targetCategory = category
         let isDefaultFilter = searchText.trimmingCharacters(in: .whitespaces).isEmpty && (targetCategory != .allUpcoming || selectedSubjectFilter == "Tất cả")
         if isDefaultFilter {
             return (
@@ -545,6 +700,8 @@ public struct ContentView: View {
             hasInitialLoadHappened = true
 
             if authService.isAuthenticated {
+                ClassroomStorage.shared.saveUserLoggedIn(true)
+                ClassroomStorage.shared.notifyWidgetReload()
                 Task {
                     await Task.yield()
                     await apiService.syncAll()
@@ -565,9 +722,12 @@ public struct ContentView: View {
         }
         .onChange(of: selectedFilter) {
             selectedSubjectFilter = "Tất cả"
+            updateAvailableSubjectPills()
+            completedDisplayLimit = 30
             autoSelectFirstItem()
         }
         .onChange(of: selectedSubjectFilter) {
+            completedDisplayLimit = 30
             let list = currentFilteredList
             if let current = selectedCoursework, list.contains(where: { $0.id == current.id }) {
                 selectedCourseworkIds = selectedCourseworkIds.filter { id in list.contains(where: { $0.id == id }) }
@@ -583,6 +743,7 @@ public struct ContentView: View {
             }
         }
         .onChange(of: searchText) {
+            completedDisplayLimit = 30
             let list = currentFilteredList
             if let current = selectedCoursework, list.contains(where: { $0.id == current.id }) {
             } else if let first = list.first {
@@ -618,6 +779,8 @@ public struct ContentView: View {
             guard hasInitialLoadHappened, scenePhase == .active else { return }
             refreshData()
             if authService.isAuthenticated {
+                ClassroomStorage.shared.saveUserLoggedIn(true)
+                ClassroomStorage.shared.notifyWidgetReload()
                 let shouldSync: Bool
                 if let lastSync = ClassroomStorage.shared.loadLastSyncTime() {
                     shouldSync = Date().timeIntervalSince(lastSync) > 300
@@ -644,6 +807,13 @@ public struct ContentView: View {
                 refreshData()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenLoginOrSettings"))) { _ in
+            if !authService.isAuthenticated {
+                clientIdInput = authService.configuredClientId
+                clientSecretInput = authService.configuredClientSecret
+                showSettingsModal = true
+            }
+        }
         .onChange(of: authService.authErrorMessage) {
             if let msg = authService.authErrorMessage {
                 showToast(
@@ -656,6 +826,8 @@ public struct ContentView: View {
         }
         .onChange(of: authService.isAuthenticated) {
             if authService.isAuthenticated {
+                ClassroomStorage.shared.saveUserLoggedIn(true)
+                ClassroomStorage.shared.notifyWidgetReload()
                 Task {
                     await apiService.syncAll()
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
@@ -663,6 +835,8 @@ public struct ContentView: View {
                     }
                 }
             } else {
+                ClassroomStorage.shared.saveUserLoggedIn(false)
+                ClassroomStorage.shared.notifyWidgetReload()
                 refreshData()
                 autoSelectFirstItem()
             }
@@ -893,168 +1067,131 @@ public struct ContentView: View {
     }
 
     #if os(iOS)
-    private struct CompactTabDefinition: Identifiable {
-        let category: AppFilterCategory
-        let shortTitle: String
-        let icon: String
-        let badgeCount: Int?
-
-        var id: String { category.rawValue }
-    }
-
-    private var compactTabs: [CompactTabDefinition] {
-        let pendingNotesCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
-        let upcomingBadge = buckets.allUpcomingPendingCount + buckets.pastPendingCount
-        return [
-            CompactTabDefinition(
-                category: .tomorrow,
-                shortTitle: "Báo bài",
-                icon: "calendar.badge.clock",
-                badgeCount: buckets.tomorrowPendingCount > 0 ? buckets.tomorrowPendingCount : nil
-            ),
-            CompactTabDefinition(
-                category: .todayAndTomorrow,
-                shortTitle: "Hôm nay",
-                icon: "clock",
-                badgeCount: buckets.todayAndTomorrowPendingCount > 0 ? buckets.todayAndTomorrowPendingCount : nil
-            ),
-            CompactTabDefinition(
-                category: .allUpcoming,
-                shortTitle: "Sắp tới",
-                icon: "tray",
-                badgeCount: upcomingBadge > 0 ? upcomingBadge : nil
-            ),
-            CompactTabDefinition(
-                category: .completed,
-                shortTitle: "Đã xong",
-                icon: "checkmark.seal",
-                badgeCount: nil
-            ),
-            CompactTabDefinition(
-                category: .notes,
-                shortTitle: "Ghi chú",
-                icon: "square.and.pencil",
-                badgeCount: pendingNotesCount > 0 ? pendingNotesCount : nil
-            ),
-        ]
+    private var compactTabSelectionBinding: Binding<AppFilterCategory> {
+        Binding(
+            get: {
+                if selectedFilter == .todayAndTomorrow || selectedFilter == .past {
+                    return .allUpcoming
+                }
+                return selectedFilter
+            },
+            set: { newCategory in
+                if selectedFilter != newCategory {
+                    if !searchText.isEmpty {
+                        searchText = ""
+                    }
+                    selectedFilter = newCategory
+                }
+            }
+        )
     }
 
     @ViewBuilder
     private var compactAppView: some View {
-        TabView(selection: $selectedFilter) {
-            ForEach(compactTabs) { tab in
-                NavigationStack {
-                    detailMasterView(isCompact: true, tabCategory: tab.category)
-                }
-                .tag(tab.category)
-            }
-        }
-        .toolbar(.hidden, for: .tabBar)
-        .safeAreaInset(edge: .bottom) {
-            liquidGlassSwitchBar
-                .frame(maxWidth: 520)
-                .padding(.horizontal, 14)
-                .padding(.bottom, 6)
-        }
-        .sheet(isPresented: $showCompactCourseFilterSheet) {
-            compactCourseFilterSheetView
-        }
-    }
-
-    private var liquidGlassSwitchBar: some View {
-        HStack(spacing: 3) {
-            ForEach(compactTabs) { tab in
-                let isSelected = selectedFilter == tab.category
-                Button {
-                    if selectedFilter != tab.category {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                            selectedFilter = tab.category
-                        }
+        let upcomingBadge = buckets.allUpcomingPendingCount + buckets.pastPendingCount
+        if #available(iOS 18.0, *) {
+            TabView(selection: compactTabSelectionBinding) {
+                Tab("Báo bài", systemImage: "calendar.badge.clock", value: AppFilterCategory.tomorrow) {
+                    NavigationStack {
+                        detailMasterView(isCompact: true, tabCategory: .tomorrow)
                     }
-                } label: {
-                    VStack(spacing: 2.5) {
-                        ZStack(alignment: .topTrailing) {
-                            Image(systemName: tab.icon)
-                                .font(.system(size: 16.5, weight: isSelected ? .semibold : .regular))
-                                .frame(height: 19)
+                }
+                .badge(buckets.tomorrowPendingCount > 0 ? buckets.tomorrowPendingCount : 0)
 
-                            if let badge = tab.badgeCount, badge > 0 {
-                                Text(badge > 99 ? "99+" : "\(badge)")
-                                    .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                                    .foregroundStyle(Color.white)
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 1)
-                                    .background(Capsule().fill(Color.red))
-                                    .offset(x: 10, y: -4)
+                Tab("Sắp tới", systemImage: "tray.fill", value: AppFilterCategory.allUpcoming) {
+                    NavigationStack {
+                        detailMasterView(isCompact: true, tabCategory: .allUpcoming)
+                    }
+                }
+                .badge(upcomingBadge > 0 ? upcomingBadge : 0)
+
+                Tab("Đã xong", systemImage: "checkmark.seal.fill", value: AppFilterCategory.completed) {
+                    NavigationStack {
+                        detailMasterView(isCompact: true, tabCategory: .completed)
+                    }
+                }
+
+                Tab("Ghi chú", systemImage: "square.and.pencil", value: AppFilterCategory.notes) {
+                    NavigationStack {
+                        detailMasterView(isCompact: true, tabCategory: .notes)
+                    }
+                }
+                .badge(pendingNotesCount > 0 ? pendingNotesCount : 0)
+            }
+            .tint(Color.accentColor)
+            .sheet(isPresented: $showCompactCourseFilterSheet) {
+                compactCourseFilterSheetView
+            }
+            .sheet(isPresented: $showMobileDetailSheet) {
+                NavigationStack {
+                    homeworkReaderPane
+                        .navigationTitle("Chi tiết bài tập")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Xong") { showMobileDetailSheet = false }
                             }
                         }
-
-                        Text(tab.shortTitle)
-                            .font(.system(size: 10, weight: isSelected ? .semibold : .medium, design: .rounded))
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
-                    .background {
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(
-                                    colorScheme == .dark
-                                    ? Color.accentColor.opacity(0.22)
-                                    : Color.accentColor.opacity(0.12)
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .stroke(
-                                            colorScheme == .dark
-                                            ? Color.accentColor.opacity(0.40)
-                                            : Color.accentColor.opacity(0.25),
-                                            lineWidth: 0.6
-                                        )
-                                )
-                                .matchedGeometryEffect(id: "liquidGlassActiveSwitch", in: tabSwitchNamespace)
-                        }
-                    }
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
+        } else {
+            TabView(selection: compactTabSelectionBinding) {
+                NavigationStack {
+                    detailMasterView(isCompact: true, tabCategory: .tomorrow)
+                }
+                .tabItem {
+                    Label("Báo bài", systemImage: "calendar.badge.clock")
+                }
+                .tag(AppFilterCategory.tomorrow)
+                .badge(buckets.tomorrowPendingCount > 0 ? buckets.tomorrowPendingCount : 0)
+
+                NavigationStack {
+                    detailMasterView(isCompact: true, tabCategory: .allUpcoming)
+                }
+                .tabItem {
+                    Label("Sắp tới", systemImage: "tray.fill")
+                }
+                .tag(AppFilterCategory.allUpcoming)
+                .badge(upcomingBadge > 0 ? upcomingBadge : 0)
+
+                NavigationStack {
+                    detailMasterView(isCompact: true, tabCategory: .completed)
+                }
+                .tabItem {
+                    Label("Đã xong", systemImage: "checkmark.seal.fill")
+                }
+                .tag(AppFilterCategory.completed)
+
+                NavigationStack {
+                    detailMasterView(isCompact: true, tabCategory: .notes)
+                }
+                .tabItem {
+                    Label("Ghi chú", systemImage: "square.and.pencil")
+                }
+                .tag(AppFilterCategory.notes)
+                .badge(pendingNotesCount > 0 ? pendingNotesCount : 0)
+            }
+            .tint(Color.accentColor)
+            .sheet(isPresented: $showCompactCourseFilterSheet) {
+                compactCourseFilterSheetView
+            }
+            .sheet(isPresented: $showMobileDetailSheet) {
+                NavigationStack {
+                    homeworkReaderPane
+                        .navigationTitle("Chi tiết bài tập")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Xong") { showMobileDetailSheet = false }
+                            }
+                        }
+                }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
         }
-        .padding(5)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(
-                            Color(uiColor: .systemBackground)
-                                .opacity(colorScheme == .dark ? 0.62 : 0.76)
-                        )
-                )
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.32 : 0.70),
-                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.25)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 0.6
-                )
-        )
-        .shadow(
-            color: Color.black.opacity(colorScheme == .dark ? 0.38 : 0.08),
-            radius: 14,
-            x: 0,
-            y: 5
-        )
     }
 
     private var compactCourseFilterSheetView: some View {
@@ -1191,7 +1328,6 @@ public struct ContentView: View {
                     sidebarCategoryRow(for: .past, count: buckets.past.count)
                 }
                 sidebarCategoryRow(for: .completed, count: buckets.completed.count)
-                let pendingNotesCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
                 sidebarCategoryRow(for: .notes, count: pendingNotesCount > 0 ? pendingNotesCount : nil)
             }
 
@@ -1354,6 +1490,7 @@ public struct ContentView: View {
                     onToggleCompletion: { id in
                         ClassroomStorage.shared.togglePersonalNoteCompletion(id: id)
                         personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        updatePersonalNotesCache()
                         recomputeBuckets()
                         if let note = personalNotes.first(where: { $0.id == id }) {
                             if note.isCompleted {
@@ -1366,6 +1503,7 @@ public struct ContentView: View {
                     onToggleChecklistItem: { noteId, itemId in
                         ClassroomStorage.shared.toggleChecklistItemCompletion(noteId: noteId, itemId: itemId)
                         personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        updatePersonalNotesCache()
                         recomputeBuckets()
                     },
                     onSaveNote: { note in
@@ -1377,12 +1515,14 @@ public struct ContentView: View {
                         }
                         ClassroomStorage.shared.savePersonalNotes(current)
                         personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        updatePersonalNotesCache()
                         recomputeBuckets()
                         showToast(title: "Đã lưu ghi chú", icon: "checkmark.circle.fill", tint: .green)
                     },
                     onDeleteNote: { id in
                         ClassroomStorage.shared.deletePersonalNote(id: id)
                         personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        updatePersonalNotesCache()
                         recomputeBuckets()
                         showToast(title: "Đã xoá ghi chú", icon: "trash.fill", tint: .orange)
                     }
@@ -1392,18 +1532,6 @@ public struct ContentView: View {
                 if isCompact {
                     assignmentListPane(isWide: false, category: activeCategory)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .sheet(isPresented: $showMobileDetailSheet) {
-                            NavigationStack {
-                                homeworkReaderPane
-                                    .navigationTitle("Chi tiết bài tập")
-                                    .navigationBarTitleDisplayMode(.inline)
-                                    .toolbar {
-                                        ToolbarItem(placement: .confirmationAction) {
-                                            Button("Xong") { showMobileDetailSheet = false }
-                                        }
-                                    }
-                            }
-                        }
                 } else {
                     GeometryReader { geometry in
                         let isWide = geometry.size.width >= 560
@@ -1434,6 +1562,8 @@ public struct ContentView: View {
                                     }
                                 }
                         }
+                        .presentationDetents([.medium, .large])
+                        .presentationDragIndicator(.visible)
                     }
                 }
                 #else
@@ -1478,11 +1608,7 @@ public struct ContentView: View {
             if let toast = activeToast {
                 FloatingToastHUD(toast: toast, onDismiss: { dismissToast() })
                     .padding(.horizontal, 16)
-                    #if os(iOS)
-                    .padding(.bottom, 36)
-                    #else
-                    .padding(.bottom, 22)
-                    #endif
+                    .padding(.bottom, 24)
                     .transition(.asymmetric(
                         insertion: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.95)),
                         removal: .opacity.combined(with: .scale(scale: 0.92))
@@ -1691,9 +1817,7 @@ public struct ContentView: View {
                 .clipShape(Capsule())
                 .fixedSize()
             } else if category == .notes {
-                let pendingCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
-                let totalNotes = personalNotes.filter { $0.courseworkId == nil }.count
-                if pendingCount == 0 && totalNotes > 0 {
+                if pendingNotesCount == 0 && totalIndependentNotesCount > 0 {
                     HStack(spacing: 5) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 11, weight: .bold))
@@ -1713,7 +1837,7 @@ public struct ContentView: View {
                         Circle()
                             .fill(categoryIconColor(category))
                             .frame(width: 6, height: 6)
-                        Text("\(pendingCount) việc cần làm")
+                        Text("\(pendingNotesCount) việc cần làm")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
                             .foregroundStyle(categoryIconColor(category))
                             .lineLimit(1)
@@ -1757,6 +1881,45 @@ public struct ContentView: View {
                     .fixedSize()
                 }
             }
+
+            if apiService.isSyncing {
+                ProgressView()
+                    .controlSize(.small)
+                    .padding(5)
+            } else if authService.isAuthenticated {
+                Button {
+                    Task {
+                        await apiService.syncAll()
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                            refreshData()
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(Color.platformTextSecondary)
+                        .padding(5.5)
+                        .background(Color.platformControlBackground)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .fixedSize()
+            }
+
+            Button {
+                clientIdInput = authService.configuredClientId
+                clientSecretInput = authService.configuredClientSecret
+                showSettingsModal = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.platformTextSecondary)
+                    .padding(5.5)
+                    .background(Color.platformControlBackground)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .fixedSize()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, isLandscapePhone ? 4 : 8)
@@ -1810,9 +1973,7 @@ public struct ContentView: View {
                 .clipShape(Capsule())
                 .fixedSize()
             } else if category == .notes {
-                let pendingCount = personalNotes.filter { $0.courseworkId == nil && !$0.isCompleted }.count
-                let totalNotes = personalNotes.filter { $0.courseworkId == nil }.count
-                if pendingCount == 0 && totalNotes > 0 {
+                if pendingNotesCount == 0 && totalIndependentNotesCount > 0 {
                     HStack(spacing: 5) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 10, weight: .bold))
@@ -1832,7 +1993,7 @@ public struct ContentView: View {
                         Circle()
                             .fill(categoryIconColor(category))
                             .frame(width: 6, height: 6)
-                        Text("\(pendingCount) việc cần làm")
+                        Text("\(pendingNotesCount) việc cần làm")
                             .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                             .foregroundStyle(categoryIconColor(category))
                             .lineLimit(1)
@@ -1906,7 +2067,7 @@ public struct ContentView: View {
     private var updateBannerView: some View {
         HStack(spacing: 12) {
             Image(systemName: "sparkles")
-                .foregroundColor(.orange)
+                .foregroundStyle(Color.orange)
                 .font(.system(size: 14, weight: .semibold))
 
             Text("Đã có bản cập nhật Classroom Tracker v\(updateService.latestVersion)!")
@@ -2040,7 +2201,7 @@ public struct ContentView: View {
                 .transition(.opacity)
             }
 
-            if activeCategory == .allUpcoming && availableSubjectPills.count > 1 {
+            if (activeCategory == .allUpcoming || activeCategory == .completed) && availableSubjectPills.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
                         ForEach(availableSubjectPills, id: \.self) { pill in
@@ -2052,6 +2213,7 @@ public struct ContentView: View {
                                     } else {
                                         selectedSubjectFilter = pill
                                     }
+                                    completedDisplayLimit = 30
                                 }
                             } label: {
                                 Text(pill)
@@ -2127,15 +2289,17 @@ public struct ContentView: View {
             Divider()
 
             let hasOverdueToDisplay = activeCategory == .allUpcoming && !buckets.past.isEmpty && searchText.isEmpty && selectedSubjectFilter == "Tất cả"
+            let isCategoryFiltering = (activeCategory == .allUpcoming || activeCategory == .completed) && selectedSubjectFilter != "Tất cả"
             if list.isEmpty && !hasOverdueToDisplay {
                 AssignmentListEmptyView(
                     filter: activeCategory,
-                    isSearching: !searchText.trimmingCharacters(in: .whitespaces).isEmpty || (activeCategory == .allUpcoming && selectedSubjectFilter != "Tất cả"),
+                    isSearching: !searchText.trimmingCharacters(in: .whitespaces).isEmpty || isCategoryFiltering,
                     searchText: searchText.isEmpty ? (selectedSubjectFilter != "Tất cả" ? "Môn \(selectedSubjectFilter)" : "") : searchText,
                     onClearSearch: {
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
                             searchText = ""
                             selectedSubjectFilter = "Tất cả"
+                            completedDisplayLimit = 30
                         }
                     },
                     onSwitchToUpcoming: {
@@ -2146,10 +2310,9 @@ public struct ContentView: View {
                 ScrollViewReader { scrollProxy in
                     ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
-                        let noteCourseworkIds: Set<String> = Set(personalNotes.lazy.filter { !$0.content.isEmpty }.compactMap(\.courseworkId))
-
                         if activeCategory == .tomorrow {
                             if !list.isEmpty && searchText.isEmpty {
+                                tomorrowHeroBanner
                                 tomorrowProgressHeroCard
                             }
 
@@ -2239,6 +2402,52 @@ public struct ContentView: View {
                                     .equatable()
                                 }
                             }
+                        } else if activeCategory == .completed {
+                            let displayedItems = Array(list.prefix(completedDisplayLimit))
+                            ForEach(displayedItems) { item in
+                                AssignmentListRow(
+                                    item: item,
+                                    isSelected: selectedCourseworkIds.contains(item.id),
+                                    hasNote: noteCourseworkIds.contains(item.id),
+                                    onSelect: { cmdPressed in
+                                        handleItemTap(item, commandPressed: cmdPressed, isWide: isWide)
+                                    },
+                                    onToggleCompletion: {
+                                        toggleCompletion(for: item)
+                                    }
+                                )
+                                .equatable()
+                            }
+
+                            if list.count > completedDisplayLimit {
+                                VStack(spacing: 8) {
+                                    Text("Đang hiển thị \(displayedItems.count)/\(list.count) bài đã hoàn thành")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundStyle(Color.platformTextSecondary)
+
+                                    HStack(spacing: 10) {
+                                        Button {
+                                            completedDisplayLimit += 30
+                                        } label: {
+                                            Label("Xem thêm 30 bài cũ hơn", systemImage: "chevron.down.circle")
+                                                .font(.system(size: 12.5, weight: .semibold))
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+
+                                        if list.count > completedDisplayLimit + 30 {
+                                            Button("Xem tất cả") {
+                                                completedDisplayLimit = list.count
+                                            }
+                                            .buttonStyle(.plain)
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundStyle(Color.blue)
+                                        }
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                            }
                         } else {
                             ForEach(list) { item in
                                 AssignmentListRow(
@@ -2257,12 +2466,12 @@ public struct ContentView: View {
                         }
                     }
                     .padding(12)
-                    .animation(.spring(response: 0.32, dampingFraction: 0.8), value: list)
+                    .animation(list.count < 50 ? .spring(response: 0.32, dampingFraction: 0.8) : nil, value: list.count)
                     #if os(iOS)
                     .padding(.bottom, isLandscapePhone ? 24 : 8)
                     #endif
                 }
-                .onChange(of: selectedCoursework?.id) { targetId in
+                .onChange(of: selectedCoursework?.id) { _, targetId in
                     if let targetId {
                         withAnimation(.easeInOut(duration: 0.15)) {
                             scrollProxy.scrollTo(targetId, anchor: .center)
@@ -2315,6 +2524,25 @@ public struct ContentView: View {
                 }
 
                 Spacer(minLength: 4)
+
+                ShareLink(item: formattedBaoBaiShareText) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 11, weight: .bold))
+                        Text("Chia sẻ")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Color.white.opacity(0.22))
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.4), lineWidth: 0.8)
+                    )
+                }
+                .buttonStyle(.plain)
             }
 
             VStack(spacing: 5) {
@@ -2350,6 +2578,60 @@ public struct ContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
         .shadow(color: Color.blue.opacity(0.18), radius: 6, x: 0, y: 3)
         .padding(.bottom, 4)
+    }
+
+    private var tomorrowHeroBanner: some View {
+        #if os(macOS)
+        let img = NSImage(named: "HeroBaoBai")
+        #else
+        let img = UIImage(named: "HeroBaoBai")
+        #endif
+        return Group {
+            if img != nil {
+                Image("HeroBaoBai")
+                    .resizable()
+                    .aspectRatio(16/9, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .stroke(Color.platformCardBorder, lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
+                    .padding(.bottom, 4)
+            }
+        }
+    }
+
+    private var formattedBaoBaiShareText: String {
+        let items = buckets.tomorrow
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "vi_VN")
+        formatter.dateFormat = "EEEE, 'ngày' dd/MM"
+        let dateStr = formatter.string(from: Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date())
+
+        if items.isEmpty {
+            return """
+            🎉 BÁO BÀI NGÀY MAI (\(dateStr))
+
+            Tuyệt vời! Ngày mai bạn không có bài tập nào cần làm.
+            Nghỉ ngơi thật tốt nhé! 🚀
+
+            ---
+            ⚡ Classroom Tracker
+            """
+        }
+
+        var lines = [
+            "📋 BÁO BÀI NGÀY MAI (\(dateStr))\n"
+        ]
+        for item in items {
+            let statusIcon = item.isCompleted ? "✅" : "⏳"
+            let courseTag = !item.courseName.isEmpty ? "[\(item.courseName)]" : "[Chung]"
+            let dueStr = item.dueDate != nil ? "Hạn: \(item.timeOnlyString)" : "Không hạn"
+            lines.append("\(statusIcon) \(courseTag) \(item.title) (\(dueStr))")
+        }
+        lines.append("\n---\n⚡ Classroom Tracker")
+        return lines.joined(separator: "\n")
     }
 
     private var homeworkReaderPane: some View {
@@ -3335,6 +3617,9 @@ public struct ContentView: View {
             }
             #if os(macOS)
             .frame(minWidth: 460, minHeight: 400)
+            #elseif os(iOS)
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
             #endif
         }
     }
@@ -3450,10 +3735,25 @@ public struct ContentView: View {
         }
     }
 
+    private func updatePersonalNotesCache() {
+        self.noteCourseworkIds = Set(personalNotes.lazy.filter { !$0.content.isEmpty }.compactMap(\.courseworkId))
+        var pending = 0
+        var total = 0
+        for note in personalNotes where note.courseworkId == nil {
+            total += 1
+            if !note.isCompleted {
+                pending += 1
+            }
+        }
+        self.pendingNotesCount = pending
+        self.totalIndependentNotesCount = total
+    }
+
     private func refreshData() {
         self.courses = ClassroomStorage.shared.loadCourses()
         self.allCoursework = ClassroomStorage.shared.loadCoursework()
         self.personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+        updatePersonalNotesCache()
         recomputeBuckets()
 
         if let current = selectedCoursework, currentFilteredList.contains(where: { $0.id == current.id }) {
@@ -3474,6 +3774,7 @@ public struct ContentView: View {
             content: content
         )
         self.personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+        updatePersonalNotesCache()
         recomputeBuckets()
         showToast(title: "Đã cập nhật ghi chú bài tập", icon: "checkmark.circle.fill", tint: .green)
     }
@@ -3491,6 +3792,12 @@ public struct ContentView: View {
 
     private func handleItemTap(_ item: Coursework, commandPressed: Bool = false, isWide: Bool = true) {
         triggerHapticFeedback()
+        if item.id.hasPrefix("note_") {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                selectedFilter = .notes
+            }
+            return
+        }
         if !isWide {
             showMobileDetailSheet = true
         } else {
@@ -3551,6 +3858,7 @@ public struct ContentView: View {
         }
         if notesChanged {
             self.personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+            updatePersonalNotesCache()
         }
 
         withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
@@ -3617,6 +3925,7 @@ public struct ContentView: View {
             let noteId = String(item.id.dropFirst(5))
             ClassroomStorage.shared.togglePersonalNoteCompletion(id: noteId)
             self.personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+            updatePersonalNotesCache()
             withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                 recomputeBuckets()
                 if selectedCoursework?.id == item.id {
@@ -4005,18 +4314,20 @@ private struct BatchSelectedSummaryView: View {
     }
 }
 
-#if os(iOS)
 private struct RowSelectedShadowModifier: ViewModifier {
     let isSelected: Bool
     func body(content: Content) -> some View {
         if isSelected {
+            #if os(macOS)
+            content.shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 1)
+            #else
             content.shadow(color: Color.black.opacity(0.04), radius: 3, x: 0, y: 1)
+            #endif
         } else {
             content
         }
     }
 }
-#endif
 
 private struct AssignmentListRow: View, Equatable {
     let item: Coursework
@@ -4027,7 +4338,6 @@ private struct AssignmentListRow: View, Equatable {
 
     @State private var isHovered: Bool = false
     @State private var checkmarkBounce: Bool = false
-    @State private var isRowPressed: Bool = false
     @Environment(\.openURL) private var openURL
 
     static func == (lhs: AssignmentListRow, rhs: AssignmentListRow) -> Bool {
@@ -4048,14 +4358,6 @@ private struct AssignmentListRow: View, Equatable {
                 .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isSelected)
 
             Button {
-                withAnimation(.spring(response: 0.24, dampingFraction: 0.52)) {
-                    checkmarkBounce = true
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-                    withAnimation(.spring(response: 0.24, dampingFraction: 0.65)) {
-                        checkmarkBounce = false
-                    }
-                }
                 onToggleCompletion()
             } label: {
                 ZStack(alignment: .bottomTrailing) {
@@ -4110,7 +4412,6 @@ private struct AssignmentListRow: View, Equatable {
                     .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
                     .opacity(isTurnedIn ? 0.72 : 1.0)
                     .lineLimit(2)
-                    .animation(.spring(response: 0.28, dampingFraction: 0.8), value: isTurnedIn)
 
                 HStack(spacing: 5) {
                     Circle()
@@ -4127,7 +4428,6 @@ private struct AssignmentListRow: View, Equatable {
                     }
                 }
                 .opacity(isTurnedIn ? 0.75 : 1.0)
-                .animation(.spring(response: 0.28, dampingFraction: 0.8), value: isTurnedIn)
                 #else
                 Text(item.title)
                     .font(.system(size: 16.5, weight: isSelected ? .bold : .semibold))
@@ -4135,7 +4435,6 @@ private struct AssignmentListRow: View, Equatable {
                     .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
                     .opacity(isTurnedIn ? 0.72 : 1.0)
                     .lineLimit(2)
-                    .animation(.spring(response: 0.28, dampingFraction: 0.8), value: isTurnedIn)
 
                 HStack(spacing: 5) {
                     Circle()
@@ -4152,7 +4451,6 @@ private struct AssignmentListRow: View, Equatable {
                     }
                 }
                 .opacity(isTurnedIn ? 0.75 : 1.0)
-                .animation(.spring(response: 0.28, dampingFraction: 0.8), value: isTurnedIn)
                 #endif
             }
 
@@ -4180,32 +4478,15 @@ private struct AssignmentListRow: View, Equatable {
                     lineWidth: isSelected ? 1.2 : 1
                 )
         )
+        .modifier(RowSelectedShadowModifier(isSelected: isSelected))
         #if os(macOS)
-        .shadow(
-            color: Color.black.opacity(isSelected ? 0.04 : 0.015),
-            radius: isSelected ? 4 : 2,
-            x: 0,
-            y: 1
-        )
         .onHover { hovering in
             isHovered = hovering
         }
-        #else
-        .modifier(RowSelectedShadowModifier(isSelected: isSelected))
         #endif
-        .scaleEffect(isRowPressed ? 0.985 : 1.0)
-        .animation(.spring(response: 0.20, dampingFraction: 0.70), value: isRowPressed)
         .animation(.easeInOut(duration: 0.12), value: isHovered)
         .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(.spring(response: 0.16, dampingFraction: 0.65)) {
-                isRowPressed = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-                withAnimation(.spring(response: 0.24, dampingFraction: 0.65)) {
-                    isRowPressed = false
-                }
-            }
             #if os(macOS)
             let isCmd = NSEvent.modifierFlags.contains(.command)
             #else
@@ -4328,8 +4609,22 @@ private struct AssignmentListEmptyView: View {
             Spacer()
 
             if !isSearching && (filter == .tomorrow || filter == .todayAndTomorrow) {
-                FloatingEmberView(emotion: .sleeping, size: 76)
-                    .padding(.bottom, 2)
+                #if os(macOS)
+                let emptyImg = NSImage(named: "EmptyAllCaughtUp")
+                #else
+                let emptyImg = UIImage(named: "EmptyAllCaughtUp")
+                #endif
+                if emptyImg != nil {
+                    Image("EmptyAllCaughtUp")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 120, height: 120)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .padding(.bottom, 2)
+                } else {
+                    FloatingEmberView(emotion: .sleeping, size: 76)
+                        .padding(.bottom, 2)
+                }
             } else if !isSearching && filter == .past {
                 FloatingEmberView(emotion: .celebrating, size: 76)
                     .padding(.bottom, 2)

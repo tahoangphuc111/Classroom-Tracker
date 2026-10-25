@@ -35,12 +35,13 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class ClassroomRepository(
-    private val context: Context,
+    context: Context,
     private val database: ClassroomDatabase,
     private val preferences: ClassroomPreferences,
     private val oauthManager: GoogleOAuthManager,
     private val apiService: ClassroomApiService = ClassroomApiService()
 ) {
+    private val appContext = context.applicationContext
     private val courseDao = database.courseDao()
     private val courseworkDao = database.courseworkDao()
     private val personalNoteDao = database.personalNoteDao()
@@ -75,6 +76,11 @@ class ClassroomRepository(
 
     suspend fun updateCourseWidgetSelection(courseId: String, isSelected: Boolean) = withContext(Dispatchers.IO) {
         courseDao.updateWidgetSelection(courseId, isSelected)
+        notifyWidgetReload()
+    }
+
+    suspend fun updateAllCoursesWidgetSelection(isSelected: Boolean) = withContext(Dispatchers.IO) {
+        courseDao.updateAllWidgetSelection(isSelected)
         notifyWidgetReload()
     }
 
@@ -240,10 +246,10 @@ class ClassroomRepository(
     }
     suspend fun notifyWidgetReload() {
         try {
-            val manager = GlanceAppWidgetManager(context)
+            val manager = GlanceAppWidgetManager(appContext)
             val glanceIds = manager.getGlanceIds(ClassroomGlanceWidget::class.java)
             glanceIds.forEach { glanceId ->
-                ClassroomGlanceWidget().update(context, glanceId)
+                ClassroomGlanceWidget().update(appContext, glanceId)
             }
         } catch (e: CancellationException) {
             throw e
@@ -255,13 +261,14 @@ class ClassroomRepository(
         fun reconcileCoursework(latest: Coursework?, incoming: Coursework): Coursework {
             if (latest == null) return incoming
             val localIsManuallyCompleted = latest.isManuallyCompleted
-            val localIsCompleted = localIsManuallyCompleted ||
-                    latest.status == SubmissionStatus.TURNED_IN ||
-                    latest.status == SubmissionStatus.RETURNED
             val incomingIsPendingOrLate = incoming.status == SubmissionStatus.PENDING ||
                     incoming.status == SubmissionStatus.LATE
-            val shouldPreserveLocalStatus = incomingIsPendingOrLate && localIsCompleted
-            val resolvedStatus = if (shouldPreserveLocalStatus) latest.status else incoming.status
+            val shouldPreserveLocalStatus = incomingIsPendingOrLate && localIsManuallyCompleted
+            val resolvedStatus = if (shouldPreserveLocalStatus) {
+                if (latest.status == SubmissionStatus.RETURNED) SubmissionStatus.RETURNED else SubmissionStatus.TURNED_IN
+            } else {
+                incoming.status
+            }
             val resolvedManuallyCompleted = localIsManuallyCompleted || incoming.isManuallyCompleted
             return incoming.copy(
                 status = resolvedStatus,

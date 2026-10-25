@@ -1,7 +1,6 @@
 package com.phucta.classroom.ui.components
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -45,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextLayoutResult
@@ -54,9 +54,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.ui.theme.ChunkyColor
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 private val UncheckedBorderColor = ChunkyColor.TextMuted.copy(alpha = 0.5f)
 private val StrikethroughLineColor = ChunkyColor.TextMuted.copy(alpha = 0.85f)
+private val CardShape = RoundedCornerShape(12.dp)
+private val CardEndShape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp)
 
 @Composable
 fun AssignmentCard(
@@ -72,27 +76,19 @@ fun AssignmentCard(
 
     val cardInteractionSource = remember { MutableInteractionSource() }
     val isCardPressed by cardInteractionSource.collectIsPressedAsState()
-    val cardScaleX = animateFloatAsState(
-        targetValue = if (isCardPressed) 1.01f else 1.0f,
+    val cardPressScale = animateFloatAsState(
+        targetValue = if (isCardPressed) 1f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = 400f
         ),
-        label = "cardScaleX"
-    )
-    val cardScaleY = animateFloatAsState(
-        targetValue = if (isCardPressed) 0.97f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = 400f
-        ),
-        label = "cardScaleY"
+        label = "cardPressScale"
     )
 
     val checkInteractionSource = remember { MutableInteractionSource() }
     val isCheckPressed by checkInteractionSource.collectIsPressedAsState()
     val checkPressScale = animateFloatAsState(
-        targetValue = if (isCheckPressed) 0.90f else 1.0f,
+        targetValue = if (isCheckPressed) 1f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
@@ -100,83 +96,82 @@ fun AssignmentCard(
         label = "checkPressScale"
     )
 
-    val checkScale = remember { Animatable(if (isCompleted) 1.0f else 0.88f) }
+    val checkScaleAnim = remember { Animatable(if (isCompleted) 1.0f else 0.88f) }
+    val iconScaleAnim = remember { Animatable(if (isCompleted) 1.0f else 0.0f) }
+    val completionProgress = remember { Animatable(if (isCompleted) 1.0f else 0.0f) }
     var isFirstComposition by remember { mutableStateOf(true) }
+    var isAnimatingCompletion by remember { mutableStateOf(false) }
+
     LaunchedEffect(isCompleted) {
         if (isFirstComposition) {
             isFirstComposition = false
             return@LaunchedEffect
         }
-        if (isCompleted) {
-            checkScale.animateTo(
-                targetValue = 1.15f,
-                animationSpec = tween(durationMillis = 110, easing = FastOutSlowInEasing)
-            )
-            checkScale.animateTo(
-                targetValue = 1.0f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                )
-            )
-        } else {
-            checkScale.animateTo(
-                targetValue = 0.88f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            )
+        isAnimatingCompletion = true
+        try {
+            if (isCompleted) {
+                coroutineScope {
+                    launch {
+                        checkScaleAnim.animateTo(
+                            targetValue = 1.15f,
+                            animationSpec = tween(durationMillis = 110, easing = FastOutSlowInEasing)
+                        )
+                        checkScaleAnim.animateTo(
+                            targetValue = 1.0f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        )
+                    }
+                    launch {
+                        iconScaleAnim.animateTo(
+                            targetValue = 1.0f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
+                        )
+                    }
+                    launch {
+                        completionProgress.animateTo(
+                            targetValue = 1.0f,
+                            animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
+                        )
+                    }
+                }
+            } else {
+                coroutineScope {
+                    launch {
+                        checkScaleAnim.animateTo(
+                            targetValue = 0.88f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
+                        )
+                    }
+                    launch {
+                        iconScaleAnim.animateTo(
+                            targetValue = 0.0f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
+                        )
+                    }
+                    launch {
+                        completionProgress.animateTo(
+                            targetValue = 0.0f,
+                            animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
+                        )
+                    }
+                }
+            }
+        } finally {
+            isAnimatingCompletion = false
         }
     }
-
-    val iconScale = animateFloatAsState(
-        targetValue = if (isCompleted) 1.0f else 0.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "iconScale"
-    )
-
-    val iconRotation = animateFloatAsState(
-        targetValue = if (isCompleted) 0f else -12f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "iconRotation"
-    )
-
-    val iconAlpha = animateFloatAsState(
-        targetValue = if (isCompleted) 1.0f else 0.0f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
-        label = "iconAlpha"
-    )
-
-    val checkBgColor = animateColorAsState(
-        targetValue = if (isCompleted) ChunkyColor.SuccessGreen else Color.Transparent,
-        animationSpec = tween(durationMillis = 200),
-        label = "checkBgColor"
-    )
-
-    val checkBorderColor = animateColorAsState(
-        targetValue = if (isCompleted) ChunkyColor.SuccessGreen else UncheckedBorderColor,
-        animationSpec = tween(durationMillis = 200),
-        label = "checkBorderColor"
-    )
-
-    val strikethroughProgress = animateFloatAsState(
-        targetValue = if (isCompleted) 1.0f else 0.0f,
-        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-        label = "strikethroughProgress"
-    )
-
-    val titleAlpha = animateFloatAsState(
-        targetValue = if (isCompleted) 0.60f else 1.0f,
-        animationSpec = tween(durationMillis = 220),
-        label = "titleAlpha"
-    )
 
     val textLayoutResultHolder = remember(coursework.id, coursework.title) { arrayOfNulls<TextLayoutResult>(1) }
     val onTextLayout: (TextLayoutResult) -> Unit = remember(textLayoutResultHolder) {
@@ -203,19 +198,20 @@ fun AssignmentCard(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
-                scaleX = cardScaleX.value
-                scaleY = cardScaleY.value
+                val scale = cardPressScale.value
+                scaleX = 1.0f + 0.01f * scale
+                scaleY = 1.0f - 0.03f * scale
+                shape = CardShape
+                clip = true
             }
-            .clip(RoundedCornerShape(12.dp))
             .background(ChunkyColor.SurfaceWhite)
-            .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(12.dp)),
+            .border(1.dp, ChunkyColor.CardBorder, CardShape),
         verticalAlignment = Alignment.Top
     ) {
         Box(
             modifier = Modifier
                 .padding(start = 4.dp, top = 2.dp)
                 .size(48.dp)
-                .clip(CircleShape)
                 .clickable(
                     interactionSource = checkInteractionSource,
                     indication = ripple(bounded = false, radius = 22.dp),
@@ -228,7 +224,13 @@ fun AssignmentCard(
                 modifier = Modifier
                     .size(24.dp)
                     .graphicsLayer {
-                        val combinedScale = checkScale.value * checkPressScale.value
+                        val pScale = 1.0f - 0.10f * checkPressScale.value
+                        val cScale = if (!isAnimatingCompletion) {
+                            if (isCompleted) 1.0f else 0.88f
+                        } else {
+                            checkScaleAnim.value
+                        }
+                        val combinedScale = cScale * pScale
                         scaleX = combinedScale
                         scaleY = combinedScale
                     }
@@ -237,9 +239,25 @@ fun AssignmentCard(
                         val stroke = Stroke(width = strokeWidthPx)
                         val radius = (size.minDimension - strokeWidthPx) / 2f
                         onDrawBehind {
-                            drawCircle(color = checkBgColor.value)
+                            val bgColor: Color
+                            val borderColor: Color
+                            if (!isAnimatingCompletion) {
+                                if (isCompleted) {
+                                    bgColor = ChunkyColor.SuccessGreen
+                                    borderColor = ChunkyColor.SuccessGreen
+                                } else {
+                                    bgColor = Color.Transparent
+                                    borderColor = UncheckedBorderColor
+                                }
+                            } else {
+                                val progress = completionProgress.value
+                                val factor = (progress / 0.769f).coerceIn(0f, 1f)
+                                bgColor = lerp(Color.Transparent, ChunkyColor.SuccessGreen, factor)
+                                borderColor = lerp(UncheckedBorderColor, ChunkyColor.SuccessGreen, factor)
+                            }
+                            drawCircle(color = bgColor)
                             drawCircle(
-                                color = checkBorderColor.value,
+                                color = borderColor,
                                 radius = radius,
                                 style = stroke
                             )
@@ -254,10 +272,29 @@ fun AssignmentCard(
                     modifier = Modifier
                         .size(16.dp)
                         .graphicsLayer {
-                            scaleX = iconScale.value
-                            scaleY = iconScale.value
-                            rotationZ = iconRotation.value
-                            alpha = iconAlpha.value
+                            val iScale: Float
+                            val iRotation: Float
+                            val iAlpha: Float
+                            if (!isAnimatingCompletion) {
+                                if (isCompleted) {
+                                    iScale = 1.0f
+                                    iRotation = 0f
+                                    iAlpha = 1.0f
+                                } else {
+                                    iScale = 0.0f
+                                    iRotation = -12f
+                                    iAlpha = 0.0f
+                                }
+                            } else {
+                                val progress = completionProgress.value
+                                iScale = iconScaleAnim.value
+                                iRotation = -12f + 12f * progress
+                                iAlpha = (progress / 0.692f).coerceIn(0f, 1f)
+                            }
+                            scaleX = iScale
+                            scaleY = iScale
+                            rotationZ = iRotation
+                            alpha = iAlpha
                         }
                 )
             }
@@ -266,7 +303,7 @@ fun AssignmentCard(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
+                .clip(CardEndShape)
                 .clickable(
                     interactionSource = cardInteractionSource,
                     indication = ripple(),
@@ -295,12 +332,23 @@ fun AssignmentCard(
                     overflow = TextOverflow.Ellipsis,
                     onTextLayout = onTextLayout,
                     modifier = Modifier
-                        .graphicsLayer { alpha = titleAlpha.value }
+                        .graphicsLayer {
+                            alpha = if (!isAnimatingCompletion) {
+                                if (isCompleted) 0.60f else 1.0f
+                            } else {
+                                val progress = completionProgress.value
+                                1.0f - 0.40f * (progress / 0.846f).coerceIn(0f, 1f)
+                            }
+                        }
                         .drawWithCache {
                             val strokeWidthPx = 2.dp.toPx()
                             onDrawWithContent {
                                 drawContent()
-                                val progress = strikethroughProgress.value
+                                val progress = if (!isAnimatingCompletion) {
+                                    if (isCompleted) 1.0f else 0.0f
+                                } else {
+                                    completionProgress.value
+                                }
                                 if (progress > 0.001f) {
                                     val layout = textLayoutResultHolder[0]
                                     if (layout != null) {

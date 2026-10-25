@@ -2,31 +2,35 @@ package com.phucta.classroom.data.model
 
 private val SKIP_COMBINING_MARK = '\uFFFF'
 
-private class BoundedLruCache<K : Any, V : Any>(private val maxSize: Int) {
-    private val map = object : LinkedHashMap<K, V>(maxSize, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean {
-            return size > maxSize
-        }
+private class CacheEntry(val key: String, val value: String)
+
+private class FastStringCache(private val capacity: Int = 16384) {
+    private val mask = capacity - 1
+    private val entries = java.util.concurrent.atomic.AtomicReferenceArray<CacheEntry?>(capacity)
+
+    operator fun get(key: String): String? {
+        val idx = key.hashCode() and mask
+        val entry = entries.get(idx)
+        return if (entry != null && entry.key == key) entry.value else null
     }
 
-    @Synchronized
-    operator fun get(key: K): V? = map[key]
-
-    @Synchronized
-    operator fun set(key: K, value: V) {
-        map[key] = value
+    operator fun set(key: String, value: String) {
+        val idx = key.hashCode() and mask
+        entries.set(idx, CacheEntry(key, value))
     }
 
-    val size: Int
-        @Synchronized get() = map.size
-
-    @Synchronized
     fun clear() {
-        map.clear()
+        for (i in 0 until capacity) {
+            entries.set(i, null)
+        }
     }
 }
 
-private val NORMALIZE_CACHE = BoundedLruCache<String, String>(maxSize = 2048)
+private val NORMALIZE_CACHE = FastStringCache(capacity = 16384)
+
+fun clearVietnameseSearchCache() {
+    NORMALIZE_CACHE.clear()
+}
 
 private val VIETNAMESE_CHAR_MAP: CharArray = run {
     val map = CharArray(0x1F00)
@@ -137,7 +141,7 @@ fun tokenizeSearchQuery(query: String): List<String> {
 
     for (i in 0 until len) {
         val ch = query[i]
-        val isWs = ch <= ' ' || Character.isWhitespace(ch)
+        val isWs = ch <= ' ' || ch == '\u00A0'
         if (!isWs) {
             if (start == -1) {
                 start = i
@@ -145,7 +149,7 @@ fun tokenizeSearchQuery(query: String): List<String> {
         } else {
             if (start != -1) {
                 if (tokens == null) {
-                    tokens = ArrayList()
+                    tokens = ArrayList(8)
                 }
                 tokens.add(query.substring(start, i))
                 start = -1
@@ -185,16 +189,18 @@ fun String.normalizeForVietnameseSearch(): String {
         return this.substring(start, end + 1)
     }
 
-    val lookupKey = if (start == 0 && end == len - 1) this else this.substring(start, end + 1)
-    val common = COMMON_SYLLABLES[lookupKey]
-    if (common != null) return common
-
+    val trimmedLen = end - start + 1
     if (len <= 128) {
         val cached = NORMALIZE_CACHE[this]
         if (cached != null) return cached
     }
 
-    val trimmedLen = end - start + 1
+    if (trimmedLen <= 25) {
+        val lookupKey = if (start == 0 && end == len - 1) this else this.substring(start, end + 1)
+        val common = COMMON_SYLLABLES[lookupKey]
+        if (common != null) return common
+    }
+
     val outChars = CharArray(trimmedLen)
     var outPos = 0
     for (i in start..end) {
@@ -210,7 +216,7 @@ fun String.normalizeForVietnameseSearch(): String {
         }
     }
 
-    val stripped = String(outChars, 0, outPos)
+    val stripped = if (outPos == trimmedLen) String(outChars) else String(outChars, 0, outPos)
     if (len <= 128) {
         NORMALIZE_CACHE[this] = stripped
     }
@@ -245,33 +251,29 @@ fun calculateSearchRelevance(
     val normCourse = normalizedCourseName ?: (if (courseName.isNullOrEmpty()) "" else courseName.normalizeForVietnameseSearch())
     val normContent = normalizedContent ?: (if (content.isNullOrEmpty()) "" else content.normalizeForVietnameseSearch())
 
-    if (normTitle.isEmpty() && normCourse.isEmpty() && normContent.isEmpty()) return 0
+    val titleLen = normTitle.length
+    val courseLen = normCourse.length
+    val contentLen = normContent.length
+
+    if (titleLen == 0 && courseLen == 0 && contentLen == 0) return 0
     var score = 0
 
     val rawQueryLen = rawNormalizedQuery.length
     var titleIdx = -1
     var courseIdx = -1
     if (rawQueryLen > 0) {
-        if (normTitle.isNotEmpty()) {
+        if (titleLen >= rawQueryLen) {
             titleIdx = normTitle.indexOf(rawNormalizedQuery)
             if (titleIdx == 0) {
-                if (normTitle.length == rawQueryLen) {
-                    score += 200
-                } else {
-                    score += 120
-                }
+                score += if (titleLen == rawQueryLen) 200 else 120
             } else if (titleIdx > 0) {
                 score += 80
             }
         }
-        if (normCourse.isNotEmpty()) {
+        if (courseLen >= rawQueryLen) {
             courseIdx = normCourse.indexOf(rawNormalizedQuery)
             if (courseIdx == 0) {
-                if (normCourse.length == rawQueryLen) {
-                    score += 100
-                } else {
-                    score += 60
-                }
+                score += if (courseLen == rawQueryLen) 100 else 60
             } else if (courseIdx > 0) {
                 score += 40
             }
@@ -279,24 +281,25 @@ fun calculateSearchRelevance(
     }
     if (tokenCount == 1 && rawQueryLen > 0 && queryTokens[0] == rawNormalizedQuery) {
         val token = rawNormalizedQuery
-        if (normTitle.isNotEmpty() && titleIdx >= 0) {
+        if (titleLen >= rawQueryLen && titleIdx >= 0) {
             score += 30
             if (titleIdx == 0 || normTitle[titleIdx - 1] == ' ' || hasSubsequentWordBoundary(normTitle, token, titleIdx)) {
                 score += 15
             }
         }
-        if (normCourse.isNotEmpty() && courseIdx >= 0) {
+        if (courseLen >= rawQueryLen && courseIdx >= 0) {
             score += 15
         }
-        if (normContent.isNotEmpty() && normContent.indexOf(token) >= 0) {
+        if (contentLen >= rawQueryLen && normContent.indexOf(token) >= 0) {
             score += 5
         }
         return score
     }
     for (i in 0 until tokenCount) {
         val token = queryTokens[i]
-        if (token.isEmpty()) continue
-        if (normTitle.isNotEmpty()) {
+        val tokenLen = token.length
+        if (tokenLen == 0) continue
+        if (titleLen >= tokenLen) {
             val matchIdx = normTitle.indexOf(token)
             if (matchIdx >= 0) {
                 score += 30
@@ -305,10 +308,10 @@ fun calculateSearchRelevance(
                 }
             }
         }
-        if (normCourse.isNotEmpty() && normCourse.indexOf(token) >= 0) {
+        if (courseLen >= tokenLen && normCourse.indexOf(token) >= 0) {
             score += 15
         }
-        if (normContent.isNotEmpty() && normContent.indexOf(token) >= 0) {
+        if (contentLen >= tokenLen && normContent.indexOf(token) >= 0) {
             score += 5
         }
     }

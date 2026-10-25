@@ -26,13 +26,113 @@ public struct ChunkyTheme {
     public static let editorialHairline = Color.primary.opacity(0.05)
     public static let editorialPillBg = Color(red: 0.94, green: 0.96, blue: 0.98)
 
-    public static var skyGradient: LinearGradient {
-        LinearGradient(colors: [skyTop, skyBottom], startPoint: .topLeading, endPoint: .bottomTrailing)
-    }
+    public static let skyGradient = LinearGradient(colors: [skyTop, skyBottom], startPoint: .topLeading, endPoint: .bottomTrailing)
+    public static let emberGradient = LinearGradient(colors: [emberTop, emberBottom], startPoint: .top, endPoint: .bottom)
 
-    public static var emberGradient: LinearGradient {
-        LinearGradient(colors: [emberTop, emberBottom], startPoint: .top, endPoint: .bottom)
-    }
+    public static let flameOuterGradient = LinearGradient(
+        stops: [
+            .init(color: Color(red: 1.00, green: 0.48, blue: 0.22), location: 0.0),
+            .init(color: Color(red: 0.98, green: 0.32, blue: 0.14), location: 0.52),
+            .init(color: Color(red: 0.85, green: 0.18, blue: 0.08), location: 1.0)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    public static let flameInnerGradient = LinearGradient(
+        stops: [
+            .init(color: Color(red: 1.00, green: 0.95, blue: 0.65).opacity(0.96), location: 0.0),
+            .init(color: Color(red: 1.00, green: 0.76, blue: 0.25).opacity(0.85), location: 0.50),
+            .init(color: Color(red: 0.98, green: 0.44, blue: 0.14).opacity(0.25), location: 1.0)
+        ],
+        startPoint: UnitPoint(x: 0.50, y: 0.18),
+        endPoint: UnitPoint(x: 0.50, y: 0.86)
+    )
+
+    public static let flameCoreGradient = LinearGradient(
+        stops: [
+            .init(color: Color.white.opacity(0.95), location: 0.0),
+            .init(color: Color(red: 1.00, green: 0.96, blue: 0.70).opacity(0.80), location: 0.50),
+            .init(color: Color(red: 1.00, green: 0.82, blue: 0.35).opacity(0.0), location: 1.0)
+        ],
+        startPoint: UnitPoint(x: 0.50, y: 0.34),
+        endPoint: UnitPoint(x: 0.50, y: 0.78)
+    )
+
+    public static let crestGlossGradient = LinearGradient(
+        stops: [
+            .init(color: Color.white.opacity(0.0), location: 0.0),
+            .init(color: Color.white.opacity(0.90), location: 0.25),
+            .init(color: Color.white.opacity(0.95), location: 0.65),
+            .init(color: Color.white.opacity(0.0), location: 1.0)
+        ],
+        startPoint: UnitPoint(x: 0.58, y: 0.11),
+        endPoint: UnitPoint(x: 0.39, y: 0.25)
+    )
+
+    public static let leftTongueGlossGradient = LinearGradient(
+        stops: [
+            .init(color: Color.white.opacity(0.0), location: 0.0),
+            .init(color: Color.white.opacity(0.85), location: 0.35),
+            .init(color: Color.white.opacity(0.95), location: 0.70),
+            .init(color: Color.white.opacity(0.0), location: 1.0)
+        ],
+        startPoint: UnitPoint(x: 0.33, y: 0.30),
+        endPoint: UnitPoint(x: 0.185, y: 0.41)
+    )
+
+    public static let leftCheekGlossGradient = LinearGradient(
+        stops: [
+            .init(color: Color.white.opacity(0.0), location: 0.0),
+            .init(color: Color.white.opacity(0.85), location: 0.35),
+            .init(color: Color.white.opacity(0.65), location: 0.75),
+            .init(color: Color.white.opacity(0.0), location: 1.0)
+        ],
+        startPoint: UnitPoint(x: 0.185, y: 0.48),
+        endPoint: UnitPoint(x: 0.24, y: 0.72)
+    )
+
+    public static let rightTipGlossGradient = LinearGradient(
+        stops: [
+            .init(color: Color.white.opacity(0.0), location: 0.0),
+            .init(color: Color.white.opacity(0.65), location: 0.40),
+            .init(color: Color.white.opacity(0.0), location: 1.0)
+        ],
+        startPoint: UnitPoint(x: 0.60, y: 0.10),
+        endPoint: UnitPoint(x: 0.63, y: 0.22)
+    )
+
+    public static let rightTongueGlossGradient = LinearGradient(
+        stops: [
+            .init(color: Color.white.opacity(0.0), location: 0.0),
+            .init(color: Color.white.opacity(0.60), location: 0.40),
+            .init(color: Color.white.opacity(0.0), location: 1.0)
+        ],
+        startPoint: UnitPoint(x: 0.70, y: 0.38),
+        endPoint: UnitPoint(x: 0.82, y: 0.46)
+    )
+
+    public static let stressedSweatDropGradient = LinearGradient(
+        colors: [Color(red: 0.45, green: 0.88, blue: 1.0), Color(red: 0.10, green: 0.65, blue: 0.95)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    public static let celebratingMouthGradient = LinearGradient(
+        colors: [Color(red: 0.24, green: 0.08, blue: 0.13), Color(red: 0.10, green: 0.04, blue: 0.06)],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    public static let celebratingTongueGradient = LinearGradient(
+        colors: [
+            Color(red: 1.00, green: 0.50, blue: 0.64),
+            Color(red: 1.00, green: 0.32, blue: 0.49),
+            Color(red: 0.90, green: 0.16, blue: 0.34)
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
 }
 
 public enum EmberEmotion: String, CaseIterable, Sendable {
@@ -372,151 +472,65 @@ public struct ChunkyEmberCharacterView: View {
                 .frame(width: size * 0.74, height: size * 0.14)
                 .offset(y: size * 0.45)
 
-            flameOuterBody
-                .frame(width: size, height: size)
+            ZStack {
+                flameOuterBody
+                    .frame(width: size, height: size)
 
-            flameInnerBody
-                .frame(width: size, height: size)
+                flameInnerBody
+                    .frame(width: size, height: size)
 
-            flameCoreHeart
-                .frame(width: size, height: size)
+                flameCoreHeart
+                    .frame(width: size, height: size)
 
-            flameRimHighlights
-                .frame(width: size, height: size)
+                flameRimHighlights
+                    .frame(width: size, height: size)
 
-            blushCheeks
-                .frame(width: size, height: size)
+                blushCheeks
+                    .frame(width: size, height: size)
 
-            facialFeatures
-                .frame(width: size, height: size)
+                facialFeatures
+                    .frame(width: size, height: size)
+            }
+            .drawingGroup()
 
             stateAccessories
                 .frame(width: size, height: size)
         }
         .frame(width: size, height: size)
-        .drawingGroup()
     }
 
     private var flameOuterBody: some View {
         StandardEmberFlameOuter(isUrgent: emotion == .stressed, isSleeping: emotion == .sleeping)
-            .fill(
-                LinearGradient(
-                    stops: [
-                        .init(color: Color(red: 1.00, green: 0.48, blue: 0.22), location: 0.0),
-                        .init(color: Color(red: 0.98, green: 0.32, blue: 0.14), location: 0.52),
-                        .init(color: Color(red: 0.85, green: 0.18, blue: 0.08), location: 1.0)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .fill(ChunkyTheme.flameOuterGradient)
             .shadow(color: Color(red: 0.86, green: 0.20, blue: 0.10).opacity(0.28), radius: 5, x: 0, y: 2.5)
     }
 
     private var flameInnerBody: some View {
         StandardEmberFlameInner(isSleeping: emotion == .sleeping)
-            .fill(
-                LinearGradient(
-                    stops: [
-                        .init(color: Color(red: 1.00, green: 0.95, blue: 0.65).opacity(0.96), location: 0.0),
-                        .init(color: Color(red: 1.00, green: 0.76, blue: 0.25).opacity(0.85), location: 0.50),
-                        .init(color: Color(red: 0.98, green: 0.44, blue: 0.14).opacity(0.25), location: 1.0)
-                    ],
-                    startPoint: UnitPoint(x: 0.50, y: 0.18),
-                    endPoint: UnitPoint(x: 0.50, y: 0.86)
-                )
-            )
+            .fill(ChunkyTheme.flameInnerGradient)
     }
 
     private var flameCoreHeart: some View {
         StandardEmberFlameCore()
-            .fill(
-                LinearGradient(
-                    stops: [
-                        .init(color: Color.white.opacity(0.95), location: 0.0),
-                        .init(color: Color(red: 1.00, green: 0.96, blue: 0.70).opacity(0.80), location: 0.50),
-                        .init(color: Color(red: 1.00, green: 0.82, blue: 0.35).opacity(0.0), location: 1.0)
-                    ],
-                    startPoint: UnitPoint(x: 0.50, y: 0.34),
-                    endPoint: UnitPoint(x: 0.50, y: 0.78)
-                )
-            )
+            .fill(ChunkyTheme.flameCoreGradient)
     }
 
     private var flameRimHighlights: some View {
         ZStack {
             TightMainCrestGlossPath()
-                .stroke(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.white.opacity(0.0), location: 0.0),
-                            .init(color: Color.white.opacity(0.90), location: 0.25),
-                            .init(color: Color.white.opacity(0.95), location: 0.65),
-                            .init(color: Color.white.opacity(0.0), location: 1.0)
-                        ],
-                        startPoint: UnitPoint(x: 0.58, y: 0.11),
-                        endPoint: UnitPoint(x: 0.39, y: 0.25)
-                    ),
-                    style: StrokeStyle(lineWidth: max(2.0, size * 0.024), lineCap: .round)
-                )
+                .stroke(ChunkyTheme.crestGlossGradient, style: StrokeStyle(lineWidth: max(2.0, size * 0.024), lineCap: .round))
 
             TightLeftTongueGlossPath()
-                .stroke(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.white.opacity(0.0), location: 0.0),
-                            .init(color: Color.white.opacity(0.85), location: 0.35),
-                            .init(color: Color.white.opacity(0.95), location: 0.70),
-                            .init(color: Color.white.opacity(0.0), location: 1.0)
-                        ],
-                        startPoint: UnitPoint(x: 0.33, y: 0.30),
-                        endPoint: UnitPoint(x: 0.185, y: 0.41)
-                    ),
-                    style: StrokeStyle(lineWidth: max(2.0, size * 0.023), lineCap: .round)
-                )
+                .stroke(ChunkyTheme.leftTongueGlossGradient, style: StrokeStyle(lineWidth: max(2.0, size * 0.023), lineCap: .round))
 
             TightLeftCheekGlossPath()
-                .stroke(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.white.opacity(0.0), location: 0.0),
-                            .init(color: Color.white.opacity(0.85), location: 0.35),
-                            .init(color: Color.white.opacity(0.65), location: 0.75),
-                            .init(color: Color.white.opacity(0.0), location: 1.0)
-                        ],
-                        startPoint: UnitPoint(x: 0.185, y: 0.48),
-                        endPoint: UnitPoint(x: 0.24, y: 0.72)
-                    ),
-                    style: StrokeStyle(lineWidth: max(2.2, size * 0.025), lineCap: .round)
-                )
+                .stroke(ChunkyTheme.leftCheekGlossGradient, style: StrokeStyle(lineWidth: max(2.2, size * 0.025), lineCap: .round))
 
             TightRightTipGlossPath()
-                .stroke(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.white.opacity(0.0), location: 0.0),
-                            .init(color: Color.white.opacity(0.65), location: 0.40),
-                            .init(color: Color.white.opacity(0.0), location: 1.0)
-                        ],
-                        startPoint: UnitPoint(x: 0.60, y: 0.10),
-                        endPoint: UnitPoint(x: 0.63, y: 0.22)
-                    ),
-                    style: StrokeStyle(lineWidth: max(1.6, size * 0.016), lineCap: .round)
-                )
+                .stroke(ChunkyTheme.rightTipGlossGradient, style: StrokeStyle(lineWidth: max(1.6, size * 0.016), lineCap: .round))
 
             TightRightTongueGlossPath()
-                .stroke(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.white.opacity(0.0), location: 0.0),
-                            .init(color: Color.white.opacity(0.60), location: 0.40),
-                            .init(color: Color.white.opacity(0.0), location: 1.0)
-                        ],
-                        startPoint: UnitPoint(x: 0.70, y: 0.38),
-                        endPoint: UnitPoint(x: 0.82, y: 0.46)
-                    ),
-                    style: StrokeStyle(lineWidth: max(1.6, size * 0.016), lineCap: .round)
-                )
+                .stroke(ChunkyTheme.rightTongueGlossGradient, style: StrokeStyle(lineWidth: max(1.6, size * 0.016), lineCap: .round))
         }
     }
 
@@ -635,26 +649,10 @@ public struct ChunkyEmberCharacterView: View {
 
                 ZStack {
                     CelebratingMouthCavityShape()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(red: 0.24, green: 0.08, blue: 0.13), Color(red: 0.10, green: 0.04, blue: 0.06)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+                        .fill(ChunkyTheme.celebratingMouthGradient)
 
                     CelebratingTongueShape()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 1.00, green: 0.50, blue: 0.64),
-                                    Color(red: 1.00, green: 0.32, blue: 0.49),
-                                    Color(red: 0.90, green: 0.16, blue: 0.34)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+                        .fill(ChunkyTheme.celebratingTongueGradient)
 
                     Path { p in
                         p.move(to: CGPoint(x: mouthW * 0.5, y: mouthH * 0.38))
@@ -699,13 +697,7 @@ public struct ChunkyEmberCharacterView: View {
         if emotion == .stressed {
             ZStack {
                 Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(red: 0.45, green: 0.88, blue: 1.0), Color(red: 0.10, green: 0.65, blue: 0.95)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(ChunkyTheme.stressedSweatDropGradient)
                     .frame(width: size * 0.075, height: size * 0.12)
                     .overlay(
                         Capsule()
@@ -771,6 +763,8 @@ public struct MediumWidgetView: View {
             return "HÔM NAY"
         } else if hasTomorrow {
             return "NGÀY MAI"
+        } else if pending.contains(where: { $0.dueDate != nil && $0.dueDate! < Date() }) {
+            return "QUÁ HẠN"
         } else if !pending.isEmpty {
             return "SẮP TỚI"
         } else if courseworkList.contains(where: \.isDueToday) {
@@ -821,6 +815,7 @@ public struct MediumWidgetView: View {
 
             if !isLoggedIn {
                 loggedOutMediumView
+                    .widgetURL(URL(string: "classroomwidget://login"))
             } else {
                 HStack(spacing: 10) {
                     VStack(spacing: 0) {

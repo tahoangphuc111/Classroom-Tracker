@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-labelledby="empty-title empty-desc">
+  <title id="empty-title">Ngày mai rảnh rồi — Không còn bài tập</title>
+  <desc id="empty-desc">Tranh minh họa tĩnh vật phong cách cut-paper modernist: cặp sách đã xếp gọn, sổ báo bài đã gập lại, không gian yên bình khi tất cả bài tập đã hoàn thành.</desc>
+
+  <defs>
+    <!-- Filter 1: Horizon Wall and Window Band (Vertical texture) -->
+    <filter id="f-empty-wall" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="101" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="5" xChannelSelector="R" yChannelSelector="G" result="cut"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.025" numOctaves="3" seed="103" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="gray"/>
+      <feComposite in="cut" in2="gray" operator="arithmetic" k1="0.18" k2="0.92" k3="0" k4="0"/>
+    </filter>
+
+    <!-- Filter 2: Shelf / Desk Surface (Horizontal texture) -->
+    <filter id="f-empty-shelf" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="201" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="5.5" xChannelSelector="R" yChannelSelector="G" result="cut"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.026 0.008" numOctaves="3" seed="203" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="gray"/>
+      <feComposite in="cut" in2="gray" operator="arithmetic" k1="0.2" k2="0.9" k3="0" k4="0"/>
+    </filter>
+
+    <!-- Filter 3: Packed Schoolbag (Fabric cut-paper texture) -->
+    <filter id="f-empty-bag" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="2" seed="301" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="5" xChannelSelector="R" yChannelSelector="G" result="cut"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.015 0.015" numOctaves="3" seed="303" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="gray"/>
+      <feComposite in="cut" in2="gray" operator="arithmetic" k1="0.18" k2="0.92" k3="0" k4="0"/>
+    </filter>
+
+    <!-- Filter 4: Closed Notebook Stack (Paper edge cut) -->
+    <filter id="f-empty-books" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.025" numOctaves="2" seed="401" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="4" xChannelSelector="R" yChannelSelector="G" result="cut"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.02 0.01" numOctaves="3" seed="403" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="gray"/>
+      <feComposite in="cut" in2="gray" operator="arithmetic" k1="0.15" k2="0.95" k3="0" k4="0"/>
+    </filter>
+
+    <!-- Filter 5: Vermilion Accent (Ribbon & lock) -->
+    <filter id="f-empty-accent" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="2" seed="501" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="4" xChannelSelector="R" yChannelSelector="G" result="cut"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.018 0.018" numOctaves="3" seed="503" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="gray"/>
+      <feComposite in="cut" in2="gray" operator="arithmetic" k1="0.2" k2="0.9" k3="0" k4="0"/>
+    </filter>
+  </defs>
+
+  <!-- LAYER 0: Ground Substrate (Oversized paper canvas, top 45% quiet space for text) -->
+  <rect x="-30" y="-30" width="1060" height="1060" fill="#F6F2EB"/>
+
+  <!-- LAYER 1: Twilight Sky Band (Quiet horizontal band behind subject) -->
+  <g id="system-wall-aperture" filter="url(#f-empty-wall)">
+    <polygon points="-20,380 1020,340 1020,530 -20,570" fill="#EAE3D6"/>
+    <!-- Distant twilight window panel on right side -->
+    <polygon points="620,120 960,80 960,620 620,650" fill="#43596B"/>
+    <polygon points="650,150 930,110 930,590 650,620" fill="#5F7B91"/>
+    <!-- Warm horizon sliver -->
+    <polygon points="650,530 930,500 930,590 650,620" fill="#D9A372"/>
+  </g>
+
+  <!-- LAYER 2: Horizontal Wooden Shelf Surface -->
+  <g id="system-shelf" filter="url(#f-empty-shelf)">
+    <!-- Base under-ledge shadow -->
+    <polygon points="-20,720 1020,680 1020,1020 -20,1020" fill="#3D2E24"/>
+    <!-- Top shelf surface plane -->
+    <polygon points="-20,650 1020,610 1020,730 -20,770" fill="#C99460"/>
+    <!-- Shelf front fascia edge -->
+    <polygon points="-20,770 1020,730 1020,780 -20,820" fill="#B57E4A"/>
+  </g>
+
+  <!-- LAYER 3: The Neatly Packed Schoolbag (Cặp học sinh đã xếp gọn) -->
+  <g id="system-packed-bag" filter="url(#f-empty-bag)">
+    <!-- Shadow cast by the bag on the shelf -->
+    <polygon points="210,720 680,670 710,740 220,775" fill="#2C2018"/>
+
+    <!-- Schoolbag Side gusset -->
+    <polygon points="230,460 285,410 270,720 220,690" fill="#183254"/>
+
+    <!-- Main Schoolbag Canvas Body (Deep Chalk Cobalt) -->
+    <polygon points="280,410 650,370 670,690 270,720" fill="#244975"/>
+
+    <!-- Schoolbag Flap firmly closed down -->
+    <polygon points="275,410 655,370 660,560 265,580" fill="#2E588A"/>
+
+    <!-- Dual Vertical Leather Buckle Straps -->
+    <polygon points="350,400 378,397 372,620 344,623" fill="#755234"/>
+    <polygon points="530,380 558,377 552,595 524,598" fill="#755234"/>
+
+    <!-- Sturdy top leather carry handle -->
+    <path d="M 410,400 C 410,340 500,330 500,390 L 475,392 C 475,355 435,360 435,400 Z" fill="#755234"/>
+  </g>
+
+  <!-- LAYER 4: Closed Stack of Books & Assignment Notebook -->
+  <g id="system-finished-books" filter="url(#f-empty-books)">
+    <!-- Bottom reference textbook block (Olive-slate linen cloth) -->
+    <polygon points="560,670 880,640 890,705 550,730" fill="#3B5775"/>
+    <polygon points="880,640 895,638 905,703 890,705" fill="#EAE2D2"/>
+
+    <!-- Top "Sổ Báo Bài" (Neatly closed and resting on top) -->
+    <polygon points="590,625 845,600 855,665 580,685" fill="#889BB0"/>
+    <polygon points="845,600 860,598 870,663 855,665" fill="#FFFDF7"/>
+    <!-- Notebook bookmark ribbon folded out smoothly -->
+    <polygon points="760,605 780,603 810,640 790,642" fill="#D64028"/>
+  </g>
+
+  <!-- LAYER 5: The Focal Accents (Matte Vermilion Clasp Buckles & Golden Resting Pen) -->
+  <g id="system-empty-accent" filter="url(#f-empty-accent)">
+    <!-- Solid Vermilion Strap Fasteners (Bag locked, prep done) -->
+    <polygon points="342,610 376,606 373,630 339,634" fill="#D64028"/>
+    <polygon points="522,585 556,581 553,605 519,609" fill="#D64028"/>
+
+    <!-- Slanted resting pen on the closed notebook (Homework finished!) -->
+    <polygon points="620,680 750,610 755,622 625,692" fill="#D64028"/>
+    <!-- Stylized pen brass band -->
+    <polygon points="720,626 730,621 734,631 724,636" fill="#D9A372"/>
+  </g>
+</svg>

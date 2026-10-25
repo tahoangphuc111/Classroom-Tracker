@@ -15,6 +15,14 @@ interface CourseworkDao {
     @Query("SELECT * FROM courseworks")
     suspend fun getAllCoursework(): List<CourseworkEntity>
 
+    @Query("""
+        SELECT * FROM courseworks 
+        WHERE (status != 'TURNED_IN' AND status != 'RETURNED' AND is_manually_completed = 0)
+           OR due_epoch_millis >= :recentThreshold
+           OR due_epoch_millis IS NULL
+    """)
+    suspend fun getWidgetCoursework(recentThreshold: Long): List<CourseworkEntity>
+
     @Query("SELECT id FROM courseworks")
     suspend fun getAllCourseworkIds(): List<String>
 

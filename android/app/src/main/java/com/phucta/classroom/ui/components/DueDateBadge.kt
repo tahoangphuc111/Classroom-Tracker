@@ -10,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -69,6 +68,8 @@ object DueDateBadgeDefaults {
     }
 }
 
+private val BadgeShape = RoundedCornerShape(6.dp)
+
 @Composable
 fun DueDateBadge(
     text: String,
@@ -88,9 +89,8 @@ fun DueDateBadge(
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(colors.background)
-            .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+            .background(colors.background, shape = BadgeShape)
+            .border(1.dp, colors.border, BadgeShape)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {

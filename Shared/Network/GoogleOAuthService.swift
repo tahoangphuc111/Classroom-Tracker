@@ -43,7 +43,9 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     public static let defaultClientIdKey = "google_oauth_client_id"
     public static let defaultClientSecretKey = "google_oauth_client_secret"
 
-    private static let tokenUserDefaultsKey = "secure_oauth_tokens_cache"
+    private static var tokenUserDefaultsKey: String { ClassroomStorage.tokenUserDefaultsKey }
+    private nonisolated static let jsonDecoder = JSONDecoder()
+    private nonisolated static let jsonEncoder = JSONEncoder()
     private var inMemoryTokens: OAuthTokens?
 
     private let scopes = [
@@ -114,6 +116,8 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     public func checkStoredAuthentication() {
         if let tokens = loadTokensFromKeychain(), !tokens.accessToken.isEmpty {
             self.isAuthenticated = true
+            ClassroomStorage.shared.saveUserLoggedIn(true)
+            ClassroomStorage.shared.notifyWidgetReload()
             self.currentUserEmail = ClassroomStorage.shared.loadUserEmail()
             if self.currentUserEmail == nil {
                 Task { [weak self] in
@@ -253,6 +257,10 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         }
 
         let hostOrPath = (url.host ?? "") + url.path
+        if hostOrPath.contains("login") {
+            NotificationCenter.default.post(name: NSNotification.Name("OpenLoginOrSettings"), object: nil)
+            return true
+        }
         if hostOrPath.contains("auth-complete") || hostOrPath.contains("oauth-callback") {
             if self.isAuthenticated {
                 await fetchUserInfo()
@@ -359,6 +367,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     #if os(macOS)
     private func signInWithLoopback(clientId: String, verifier: String) async throws {
         let server = try LoopbackOAuthServer.shared.startServer()
+        defer { server.handle.close() }
         let loopbackRedirectUri = "http://127.0.0.1:\(server.port)"
         self.pendingRedirectUri = loopbackRedirectUri
 
@@ -452,7 +461,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             throw NSError(domain: "GoogleOAuthService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Lỗi đổi token: \(errorText)"])
         }
 
-        let tokenResponse = try JSONDecoder().decode(OAuthTokenResponse.self, from: data)
+        let tokenResponse = try Self.jsonDecoder.decode(OAuthTokenResponse.self, from: data)
         let tokens = OAuthTokens(
             accessToken: tokenResponse.accessToken,
             refreshToken: tokenResponse.refreshToken,
@@ -498,6 +507,14 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             }
             defer { self.refreshTask = nil }
 
+            guard self.isAuthenticated else {
+                throw NSError(domain: "GoogleOAuthService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Chưa đăng nhập Google."])
+            }
+
+            if let memory = self.inMemoryTokens, !memory.isExpired {
+                return memory.accessToken
+            }
+
             guard let currentTokens = self.loadTokensFromKeychain(),
                   let refreshToken = currentTokens.refreshToken else {
                 self.signOut()
@@ -542,7 +559,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
                 throw NSError(domain: "GoogleOAuthService", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Không thể làm mới token (\(httpResponse.statusCode))."])
             }
 
-            let tokenResponse = try JSONDecoder().decode(OAuthTokenResponse.self, from: data)
+            let tokenResponse = try Self.jsonDecoder.decode(OAuthTokenResponse.self, from: data)
             let newTokens = OAuthTokens(
                 accessToken: tokenResponse.accessToken,
                 refreshToken: tokenResponse.refreshToken ?? refreshToken,
@@ -568,7 +585,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
 
             let (data, response) = try await URLSession.shared.data(for: request)
             if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
-                let userInfo = try JSONDecoder().decode(GoogleUserInfo.self, from: data)
+                let userInfo = try Self.jsonDecoder.decode(GoogleUserInfo.self, from: data)
                 self.currentUserEmail = userInfo.email
                 self.currentUserName = userInfo.name
                 self.currentUserAvatar = userInfo.picture
@@ -579,7 +596,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
                     oidcRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
                     let (oidcData, oidcResponse) = try await URLSession.shared.data(for: oidcRequest)
                     if let oidcHttp = oidcResponse as? HTTPURLResponse, (200...299).contains(oidcHttp.statusCode) {
-                        let userInfo = try JSONDecoder().decode(GoogleUserInfo.self, from: oidcData)
+                        let userInfo = try Self.jsonDecoder.decode(GoogleUserInfo.self, from: oidcData)
                         self.currentUserEmail = userInfo.email
                         self.currentUserName = userInfo.name
                         self.currentUserAvatar = userInfo.picture
@@ -637,7 +654,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     private func saveTokensToKeychain(tokens: OAuthTokens) {
         self.inMemoryTokens = tokens
         ClassroomStorage.shared.saveUserLoggedIn(true)
-        guard let data = try? JSONEncoder().encode(tokens) else { return }
+        guard let data = try? Self.jsonEncoder.encode(tokens) else { return }
 
         UserDefaults.standard.set(data, forKey: Self.tokenUserDefaultsKey)
         for ud in ClassroomStorage.shared.allUserDefaults {
@@ -692,21 +709,21 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         }
         #endif
         if status == errSecSuccess, let data = item as? Data {
-            if let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
+            if let decoded = try? Self.jsonDecoder.decode(OAuthTokens.self, from: data) {
                 self.inMemoryTokens = decoded
                 return decoded
             }
         }
 
         if let data = UserDefaults.standard.data(forKey: Self.tokenUserDefaultsKey),
-           let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
+           let decoded = try? Self.jsonDecoder.decode(OAuthTokens.self, from: data) {
             self.inMemoryTokens = decoded
             return decoded
         }
 
         for ud in ClassroomStorage.shared.allUserDefaults {
             if let data = ud.data(forKey: Self.tokenUserDefaultsKey),
-               let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
+               let decoded = try? Self.jsonDecoder.decode(OAuthTokens.self, from: data) {
                 self.inMemoryTokens = decoded
                 return decoded
             }
@@ -715,7 +732,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         for dir in allTokenDirectories {
             let fileURL = dir.appendingPathComponent("cached_oauth_tokens.json")
             if let data = try? Data(contentsOf: fileURL),
-               let decoded = try? JSONDecoder().decode(OAuthTokens.self, from: data) {
+               let decoded = try? Self.jsonDecoder.decode(OAuthTokens.self, from: data) {
                 try? FileManager.default.removeItem(at: fileURL)
                 self.inMemoryTokens = decoded
                 return decoded

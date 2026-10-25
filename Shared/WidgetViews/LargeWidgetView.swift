@@ -21,6 +21,8 @@ public struct LargeWidgetView: View {
             return "HÔM NAY"
         } else if hasTomorrow {
             return "NGÀY MAI"
+        } else if pending.contains(where: { $0.dueDate != nil && $0.dueDate! < Date() }) {
+            return "QUÁ HẠN"
         } else if !pending.isEmpty {
             return "SẮP TỚI"
         } else if courseworkList.contains(where: \.isDueToday) {
@@ -34,6 +36,7 @@ public struct LargeWidgetView: View {
         switch sectionHeaderTitle {
         case "HÔM NAY & MAI": return "Hôm nay & mai"
         case "HÔM NAY": return "Hôm nay"
+        case "QUÁ HẠN": return "Quá hạn"
         case "SẮP TỚI": return "Sắp tới"
         default: return "Ngày mai"
         }
@@ -70,6 +73,7 @@ public struct LargeWidgetView: View {
 
             if !isLoggedIn {
                 loggedOutLargeView
+                    .widgetURL(URL(string: "classroomwidget://login"))
             } else {
                 VStack(spacing: 0) {
                     HStack(alignment: .center, spacing: 14) {
@@ -406,17 +410,17 @@ public struct LargeWidgetView: View {
             Spacer()
             HStack(spacing: 8) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
-                Text("Tuyệt vời!")
+                Text("Ngày mai rảnh rồi!")
                     .font(WidgetFontSystem.sectionHeader(size: 20))
                     .tracking(0.0)
                     .foregroundStyle(ChunkyTheme.textPrimary)
                 Image(systemName: "sparkles")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
             }
-            Text("Không có môn nào cần nộp")
+            Text("Tất cả môn học đã hoàn thành. Nghỉ ngơi nhé!")
                 .font(WidgetFontSystem.meta(size: 13))
                 .tracking(0.0)
                 .foregroundStyle(ChunkyTheme.textMuted)

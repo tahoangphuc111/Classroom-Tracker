@@ -68,7 +68,8 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     emptyList()
                 }
                 val allCoursework = if (authed) {
-                    database.courseworkDao().getAllCoursework()
+                    val recentThreshold = System.currentTimeMillis() - (48 * 3600 * 1000L)
+                    database.courseworkDao().getWidgetCoursework(recentThreshold)
                         .map { it.toDomain() }
                         .filter { !MockDataProvider.isMockCourseworkId(it.id) }
                 } else {
@@ -387,6 +388,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = GlanceModifier.defaultWeight(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -394,11 +396,11 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         style = TextStyle(
                             color = ColorProvider(Color.White),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 28.sp,
+                            fontSize = 26.sp,
                             fontFamily = WidgetRoundedFamily
                         )
                     )
-                    Spacer(modifier = GlanceModifier.width(4.dp))
+                    Spacer(modifier = GlanceModifier.width(3.dp))
 
                     if (activeItems.isEmpty() && courseworkList.isNotEmpty()) {
                         Image(
@@ -408,12 +410,12 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         )
                     } else {
                         Text(
-                            text = sectionTitle,
+                            text = if (extraCount > 0 && sectionTitle.length > 11) "BÁO BÀI" else sectionTitle,
                             maxLines = 1,
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 9.5.sp,
+                                fontSize = 9.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
@@ -439,8 +441,6 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         }
                     }
                 }
-
-                Spacer(modifier = GlanceModifier.defaultWeight())
 
                 val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 44, emotion)
                 Image(
@@ -469,15 +469,16 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             Image(
                                 provider = ImageProvider(R.drawable.ic_widget_sparkles),
                                 contentDescription = "Done",
-                                modifier = GlanceModifier.size(12.dp)
+                                modifier = GlanceModifier.size(11.dp)
                             )
-                            Spacer(modifier = GlanceModifier.width(4.dp))
+                            Spacer(modifier = GlanceModifier.width(3.dp))
                             Text(
-                                text = "Rảnh rồi!",
+                                text = "Ngày mai rảnh rồi!",
+                                maxLines = 1,
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextPrimary),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.5.sp
+                                    fontSize = 11.sp
                                 )
                             )
                         }
@@ -1231,7 +1232,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 )
                                 Spacer(modifier = GlanceModifier.width(6.dp))
                                 Text(
-                                    text = "Tuyệt vời!",
+                                    text = "Ngày mai rảnh rồi!",
                                     style = TextStyle(
                                         color = ColorProvider(ChunkyColor.TextPrimary),
                                         fontWeight = FontWeight.Bold,
@@ -1247,7 +1248,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             }
                             Spacer(modifier = GlanceModifier.height(4.dp))
                             Text(
-                                text = "Không có môn nào cần nộp",
+                                text = "Tất cả môn học đã hoàn thành. Nghỉ ngơi nhé!",
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextMuted),
                                     fontWeight = FontWeight.Medium,
@@ -1493,13 +1494,16 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
             val pending = items.filter { !it.isCompleted }
             val hasToday = pending.any { it.isDueToday }
             val hasTomorrow = pending.any { it.isDueTomorrow }
+            val hasOverdue = pending.any { it.dueEpochMillis != null && it.dueEpochMillis < System.currentTimeMillis() }
 
             return when {
                 hasToday && hasTomorrow -> "HÔM NAY & MAI"
                 hasToday -> "HÔM NAY"
                 hasTomorrow -> "NGÀY MAI"
+                hasOverdue -> "QUÁ HẠN"
                 pending.isNotEmpty() -> "SẮP TỚI"
                 items.any { it.isDueToday } -> "HÔM NAY"
+                items.any { it.isDueTomorrow } -> "NGÀY MAI"
                 else -> "NGÀY MAI"
             }
         }
@@ -1508,6 +1512,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
             return when (sectionTitle) {
                 "HÔM NAY & MAI" -> "Hôm nay & mai"
                 "HÔM NAY" -> "Hôm nay"
+                "QUÁ HẠN" -> "Quá hạn"
                 "SẮP TỚI" -> "Sắp tới"
                 else -> "Ngày mai"
             }

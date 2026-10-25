@@ -1,0 +1,205 @@
+<svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Ground Shadow -->
+    <radialGradient id="groundShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#14243B" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#14243B" stop-opacity="0"/>
+    </radialGradient>
+    
+    <!-- Outer 3D Flame Gradient -->
+    <linearGradient id="flameOuterGrad" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#FF7A38"/>
+      <stop offset="52%" stop-color="#F74F24"/>
+      <stop offset="100%" stop-color="#D62B14"/>
+    </linearGradient>
+
+    <!-- Inner Spiky Flame Gradient -->
+    <linearGradient id="flameInnerGrad" x1="50%" y1="18%" x2="50%" y2="86%">
+      <stop offset="0%" stop-color="#FFF4A6" stop-opacity="0.96"/>
+      <stop offset="50%" stop-color="#FFC240" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FA6E24" stop-opacity="0.25"/>
+    </linearGradient>
+
+    <!-- Inner Glowing Hearth Core -->
+    <linearGradient id="flameCoreGrad" x1="50%" y1="34%" x2="50%" y2="78%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="50%" stop-color="#FFF5B3" stop-opacity="0.80"/>
+      <stop offset="100%" stop-color="#FFD159" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Tight Specular Gradients -->
+    <linearGradient id="crestGlossGrad" x1="69.6" y1="13.2" x2="46.8" y2="30.0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="25%" stop-color="#FFFFFF" stop-opacity="0.90"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="tongueGlossGrad" x1="39.6" y1="36.0" x2="22.2" y2="49.2" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="35%" stop-color="#FFFFFF" stop-opacity="0.85"/>
+      <stop offset="70%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="cheekGlossGrad" x1="22.2" y1="57.6" x2="28.8" y2="86.4" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="35%" stop-color="#FFFFFF" stop-opacity="0.85"/>
+      <stop offset="75%" stop-color="#FFFFFF" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="rightTipGlossGrad" x1="72.0" y1="12.0" x2="75.6" y2="26.4" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="40%" stop-color="#FFFFFF" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="rightTongueGlossGrad" x1="84.0" y1="45.6" x2="98.4" y2="55.2" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="40%" stop-color="#FFFFFF" stop-opacity="0.60"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Blush Cheeks -->
+    <radialGradient id="blushGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF4D79" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#FF4D79" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Book Page Left Gradient -->
+    <linearGradient id="bookPageGradLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#EDE7DA"/>
+      <stop offset="15%" stop-color="#FFFDF7"/>
+      <stop offset="90%" stop-color="#FAF5E8"/>
+      <stop offset="100%" stop-color="#DDD5C4"/>
+    </linearGradient>
+
+    <!-- Book Page Right Gradient -->
+    <linearGradient id="bookPageGradRight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#DDD5C4"/>
+      <stop offset="10%" stop-color="#FAF5E8"/>
+      <stop offset="85%" stop-color="#FFFDF7"/>
+      <stop offset="100%" stop-color="#EDE7DA"/>
+    </linearGradient>
+
+    <!-- Book Cover Gradient -->
+    <linearGradient id="bookCoverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B6DD8"/>
+      <stop offset="50%" stop-color="#244BB5"/>
+      <stop offset="100%" stop-color="#18368E"/>
+    </linearGradient>
+
+    <!-- Spectacle Lens Glint -->
+    <linearGradient id="lensGlintGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EBF4FF" stop-opacity="0.45"/>
+      <stop offset="45%" stop-color="#FFFFFF" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#D0E5FF" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 1. Ground Shadow -->
+  <ellipse cx="60" cy="112" rx="46" ry="7.8" fill="url(#groundShadow)"/>
+
+  <!-- 2. Outer Chubby Spiky Flame Body -->
+  <path d="M60 109.2 C76.8 109.2 93.6 98.4 93.6 84.0 C93.6 69.6 102.0 61.2 102.0 54.0 C98.4 46.8 85.2 45.6 80.4 43.2 C73.2 28.8 78.0 19.2 73.2 9.6 C63.6 9.6 50.4 20.4 44.4 30.0 C34.8 34.8 19.2 39.6 19.2 48.0 C19.2 62.4 22.8 74.4 26.4 84.0 C26.4 98.4 43.2 109.2 60 109.2 Z" fill="url(#flameOuterGrad)"/>
+
+  <!-- 3. Inner Spiky Flame Body -->
+  <path d="M60 103.2 C74.4 103.2 87.6 93.6 87.6 80.4 C87.6 69.6 93.6 62.4 93.6 56.4 C91.2 49.2 80.4 48.0 75.6 46.8 C69.6 33.6 73.2 26.4 69.6 21.6 C62.4 21.6 52.8 30.0 48.0 37.2 C39.6 42.0 27.6 45.6 27.6 52.8 C27.6 64.8 30.0 73.2 32.4 80.4 C32.4 93.6 45.6 103.2 60 103.2 Z" fill="url(#flameInnerGrad)"/>
+
+  <!-- 4. Luminous Hearth Core -->
+  <path d="M62.4 40.8 C76.8 50.4 81.6 64.8 79.2 74.4 C76.8 88.8 72.0 93.6 60.0 93.6 C48.0 93.6 43.2 88.8 40.8 74.4 C38.4 64.8 45.6 50.4 62.4 40.8 Z" fill="url(#flameCoreGrad)"/>
+
+  <!-- 5. Tight Specular Highlights -->
+  <path d="M69.6 13.2 C62.4 13.2 51.6 21.6 46.8 30.0" stroke="url(#crestGlossGrad)" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+  <path d="M39.6 36.0 C31.2 38.4 22.2 42.0 22.2 49.2" stroke="url(#tongueGlossGrad)" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+  <path d="M22.2 57.6 C22.2 67.2 25.2 78.0 28.8 86.4" stroke="url(#cheekGlossGrad)" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+  <path d="M72.0 12.0 C74.4 16.8 75.6 21.6 75.6 26.4" stroke="url(#rightTipGlossGrad)" stroke-width="2.0" stroke-linecap="round" fill="none"/>
+  <path d="M84.0 45.6 C90.0 48.0 96.0 51.6 98.4 55.2" stroke="url(#rightTongueGlossGrad)" stroke-width="2.0" stroke-linecap="round" fill="none"/>
+
+  <!-- 6. Soft Blush Cheeks -->
+  <circle cx="39" cy="72.6" r="8.4" fill="url(#blushGrad)"/>
+  <circle cx="82.2" cy="72.6" r="8.4" fill="url(#blushGrad)"/>
+
+  <!-- 7. Studious Eyes (Looking Down at Book with Warm Focus) -->
+  <!-- Left Eye -->
+  <rect x="45" y="58" width="11.5" height="17" rx="5.75" fill="#1F140F"/>
+  <circle cx="48.5" cy="62" r="2.2" fill="#FFFFFF"/>
+  <circle cx="53" cy="70" r="1.2" fill="#FFFFFF" opacity="0.92"/>
+
+  <!-- Right Eye -->
+  <rect x="64.5" y="58" width="11.5" height="17" rx="5.75" fill="#1F140F"/>
+  <circle cx="68" cy="62" r="2.2" fill="#FFFFFF"/>
+  <circle cx="72.5" cy="70" r="1.2" fill="#FFFFFF" opacity="0.92"/>
+
+  <!-- 8. Sweet Concentrated Smile -->
+  <path d="M55.5 76.5 Q60.5 80.5 65.5 76.5" stroke="#1F140F" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+
+  <!-- 9. Intellectual Round Spectacles (Glasses) -->
+  <!-- Left Lens Glint -->
+  <circle cx="50.7" cy="66.5" r="9.2" fill="url(#lensGlintGrad)"/>
+  <!-- Right Lens Glint -->
+  <circle cx="70.3" cy="66.5" r="9.2" fill="url(#lensGlintGrad)"/>
+
+  <!-- Left Frame -->
+  <circle cx="50.7" cy="66.5" r="9.2" stroke="#1F140F" stroke-width="2.2" fill="none"/>
+  <!-- Right Frame -->
+  <circle cx="70.3" cy="66.5" r="9.2" stroke="#1F140F" stroke-width="2.2" fill="none"/>
+  <!-- Nose Bridge -->
+  <path d="M 59.9 65.5 Q 60.5 63.8 61.1 65.5" stroke="#1F140F" stroke-width="2.0" stroke-linecap="round" fill="none"/>
+  <!-- Left Temple Extension -->
+  <path d="M 41.5 66.5 L 34.5 65.2" stroke="#1F140F" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Right Temple Extension -->
+  <path d="M 79.5 66.5 L 86.5 65.2" stroke="#1F140F" stroke-width="1.8" stroke-linecap="round"/>
+
+  <!-- Specular Glare Slits on Glass Lenses -->
+  <path d="M 53.5 60.5 L 48.0 66.0" stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round" opacity="0.75"/>
+  <path d="M 55.5 62.5 L 53.0 65.0" stroke="#FFFFFF" stroke-width="1.0" stroke-linecap="round" opacity="0.6"/>
+  <path d="M 73.0 60.5 L 67.5 66.0" stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round" opacity="0.75"/>
+  <path d="M 75.0 62.5 L 72.5 65.0" stroke="#FFFFFF" stroke-width="1.0" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- 10. Open Study Textbook in Foreground -->
+  <!-- Book Shadow on Ground -->
+  <ellipse cx="60" cy="111" rx="34" ry="4.5" fill="#14243B" opacity="0.22"/>
+
+  <!-- Hardcover Base/Edges -->
+  <path d="M 28 103 L 60 106.8 L 92 103 L 92 105.8 L 60 109.6 L 28 105.8 Z" fill="url(#bookCoverGrad)"/>
+  <path d="M 28 103 L 29.5 91 L 60 93.8 L 60 106.8 Z" fill="#1E3E96" opacity="0.5"/>
+  <path d="M 92 103 L 90.5 91 L 60 93.8 L 60 106.8 Z" fill="#1E3E96" opacity="0.5"/>
+
+  <!-- Page Stack Block (Depth) -->
+  <path d="M 30.5 102.5 L 60 105.8 L 89.5 102.5 L 89.5 104.5 L 60 107.8 L 30.5 104.5 Z" fill="#C8BEAC"/>
+
+  <!-- Left Open Page Surface -->
+  <path d="M 60 105.2 C 50.5 102.6 37 100.8 31 100 L 32.5 90 C 38.5 90.8 51 92.4 60 95 Z" fill="url(#bookPageGradLeft)" stroke="#E2DAC9" stroke-width="0.5"/>
+  <!-- Right Open Page Surface -->
+  <path d="M 60 105.2 C 69.5 102.6 83 100.8 89 100 L 87.5 90 C 81.5 90.8 69 92.4 60 95 Z" fill="url(#bookPageGradRight)" stroke="#E2DAC9" stroke-width="0.5"/>
+
+  <!-- Center Book Spine Fold Crease -->
+  <path d="M 60 95 L 60 105.2" stroke="#A89E8C" stroke-width="1.2" stroke-linecap="round"/>
+
+  <!-- Simulated Notebook Ruling Lines (Left Page) -->
+  <path d="M 36.5 93.2 C 43 94.0 50.5 95.0 55.5 96.0" stroke="#7A8CA3" stroke-width="1.1" stroke-linecap="round" opacity="0.55"/>
+  <path d="M 36.0 95.8 C 42.5 96.6 50.0 97.6 55.5 98.6" stroke="#7A8CA3" stroke-width="1.1" stroke-linecap="round" opacity="0.55"/>
+  <path d="M 35.5 98.4 C 41.5 99.1 47.0 99.9 52.0 100.7" stroke="#7A8CA3" stroke-width="1.1" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- Simulated Notebook Ruling Lines (Right Page) -->
+  <path d="M 64.5 96.0 C 69.5 95.0 77 94.0 83.5 93.2" stroke="#7A8CA3" stroke-width="1.1" stroke-linecap="round" opacity="0.55"/>
+  <path d="M 64.5 98.6 C 70.0 97.6 77.5 96.6 84.0 95.8" stroke="#7A8CA3" stroke-width="1.1" stroke-linecap="round" opacity="0.55"/>
+  <path d="M 64.5 101.2 C 69.5 100.3 75.5 99.5 81.0 98.7" stroke="#7A8CA3" stroke-width="1.1" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- Red Satin Bookmark Ribbon Dangling -->
+  <path d="M 60 105.2 C 60.5 108.5 62.5 111.0 61.2 113.8 L 59.8 112.5 L 58.2 113.8 C 58.6 110.8 59.2 108.2 60 105.2 Z" fill="#E63946"/>
+  <path d="M 60.4 105.8 C 60.8 108.8 62.4 110.8 61.2 113.2" stroke="#FFFFFF" stroke-width="0.5" stroke-linecap="round" opacity="0.45"/>
+
+  <!-- Cute Flame Paws Cradling the Book -->
+  <ellipse cx="33.5" cy="98.5" rx="3.6" ry="4.8" transform="rotate(-18 33.5 98.5)" fill="url(#flameOuterGrad)"/>
+  <ellipse cx="86.5" cy="98.5" rx="3.6" ry="4.8" transform="rotate(18 86.5 98.5)" fill="url(#flameOuterGrad)"/>
+  <!-- Paw Highlight Accents -->
+  <path d="M 32.5 95.5 Q 35 96 35.5 98.5" stroke="#FFFFFF" stroke-width="0.9" stroke-linecap="round" opacity="0.5"/>
+  <path d="M 87.5 95.5 Q 85 96 84.5 98.5" stroke="#FFFFFF" stroke-width="0.9" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- 11. Floating Golden Study Sparkles -->
+  <path d="M 22 42 Q 22 46 25 46 Q 22 46 22 50 Q 22 46 19 46 Q 22 46 22 42 Z" fill="#FFDF4A"/>
+  <path d="M 101 40 Q 101 44 104 44 Q 101 44 101 48 Q 101 44 98 44 Q 101 44 101 40 Z" fill="#FFDF4A"/>
+</svg>

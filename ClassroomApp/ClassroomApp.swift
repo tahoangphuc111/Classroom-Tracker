@@ -5,11 +5,12 @@ import UserNotifications
 
 final class ClassroomAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     private var backgroundSyncTimer: Timer?
+    private var didBecomeActiveObserver: (any NSObjectProtocol)?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
 
-        NotificationCenter.default.addObserver(
+        didBecomeActiveObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
             object: nil,
             queue: .main
@@ -44,6 +45,10 @@ final class ClassroomAppDelegate: NSObject, NSApplicationDelegate, UNUserNotific
     func applicationWillTerminate(_ notification: Notification) {
         backgroundSyncTimer?.invalidate()
         backgroundSyncTimer = nil
+        if let observer = didBecomeActiveObserver {
+            NotificationCenter.default.removeObserver(observer)
+            didBecomeActiveObserver = nil
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

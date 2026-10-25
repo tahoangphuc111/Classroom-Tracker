@@ -113,7 +113,13 @@ class ClassroomDateUtilsTest {
             set(Calendar.MINUTE, 30)
             set(Calendar.SECOND, 0)
         }
-        assertEquals("14:30", ClassroomDateUtils.compactDueString(calToday1430.timeInMillis, isCompleted = false))
+        val nowMillis = System.currentTimeMillis()
+        if (calToday1430.timeInMillis > nowMillis) {
+            assertEquals("14:30", ClassroomDateUtils.compactDueString(calToday1430.timeInMillis, isCompleted = false))
+        }
+
+        val calTodayOverdue = Calendar.getInstance().apply { add(Calendar.MINUTE, -15) }
+        assertEquals("Quá hạn", ClassroomDateUtils.compactDueString(calTodayOverdue.timeInMillis, isCompleted = false))
 
         val calTomorrow1430 = Calendar.getInstance().apply {
             add(Calendar.DAY_OF_YEAR, 1)
@@ -371,5 +377,25 @@ class ClassroomDateUtilsTest {
         assertEquals("overdue bucket must be empty", 0, buckets.overdue.size)
         assertEquals("completed bucket must contain the expired task", 1, buckets.completed.size)
         assertEquals("cw_past_due_rule", buckets.completed.first().id)
+    }
+
+    @Test
+    fun testTimezoneChange_InvalidatesDayBoundaries() {
+        val originalTz = java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh")) // UTC+7
+            ClassroomDateUtils.ensureDayBoundaries()
+            val startOfTodayVn = ClassroomDateUtils.startOfToday
+
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tokyo")) // UTC+9
+            ClassroomDateUtils.ensureDayBoundaries()
+            val startOfTodayTokyo = ClassroomDateUtils.startOfToday
+
+            // Tokyo is 2 hours ahead of VN, so startOfToday in Tokyo is 2 hours earlier in epoch millis
+            assertEquals(2 * 3600 * 1000L, startOfTodayVn - startOfTodayTokyo)
+        } finally {
+            java.util.TimeZone.setDefault(originalTz)
+            ClassroomDateUtils.ensureDayBoundaries()
+        }
     }
 }

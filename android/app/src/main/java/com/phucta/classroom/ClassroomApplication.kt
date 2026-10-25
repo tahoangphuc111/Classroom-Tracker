@@ -12,7 +12,11 @@ import com.phucta.classroom.data.local.TokenStorage
 import com.phucta.classroom.data.remote.GoogleOAuthManager
 import com.phucta.classroom.data.repository.ClassroomRepository
 import com.phucta.classroom.worker.ClassroomSyncWorker
+import com.phucta.classroom.data.model.ClassroomDateUtils
+import com.phucta.classroom.data.model.clearVietnameseSearchCache
 import com.phucta.classroom.data.remote.ClassroomApiService
+import com.phucta.classroom.ui.components.SubjectArtHelper
+import com.phucta.classroom.widget.EmberWidgetBitmapHelper
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -82,5 +86,23 @@ class ClassroomApplication : Application() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_BACKGROUND) {
+            SubjectArtHelper.clearCaches()
+            ClassroomDateUtils.clearCaches()
+            EmberWidgetBitmapHelper.clearCache()
+            clearVietnameseSearchCache()
+        }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        SubjectArtHelper.clearCaches()
+        ClassroomDateUtils.clearCaches()
+        EmberWidgetBitmapHelper.clearCache()
+        clearVietnameseSearchCache()
     }
 }

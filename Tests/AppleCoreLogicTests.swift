@@ -525,6 +525,134 @@ struct TestRunner {
             assertCondition(loadedAfterPending.first { $0.id == "cw_storage_test_1" }?.isManuallyCompleted == false, "updateCourseworkStatuses pending must set isManuallyCompleted = false")
         }
 
+        do {
+            let future = Date().addingTimeInterval(86400 * 3)
+            let remoteTurnedInTask = Coursework(
+                id: "cw_remote_unsubmit_storage",
+                courseId: "c_storage",
+                courseName: "Hóa học",
+                title: "Bài tập Este",
+                dueDate: future,
+                status: .turnedIn,
+                isManuallyCompleted: false
+            )
+            ClassroomStorage.shared.saveCoursework([remoteTurnedInTask])
+
+            let incomingUnsubmit = Coursework(
+                id: "cw_remote_unsubmit_storage",
+                courseId: "c_storage",
+                courseName: "Hóa học",
+                title: "Bài tập Este",
+                dueDate: future,
+                status: .pending,
+                isManuallyCompleted: false
+            )
+
+            let reconciled = ClassroomStorage.shared.reconcileCoursework(incoming: [incomingUnsubmit])
+            assertCondition(reconciled.first?.status == .pending, "reconcileCoursework in ClassroomStorage must revert to .pending when remote unsubmit occurs and task was not manually completed")
+            assertCondition(reconciled.first?.isManuallyCompleted == false, "reconcileCoursework must preserve isManuallyCompleted = false for remote unsubmit")
+        }
+
+        do {
+            assertCondition("ĐẠI SỐ & GIẢI TÍCH".normalizedForVietnameseSearch() == "dai so & giai tich", "Uppercase Đ and diacritics must be properly normalized")
+            assertCondition("Giáo Dục Kinh Tế Và Pháp Luật".normalizedForVietnameseSearch() == "giao duc kinh te va phap luat", "Complex compound Vietnamese title must be diacritic-stripped")
+            assertCondition("Lịch Sử & Địa Lý".normalizedForVietnameseSearch() == "lich su & dia ly", "Multiple words with diacritics must be diacritic-stripped")
+
+            let coursework = Coursework(
+                id: "cw_viet_search",
+                courseId: "c_viet",
+                courseName: "Giáo Dục Kinh Tế Và Pháp Luật",
+                title: "Tìm hiểu Luật Doanh Nghiệp 2020",
+                description: "Nêu các quyền và nghĩa vụ cơ bản của người kinh doanh"
+            )
+
+            let query = "doanh nghiep"
+            let tokens = ["doanh", "nghiep"]
+            let score = coursework.searchRelevanceScore(for: tokens, rawNormalizedQuery: query)
+            assertCondition(score > 0, "Search score for diacritic-free query 'doanh nghiep' on 'Doanh Nghiệp' must be positive")
+            assertCondition(coursework.searchIndex.contains("luat doanh nghiep"), "Search index must contain normalized keywords")
+        }
+
+        do {
+            let initialStatus = ClassroomStorage.shared.hasUserLoggedIn
+            ClassroomStorage.shared.saveUserLoggedIn(true)
+            assertCondition(ClassroomStorage.shared.hasUserLoggedIn == true, "hasUserLoggedIn must be true after saveUserLoggedIn(true)")
+
+            ClassroomStorage.shared.saveUserEmail("student@school.edu.vn")
+            assertCondition(ClassroomStorage.shared.loadUserEmail() == "student@school.edu.vn", "loadUserEmail must return saved email")
+
+            let metadata = ClassroomStorage.shared.loadSharedMetadata()
+            assertCondition(metadata?.userEmail == "student@school.edu.vn", "Shared metadata must reflect saved email")
+            assertCondition(metadata?.hasUserLoggedIn == true, "Shared metadata must reflect logged-in state")
+
+            ClassroomStorage.shared.invalidateMemoryCache()
+            assertCondition(ClassroomStorage.shared.loadUserEmail() == "student@school.edu.vn", "loadUserEmail must reload persisted email after memory cache invalidation")
+            assertCondition(ClassroomStorage.shared.hasUserLoggedIn == true, "hasUserLoggedIn must remain true across memory cache invalidation")
+
+            ClassroomStorage.shared.saveUserLoggedIn(false)
+            ClassroomStorage.shared.invalidateMemoryCache()
+            // When real courses exist, hasUserLoggedIn evaluates true
+            ClassroomStorage.shared.saveCourses([
+                Course(id: "google_course_12345", name: "Toán 12A", section: "12A", descriptionHeading: "Toán học", isSelectedForWidget: true)
+            ])
+            ClassroomStorage.shared.invalidateMemoryCache()
+            assertCondition(ClassroomStorage.shared.hasUserLoggedIn == true, "hasUserLoggedIn must be true when real Google Classroom courses exist")
+
+            ClassroomStorage.shared.clearAllData()
+            ClassroomStorage.shared.invalidateMemoryCache()
+            assertCondition(ClassroomStorage.shared.hasUserLoggedIn == false, "hasUserLoggedIn must be false after clearAllData")
+
+            ClassroomStorage.shared.saveUserLoggedIn(initialStatus)
+        }
+
+        do {
+            let group = DispatchGroup()
+            let queue = DispatchQueue(label: "com.phucta.classroom.tests.concurrency", attributes: .concurrent)
+            let testIterations = 100
+
+            for i in 0..<testIterations {
+                group.enter()
+                queue.async {
+                    let task = Coursework(
+                        id: "cw_stress_\(i)",
+                        courseId: "c_stress_\(i % 3)",
+                        courseName: "Course \(i % 3)",
+                        title: "Title \(i)",
+                        status: i % 2 == 0 ? .pending : .turnedIn,
+                        isManuallyCompleted: i % 2 != 0
+                    )
+                    ClassroomStorage.shared.saveCoursework([task])
+                    _ = ClassroomStorage.shared.loadCoursework()
+                    _ = ClassroomStorage.shared.getPendingCoursework()
+                    group.leave()
+                }
+
+                group.enter()
+                queue.async {
+                    let note = PersonalNote(
+                        id: "note_stress_\(i)",
+                        courseworkId: "cw_stress_\(i)",
+                        title: "Note \(i)",
+                        content: "Content \(i)",
+                        isCompleted: i % 2 == 0
+                    )
+                    ClassroomStorage.shared.savePersonalNotes([note])
+                    _ = ClassroomStorage.shared.loadPersonalNotes()
+                    ClassroomStorage.shared.togglePersonalNoteCompletion(id: "note_stress_\(i)")
+                    group.leave()
+                }
+            }
+
+            let waitResult = group.wait(timeout: .now() + 10.0)
+            assertCondition(waitResult == .success, "Concurrent storage operations must complete without deadlock or timeout")
+        }
+
+        do {
+            ClassroomStorage.shared.flushIOQueue()
+            ClassroomStorage.shared.invalidateMemoryCache()
+            assertCondition(true, "flushIOQueue and invalidateMemoryCache must complete without deadlock")
+        }
+
         print("=== All Apple Core Logic Tests Passed Successfully! ===")
     }
 }

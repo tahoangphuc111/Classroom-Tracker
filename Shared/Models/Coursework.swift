@@ -40,6 +40,9 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     public let searchIndex: String
     public let timeOnlyString: String
     public let formattedFullDueDate: String
+    public let normalizedTitle: String
+    public let normalizedCourseName: String
+    public let normalizedDescription: String
 
     private enum CodingKeys: String, CodingKey {
         case id, courseId, courseName, title, description, alternateLink, dueDate, status, maxPoints, isManuallyCompleted
@@ -68,7 +71,13 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         self.maxPoints = maxPoints
         self.isManuallyCompleted = isManuallyCompleted
 
-        self.searchIndex = Self.buildSearchIndex(title: title, courseName: courseName, description: description)
+        let normTitle = title.normalizedForVietnameseSearch()
+        let normCourse = courseName.normalizedForVietnameseSearch()
+        let normDesc = (description?.isEmpty ?? true) ? "" : description!.normalizedForVietnameseSearch()
+        self.normalizedTitle = normTitle
+        self.normalizedCourseName = normCourse
+        self.normalizedDescription = normDesc
+        self.searchIndex = Self.buildNormalizedSearchIndex(normTitle: normTitle, normCourse: normCourse, normDescription: normDesc)
         self.timeOnlyString = Self.buildTimeOnlyString(from: dueDate)
         self.formattedFullDueDate = Self.buildFormattedFullDueDate(from: dueDate)
     }
@@ -97,7 +106,13 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         self.maxPoints = maxPoints
         self.isManuallyCompleted = isManuallyCompleted
 
-        self.searchIndex = Self.buildSearchIndex(title: title, courseName: courseName, description: description)
+        let normTitle = title.normalizedForVietnameseSearch()
+        let normCourse = courseName.normalizedForVietnameseSearch()
+        let normDesc = (description?.isEmpty ?? true) ? "" : description!.normalizedForVietnameseSearch()
+        self.normalizedTitle = normTitle
+        self.normalizedCourseName = normCourse
+        self.normalizedDescription = normDesc
+        self.searchIndex = Self.buildNormalizedSearchIndex(normTitle: normTitle, normCourse: normCourse, normDescription: normDesc)
         self.timeOnlyString = Self.buildTimeOnlyString(from: dueDate)
         self.formattedFullDueDate = Self.buildFormattedFullDueDate(from: dueDate)
     }
@@ -120,7 +135,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         if status == .turnedIn || status == .returned || isManuallyCompleted {
             return true
         }
-        if let dueDate, dueDate < Date() {
+        if let dueDate, dueDate.timeIntervalSinceReferenceDate < Date.timeIntervalSinceReferenceDate {
             return true
         }
         return false
@@ -135,7 +150,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
 
     public var isUrgent: Bool {
         guard let dueDate else { return false }
-        let interval = dueDate.timeIntervalSince(Date())
+        let interval = dueDate.timeIntervalSinceReferenceDate - Date.timeIntervalSinceReferenceDate
         return interval > 0 && interval <= (12 * 3600) && !isCompleted
     }
 
@@ -145,25 +160,24 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
 
     public var isPast: Bool {
         guard let dueDate else { return false }
-        return dueDate < Calendar.current.startOfDay(for: Date())
+        return dueDate.timeIntervalSinceReferenceDate < ClassroomDateFormatters.startOfTodayTimestamp
     }
 
     public var isDueToday: Bool {
         guard let dueDate else { return false }
-        return Calendar.current.isDateInToday(dueDate)
+        let t = dueDate.timeIntervalSinceReferenceDate
+        return t >= ClassroomDateFormatters.startOfTodayTimestamp && t < ClassroomDateFormatters.startOfTomorrowTimestamp
     }
 
     public var isDueTomorrow: Bool {
         guard let dueDate else { return false }
-        return Calendar.current.isDateInTomorrow(dueDate)
+        let t = dueDate.timeIntervalSinceReferenceDate
+        return t >= ClassroomDateFormatters.startOfTomorrowTimestamp && t < ClassroomDateFormatters.startOfDayAfterTimestamp
     }
 
     public var isDueLater: Bool {
         guard let dueDate else { return false }
-        let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: Date())
-        guard let dayAfterTomorrow = calendar.date(byAdding: .day, value: 2, to: startOfToday) else { return false }
-        return dueDate >= dayAfterTomorrow
+        return dueDate.timeIntervalSinceReferenceDate >= ClassroomDateFormatters.startOfDayAfterTimestamp
     }
 
     public var hasNoDueDate: Bool {
@@ -205,11 +219,14 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
 
     public var compactDueString: String {
         guard let dueDate else { return "Không hạn" }
+        if isCompleted {
+            return "Đã xong"
+        }
         let time = timeOnlyString
         let isEndOfDay = (time == "Cuối ngày")
 
-        if isCompleted {
-            return "Đã xong"
+        if dueDate.timeIntervalSinceReferenceDate < Date.timeIntervalSinceReferenceDate {
+            return "Quá hạn"
         } else if isDueToday {
             return isEndOfDay ? "Cuối ngày" : time
         } else if isDueTomorrow {
@@ -278,16 +295,31 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         }
     }
 
-    private static func buildSearchIndex(title: String, courseName: String, description: String?) -> String {
-        let combined = "\(title) \(courseName) \(description ?? "")"
-        return combined.normalizedForVietnameseSearch()
+    public static func buildSearchIndex(title: String, courseName: String, description: String?) -> String {
+        let normTitle = title.normalizedForVietnameseSearch()
+        let normCourse = courseName.normalizedForVietnameseSearch()
+        let normDesc = (description?.isEmpty ?? true) ? "" : description!.normalizedForVietnameseSearch()
+        return buildNormalizedSearchIndex(normTitle: normTitle, normCourse: normCourse, normDescription: normDesc)
+    }
+
+    public static func buildNormalizedSearchIndex(normTitle: String, normCourse: String, normDescription: String) -> String {
+        guard !normDescription.isEmpty else {
+            return "\(normTitle) \(normCourse)"
+        }
+        return "\(normTitle) \(normCourse) \(normDescription)"
+    }
+
+    public static func buildNormalizedSearchIndex(normTitle: String, normCourse: String, description: String?) -> String {
+        guard let description, !description.isEmpty else {
+            return "\(normTitle) \(normCourse)"
+        }
+        return "\(normTitle) \(normCourse) \(description.normalizedForVietnameseSearch())"
     }
 
     private static func buildTimeOnlyString(from dueDate: Date?) -> String {
         guard let dueDate else { return "--:--" }
-        let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: dueDate)
-        let minute = calendar.component(.minute, from: dueDate)
+        let hour = ClassroomDateFormatters.gregorianCalendar.component(.hour, from: dueDate)
+        let minute = ClassroomDateFormatters.gregorianCalendar.component(.minute, from: dueDate)
         if hour == 23 && minute >= 55 {
             return "Cuối ngày"
         }
@@ -300,53 +332,186 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
-private let vietnameseSearchLocale = Locale(identifier: "vi_VN")
+// Single-pass LUT for Vietnamese Diacritics Normalization & Lowercasing
+private let vietnameseLut1: [UInt8] = [
+    97, 97, 97, 97, 97, 97, 0, 99, 101, 101, 101, 101, 105, 105, 105, 105, 0, 110, 111, 111, 111, 111, 111, 0, 0, 117, 117, 117, 117, 121, 0, 0, 97, 97, 97, 97, 97, 97, 0, 99, 101, 101, 101, 101, 105, 105, 105, 105, 0, 110, 111, 111, 111, 111, 111, 0, 0, 117, 117, 117, 117, 121, 0, 121, 97, 97, 97, 97, 97, 97, 99, 99, 99, 99, 99, 99, 99, 99, 100, 100, 100, 100, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 103, 103, 103, 103, 103, 103, 103, 103, 104, 104, 0, 0, 105, 105, 105, 105, 105, 105, 105, 105, 105, 0, 0, 0, 106, 106, 107, 107, 0, 108, 108, 108, 108, 108, 108, 0, 0, 0, 0, 110, 110, 110, 110, 110, 110, 0, 0, 0, 111, 111, 111, 111, 111, 111, 0, 0, 114, 114, 114, 114, 114, 114, 115, 115, 115, 115, 115, 115, 115, 115, 116, 116, 116, 116, 0, 0, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 119, 119, 121, 121, 121, 122, 122, 122, 122, 122, 122, 115, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 111, 111, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 117, 117
+]
+
+private let vietnameseLut2: [UInt8] = [
+    97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 105, 105, 105, 105, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 121, 121, 121, 121, 121, 121, 121, 121
+]
 
 public extension String {
     func normalizedForVietnameseSearch() -> String {
-        guard !self.isEmpty else { return "" }
-        return self.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "đ", with: "d", options: .caseInsensitive)
-            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: vietnameseSearchLocale)
-            .lowercased()
+        let trimmed = self.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+
+        return String(unsafeUninitializedCapacity: trimmed.utf8.count) { buffer in
+            var outIdx = 0
+            vietnameseLut1.withUnsafeBufferPointer { lut1Ptr in
+                vietnameseLut2.withUnsafeBufferPointer { lut2Ptr in
+                    for scalar in trimmed.unicodeScalars {
+                        let v = scalar.value
+                        if v < 128 {
+                            if v >= 65 && v <= 90 { // 'A'...'Z'
+                                buffer[outIdx] = UInt8(v + 32)
+                            } else {
+                                buffer[outIdx] = UInt8(v)
+                            }
+                            outIdx += 1
+                        } else if v >= 0x00C0 && v <= 0x01B0 {
+                            let mapped = lut1Ptr[Int(v - 0x00C0)]
+                            if mapped != 0 {
+                                buffer[outIdx] = mapped
+                                outIdx += 1
+                            } else {
+                                for b in scalar.utf8 {
+                                    buffer[outIdx] = b
+                                    outIdx += 1
+                                }
+                            }
+                        } else if v >= 0x1EA0 && v <= 0x1EF9 {
+                            let mapped = lut2Ptr[Int(v - 0x1EA0)]
+                            if mapped != 0 {
+                                buffer[outIdx] = mapped
+                                outIdx += 1
+                            } else {
+                                for b in scalar.utf8 {
+                                    buffer[outIdx] = b
+                                    outIdx += 1
+                                }
+                            }
+                        } else if v >= 0x0300 && v <= 0x036F {
+                            // Drop combining diacritical marks
+                            continue
+                        } else {
+                            for b in scalar.utf8 {
+                                buffer[outIdx] = b
+                                outIdx += 1
+                            }
+                        }
+                    }
+                }
+            }
+            return outIdx
+        }
+    }
+
+    func searchQueryTokens() -> [String] {
+        let cleanQuery = self.normalizedForVietnameseSearch()
+        guard !cleanQuery.isEmpty else { return [] }
+
+        var tokens: [String] = []
+        tokens.reserveCapacity(4)
+        var start: String.Index? = nil
+
+        for i in cleanQuery.indices {
+            let b = cleanQuery.utf8[i]
+            if b == 32 || b == 9 || b == 10 || b == 13 {
+                if let s = start {
+                    tokens.append(String(cleanQuery[s..<i]))
+                    start = nil
+                }
+            } else if start == nil {
+                start = i
+            }
+        }
+        if let s = start {
+            tokens.append(String(cleanQuery[s...]))
+        }
+        return tokens
     }
 }
 
 public extension Coursework {
     func searchRelevanceScore(for tokens: [String], rawNormalizedQuery: String) -> Int {
         guard !tokens.isEmpty else { return 0 }
-        let normTitle = title.normalizedForVietnameseSearch()
-        let normCourse = courseName.normalizedForVietnameseSearch()
-        let normDesc = (description?.isEmpty ?? true) ? "" : description!.normalizedForVietnameseSearch()
+        let normTitle = self.normalizedTitle
+        let normCourse = self.normalizedCourseName
+        let normDesc = self.normalizedDescription
 
         var score = 0
-        if normTitle == rawNormalizedQuery {
-            score += 200
-        } else if normTitle.hasPrefix(rawNormalizedQuery) {
-            score += 120
-        } else if normTitle.contains(rawNormalizedQuery) {
-            score += 80
+        let rawQueryLen = rawNormalizedQuery.utf8.count
+        var titleMatchRange: Range<String.Index>? = nil
+        var courseMatched = false
+        if rawQueryLen > 0 {
+            if normTitle == rawNormalizedQuery {
+                score += 200
+                titleMatchRange = normTitle.startIndex..<normTitle.endIndex
+            } else if normTitle.hasPrefix(rawNormalizedQuery) {
+                score += 120
+                titleMatchRange = normTitle.startIndex..<normTitle.index(normTitle.startIndex, offsetBy: rawQueryLen)
+            } else if normTitle.utf8.count >= rawQueryLen, let r = normTitle.range(of: rawNormalizedQuery, options: .literal) {
+                score += 80
+                titleMatchRange = r
+            }
+
+            if normCourse == rawNormalizedQuery {
+                score += 100
+                courseMatched = true
+            } else if normCourse.hasPrefix(rawNormalizedQuery) {
+                score += 60
+                courseMatched = true
+            } else if normCourse.utf8.count >= rawQueryLen && normCourse.range(of: rawNormalizedQuery, options: .literal) != nil {
+                score += 40
+                courseMatched = true
+            }
         }
 
-        if normCourse == rawNormalizedQuery {
-            score += 100
-        } else if normCourse.hasPrefix(rawNormalizedQuery) {
-            score += 60
-        } else if normCourse.contains(rawNormalizedQuery) {
-            score += 40
-        }
-
-        for token in tokens {
-            if normTitle.contains(token) {
+        if tokens.count == 1 && rawQueryLen > 0 && tokens[0] == rawNormalizedQuery {
+            let token = rawNormalizedQuery
+            if let matchRange = titleMatchRange {
                 score += 30
-                if normTitle.hasPrefix(token) || normTitle.contains(" \(token)") {
+                var isWordBoundary = (matchRange.lowerBound == normTitle.startIndex) ||
+                    (normTitle[normTitle.index(before: matchRange.lowerBound)] == " ")
+                if !isWordBoundary {
+                    var searchRange = matchRange.upperBound..<normTitle.endIndex
+                    while let nextRange = normTitle.range(of: token, options: .literal, range: searchRange) {
+                        if normTitle[normTitle.index(before: nextRange.lowerBound)] == " " {
+                            isWordBoundary = true
+                            break
+                        }
+                        searchRange = nextRange.upperBound..<normTitle.endIndex
+                    }
+                }
+                if isWordBoundary {
                     score += 15
                 }
             }
-            if normCourse.contains(token) {
+            if courseMatched {
                 score += 15
             }
-            if normDesc.contains(token) {
+            if !normDesc.isEmpty && normDesc.utf8.count >= rawQueryLen && normDesc.range(of: token, options: .literal) != nil {
+                score += 5
+            }
+            return score
+        }
+
+        for token in tokens {
+            let tokenLen = token.utf8.count
+            if tokenLen == 0 { continue }
+            if normTitle.utf8.count >= tokenLen, let matchRange = normTitle.range(of: token, options: .literal) {
+                score += 30
+                var isWordBoundary = (matchRange.lowerBound == normTitle.startIndex) ||
+                    (normTitle[normTitle.index(before: matchRange.lowerBound)] == " ")
+                if !isWordBoundary {
+                    var searchRange = matchRange.upperBound..<normTitle.endIndex
+                    while let nextRange = normTitle.range(of: token, options: .literal, range: searchRange) {
+                        if normTitle[normTitle.index(before: nextRange.lowerBound)] == " " {
+                            isWordBoundary = true
+                            break
+                        }
+                        searchRange = nextRange.upperBound..<normTitle.endIndex
+                    }
+                }
+                if isWordBoundary {
+                    score += 15
+                }
+            }
+            if normCourse.utf8.count >= tokenLen && normCourse.range(of: token, options: .literal) != nil {
+                score += 15
+            }
+            if !normDesc.isEmpty && normDesc.utf8.count >= tokenLen && normDesc.range(of: token, options: .literal) != nil {
                 score += 5
             }
         }
@@ -381,8 +546,88 @@ extension Coursework: Comparable {
     }
 }
 
-private enum ClassroomDateFormatters {
-    static let timeOnly: DateFormatter = {
+public enum ClassroomDateFormatters {
+    public static let gregorianCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .autoupdatingCurrent
+        return calendar
+    }()
+
+    private static var cachedStartOfToday: Date = Date.distantPast
+    private static var cachedStartOfTomorrow: Date = Date.distantPast
+    private static var cachedStartOfDayAfter: Date = Date.distantPast
+    private static var cachedStartOfTodayTimestamp: TimeInterval = 0
+    private static var cachedStartOfTomorrowTimestamp: TimeInterval = 0
+    private static var cachedStartOfDayAfterTimestamp: TimeInterval = 0
+    private static var cacheExpirationTimestamp: TimeInterval = 0
+    private static var cachedTimeZoneId: String = ""
+    private static let boundaryLock = NSLock()
+
+    public static func ensureDayBoundaries() {
+        ensureDayBoundaries(nowTimestamp: Date.timeIntervalSinceReferenceDate)
+    }
+
+    public static func ensureDayBoundaries(nowTimestamp: TimeInterval) {
+        let currentTzId = TimeZone.autoupdatingCurrent.identifier
+        if currentTzId == cachedTimeZoneId && nowTimestamp >= cachedStartOfTodayTimestamp && nowTimestamp < cacheExpirationTimestamp {
+            return
+        }
+        boundaryLock.lock()
+        defer { boundaryLock.unlock() }
+        if currentTzId == cachedTimeZoneId && nowTimestamp >= cachedStartOfTodayTimestamp && nowTimestamp < cacheExpirationTimestamp {
+            return
+        }
+        cachedTimeZoneId = currentTzId
+        let now = Date(timeIntervalSinceReferenceDate: nowTimestamp)
+        let cal = gregorianCalendar
+        let startOfToday = cal.startOfDay(for: now)
+        let startOfTomorrow = cal.date(byAdding: .day, value: 1, to: startOfToday) ?? startOfToday.addingTimeInterval(86400)
+        let startOfDayAfter = cal.date(byAdding: .day, value: 2, to: startOfToday) ?? startOfToday.addingTimeInterval(172800)
+
+        cachedStartOfToday = startOfToday
+        cachedStartOfTomorrow = startOfTomorrow
+        cachedStartOfDayAfter = startOfDayAfter
+        cachedStartOfTodayTimestamp = startOfToday.timeIntervalSinceReferenceDate
+        cachedStartOfTomorrowTimestamp = startOfTomorrow.timeIntervalSinceReferenceDate
+        cachedStartOfDayAfterTimestamp = startOfDayAfter.timeIntervalSinceReferenceDate
+        cacheExpirationTimestamp = min(cachedStartOfTomorrowTimestamp, nowTimestamp + 60.0)
+    }
+
+    public static func ensureDayBoundaries(now: Date) {
+        ensureDayBoundaries(nowTimestamp: now.timeIntervalSinceReferenceDate)
+    }
+
+    public static var startOfTodayTimestamp: TimeInterval {
+        ensureDayBoundaries()
+        return cachedStartOfTodayTimestamp
+    }
+
+    public static var startOfTomorrowTimestamp: TimeInterval {
+        ensureDayBoundaries()
+        return cachedStartOfTomorrowTimestamp
+    }
+
+    public static var startOfDayAfterTimestamp: TimeInterval {
+        ensureDayBoundaries()
+        return cachedStartOfDayAfterTimestamp
+    }
+
+    public static var startOfToday: Date {
+        ensureDayBoundaries()
+        return cachedStartOfToday
+    }
+
+    public static var startOfTomorrow: Date {
+        ensureDayBoundaries()
+        return cachedStartOfTomorrow
+    }
+
+    public static var startOfDayAfter: Date {
+        ensureDayBoundaries()
+        return cachedStartOfDayAfter
+    }
+
+    public static let timeOnly: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian)
@@ -391,7 +636,7 @@ private enum ClassroomDateFormatters {
         return formatter
     }()
 
-    static let shortDate: DateFormatter = {
+    public static let shortDate: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "vi_VN")
         formatter.calendar = Calendar(identifier: .gregorian)
@@ -400,7 +645,7 @@ private enum ClassroomDateFormatters {
         return formatter
     }()
 
-    static let dayAndDate: DateFormatter = {
+    public static let dayAndDate: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "vi_VN")
         formatter.calendar = Calendar(identifier: .gregorian)
@@ -409,7 +654,7 @@ private enum ClassroomDateFormatters {
         return formatter
     }()
 
-    static let fullDueDate: DateFormatter = {
+    public static let fullDueDate: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "vi_VN")
         formatter.calendar = Calendar(identifier: .gregorian)

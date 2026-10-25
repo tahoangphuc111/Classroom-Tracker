@@ -23,6 +23,9 @@ interface CourseDao {
     @Query("UPDATE courses SET is_selected_for_widget = :isSelected WHERE id = :courseId")
     suspend fun updateWidgetSelection(courseId: String, isSelected: Boolean)
 
+    @Query("UPDATE courses SET is_selected_for_widget = :isSelected")
+    suspend fun updateAllWidgetSelection(isSelected: Boolean)
+
     @Query("DELETE FROM courses WHERE id NOT IN (:validCourseIds)")
     suspend fun deleteCoursesNotIn(validCourseIds: List<String>)
 

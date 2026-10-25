@@ -63,6 +63,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
@@ -221,25 +222,73 @@ fun MainScreen() {
 
     val pullToRefreshState = rememberPullToRefreshState()
 
-    val onToggleTomorrowCompletion = remember(scope, repository) {
+    val onToggleTomorrowCompletion = remember(scope, repository, snackbarHostState) {
         { id: String, completed: Boolean ->
             if (id.startsWith("note_")) {
                 val noteId = id.removePrefix("note_")
-                scope.launch { repository.togglePersonalNoteCompletion(noteId, completed) }
+                scope.launch {
+                    repository.togglePersonalNoteCompletion(noteId, completed)
+                    if (completed) {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Đã hoàn thành ghi chú!",
+                            actionLabel = "Hoàn tác",
+                            duration = androidx.compose.material3.SnackbarDuration.Short
+                        )
+                        if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                            repository.togglePersonalNoteCompletion(noteId, false)
+                        }
+                    }
+                }
             } else {
-                scope.launch { repository.toggleTaskCompletion(id, completed) }
+                scope.launch {
+                    repository.toggleTaskCompletion(id, completed)
+                    if (completed) {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Đã hoàn thành bài tập!",
+                            actionLabel = "Hoàn tác",
+                            duration = androidx.compose.material3.SnackbarDuration.Short
+                        )
+                        if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                            repository.toggleTaskCompletion(id, false)
+                        }
+                    }
+                }
             }
             Unit
         }
     }
 
-    val onToggleTaskCompletion = remember(scope, repository) {
+    val onToggleTaskCompletion = remember(scope, repository, snackbarHostState) {
         { id: String, completed: Boolean ->
             if (id.startsWith("note_")) {
                 val noteId = id.removePrefix("note_")
-                scope.launch { repository.togglePersonalNoteCompletion(noteId, completed) }
+                scope.launch {
+                    repository.togglePersonalNoteCompletion(noteId, completed)
+                    if (completed) {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Đã hoàn thành ghi chú!",
+                            actionLabel = "Hoàn tác",
+                            duration = androidx.compose.material3.SnackbarDuration.Short
+                        )
+                        if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                            repository.togglePersonalNoteCompletion(noteId, false)
+                        }
+                    }
+                }
             } else {
-                scope.launch { repository.toggleTaskCompletion(id, completed) }
+                scope.launch {
+                    repository.toggleTaskCompletion(id, completed)
+                    if (completed) {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Đã hoàn thành bài tập!",
+                            actionLabel = "Hoàn tác",
+                            duration = androidx.compose.material3.SnackbarDuration.Short
+                        )
+                        if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                            repository.toggleTaskCompletion(id, false)
+                        }
+                    }
+                }
             }
             Unit
         }
@@ -304,6 +353,40 @@ fun MainScreen() {
                         modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
                     )
                     HorizontalDivider(color = ChunkyColor.Hairline)
+
+                    if (courses.isNotEmpty()) {
+                        val allSelected = courses.all { it.isSelectedForWidget }
+                        val selectedCount = courses.count { it.isSelectedForWidget }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Lớp hiển thị ($selectedCount/${courses.size})",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = ChunkyColor.TextMuted
+                            )
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        repository.updateAllCoursesWidgetSelection(!allSelected)
+                                    }
+                                },
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = if (allSelected) "Bỏ chọn hết" else "Tất cả",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ChunkyColor.SkyBottom
+                                )
+                            }
+                        }
+                    }
                 }
 
                 if (courses.isEmpty()) {
