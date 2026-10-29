@@ -369,7 +369,7 @@ fun PersonalNotesScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 110.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 136.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(

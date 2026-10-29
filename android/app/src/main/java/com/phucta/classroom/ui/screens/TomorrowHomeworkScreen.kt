@@ -114,11 +114,6 @@ fun TomorrowHomeworkScreen(
     }
 
     val lazyListState = rememberLazyListState()
-    val scrollOffset by remember {
-        derivedStateOf {
-            if (lazyListState.firstVisibleItemIndex == 0) lazyListState.firstVisibleItemScrollOffset else 400
-        }
-    }
 
     val emotion = remember(tomorrowItems.isEmpty(), isAllDone, incompleteCount) {
         when {
@@ -158,10 +153,12 @@ fun TomorrowHomeworkScreen(
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (tomorrowItems.isNotEmpty() && scrollOffset < 350) {
+        if (tomorrowItems.isNotEmpty()) {
             item(key = "tomorrow_hero_banner", contentType = "hero_banner") {
                 TomorrowEditorialHeroCard(
-                    scrollOffset = scrollOffset,
+                    scrollOffsetProvider = {
+                        if (lazyListState.firstVisibleItemIndex == 0) lazyListState.firstVisibleItemScrollOffset else 400
+                    },
                     modifier = Modifier.animateItem(
                         fadeInSpec = ItemFadeSpring,
                         placementSpec = ItemPlacementSpring,
@@ -634,23 +631,22 @@ private fun HomeworkProgressBar(
 
 @Composable
 private fun TomorrowEditorialHeroCard(
-    scrollOffset: Int = 0,
+    scrollOffsetProvider: () -> Int = { 0 },
     modifier: Modifier = Modifier
 ) {
-    val fadeAlpha = (1f - (scrollOffset / 350f)).coerceIn(0f, 1f)
-    if (fadeAlpha <= 0.02f) return
-
     Box(
         modifier = modifier
-            .graphicsLayer {
-                alpha = fadeAlpha
-                translationY = -scrollOffset * 0.18f
-            }
             .fillMaxWidth()
             .height(132.dp)
+            .graphicsLayer {
+                val offset = scrollOffsetProvider()
+                val fadeAlpha = (1f - (offset / 320f)).coerceIn(0f, 1f)
+                alpha = fadeAlpha
+                translationY = -offset * 0.15f
+            }
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0xFFF5EFE6))
-            .border(1.dp, ChunkyColor.CardBorder.copy(alpha = fadeAlpha), RoundedCornerShape(16.dp))
+            .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
     ) {
         Image(
             painter = painterResource(id = R.drawable.hero_bao_bai_modernist),
