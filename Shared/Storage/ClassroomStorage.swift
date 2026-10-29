@@ -124,11 +124,31 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public func isMockCoursesData(_ data: Data) -> Bool {
+        let prefixLimit = min(data.count, 256)
+        if prefixLimit > 20, let sample = String(data: data.prefix(prefixLimit), encoding: .utf8) {
+            if sample.contains("\"id\":\"c") || sample.contains("\"id\": \"c") {
+                if let courses = try? Self.jsonDecoder.decode([Course].self, from: data) {
+                    return Self.isMockCourses(courses)
+                }
+            } else if sample.contains("\"id\":\"") {
+                return false
+            }
+        }
         guard let courses = try? Self.jsonDecoder.decode([Course].self, from: data) else { return false }
         return Self.isMockCourses(courses)
     }
 
     public func isMockCourseworkData(_ data: Data) -> Bool {
+        let prefixLimit = min(data.count, 256)
+        if prefixLimit > 20, let sample = String(data: data.prefix(prefixLimit), encoding: .utf8) {
+            if sample.contains("\"id\":\"cw") || sample.contains("\"id\": \"cw") {
+                if let items = try? Self.jsonDecoder.decode([Coursework].self, from: data) {
+                    return Self.isMockCoursework(items)
+                }
+            } else if sample.contains("\"id\":\"") {
+                return false
+            }
+        }
         guard let items = try? Self.jsonDecoder.decode([Coursework].self, from: data) else { return false }
         return Self.isMockCoursework(items)
     }
@@ -578,6 +598,16 @@ public final class ClassroomStorage: @unchecked Sendable {
         cachedCourseworkTimestamp = timestamp
         lock.unlock()
 
+        let validIds = Set(items.map(\.id))
+        let existingNotes = loadPersonalNotes()
+        let prunedNotes = existingNotes.filter { note in
+            guard let cwId = note.courseworkId else { return true }
+            return validIds.contains(cwId)
+        }
+        if prunedNotes.count != existingNotes.count {
+            savePersonalNotes(prunedNotes)
+        }
+
         ioQueue.async { [weak self] in
             guard let self else { return }
             guard let encoded = try? Self.jsonEncoder.encode(items) else { return }
@@ -842,9 +872,16 @@ public final class ClassroomStorage: @unchecked Sendable {
             cachedPersonalNotes = nil
             cachedPersonalNotesTimestamp = 0
         }
-        cachedHasUserLoggedIn = nil
-        cachedMetadata = nil
+        cachedHasUserLoggedIn = false
+        cachedMetadata = ClassroomSharedMetadata(hasUserLoggedIn: false)
         lock.unlock()
+
+        for ud in self.allUserDefaults {
+            ud.set(false, forKey: self.userLoggedInKey)
+            ud.removeObject(forKey: Self.tokenUserDefaultsKey)
+            ud.removeObject(forKey: self.userEmailKey)
+            ud.synchronize()
+        }
 
         ioQueue.async { [weak self] in
             guard let self else { return }
@@ -1265,10 +1302,10 @@ public final class ClassroomStorage: @unchecked Sendable {
         if let index = allNotes.firstIndex(where: { $0.id == id }) {
             allNotes[index].isCompleted.toggle()
             let newStatus = allNotes[index].isCompleted
-            if newStatus && !allNotes[index].checklist.isEmpty {
+            if !allNotes[index].checklist.isEmpty {
                 allNotes[index].checklist = allNotes[index].checklist.map { item in
                     var copy = item
-                    copy.isCompleted = true
+                    copy.isCompleted = newStatus
                     return copy
                 }
             }

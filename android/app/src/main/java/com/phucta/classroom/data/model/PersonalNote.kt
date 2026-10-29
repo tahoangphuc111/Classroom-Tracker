@@ -1,8 +1,16 @@
 package com.phucta.classroom.data.model
 
 import androidx.compose.runtime.Immutable
-import java.util.Calendar
+import kotlinx.serialization.Serializable
 import java.util.UUID
+
+@Immutable
+@Serializable
+data class ChecklistItem(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String,
+    val isCompleted: Boolean = false
+)
 
 @Immutable
 data class PersonalNote(
@@ -12,11 +20,12 @@ data class PersonalNote(
     val courseName: String? = null,
     val title: String,
     val content: String = "",
+    val checklist: List<ChecklistItem> = emptyList(),
     val dueEpochMillis: Long? = null,
     val isCompleted: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val searchIndex: String = buildSearchIndex(title, content, courseName)
+    val searchIndex: String = buildSearchIndex(title, content, courseName, checklist)
 ) {
     val isDueTomorrow: Boolean
         get() = ClassroomDateUtils.isDueTomorrow(dueEpochMillis)
@@ -24,9 +33,27 @@ data class PersonalNote(
     val isDueToday: Boolean
         get() = ClassroomDateUtils.isDueToday(dueEpochMillis)
 
+    val hasChecklist: Boolean
+        get() = checklist.isNotEmpty()
+
+    val totalChecklistCount: Int
+        get() = checklist.size
+
+    val completedChecklistCount: Int
+        get() = checklist.count { it.isCompleted }
+
+    val checklistProgress: Float
+        get() = if (checklist.isEmpty()) 0f else completedChecklistCount.toFloat() / totalChecklistCount.toFloat()
+
     companion object {
-        fun buildSearchIndex(title: String, content: String, courseName: String?): String {
-            val combined = "$title $content ${courseName ?: ""}"
+        fun buildSearchIndex(
+            title: String,
+            content: String,
+            courseName: String?,
+            checklist: List<ChecklistItem> = emptyList()
+        ): String {
+            val checklistText = if (checklist.isEmpty()) "" else checklist.joinToString(" ") { it.title }
+            val combined = "$title $content ${courseName ?: ""} $checklistText"
             return combined.normalizeForVietnameseSearch()
         }
     }

@@ -4,7 +4,10 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.phucta.classroom.data.model.ChecklistItem
 import com.phucta.classroom.data.model.PersonalNote
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 @Entity(
     tableName = "personal_notes",
@@ -33,6 +36,9 @@ data class PersonalNoteEntity(
     @ColumnInfo(name = "content")
     val content: String,
 
+    @ColumnInfo(name = "checklist_json", defaultValue = "[]")
+    val checklistJson: String = "[]",
+
     @ColumnInfo(name = "due_epoch_millis")
     val dueEpochMillis: Long? = null,
 
@@ -48,33 +54,69 @@ data class PersonalNoteEntity(
     @ColumnInfo(name = "search_index")
     val searchIndex: String
 ) {
-    fun toDomain(): PersonalNote = PersonalNote(
-        id = id,
-        courseworkId = courseworkId,
-        courseId = courseId,
-        courseName = courseName,
-        title = title,
-        content = content,
-        dueEpochMillis = dueEpochMillis,
-        isCompleted = isCompleted,
-        createdAt = createdAt,
-        updatedAt = updatedAt,
-        searchIndex = searchIndex
-    )
+    fun toDomain(): PersonalNote {
+        val parsedChecklist = try {
+            if (checklistJson.isNotBlank() && checklistJson != "[]") {
+                jsonHelper.decodeFromString<List<ChecklistItem>>(checklistJson)
+            } else {
+                emptyList()
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+        return PersonalNote(
+            id = id,
+            courseworkId = courseworkId,
+            courseId = courseId,
+            courseName = courseName,
+            title = title,
+            content = content,
+            checklist = parsedChecklist,
+            dueEpochMillis = dueEpochMillis,
+            isCompleted = isCompleted,
+            createdAt = createdAt,
+            updatedAt = updatedAt,
+            searchIndex = searchIndex
+        )
+    }
 
     companion object {
-        fun fromDomain(domain: PersonalNote): PersonalNoteEntity = PersonalNoteEntity(
-            id = domain.id,
-            courseworkId = domain.courseworkId,
-            courseId = domain.courseId,
-            courseName = domain.courseName,
-            title = domain.title,
-            content = domain.content,
-            dueEpochMillis = domain.dueEpochMillis,
-            isCompleted = domain.isCompleted,
-            createdAt = domain.createdAt,
-            updatedAt = domain.updatedAt,
-            searchIndex = PersonalNote.buildSearchIndex(domain.title, domain.content, domain.courseName)
-        )
+        private val jsonHelper = Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
+
+        fun fromDomain(domain: PersonalNote): PersonalNoteEntity {
+            val encodedChecklist = try {
+                if (domain.checklist.isNotEmpty()) {
+                    jsonHelper.encodeToString(domain.checklist)
+                } else {
+                    "[]"
+                }
+            } catch (_: Exception) {
+                "[]"
+            }
+
+            return PersonalNoteEntity(
+                id = domain.id,
+                courseworkId = domain.courseworkId,
+                courseId = domain.courseId,
+                courseName = domain.courseName,
+                title = domain.title,
+                content = domain.content,
+                checklistJson = encodedChecklist,
+                dueEpochMillis = domain.dueEpochMillis,
+                isCompleted = domain.isCompleted,
+                createdAt = domain.createdAt,
+                updatedAt = domain.updatedAt,
+                searchIndex = PersonalNote.buildSearchIndex(
+                    domain.title,
+                    domain.content,
+                    domain.courseName,
+                    domain.checklist
+                )
+            )
+        }
     }
 }

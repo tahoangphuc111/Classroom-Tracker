@@ -13,7 +13,9 @@ import com.phucta.classroom.data.model.normalizeForVietnameseSearch
     indices = [
         Index(value = ["course_id"], name = "idx_courseworks_course_id"),
         Index(value = ["due_epoch_millis"], name = "idx_courseworks_due_epoch"),
-        Index(value = ["status"], name = "idx_courseworks_status")
+        Index(value = ["status"], name = "idx_courseworks_status"),
+        Index(value = ["status", "is_manually_completed"], name = "idx_courseworks_status_completed"),
+        Index(value = ["course_id", "due_epoch_millis"], name = "idx_courseworks_course_due")
     ]
 )
 data class CourseworkEntity(

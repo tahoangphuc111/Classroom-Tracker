@@ -18,9 +18,9 @@ class BaoBaiShareHelperTest {
             dateEpochMillis = 1770000000000L,
             targetDayLabel = "NGÀY MAI"
         )
-        assertTrue(text.contains("🎉 BÁO BÀI NGÀY MAI"))
+        assertTrue(text.contains("BÁO BÀI NGÀY MAI"))
         assertTrue(text.contains("không có bài tập nào cần làm"))
-        assertTrue(text.contains("⚡ Classroom Tracker"))
+        assertTrue(text.contains("Classroom Tracker"))
     }
 
     @Test
@@ -60,13 +60,13 @@ class BaoBaiShareHelperTest {
             targetDayLabel = "NGÀY MAI"
         )
 
-        assertTrue(text.contains("📋 BÁO BÀI NGÀY MAI"))
+        assertTrue(text.contains("BÁO BÀI NGÀY MAI"))
         assertTrue(text.contains("1. [Toán 12] Bài tập Đại số chương 3"))
         assertTrue(text.contains("2. [Ngữ văn] Soạn bài Đất Nước"))
-        assertTrue(text.contains("(Đã xong ✓)"))
+        assertTrue(text.contains("(Đã xong)"))
         assertTrue(text.contains("3. [Tiếng Anh] Review Unit 5 — Không có hạn nộp"))
-        assertTrue(text.contains("🔥 Tiến độ: 1/3 bài hoàn thành"))
-        assertTrue(text.contains("⚡ Classroom Tracker"))
+        assertTrue(text.contains("Tiến độ: 1/3 bài hoàn thành"))
+        assertTrue(text.contains("Classroom Tracker"))
     }
 
     @Test

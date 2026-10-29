@@ -18,6 +18,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
@@ -43,9 +46,13 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Upcoming
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -54,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -71,6 +79,7 @@ import com.phucta.classroom.ui.components.AssignmentCard
 import com.phucta.classroom.ui.components.EmberEmotion
 import com.phucta.classroom.ui.components.EmberFlameCanvas
 import com.phucta.classroom.ui.components.SectionHeaderPill
+import com.phucta.classroom.ui.components.SubjectArtHelper
 import com.phucta.classroom.ui.theme.ChunkyColor
 
 private val ItemPlacementSpring = spring<IntOffset>(dampingRatio = 0.82f, stiffness = 380f)
@@ -97,6 +106,19 @@ fun TomorrowHomeworkScreen(
     val totalCount = tomorrowItems.size
     val completedCount = totalCount - incompleteCount
     val progressFraction = if (totalCount > 0) (completedCount.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f) else 0f
+
+    val pendingItems = remember(tomorrowItems) { tomorrowItems.filter { !it.isCompleted } }
+    val completedItems = remember(tomorrowItems) { tomorrowItems.filter { it.isCompleted } }
+    val groupedPending = remember(pendingItems) {
+        pendingItems.groupBy { it.courseName.ifBlank { "Chung" } }
+    }
+
+    val lazyListState = rememberLazyListState()
+    val scrollOffset by remember {
+        derivedStateOf {
+            if (lazyListState.firstVisibleItemIndex == 0) lazyListState.firstVisibleItemScrollOffset else 400
+        }
+    }
 
     val emotion = remember(tomorrowItems.isEmpty(), isAllDone, incompleteCount) {
         when {
@@ -129,15 +151,17 @@ fun TomorrowHomeworkScreen(
     }
 
     LazyColumn(
+        state = lazyListState,
         modifier = modifier
             .fillMaxSize()
             .background(ChunkyColor.WindowBackground),
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (tomorrowItems.isNotEmpty()) {
+        if (tomorrowItems.isNotEmpty() && scrollOffset < 350) {
             item(key = "tomorrow_hero_banner", contentType = "hero_banner") {
                 TomorrowEditorialHeroCard(
+                    scrollOffset = scrollOffset,
                     modifier = Modifier.animateItem(
                         fadeInSpec = ItemFadeSpring,
                         placementSpec = ItemPlacementSpring,
@@ -235,7 +259,7 @@ fun TomorrowHomeworkScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if (isAllDone) "Hoàn thành 100%! 🎉" else "Tiến độ: $completedCount/$totalCount bài tập",
+                                    text = if (isAllDone) "Hoàn thành 100%!" else "Tiến độ: $completedCount/$totalCount bài tập",
                                     color = Color.White.copy(alpha = 0.95f),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp
@@ -263,30 +287,35 @@ fun TomorrowHomeworkScreen(
                     ) {
                         Row(
                             modifier = Modifier
-                                .heightIn(min = 36.dp)
+                                .minimumInteractiveComponentSize()
+                                .heightIn(min = 48.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color.White.copy(alpha = 0.22f))
                                 .border(1.dp, Color.White.copy(alpha = 0.40f), RoundedCornerShape(8.dp))
-                                .clickable {
-                                    val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(tomorrowItems)
-                                    BaoBaiShareHelper.copyToClipboard(context, baoBaiText)
-                                    Toast.makeText(context, "Đã sao chép báo bài!", Toast.LENGTH_SHORT).show()
-                                }
-                                .padding(horizontal = 12.dp, vertical = 7.dp),
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = ripple(color = Color.White),
+                                    onClick = {
+                                        val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(tomorrowItems)
+                                        BaoBaiShareHelper.copyToClipboard(context, baoBaiText)
+                                        Toast.makeText(context, "Đã sao chép báo bài!", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
                                 contentDescription = "Sao chép báo bài",
                                 tint = Color.White,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Sao chép",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
+                                fontSize = 13.sp
                             )
                         }
 
@@ -294,31 +323,36 @@ fun TomorrowHomeworkScreen(
 
                         Row(
                             modifier = Modifier
-                                .heightIn(min = 36.dp)
+                                .minimumInteractiveComponentSize()
+                                .heightIn(min = 48.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color.White.copy(alpha = 0.22f))
                                 .border(1.dp, Color.White.copy(alpha = 0.40f), RoundedCornerShape(8.dp))
-                                .clickable {
-                                    val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(tomorrowItems)
-                                    val shareIntent = BaoBaiShareHelper.createShareIntent(baoBaiText, "Báo bài ngày mai")
-                                    val chooser = Intent.createChooser(shareIntent, "Chia sẻ báo bài qua")
-                                    context.startActivity(chooser)
-                                }
-                                .padding(horizontal = 12.dp, vertical = 7.dp),
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = ripple(color = Color.White),
+                                    onClick = {
+                                        val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(tomorrowItems)
+                                        val shareIntent = BaoBaiShareHelper.createShareIntent(baoBaiText, "Báo bài ngày mai")
+                                        val chooser = Intent.createChooser(shareIntent, "Chia sẻ báo bài qua")
+                                        context.startActivity(chooser)
+                                    }
+                                )
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Chia sẻ báo bài",
                                 tint = Color.White,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Chia sẻ",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
+                                fontSize = 13.sp
                             )
                         }
                     }
@@ -416,47 +450,100 @@ fun TomorrowHomeworkScreen(
                 }
             }
 
-            item(key = "section_header", contentType = "section_header") {
+            if (pendingItems.isNotEmpty()) {
                 val (sectionTitle, sectionIcon, sectionColor) = when {
                     hasTomorrowTasks -> Triple("BÀI TẬP NGÀY MAI", Icons.Default.CalendarToday, ChunkyColor.HeaderTomorrow)
                     hasTodayTasks -> Triple("BÀI TẬP HÔM NAY", Icons.Default.Schedule, ChunkyColor.HeaderToday)
                     else -> Triple("BÀI TẬP SẮP TỚI", Icons.Default.Upcoming, ChunkyColor.HeaderTomorrow)
                 }
-                SectionHeaderPill(
-                    title = sectionTitle,
-                    count = tomorrowItems.size,
-                    icon = sectionIcon,
-                    color = sectionColor,
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = ItemFadeSpring,
-                        placementSpec = ItemPlacementSpring,
-                        fadeOutSpec = ItemFadeSpring
+                item(key = "section_header", contentType = "section_header") {
+                    SectionHeaderPill(
+                        title = sectionTitle,
+                        count = pendingItems.size,
+                        icon = sectionIcon,
+                        color = sectionColor,
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = ItemFadeSpring,
+                            placementSpec = ItemPlacementSpring,
+                            fadeOutSpec = ItemFadeSpring
+                        )
                     )
-                )
+                }
+
+                groupedPending.forEach { (courseName, itemsInCourse) ->
+                    item(key = "subject_header_$courseName", contentType = "subject_header") {
+                        SubjectGroupHeader(
+                            courseName = courseName,
+                            count = itemsInCourse.size,
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = ItemFadeSpring,
+                                placementSpec = ItemPlacementSpring,
+                                fadeOutSpec = ItemFadeSpring
+                            )
+                        )
+                    }
+
+                    items(
+                        items = itemsInCourse,
+                        key = { it.id },
+                        contentType = { "assignment_card" }
+                    ) { item ->
+                        val onToggle = remember(item.id) {
+                            { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
+                        }
+                        val onClickCard = remember(item) {
+                            { currentOnSelectAssignment(item) }
+                        }
+                        AssignmentCard(
+                            coursework = item,
+                            hasNote = courseworkIdsWithNotes.contains(item.id),
+                            onToggleCompletion = onToggle,
+                            onClick = onClickCard,
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = ItemFadeSpring,
+                                placementSpec = ItemPlacementSpring,
+                                fadeOutSpec = ItemFadeSpring
+                            )
+                        )
+                    }
+                }
             }
 
-            items(
-                items = tomorrowItems,
-                key = { it.id },
-                contentType = { "assignment_card" }
-            ) { item ->
-                val onToggle = remember(item.id) {
-                    { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
-                }
-                val onClickCard = remember(item) {
-                    { currentOnSelectAssignment(item) }
-                }
-                AssignmentCard(
-                    coursework = item,
-                    hasNote = courseworkIdsWithNotes.contains(item.id),
-                    onToggleCompletion = onToggle,
-                    onClick = onClickCard,
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = ItemFadeSpring,
-                        placementSpec = ItemPlacementSpring,
-                        fadeOutSpec = ItemFadeSpring
+            if (completedItems.isNotEmpty()) {
+                item(key = "completed_section_header", contentType = "completed_section_header") {
+                    CompletedSectionHeader(
+                        count = completedItems.size,
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = ItemFadeSpring,
+                            placementSpec = ItemPlacementSpring,
+                            fadeOutSpec = ItemFadeSpring
+                        )
                     )
-                )
+                }
+
+                items(
+                    items = completedItems,
+                    key = { it.id },
+                    contentType = { "assignment_card" }
+                ) { item ->
+                    val onToggle = remember(item.id) {
+                        { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
+                    }
+                    val onClickCard = remember(item) {
+                        { currentOnSelectAssignment(item) }
+                    }
+                    AssignmentCard(
+                        coursework = item,
+                        hasNote = courseworkIdsWithNotes.contains(item.id),
+                        onToggleCompletion = onToggle,
+                        onClick = onClickCard,
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = ItemFadeSpring,
+                            placementSpec = ItemPlacementSpring,
+                            fadeOutSpec = ItemFadeSpring
+                        )
+                    )
+                }
             }
         }
     }
@@ -547,22 +634,121 @@ private fun HomeworkProgressBar(
 
 @Composable
 private fun TomorrowEditorialHeroCard(
+    scrollOffset: Int = 0,
     modifier: Modifier = Modifier
 ) {
+    val fadeAlpha = (1f - (scrollOffset / 350f)).coerceIn(0f, 1f)
+    if (fadeAlpha <= 0.02f) return
+
     Box(
         modifier = modifier
+            .graphicsLayer {
+                alpha = fadeAlpha
+                translationY = -scrollOffset * 0.18f
+            }
             .fillMaxWidth()
+            .height(132.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0xFFF5EFE6))
-            .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
+            .border(1.dp, ChunkyColor.CardBorder.copy(alpha = fadeAlpha), RoundedCornerShape(16.dp))
     ) {
         Image(
             painter = painterResource(id = R.drawable.hero_bao_bai_modernist),
             contentDescription = "Minh họa Báo bài Ngày mai",
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f),
+            modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            ChunkyColor.WindowBackground.copy(alpha = 0.28f)
+                        )
+                    )
+                )
+        )
+    }
+}
+
+@Composable
+private fun SubjectGroupHeader(
+    courseName: String,
+    count: Int,
+    modifier: Modifier = Modifier
+) {
+    val category = SubjectArtHelper.category(courseName)
+    val color = SubjectArtHelper.themeColor(category)
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 4.dp, height = 15.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(color)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = courseName.uppercase(),
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.5.sp,
+                fontSize = 12.5.sp
+            ),
+            color = ChunkyColor.TextPrimary
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Box(
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(color.copy(alpha = 0.12f))
+                .padding(horizontal = 7.dp, vertical = 2.dp)
+        ) {
+            Text(
+                text = "$count bài",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp
+                ),
+                color = color
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompletedSectionHeader(
+    count: Int,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = null,
+            tint = ChunkyColor.SuccessGreen,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "ĐÃ HOÀN THÀNH ($count)",
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp,
+                fontSize = 12.sp
+            ),
+            color = ChunkyColor.TextMuted
         )
     }
 }

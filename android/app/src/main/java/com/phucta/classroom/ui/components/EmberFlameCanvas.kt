@@ -7,11 +7,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.phucta.classroom.ui.theme.ChunkyColor
@@ -31,8 +35,28 @@ private val Z2Color = Color.White.copy(alpha = 0.95f)
 private val SweatDropColor = Color(0xFF61C7FF).copy(alpha = 0.9f)
 private val SweatGlintColor = Color.White.copy(alpha = 0.8f)
 
+private val CavityTopColor = Color(0xFF3D1520)
+private val CavityBottomColor = Color(0xFF1A0A10)
+private val TongueTopColor = Color(0xFFFF7FA2)
+private val TongueMidColor = Color(0xFFFF527C)
+private val TongueBottomColor = Color(0xFFE62957)
+private val TongueCreaseColor = Color(0xFFC9204A)
+private val TongueGlossColor = Color.White.copy(alpha = 0.42f)
+private val SparkleGoldColor = Color(0xFFFFDF4A)
+
 private val OuterBrushColors = listOf(ChunkyColor.EmberTop, ChunkyColor.EmberBottom)
 private val InnerBrushColors = listOf(ChunkyColor.EmberCore, ChunkyColor.EmberTop)
+private val CavityBrushColors = listOf(CavityTopColor, CavityBottomColor)
+private val TongueBrushColors = listOf(TongueTopColor, TongueMidColor, TongueBottomColor)
+
+private fun buildSparklePath(x: Float, y: Float, r: Float): Path = Path().apply {
+    moveTo(x, y - r)
+    quadraticTo(x, y, x + r, y)
+    quadraticTo(x, y, x, y + r)
+    quadraticTo(x, y, x - r, y)
+    quadraticTo(x, y, x, y - r)
+    close()
+}
 
 private class FlamePathCache {
     var cachedW: Float = -1f
@@ -86,6 +110,7 @@ fun EmberFlameCanvas(
             .drawWithCache {
                 val w = this.size.width
                 val h = this.size.height
+                val cx = w * 0.50f
 
                 val isSleeping = emotion == EmberEmotion.SLEEPING
                 pathCache.update(w, h, isUrgent, isSleeping)
@@ -98,7 +123,11 @@ fun EmberFlameCanvas(
                 val glossPath = pathCache.glossPath
                 val glossStroke = Stroke(width = w * 0.035f, cap = StrokeCap.Round)
 
-                val mouthPath: Path
+                var mouthPath: Path? = null
+                var mouthCavityPath: Path? = null
+                var tonguePath: Path? = null
+                var cavityBrush: Brush? = null
+                var tongueBrush: Brush? = null
                 val mouthStroke: Stroke
                 var leftEyePath: Path? = null
                 var rightEyePath: Path? = null
@@ -108,6 +137,9 @@ fun EmberFlameCanvas(
                 val zStroke = Stroke(width = w * 0.025f, cap = StrokeCap.Round)
                 var sweatPath: Path? = null
                 val sweatGlintCenter = Offset(w * 0.74f, h * 0.52f)
+                var sparkle1Path: Path? = null
+                var sparkle2Path: Path? = null
+                var sparkle3Path: Path? = null
 
                 when (emotion) {
                     EmberEmotion.NORMAL -> {
@@ -178,11 +210,57 @@ fun EmberFlameCanvas(
                         }
                         eyeStroke = Stroke(width = w * 0.035f, cap = StrokeCap.Round)
 
-                        mouthPath = Path().apply {
-                            moveTo(w * 0.44f, h * 0.66f)
-                            quadraticTo(w * 0.50f, h * 0.75f, w * 0.56f, h * 0.66f)
+                        val mouthW = w * 0.13f
+                        val mouthH = w * 0.072f
+                        val mouthCy = h * 0.638f
+                        val left = cx - mouthW * 0.5f
+                        val right = cx + mouthW * 0.5f
+                        val top = mouthCy
+                        val bottom = mouthCy + mouthH
+
+                        cavityBrush = Brush.verticalGradient(
+                            colors = CavityBrushColors,
+                            startY = mouthCy,
+                            endY = mouthCy + mouthH
+                        )
+                        tongueBrush = Brush.verticalGradient(
+                            colors = TongueBrushColors,
+                            startY = mouthCy + mouthH * 0.28f,
+                            endY = mouthCy + mouthH
+                        )
+
+                        mouthCavityPath = Path().apply {
+                            moveTo(left, top)
+                            quadraticTo(cx, top - mouthH * 0.14f, right, top)
+                            cubicTo(right, top + mouthH * 0.56f, cx + mouthW * 0.32f, bottom, cx, bottom)
+                            cubicTo(cx - mouthW * 0.32f, bottom, left, top + mouthH * 0.56f, left, top)
+                            close()
                         }
-                        mouthStroke = Stroke(width = w * 0.028f, cap = StrokeCap.Round)
+
+                        tonguePath = Path().apply {
+                            moveTo(cx - mouthW * 0.46f, top + mouthH * 1.10f)
+                            cubicTo(
+                                cx - mouthW * 0.42f, top + mouthH * 0.42f,
+                                cx - mouthW * 0.18f, top + mouthH * 0.28f,
+                                cx, top + mouthH * 0.32f
+                            )
+                            cubicTo(
+                                cx + mouthW * 0.18f, top + mouthH * 0.28f,
+                                cx + mouthW * 0.42f, top + mouthH * 0.42f,
+                                cx + mouthW * 0.46f, top + mouthH * 1.10f
+                            )
+                            close()
+                        }
+
+                        mouthStroke = Stroke(
+                            width = maxOf(1.8f, w * 0.018f),
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+
+                        sparkle1Path = buildSparklePath(w * 0.20f, h * 0.32f, w * 0.045f)
+                        sparkle2Path = buildSparklePath(w * 0.83f, h * 0.27f, w * 0.055f)
+                        sparkle3Path = buildSparklePath(w * 0.85f, h * 0.57f, w * 0.038f)
                     }
                 }
 
@@ -220,14 +298,14 @@ fun EmberFlameCanvas(
                             drawCircle(color = Color.White, radius = pupilRadius, center = leftPupilCenter)
                             drawCircle(color = EyeColor, radius = eyeRadius, center = rightEyeCenter)
                             drawCircle(color = Color.White, radius = pupilRadius, center = rightPupilCenter)
-                            drawPath(path = mouthPath, color = EyeColor, style = mouthStroke)
+                            mouthPath?.let { drawPath(path = it, color = EyeColor, style = mouthStroke) }
                         }
                         EmberEmotion.SLEEPING -> {
                             leftEyePath?.let { drawPath(path = it, color = EyeColor, style = eyeStroke) }
                             rightEyePath?.let { drawPath(path = it, color = EyeColor, style = eyeStroke) }
                             drawCircle(color = BlushColor, radius = blushRadiusSleeping, center = leftBlushCenterSleeping)
                             drawCircle(color = BlushColor, radius = blushRadiusSleeping, center = rightBlushCenterSleeping)
-                            drawPath(path = mouthPath, color = EyeColor, style = mouthStroke)
+                            mouthPath?.let { drawPath(path = it, color = EyeColor, style = mouthStroke) }
                             z1Path?.let { drawPath(path = it, color = Z1Color, style = zStroke) }
                             z2Path?.let { drawPath(path = it, color = Z2Color, style = zStroke) }
                         }
@@ -236,7 +314,7 @@ fun EmberFlameCanvas(
                             drawCircle(color = Color.White, radius = stressedPupilRadius, center = stressedLeftPupilCenter)
                             drawCircle(color = EyeColor, radius = stressedEyeRadius, center = stressedRightEyeCenter)
                             drawCircle(color = Color.White, radius = stressedPupilRadius, center = stressedRightPupilCenter)
-                            drawPath(path = mouthPath, color = EyeColor, style = mouthStroke)
+                            mouthPath?.let { drawPath(path = it, color = EyeColor, style = mouthStroke) }
                             sweatPath?.let {
                                 drawPath(path = it, color = SweatDropColor)
                                 drawCircle(color = SweatGlintColor, radius = sweatGlintRadius, center = sweatGlintCenter)
@@ -247,7 +325,49 @@ fun EmberFlameCanvas(
                             rightEyePath?.let { drawPath(path = it, color = EyeColor, style = eyeStroke) }
                             drawCircle(color = BlushColor, radius = blushRadiusCelebrating, center = leftBlushCenterCelebrating)
                             drawCircle(color = BlushColor, radius = blushRadiusCelebrating, center = rightBlushCenterCelebrating)
-                            drawPath(path = mouthPath, color = EyeColor, style = mouthStroke)
+
+                            mouthCavityPath?.let { cavity ->
+                                clipPath(cavity) {
+                                    val mouthW = w * 0.13f
+                                    val mouthH = w * 0.072f
+                                    val mouthCy = h * 0.638f
+                                    cavityBrush?.let { brush ->
+                                        drawRect(
+                                            brush = brush,
+                                            topLeft = Offset(cx - mouthW, mouthCy - mouthH * 0.2f),
+                                            size = Size(mouthW * 2f, mouthH * 2f)
+                                        )
+                                    }
+
+                                    tonguePath?.let { tongue ->
+                                        tongueBrush?.let { brush ->
+                                            drawPath(
+                                                path = tongue,
+                                                brush = brush
+                                            )
+                                        }
+                                    }
+
+                                    drawLine(
+                                        color = TongueCreaseColor,
+                                        start = Offset(cx, mouthCy + mouthH * 0.37f),
+                                        end = Offset(cx, mouthCy + mouthH * 0.67f),
+                                        strokeWidth = maxOf(1.0f, w * 0.009f),
+                                        cap = StrokeCap.Round
+                                    )
+
+                                    drawOval(
+                                        color = TongueGlossColor,
+                                        topLeft = Offset(cx - mouthW * 0.18f, mouthCy + mouthH * 0.35f),
+                                        size = Size(mouthW * 0.36f, mouthH * 0.20f)
+                                    )
+                                }
+                                drawPath(path = cavity, color = EyeColor, style = mouthStroke)
+                            }
+
+                            sparkle1Path?.let { drawPath(path = it, color = SparkleGoldColor) }
+                            sparkle2Path?.let { drawPath(path = it, color = SparkleGoldColor) }
+                            sparkle3Path?.let { drawPath(path = it, color = SparkleGoldColor) }
                         }
                     }
                 }

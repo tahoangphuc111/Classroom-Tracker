@@ -231,7 +231,7 @@ class ClassroomApiService(
                 hours = raw.dueTime?.hours,
                 minutes = raw.dueTime?.minutes,
                 seconds = raw.dueTime?.seconds,
-                hasDueTime = raw.dueTime != null
+                hasDueTime = (raw.dueTime?.hours != null || raw.dueTime?.minutes != null || raw.dueTime?.seconds != null)
             )
             val status: SubmissionStatus = when (submission?.state) {
                 "TURNED_IN", "STUDENT_EDITED_AFTER_TURN_IN" -> SubmissionStatus.TURNED_IN

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -197,6 +198,7 @@ fun AssignmentCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .graphicsLayer {
                 val scale = cardPressScale.value
                 scaleX = 1.0f + 0.01f * scale
@@ -303,6 +305,7 @@ fun AssignmentCard(
         Row(
             modifier = Modifier
                 .weight(1f)
+                .heightIn(min = 48.dp)
                 .clip(CardEndShape)
                 .clickable(
                     interactionSource = cardInteractionSource,

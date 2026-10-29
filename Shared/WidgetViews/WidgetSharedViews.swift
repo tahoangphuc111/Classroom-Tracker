@@ -487,33 +487,50 @@ public struct ClassroomSubjectBanner: View {
 }
 
 public struct WidgetCardBackground: View {
-    @Environment(\.colorScheme) private var colorScheme
+    var cornerRadius: CGFloat = 16
 
-    public init() {}
+    public init(cornerRadius: CGFloat = 16) {
+        self.cornerRadius = cornerRadius
+    }
 
     public var body: some View {
-        RisoTheme.paper(for: colorScheme)
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(ChunkyTheme.sheetBg)
+            .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 6, x: 0, y: 2.5)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
+            )
     }
 }
 
 public struct WidgetAppleGlassBackground: View {
     var cornerRadius: CGFloat = 20
-    @Environment(\.colorScheme) private var colorScheme
 
     public init(cornerRadius: CGFloat = 20) {
         self.cornerRadius = cornerRadius
     }
 
     public var body: some View {
-        RisoTheme.paper(for: colorScheme)
+        if #available(iOS 26, macOS 27, *) {
+            Color.clear
+                .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+        } else {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(.ultraThinMaterial)
+        }
     }
 }
 
 public struct WidgetAtmosphereBackground: View {
-    public init(hasUrgentTask: Bool = false) {}
+    var cornerRadius: CGFloat = 20
+
+    public init(cornerRadius: CGFloat = 20, hasUrgentTask: Bool = false) {
+        self.cornerRadius = cornerRadius
+    }
 
     public var body: some View {
-        WidgetAppleGlassBackground()
+        WidgetAppleGlassBackground(cornerRadius: cornerRadius)
     }
 }
 
@@ -609,557 +626,23 @@ public struct DueBadgeView: View, Equatable {
 }
 
 public struct WidgetEmptyStateView: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     public init() {}
 
     public var body: some View {
-        RisoEmptyStateDeskView()
-    }
-}
+        HStack(spacing: 12) {
+            ChunkyEmberCharacterView(emotion: .sleeping, size: 48)
 
-// MARK: - Risograph Theme
-public struct RisoTheme {
-    public static let paperLight = Color(red: 0.961, green: 0.949, blue: 0.922)
-    public static let paperCardLight = Color(red: 0.984, green: 0.976, blue: 0.957)
-    public static let inkLight = Color(red: 0.102, green: 0.133, blue: 0.188)
-    public static let accentLight = Color(red: 0.851, green: 0.263, blue: 0.196)
-    public static let subLight = Color(red: 0.886, green: 0.639, blue: 0.212)
-    public static let mutedLight = Color(red: 0.490, green: 0.475, blue: 0.435)
-    public static let hardShadowLight = Color(red: 0.102, green: 0.133, blue: 0.188)
-    public static let gridLineLight = Color(red: 0.102, green: 0.133, blue: 0.188).opacity(0.12)
-
-    public static let paperDark = Color(red: 0.078, green: 0.098, blue: 0.137)
-    public static let paperCardDark = Color(red: 0.102, green: 0.133, blue: 0.188)
-    public static let inkDark = Color(red: 0.925, green: 0.906, blue: 0.863)
-    public static let accentDark = Color(red: 1.000, green: 0.369, blue: 0.302)
-    public static let subDark = Color(red: 0.965, green: 0.729, blue: 0.290)
-    public static let mutedDark = Color(red: 0.525, green: 0.573, blue: 0.643)
-    public static let hardShadowDark = Color(red: 0.035, green: 0.047, blue: 0.067)
-    public static let gridLineDark = Color(red: 0.925, green: 0.906, blue: 0.863).opacity(0.12)
-
-    public static func paper(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? paperDark : paperLight
-    }
-    public static func paperCard(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? paperCardDark : paperCardLight
-    }
-    public static func ink(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? inkDark : inkLight
-    }
-    public static func accent(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? accentDark : accentLight
-    }
-    public static func sub(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? subDark : subLight
-    }
-    public static func muted(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? mutedDark : mutedLight
-    }
-    public static func hardShadow(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? hardShadowDark : hardShadowLight
-    }
-    public static func gridLine(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? gridLineDark : gridLineLight
-    }
-}
-
-// MARK: - Vector Artwork Components
-public struct RisoPaperGrainView: View {
-    let color: Color
-
-    public init(color: Color) {
-        self.color = color
-    }
-
-    public var body: some View {
-        Canvas { context, size in
-            let step: CGFloat = 24.0
-            var x: CGFloat = 8.0
-            while x < size.width {
-                var y: CGFloat = 8.0
-                while y < size.height {
-                    let hash = Int((x * 37.0 + y * 17.0).truncatingRemainder(dividingBy: 100.0))
-                    if hash % 3 == 0 {
-                        let rect = CGRect(x: x, y: y, width: 1.2, height: 1.2)
-                        context.fill(Path(rect), with: .color(color))
-                    } else if hash % 7 == 0 {
-                        var linePath = Path()
-                        linePath.move(to: CGPoint(x: x, y: y))
-                        linePath.addLine(to: CGPoint(x: x + 2.5, y: y + 0.8))
-                        context.stroke(linePath, with: .color(color), lineWidth: 0.8)
-                    }
-                    y += step
-                }
-                x += step
-            }
-        }
-        .allowsHitTesting(false)
-    }
-}
-
-public struct RisoWoodcutHatchingShape: Shape {
-    var spacing: CGFloat = 8.0
-
-    public func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let total = rect.width + rect.height
-        var offset: CGFloat = -rect.height
-        while offset < total {
-            let start = CGPoint(x: rect.minX + offset, y: rect.maxY)
-            let end = CGPoint(x: rect.minX + offset + rect.height, y: rect.minY)
-            path.move(to: start)
-            path.addLine(to: end)
-            offset += spacing
-        }
-        return path
-    }
-}
-
-public struct RisoSealStampView: View {
-    let count: Int
-    var size: CGFloat = 56
-    @Environment(\.colorScheme) private var colorScheme
-
-    public init(count: Int, size: CGFloat = 56) {
-        self.count = count
-        self.size = size
-    }
-
-    private var ink: Color { RisoTheme.ink(for: colorScheme) }
-    private var accent: Color { RisoTheme.accent(for: colorScheme) }
-
-    public var body: some View {
-        ZStack {
-            Circle()
-                .fill(accent.opacity(colorScheme == .dark ? 0.26 : 0.18))
-                .frame(width: size, height: size)
-                .offset(x: 2.0, y: 2.0)
-
-            Circle()
-                .stroke(ink, style: StrokeStyle(lineWidth: 1.2, dash: [3.5, 2.5]))
-                .frame(width: size, height: size)
-
-            Circle()
-                .stroke(ink, lineWidth: 1.2)
-                .frame(width: size - 8, height: size - 8)
-
-            VStack(spacing: 0) {
-                Text("BÁO BÀI")
-                    .font(.system(size: size * 0.12, weight: .heavy, design: .serif))
-                    .tracking(1.4)
-                    .foregroundStyle(ink)
-                    .padding(.top, 4)
-
-                Spacer(minLength: 0)
-
-                if count > 0 {
-                    Text("\(count)")
-                        .font(.system(size: size * 0.44, weight: .heavy, design: .serif))
-                        .foregroundStyle(accent)
-                        .widgetAccentable()
-                        .offset(y: -1)
-                } else {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: size * 0.34, weight: .bold))
-                        .foregroundStyle(accent)
-                        .widgetAccentable()
-                        .offset(y: -1)
-                }
-
-                Spacer(minLength: 0)
-
-                Text("MAI")
-                    .font(.system(size: size * 0.12, weight: .heavy, design: .serif))
-                    .tracking(1.4)
-                    .foregroundStyle(ink)
-                    .padding(.bottom, 4)
-            }
-            .frame(width: size - 10, height: size - 10)
-        }
-        .frame(width: size + 4, height: size + 4)
-    }
-}
-
-public struct RisoWoodenRulerView: View {
-    var height: CGFloat = 144
-    @Environment(\.colorScheme) private var colorScheme
-
-    public init(height: CGFloat = 144) {
-        self.height = height
-    }
-
-    private var sub: Color { RisoTheme.sub(for: colorScheme) }
-    private var ink: Color { RisoTheme.ink(for: colorScheme) }
-    private var shadow: Color { RisoTheme.hardShadow(for: colorScheme) }
-
-    public var body: some View {
-        ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(shadow)
-                .frame(width: 22, height: height)
-                .offset(x: 2.5, y: 2.5)
-
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(sub)
-                .frame(width: 22, height: height)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .stroke(ink, lineWidth: 1.2)
-                )
-
-            Rectangle()
-                .fill(sub.opacity(0.85))
-                .frame(width: 7, height: height - 6)
-                .padding(.leading, 1.2)
-                .padding(.vertical, 3)
-
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(0..<9) { index in
-                    HStack(spacing: 3) {
-                        Rectangle()
-                            .fill(ink)
-                            .frame(width: (index % 2 == 0) ? 6 : 3.5, height: 1)
-
-                        if index % 2 == 0 {
-                            Text("\(index / 2)")
-                                .font(.system(size: 7, weight: .bold, design: .monospaced))
-                                .foregroundStyle(ink)
-                        }
-                    }
-                    .frame(height: (height - 24) / 8, alignment: .leading)
-                }
-            }
-            .padding(.leading, 1.5)
-            .padding(.top, 10)
-        }
-        .frame(width: 26, height: height + 4)
-    }
-}
-
-public struct RisoSharpenedPencilView: View {
-    var length: CGFloat = 92
-    @Environment(\.colorScheme) private var colorScheme
-
-    public init(length: CGFloat = 92) {
-        self.length = length
-    }
-
-    private var sub: Color { RisoTheme.sub(for: colorScheme) }
-    private var ink: Color { RisoTheme.ink(for: colorScheme) }
-    private var accent: Color { RisoTheme.accent(for: colorScheme) }
-    private var paperCard: Color { RisoTheme.paperCard(for: colorScheme) }
-    private var shadow: Color { RisoTheme.hardShadow(for: colorScheme) }
-
-    public var body: some View {
-        ZStack(alignment: .topLeading) {
-            pencilGeometry(isShadow: true)
-                .offset(x: 2.0, y: 2.0)
-
-            pencilGeometry(isShadow: false)
-        }
-        .frame(width: 14, height: length + 4)
-    }
-
-    @ViewBuilder
-    private func pencilGeometry(isShadow: Bool) -> some View {
-        VStack(spacing: 0) {
-            if isShadow {
-                Rectangle()
-                    .fill(shadow)
-                    .frame(width: 10, height: length)
-            } else {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(accent)
-                    .frame(width: 10, height: 9)
-                    .overlay(RoundedRectangle(cornerRadius: 2).stroke(ink, lineWidth: 1))
-
-                Rectangle()
-                    .fill(ink.opacity(0.35))
-                    .frame(width: 10, height: 5)
-                    .overlay(Rectangle().stroke(ink, lineWidth: 1))
-
-                HStack(spacing: 0) {
-                    Rectangle()
-                        .fill(sub)
-                        .frame(width: 5, height: length - 28)
-                    Rectangle()
-                        .fill(sub.opacity(0.80))
-                        .frame(width: 5, height: length - 28)
-                }
-                .overlay(Rectangle().stroke(ink, lineWidth: 1))
-
-                RisoWoodConeShape()
-                    .fill(paperCard)
-                    .frame(width: 10, height: 10)
-                    .overlay(RisoWoodConeShape().stroke(ink, lineWidth: 1))
-
-                RisoGraphiteTipShape()
-                    .fill(ink)
-                    .frame(width: 6, height: 5)
-            }
-        }
-    }
-}
-
-public struct RisoWoodConeShape: Shape {
-    public func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.midX + 2, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.midX - 2, y: rect.maxY))
-        path.closeSubpath()
-        return path
-    }
-}
-
-public struct RisoGraphiteTipShape: Shape {
-    public func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
-        path.closeSubpath()
-        return path
-    }
-}
-
-public struct RisoBinderHolesView: View {
-    var height: CGFloat = 130
-    @Environment(\.colorScheme) private var colorScheme
-
-    public init(height: CGFloat = 130) {
-        self.height = height
-    }
-
-    private var paper: Color { RisoTheme.paper(for: colorScheme) }
-    private var ink: Color { RisoTheme.ink(for: colorScheme) }
-
-    public var body: some View {
-        VStack(spacing: 0) {
-            ForEach(0..<4) { index in
-                ZStack {
-                    Circle()
-                        .fill(paper)
-                        .frame(width: 7, height: 7)
-
-                    Circle()
-                        .stroke(ink, lineWidth: 1)
-                        .frame(width: 7, height: 7)
-                }
-
-                if index < 3 {
-                    Spacer()
-                }
-            }
-        }
-        .frame(width: 9, height: height)
-    }
-}
-
-public struct RisoVintageLabelHeader: View {
-    let classTitle: String
-    let dateString: String
-    @Environment(\.colorScheme) private var colorScheme
-
-    public init(classTitle: String = "11 TIN • TUẦN 5", dateString: String = "MAI") {
-        self.classTitle = classTitle
-        self.dateString = dateString
-    }
-
-    private var ink: Color { RisoTheme.ink(for: colorScheme) }
-    private var sub: Color { RisoTheme.sub(for: colorScheme) }
-    private var muted: Color { RisoTheme.muted(for: colorScheme) }
-
-    public var body: some View {
-        HStack(alignment: .center, spacing: 6) {
-            HStack(spacing: 4) {
-                Rectangle()
-                    .fill(sub)
-                    .frame(width: 3.5, height: 11)
-
-                Text(classTitle)
-                    .font(.system(size: 9.5, weight: .bold, design: .monospaced))
-                    .tracking(0.6)
-                    .foregroundStyle(ink)
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2.5)
-            .overlay(
-                RoundedRectangle(cornerRadius: 2, style: .continuous)
-                    .stroke(ink, lineWidth: 1)
-            )
-
-            Spacer(minLength: 4)
-
-            HStack(spacing: 3) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 8.5, weight: .bold))
-                Text(dateString.uppercased())
-                    .font(.system(size: 9.5, weight: .bold, design: .serif))
-                    .tracking(0.4)
-            }
-            .foregroundStyle(muted)
-        }
-    }
-}
-
-public struct RisoHandDrawnCheckmark: View {
-    var size: CGFloat = 12
-    var color: Color = Color(red: 0.851, green: 0.263, blue: 0.196)
-
-    public init(size: CGFloat = 12, color: Color = Color(red: 0.851, green: 0.263, blue: 0.196)) {
-        self.size = size
-        self.color = color
-    }
-
-    public var body: some View {
-        Path { path in
-            path.move(to: CGPoint(x: 2, y: size * 0.55))
-            path.addLine(to: CGPoint(x: size * 0.42, y: size * 0.88))
-            path.addLine(to: CGPoint(x: size * 0.95, y: 2))
-        }
-        .stroke(color, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
-        .frame(width: size, height: size)
-    }
-}
-
-public struct RisoStrikeThroughLine: View {
-    var color: Color
-
-    public init(color: Color) {
-        self.color = color
-    }
-
-    public var body: some View {
-        VStack(spacing: 2) {
-            Rectangle()
-                .fill(color)
-                .frame(height: 1.2)
-            Rectangle()
-                .fill(color.opacity(0.65))
-                .frame(height: 0.8)
-        }
-    }
-}
-
-public struct RisoSubjectTag: View {
-    let name: String
-    @Environment(\.colorScheme) private var colorScheme
-
-    public init(name: String) {
-        self.name = name
-    }
-
-    private var code: String {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.count <= 4 { return trimmed.uppercased() }
-        let words = trimmed.components(separatedBy: .whitespaces)
-        if words.count >= 2 {
-            return words.prefix(2).map { String($0.prefix(1)).uppercased() }.joined()
-        }
-        return String(trimmed.prefix(3)).uppercased()
-    }
-
-    private var ink: Color { RisoTheme.ink(for: colorScheme) }
-    private var sub: Color { RisoTheme.sub(for: colorScheme) }
-
-    public var body: some View {
-        Text(code)
-            .font(.system(size: 10, weight: .heavy, design: .serif))
-            .tracking(0.5)
-            .foregroundStyle(ink)
-            .padding(.horizontal, 4.5)
-            .padding(.vertical, 1.5)
-            .background(sub.opacity(colorScheme == .dark ? 0.30 : 0.22))
-            .overlay(
-                RoundedRectangle(cornerRadius: 2, style: .continuous)
-                    .stroke(ink, lineWidth: 1)
-            )
-    }
-}
-
-public struct RisoEmptyStateDeskView: View {
-    @Environment(\.colorScheme) private var colorScheme
-
-    public init() {}
-
-    private var ink: Color { RisoTheme.ink(for: colorScheme) }
-    private var accent: Color { RisoTheme.accent(for: colorScheme) }
-    private var sub: Color { RisoTheme.sub(for: colorScheme) }
-    private var paperCard: Color { RisoTheme.paperCard(for: colorScheme) }
-    private var muted: Color { RisoTheme.muted(for: colorScheme) }
-    private var shadow: Color { RisoTheme.hardShadow(for: colorScheme) }
-
-    public var body: some View {
-        HStack(spacing: 16) {
-            ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .fill(shadow)
-                    .frame(width: 58, height: 76)
-                    .offset(x: 2.5, y: 2.5)
-
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .fill(sub)
-                    .frame(width: 58, height: 76)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .stroke(ink, lineWidth: 1.2)
-                    )
-
-                Rectangle()
-                    .fill(ink.opacity(0.25))
-                    .frame(width: 10, height: 76)
-                    .overlay(Rectangle().stroke(ink, lineWidth: 1))
-
-                Rectangle()
-                    .fill(accent)
-                    .frame(width: 6, height: 16)
-                    .offset(x: 28, y: 8)
-
-                ZStack {
-                    Circle()
-                        .fill(shadow)
-                        .frame(width: 28, height: 28)
-                        .offset(x: 1.5, y: 1.5)
-
-                    Circle()
-                        .fill(paperCard)
-                        .frame(width: 28, height: 28)
-                        .overlay(Circle().stroke(ink, lineWidth: 1.2))
-
-                    Circle()
-                        .fill(accent.opacity(0.35))
-                        .frame(width: 18, height: 18)
-                        .overlay(Circle().stroke(ink, lineWidth: 0.8))
-
-                    RoundedRectangle(cornerRadius: 2)
-                        .stroke(ink, lineWidth: 1.2)
-                        .frame(width: 6, height: 10)
-                        .offset(x: 15)
-                }
-                .offset(x: 52, y: 12)
-            }
-            .frame(width: 86, height: 86)
-
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text("Ngày mai rảnh rồi!")
-                    .font(.system(size: 15, weight: .heavy, design: .serif))
-                    .foregroundStyle(ink)
-                    .lineLimit(1)
+                    .font(.system(size: 14, weight: .heavy, design: .rounded))
+                    .foregroundStyle(ChunkyTheme.textPrimary)
 
-                Text("Tất cả bài tập đã hoàn thành.\nHãy nghỉ ngơi và tận hưởng buổi tối.")
-                    .font(.system(size: 11, weight: .medium, design: .serif))
-                    .lineSpacing(2.5)
-                    .foregroundStyle(muted)
-                    .fixedSize(horizontal: false, vertical: true)
+                Text("Tất cả bài tập đã hoàn thành.\nNghỉ ngơi và thư giãn nhé.")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .lineSpacing(2)
+                    .foregroundStyle(ChunkyTheme.textMuted)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
     }
 }
 

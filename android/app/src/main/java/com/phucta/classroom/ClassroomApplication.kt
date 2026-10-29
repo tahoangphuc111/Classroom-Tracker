@@ -72,10 +72,19 @@ class ClassroomApplication : Application() {
         try {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)
                 .build()
 
-            val syncRequest = PeriodicWorkRequestBuilder<ClassroomSyncWorker>(15, TimeUnit.MINUTES)
+            val syncRequest = PeriodicWorkRequestBuilder<ClassroomSyncWorker>(
+                15, TimeUnit.MINUTES,
+                5, TimeUnit.MINUTES
+            )
                 .setConstraints(constraints)
+                .setBackoffCriteria(
+                    androidx.work.BackoffPolicy.EXPONENTIAL,
+                    10,
+                    TimeUnit.MINUTES
+                )
                 .build()
 
             WorkManager.getInstance(this).enqueueUniquePeriodicWork(

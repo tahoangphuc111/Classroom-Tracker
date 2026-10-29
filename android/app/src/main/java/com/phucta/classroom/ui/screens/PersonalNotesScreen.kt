@@ -67,9 +67,11 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
@@ -357,7 +359,7 @@ fun PersonalNotesScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (searchQuery.isNotBlank()) "Thử tìm kiếm với từ khóa khác hoặc xoá bộ lọc." else "Nhấn nút + bên dưới để tạo ghi chú mới cho việc học nhé!",
+                            text = if (searchQuery.isNotBlank()) "Thử tìm kiếm với từ khóa khác hoặc xoá bộ lọc." else "Nhập vào thanh bên dưới để tạo nhanh ghi chú việc học nhé!",
                             fontSize = 14.sp,
                             color = ChunkyColor.TextMuted,
                             textAlign = TextAlign.Center
@@ -367,7 +369,7 @@ fun PersonalNotesScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 110.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(
@@ -400,32 +402,23 @@ fun PersonalNotesScreen(
             }
         }
 
-        val fabInteractionSource = remember { MutableInteractionSource() }
-        val isFabPressed by fabInteractionSource.collectIsPressedAsState()
-        val fabScale = animateFloatAsState(
-            targetValue = if (isFabPressed) 0.92f else 1.0f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
-            ),
-            label = "fabScale"
-        )
-
-        FloatingActionButton(
-            onClick = { showCreateDialog = true },
-            interactionSource = fabInteractionSource,
+        BottomQuickCaptureBar(
+            courses = courses,
+            onSaveQuickNote = { quickTitle, quickDue, quickCourseId, quickCourseName ->
+                val newNote = PersonalNote(
+                    title = quickTitle,
+                    dueEpochMillis = quickDue,
+                    courseId = quickCourseId,
+                    courseName = quickCourseName
+                )
+                onSaveNote(newNote)
+            },
+            onOpenFullDialog = { showCreateDialog = true },
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(20.dp)
-                .graphicsLayer {
-                    scaleX = fabScale.value
-                    scaleY = fabScale.value
-                },
-            containerColor = ChunkyColor.SkyBottom,
-            contentColor = Color.White
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Thêm ghi chú")
-        }
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .imePadding()
+        )
     }
 
     if (showCreateDialog) {
@@ -755,6 +748,37 @@ private fun PersonalNoteCard(
                     )
                 }
 
+                if (note.hasChecklist) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "${note.completedChecklistCount}/${note.totalChecklistCount} việc con",
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (note.completedChecklistCount == note.totalChecklistCount) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(ChunkyColor.CardBorder)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(note.checklistProgress)
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(if (note.completedChecklistCount == note.totalChecklistCount) ChunkyColor.SuccessGreen else ChunkyColor.SkyBottom)
+                            )
+                        }
+                    }
+                }
+
                 if (!note.courseName.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     SubjectBadgePill(courseName = note.courseName)
@@ -1040,4 +1064,168 @@ private fun CreateOrEditNoteDialog(
             }
         }
     )
+}
+
+@Composable
+private fun BottomQuickCaptureBar(
+    courses: List<Course>,
+    onSaveQuickNote: (title: String, dueEpoch: Long?, courseId: String?, courseName: String?) -> Unit,
+    onOpenFullDialog: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var title by rememberSaveable { mutableStateOf("") }
+    var selectedDeadlineMode by rememberSaveable { mutableIntStateOf(1) } // 0: none, 1: tomorrow, 2: today
+    val view = LocalView.current
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .border(BorderStroke(1.dp, ChunkyColor.CardBorder), RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)),
+        shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
+        color = Color.White.copy(alpha = 0.96f),
+        shadowElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    placeholder = {
+                        Text(
+                            text = "Thêm việc cần làm nhanh...",
+                            fontSize = 13.5.sp,
+                            color = ChunkyColor.TextMuted
+                        )
+                    },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, color = ChunkyColor.TextPrimary),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        val trimmed = title.trim()
+                        if (trimmed.isNotEmpty()) {
+                            val due = when (selectedDeadlineMode) {
+                                1 -> ClassroomDateUtils.startOfTomorrow + 23 * 3600 * 1000L + 59 * 60 * 1000L
+                                2 -> ClassroomDateUtils.startOfToday + 23 * 3600 * 1000L + 59 * 60 * 1000L
+                                else -> null
+                            }
+                            onSaveQuickNote(trimmed, due, null, null)
+                            title = ""
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        }
+                    }),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ChunkyColor.SkyBottom,
+                        unfocusedBorderColor = ChunkyColor.CardBorder,
+                        focusedContainerColor = ChunkyColor.WindowBackground,
+                        unfocusedContainerColor = ChunkyColor.WindowBackground
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(
+                    onClick = {
+                        val trimmed = title.trim()
+                        if (trimmed.isNotEmpty()) {
+                            val due = when (selectedDeadlineMode) {
+                                1 -> ClassroomDateUtils.startOfTomorrow + 23 * 3600 * 1000L + 59 * 60 * 1000L
+                                2 -> ClassroomDateUtils.startOfToday + 23 * 3600 * 1000L + 59 * 60 * 1000L
+                                else -> null
+                            }
+                            onSaveQuickNote(trimmed, due, null, null)
+                            title = ""
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        } else {
+                            onOpenFullDialog()
+                        }
+                    },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(if (title.trim().isNotEmpty()) ChunkyColor.SkyBottom else ChunkyColor.WindowBackground)
+                        .border(1.dp, if (title.trim().isNotEmpty()) ChunkyColor.SkyBottom else ChunkyColor.CardBorder, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = if (title.trim().isNotEmpty()) Icons.Default.Check else Icons.Default.Add,
+                        contentDescription = "Lưu hoặc mở rộng",
+                        tint = if (title.trim().isNotEmpty()) Color.White else ChunkyColor.TextPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                QuickDeadlinePill(
+                    label = "Mai",
+                    selected = selectedDeadlineMode == 1,
+                    onClick = { selectedDeadlineMode = if (selectedDeadlineMode == 1) 0 else 1 }
+                )
+                QuickDeadlinePill(
+                    label = "Hôm nay",
+                    selected = selectedDeadlineMode == 2,
+                    onClick = { selectedDeadlineMode = if (selectedDeadlineMode == 2) 0 else 2 }
+                )
+                QuickDeadlinePill(
+                    label = "Không hạn",
+                    selected = selectedDeadlineMode == 0,
+                    onClick = { selectedDeadlineMode = 0 }
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Text(
+                    text = "Mở rộng",
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ChunkyColor.PillBlue,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable(onClick = onOpenFullDialog)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickDeadlinePill(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val bg = if (selected) ChunkyColor.PillBlue.copy(alpha = 0.14f) else Color.Transparent
+    val border = if (selected) ChunkyColor.PillBlue else ChunkyColor.CardBorder
+    val textCol = if (selected) ChunkyColor.PillBlue else ChunkyColor.TextMuted
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 9.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 11.5.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = textCol
+        )
+    }
 }

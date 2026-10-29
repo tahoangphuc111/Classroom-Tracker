@@ -78,6 +78,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 val personalNotes = if (authed) {
                     database.personalNoteDao().getAllNotes()
                         .map { it.toDomain() }
+                        .filter { (it.courseId == null || !MockDataProvider.isMockCourse(it.courseId)) && (it.courseworkId == null || !MockDataProvider.isMockCourseworkId(it.courseworkId)) }
                 } else {
                     emptyList()
                 }

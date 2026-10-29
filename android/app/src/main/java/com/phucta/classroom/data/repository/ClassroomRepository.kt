@@ -106,6 +106,9 @@ class ClassroomRepository(
                 val accessToken = oauthManager.getValidAccessToken()
 
                 val fetchedCourses = apiService.fetchActiveCourses(accessToken)
+                if (fetchedCourses.isNotEmpty()) {
+                    delay(300)
+                }
                 val existingCourseEntities = courseDao.getAllCourses()
                 val hasOnlyMockCourses = existingCourseEntities.isNotEmpty() &&
                         existingCourseEntities.all { MockDataProvider.isMockCourse(it.id) }
@@ -152,6 +155,8 @@ class ClassroomRepository(
                     val activeCourseIds = uniqueCourses.map { it.id }
                     if (activeCourseIds.isNotEmpty()) {
                         courseDao.deleteCoursesNotIn(activeCourseIds)
+                    } else {
+                        courseDao.deleteAllCourses()
                     }
                     val latestCoursework = courseworkDao.getAllCoursework().toCoursework()
                     val latestStatusMap = latestCoursework.associateBy { it.id }
@@ -161,8 +166,14 @@ class ClassroomRepository(
                     courseworkDao.upsertCourseworks(finalCoursework.map { CourseworkEntity.fromDomain(it) })
 
                     val validCourseworkIds = finalCoursework.map { it.id }
-                    if (validCourseworkIds.isNotEmpty() && !hasAnyFetchErrors) {
-                        courseworkDao.deleteCourseworkNotIn(validCourseworkIds)
+                    if (!hasAnyFetchErrors) {
+                        if (validCourseworkIds.isNotEmpty()) {
+                            courseworkDao.deleteCourseworkNotIn(validCourseworkIds)
+                            database.personalNoteDao().deleteNotesWithCourseworkNotIn(validCourseworkIds)
+                        } else {
+                            courseworkDao.deleteAllCoursework()
+                            database.personalNoteDao().deleteAllCourseworkAttachedNotes()
+                        }
                     }
                 }
                 preferences.saveLastSyncTime(System.currentTimeMillis())

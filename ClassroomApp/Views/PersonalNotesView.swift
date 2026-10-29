@@ -592,7 +592,7 @@ public struct PersonalNotesView: View {
         } else if selectedStatusFilter == .pending && notes.contains(where: { $0.courseworkId == nil && $0.isCompleted }) {
             return (
                 icon: "party.popper.fill",
-                title: "Đã hoàn thành tất cả việc! 🎉",
+                title: "Đã hoàn thành tất cả việc!",
                 subtitle: "Tuyệt vời! Bạn không còn việc cần làm nào đang chờ xử lý.",
                 buttonTitle: "Xem danh sách đã xong",
                 buttonAction: {

@@ -473,7 +473,7 @@ public final class ClassroomAPIService: ObservableObject {
         dateComponents.month = month
         dateComponents.day = day
 
-        if let time {
+        if let time, (time.hours != nil || time.minutes != nil || time.seconds != nil) {
             dateComponents.hour = time.hours ?? 0
             dateComponents.minute = time.minutes ?? 0
             dateComponents.second = time.seconds ?? 0

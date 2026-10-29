@@ -219,7 +219,7 @@ fun CompletedHomeworkScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    item(key = "all_subjects") {
+                    item(key = "all_subjects", contentType = "filter_chip") {
                         FilterChip(
                             selected = selectedSubjectCategory == null,
                             onClick = {
@@ -313,7 +313,7 @@ fun CompletedHomeworkScreen(
                 }
 
                 if (filteredItems.isEmpty()) {
-                    item(key = "empty_filter_result") {
+                    item(key = "empty_filter_result", contentType = "empty_state") {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -364,7 +364,7 @@ fun CompletedHomeworkScreen(
                     }
 
                     if (filteredItems.size > displayLimit) {
-                        item(key = "load_more_footer") {
+                        item(key = "load_more_footer", contentType = "load_more") {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()

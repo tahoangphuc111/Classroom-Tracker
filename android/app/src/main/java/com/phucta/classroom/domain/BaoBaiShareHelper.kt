@@ -28,17 +28,17 @@ object BaoBaiShareHelper {
         val dateString = formatHeaderDate(dateEpochMillis)
         if (items.isEmpty()) {
             return buildString {
-                append("🎉 BÁO BÀI $targetDayLabel ($dateString)\n\n")
+                append("BÁO BÀI $targetDayLabel ($dateString)\n\n")
                 append("Tuyệt vời! Ngày mai bạn không có bài tập nào cần làm.\n")
-                append("Nghỉ ngơi thật tốt nhé! 🚀\n\n")
+                append("Nghỉ ngơi thật tốt nhé!\n\n")
                 append("---\n")
-                append("⚡ Classroom Tracker")
+                append("Classroom Tracker")
             }
         }
         val totalCount = items.size
         var completedCount = 0
         return buildString {
-            append("📋 BÁO BÀI $targetDayLabel ($dateString)\n\n")
+            append("BÁO BÀI $targetDayLabel ($dateString)\n\n")
             for (i in 0 until totalCount) {
                 val item = items[i]
                 if (item.isCompleted) {
@@ -55,12 +55,12 @@ object BaoBaiShareHelper {
                 } else {
                     "Không có hạn nộp"
                 }
-                val statusSuffix = if (item.isCompleted) " (Đã xong ✓)" else ""
+                val statusSuffix = if (item.isCompleted) " (Đã xong)" else ""
                 append("${i + 1}. $courseTag ${item.title} — $dueString$statusSuffix\n")
             }
             append("\n---\n")
-            append("🔥 Tiến độ: $completedCount/$totalCount bài hoàn thành\n")
-            append("⚡ Classroom Tracker")
+            append("Tiến độ: $completedCount/$totalCount bài hoàn thành\n")
+            append("Classroom Tracker")
         }
     }
     fun copyToClipboard(context: Context, text: String, label: String = "Báo bài"): Boolean {
