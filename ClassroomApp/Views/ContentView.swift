@@ -1112,108 +1112,59 @@ public struct ContentView: View {
     @ViewBuilder
     private var compactAppView: some View {
         let upcomingBadge = buckets.allUpcomingPendingCount + buckets.pastPendingCount
-        if #available(iOS 18.0, *) {
-            TabView(selection: compactTabSelectionBinding) {
-                Tab("Báo bài", systemImage: "calendar.badge.clock", value: AppFilterCategory.tomorrow) {
-                    NavigationStack {
-                        detailMasterView(isCompact: true, tabCategory: .tomorrow)
-                    }
-                }
-                .badge(buckets.tomorrowPendingCount > 0 ? buckets.tomorrowPendingCount : 0)
-
-                Tab("Sắp tới", systemImage: "tray.fill", value: AppFilterCategory.allUpcoming) {
-                    NavigationStack {
-                        detailMasterView(isCompact: true, tabCategory: .allUpcoming)
-                    }
-                }
-                .badge(upcomingBadge > 0 ? upcomingBadge : 0)
-
-                Tab("Đã xong", systemImage: "checkmark.seal.fill", value: AppFilterCategory.completed) {
-                    NavigationStack {
-                        detailMasterView(isCompact: true, tabCategory: .completed)
-                    }
-                }
-
-                Tab("Ghi chú", systemImage: "square.and.pencil", value: AppFilterCategory.notes) {
-                    NavigationStack {
-                        detailMasterView(isCompact: true, tabCategory: .notes)
-                    }
-                }
-                .badge(pendingNotesCount > 0 ? pendingNotesCount : 0)
+        TabView(selection: compactTabSelectionBinding) {
+            NavigationStack {
+                detailMasterView(isCompact: true, tabCategory: .tomorrow)
             }
-            .tint(Color.accentColor)
-            .sheet(isPresented: $showCompactCourseFilterSheet) {
-                compactCourseFilterSheetView
+            .tabItem {
+                Label("Báo bài", systemImage: "calendar.badge.clock")
             }
-            .sheet(isPresented: $showMobileDetailSheet) {
-                NavigationStack {
-                    homeworkReaderPane
-                        .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button("Xong") { showMobileDetailSheet = false }
-                            }
+            .tag(AppFilterCategory.tomorrow)
+            .badge(buckets.tomorrowPendingCount > 0 ? buckets.tomorrowPendingCount : 0)
+
+            NavigationStack {
+                detailMasterView(isCompact: true, tabCategory: .allUpcoming)
+            }
+            .tabItem {
+                Label("Sắp tới", systemImage: "tray.fill")
+            }
+            .tag(AppFilterCategory.allUpcoming)
+            .badge(upcomingBadge > 0 ? upcomingBadge : 0)
+
+            NavigationStack {
+                detailMasterView(isCompact: true, tabCategory: .completed)
+            }
+            .tabItem {
+                Label("Đã xong", systemImage: "checkmark.seal.fill")
+            }
+            .tag(AppFilterCategory.completed)
+
+            NavigationStack {
+                detailMasterView(isCompact: true, tabCategory: .notes)
+            }
+            .tabItem {
+                Label("Ghi chú", systemImage: "square.and.pencil")
+            }
+            .tag(AppFilterCategory.notes)
+            .badge(pendingNotesCount > 0 ? pendingNotesCount : 0)
+        }
+        .tint(Color.accentColor)
+        .sheet(isPresented: $showCompactCourseFilterSheet) {
+            compactCourseFilterSheetView
+        }
+        .sheet(isPresented: $showMobileDetailSheet) {
+            NavigationStack {
+                homeworkReaderPane
+                    .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Xong") { showMobileDetailSheet = false }
                         }
-                }
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                    }
             }
-        } else {
-            TabView(selection: compactTabSelectionBinding) {
-                NavigationStack {
-                    detailMasterView(isCompact: true, tabCategory: .tomorrow)
-                }
-                .tabItem {
-                    Label("Báo bài", systemImage: "calendar.badge.clock")
-                }
-                .tag(AppFilterCategory.tomorrow)
-                .badge(buckets.tomorrowPendingCount > 0 ? buckets.tomorrowPendingCount : 0)
-
-                NavigationStack {
-                    detailMasterView(isCompact: true, tabCategory: .allUpcoming)
-                }
-                .tabItem {
-                    Label("Sắp tới", systemImage: "tray.fill")
-                }
-                .tag(AppFilterCategory.allUpcoming)
-                .badge(upcomingBadge > 0 ? upcomingBadge : 0)
-
-                NavigationStack {
-                    detailMasterView(isCompact: true, tabCategory: .completed)
-                }
-                .tabItem {
-                    Label("Đã xong", systemImage: "checkmark.seal.fill")
-                }
-                .tag(AppFilterCategory.completed)
-
-                NavigationStack {
-                    detailMasterView(isCompact: true, tabCategory: .notes)
-                }
-                .tabItem {
-                    Label("Ghi chú", systemImage: "square.and.pencil")
-                }
-                .tag(AppFilterCategory.notes)
-                .badge(pendingNotesCount > 0 ? pendingNotesCount : 0)
-            }
-            .tint(Color.accentColor)
-            .sheet(isPresented: $showCompactCourseFilterSheet) {
-                compactCourseFilterSheetView
-            }
-            .sheet(isPresented: $showMobileDetailSheet) {
-                NavigationStack {
-                    homeworkReaderPane
-                        .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button("Xong") { showMobileDetailSheet = false }
-                            }
-                        }
-                }
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
 
