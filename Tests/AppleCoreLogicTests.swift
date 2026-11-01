@@ -591,7 +591,6 @@ struct TestRunner {
 
             ClassroomStorage.shared.saveUserLoggedIn(false)
             ClassroomStorage.shared.invalidateMemoryCache()
-            // When real courses exist, hasUserLoggedIn evaluates true
             ClassroomStorage.shared.saveCourses([
                 Course(id: "google_course_12345", name: "Toán 12A", section: "12A", descriptionHeading: "Toán học", isSelectedForWidget: true)
             ])
@@ -651,6 +650,23 @@ struct TestRunner {
             ClassroomStorage.shared.flushIOQueue()
             ClassroomStorage.shared.invalidateMemoryCache()
             assertCondition(true, "flushIOQueue and invalidateMemoryCache must complete without deadlock")
+        }
+
+        do {
+            assertCondition(AppleOSDetector.isAppleOS, "AppleOSDetector.isAppleOS must be true on Apple platforms")
+            assertCondition(!AppleOSDetector.currentOSDescription.isEmpty, "AppleOSDetector.currentOSDescription must not be empty")
+            assertCondition(
+                AppleOSDetector.currentOSDescription.contains("macOS") || AppleOSDetector.currentOSDescription.contains("iOS"),
+                "AppleOSDetector.currentOSDescription must identify macOS or iOS"
+            )
+            assertCondition(!AppleOSDetector.designEngineStatus.isEmpty, "AppleOSDetector.designEngineStatus must not be empty")
+            let hasLiquidGlassSupport = AppleOSDetector.supportsLiquidGlass
+            if hasLiquidGlassSupport {
+                assertCondition(
+                    AppleOSDetector.designEngineStatus == "Apple Liquid Glass SDK",
+                    "designEngineStatus must indicate Apple Liquid Glass SDK when supported"
+                )
+            }
         }
 
         print("=== All Apple Core Logic Tests Passed Successfully! ===")

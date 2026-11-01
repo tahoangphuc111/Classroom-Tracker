@@ -37,12 +37,25 @@ struct CompactCourseFilterSheet: View {
                             Text("Lớp hiển thị (\(courses.filter(\.isSelectedForWidget).count)/\(courses.count))")
                             Spacer()
                             let allSelected = courses.allSatisfy(\.isSelectedForWidget)
-                            Button(allSelected ? "Bỏ chọn hết" : "Tất cả") {
-                                onToggleAllCourses()
+                            AdaptiveGlassContainer(spacing: 6) {
+                                Button(allSelected ? "Bỏ chọn hết" : "Tất cả") {
+                                    onToggleAllCourses()
+                                }
+                                .buttonStyle(.plain)
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(allSelected ? Color.secondary : Color.blue)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 4)
+                                .appleLiquidGlassSurface(
+                                    style: .interactiveTint(allSelected ? Color.secondary.opacity(0.12) : Color.blue.opacity(0.12)),
+                                    in: Capsule()
+                                ) {
+                                    Capsule().fill(allSelected ? Color.platformControlBackground : Color.blue.opacity(0.10))
+                                }
+                                .overlay(
+                                    Capsule().stroke(allSelected ? Color.platformCardBorder : Color.blue.opacity(0.24), lineWidth: 1)
+                                )
                             }
-                            .buttonStyle(.plain)
-                            .font(.caption2)
-                            .foregroundStyle(.blue)
                         }
                     }
                 }
@@ -58,10 +71,21 @@ struct CompactCourseFilterSheet: View {
             #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Xong") {
-                        isPresented = false
+                    AdaptiveGlassContainer(spacing: 4) {
+                        Button("Xong") {
+                            isPresented = false
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.blue)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .appleLiquidGlassSurface(
+                            style: .interactiveTint(Color.blue.opacity(0.12)),
+                            in: Capsule()
+                        ) {
+                            Capsule().fill(Color.blue.opacity(0.10))
+                        }
                     }
-                    .font(.system(size: 14, weight: .semibold))
                 }
             }
         }

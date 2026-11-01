@@ -1,6 +1,5 @@
 import SwiftUI
 
-// MARK: - Flame Shapes
 public struct StandardEmberFlameOuter: Shape {
     let isUrgent: Bool
     let isSleeping: Bool
@@ -168,7 +167,6 @@ public typealias Concept1FlameInner = StandardEmberFlameInner
 public typealias HarmoniousFlameCore = StandardEmberFlameInner
 public typealias Concept1FlameCore = StandardEmberFlameInner
 
-// MARK: - Specular Highlights
 public struct TightMainCrestGlossPath: Shape {
     public init() {}
 
@@ -268,7 +266,6 @@ public struct EmberSpecularHighlightPath: Shape {
 
 public typealias StandardEmberSpecularPath = EmberSpecularHighlightPath
 
-// MARK: - Celebrating Mouth Shapes
 public struct CelebratingMouthCavityShape: Shape {
     public init() {}
     public func path(in rect: CGRect) -> Path {
@@ -314,7 +311,6 @@ public struct CelebratingTongueShape: Shape {
     }
 }
 
-// MARK: - Character View
 public struct ChunkyEmberCharacterView: View {
     let emotion: EmberEmotion
     var size: CGFloat = 76

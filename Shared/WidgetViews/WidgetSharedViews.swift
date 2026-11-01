@@ -512,8 +512,18 @@ public struct WidgetAppleGlassBackground: View {
     }
 
     public var body: some View {
+        #if os(macOS) || os(iOS)
+        if #available(iOS 26.0, macOS 27.0, *) {
+            Color.clear
+                .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+        } else {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(.ultraThinMaterial)
+        }
+        #else
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(Color.white)
+        #endif
     }
 }
 
@@ -609,13 +619,16 @@ public struct DueBadgeView: View, Equatable {
         .foregroundStyle(badgeColor)
         .padding(.horizontal, compact ? 8 : 10)
         .padding(.vertical, compact ? 4 : 5)
-        .background(
+        .appleLiquidGlassSurface(
+            style: .tint(badgeColor.opacity(0.14)),
+            in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+        ) {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(badgeColor.opacity(0.12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .strokeBorder(badgeColor.opacity(0.25), lineWidth: 1)
-                )
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(badgeColor.opacity(0.25), lineWidth: 1)
         )
     }
 }
@@ -641,7 +654,6 @@ public struct WidgetEmptyStateView: View {
     }
 }
 
-// MARK: - Mock Data
 public struct RisoMockData {
     public static var tomorrowEvening: Date {
         let calendar = Calendar.autoupdatingCurrent
@@ -760,7 +772,6 @@ public struct RisoMockData {
 
 public typealias ChunkyMockData = RisoMockData
 
-// MARK: - Typography
 public enum WidgetFontSystem {
     public static func counter(size: CGFloat) -> Font {
         .system(size: size, weight: .heavy, design: .rounded)

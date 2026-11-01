@@ -1,7 +1,6 @@
 import SwiftUI
 import WidgetKit
 
-// MARK: - Medium Widget View
 public struct MediumWidgetView: View {
     let courseworkList: [Coursework]
     let isLoggedIn: Bool

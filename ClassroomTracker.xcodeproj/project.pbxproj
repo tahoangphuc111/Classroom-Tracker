@@ -11,6 +11,7 @@
 		00E5BD8166F74D4B2C9D65FC /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */; };
 		01D07892F24E0E6560C4CFCE /* WidgetVectorArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD22FBD16D58EFBCBCC5EBD /* WidgetVectorArt.swift */; };
 		02CF0AA3FEF95C009CBAF7CF /* PlusJakartaSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */; };
+		0470806FCD28782AC6912336 /* AppleLiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005BE5EB314FF6648A4EB470 /* AppleLiquidGlass.swift */; };
 		052E717ECC344E5F26C8DA3A /* empty_state_all_caught_up.svg in Resources */ = {isa = PBXBuildFile; fileRef = 1613C9611D9BCAED16D12A3F /* empty_state_all_caught_up.svg */; };
 		05A0A63CF06C4C92EEB24720 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 3376E7CF9516009BB923727C /* AppIcon.icns */; };
 		07E4D11AEE60B5EF8C30CCD8 /* WidgetSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054A7230A61A968D3470F649 /* WidgetSharedViews.swift */; };
@@ -47,10 +48,12 @@
 		4C3044602C711FE33D56936C /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
 		4E819390C60CB7F99A7CAE8F /* ClassroomTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8D3F55C61287C9E7E225FD /* ClassroomTimelineProvider.swift */; };
 		50F195E70EDBD2CE8A6E5ED9 /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
+		53B4DE26F1214441CB6CD47D /* AppleLiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005BE5EB314FF6648A4EB470 /* AppleLiquidGlass.swift */; };
 		564C7A526D4FACDC2789C218 /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
 		5651D16523E5B70943DC7C82 /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
 		56954DC1A0B76691F4AFCED0 /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
 		576CCB0796D2F531A4F1B0DA /* empty_state_all_caught_up.png in Resources */ = {isa = PBXBuildFile; fileRef = C5154DC9BE53EB1D8066B230 /* empty_state_all_caught_up.png */; };
+		5931377224C5F4D54FE058B7 /* AppleLiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005BE5EB314FF6648A4EB470 /* AppleLiquidGlass.swift */; };
 		59FD024F21660871C8B48AEF /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
 		5A8BDBC5102357F31F06BAA7 /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
 		5B00F034FE2B8F6DBBD0413E /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
@@ -101,6 +104,7 @@
 		B4E9C81406020332120C7D31 /* PersonalNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 323B489348E8FA84074C1E9A /* PersonalNotesView.swift */; };
 		B66C454110C15165187A2FB5 /* SmallWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72AA16D6CC38D1AB92759B4 /* SmallWidgetView.swift */; };
 		B88D489152047C28BAD8325F /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
+		BD2954CB77952D08AFCD0A47 /* AppleLiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005BE5EB314FF6648A4EB470 /* AppleLiquidGlass.swift */; };
 		C18DD5AFCE61166A6C7ECE6C /* ClassroomAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76246EB4C2B91BE0D7817282 /* ClassroomAPIService.swift */; };
 		C3A2ED4138C78EB4FD5C8211 /* ember_stressed.svg in Resources */ = {isa = PBXBuildFile; fileRef = 6DF031DF29F1D5BDA325C422 /* ember_stressed.svg */; };
 		C677921261CA4C30652CEEBF /* ChunkyEmberCharacterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A709199D7B0F2DB307C2C7E5 /* ChunkyEmberCharacterView.swift */; };
@@ -181,6 +185,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		005BE5EB314FF6648A4EB470 /* AppleLiquidGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleLiquidGlass.swift; sourceTree = "<group>"; };
 		054A7230A61A968D3470F649 /* WidgetSharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSharedViews.swift; sourceTree = "<group>"; };
 		0ADD3209B29A94C82F9B20E5 /* hero_bao_bai_modernist.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = hero_bao_bai_modernist.png; sourceTree = "<group>"; };
 		0C19BE580149DEE05DF2162F /* ClassroomWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ClassroomWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -260,6 +265,7 @@
 		3F886A7FA7446B999B9FAB35 /* WidgetViews */ = {
 			isa = PBXGroup;
 			children = (
+				005BE5EB314FF6648A4EB470 /* AppleLiquidGlass.swift */,
 				A709199D7B0F2DB307C2C7E5 /* ChunkyEmberCharacterView.swift */,
 				B343F9F03A47C6F9B03FAA4A /* ChunkyTheme.swift */,
 				F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */,
@@ -638,6 +644,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1A8B32DFBE34F54FAFBC0B26 /* AppUpdateService.swift in Sources */,
+				0470806FCD28782AC6912336 /* AppleLiquidGlass.swift in Sources */,
 				FB0EA900724C821046861313 /* ChunkyEmberCharacterView.swift in Sources */,
 				72E1408985CF7E5AFF83C25D /* ChunkyTheme.swift in Sources */,
 				C18DD5AFCE61166A6C7ECE6C /* ClassroomAPIService.swift in Sources */,
@@ -667,6 +674,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5931377224C5F4D54FE058B7 /* AppleLiquidGlass.swift in Sources */,
 				DB417AF148401D0ABD648051 /* ChunkyEmberCharacterView.swift in Sources */,
 				5E0902C87676BBCA09DF661E /* ChunkyTheme.swift in Sources */,
 				14F37D8ACB579379078AEEAE /* ClassroomStorage.swift in Sources */,
@@ -689,6 +697,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F42125ED7F9AAD9547E9947 /* AppUpdateService.swift in Sources */,
+				BD2954CB77952D08AFCD0A47 /* AppleLiquidGlass.swift in Sources */,
 				C677921261CA4C30652CEEBF /* ChunkyEmberCharacterView.swift in Sources */,
 				115BDFB416E98A55BCCEB6A6 /* ChunkyTheme.swift in Sources */,
 				9D0307AD1FB3BB9FAADBC2D0 /* ClassroomAPIService.swift in Sources */,
@@ -718,6 +727,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				53B4DE26F1214441CB6CD47D /* AppleLiquidGlass.swift in Sources */,
 				0EE670D36CDCEB2E141D025D /* ChunkyEmberCharacterView.swift in Sources */,
 				1A04F5FA4134D9363DF3AFCB /* ChunkyTheme.swift in Sources */,
 				FB3DAD5704E94D8A7710CAE2 /* ClassroomStorage.swift in Sources */,

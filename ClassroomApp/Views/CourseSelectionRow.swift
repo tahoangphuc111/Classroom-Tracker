@@ -42,16 +42,22 @@ struct CourseSelectionRow: View, Equatable {
 
                 Spacer()
             }
-            .padding(.horizontal, 4)
+            .padding(.horizontal, 6)
             #if os(iOS)
             .padding(.vertical, 8)
             .frame(minHeight: 48)
             #else
-            .padding(.vertical, 3.5)
+            .padding(.vertical, 4)
             #endif
             .contentShape(Rectangle())
         }
         .buttonStyle(SpringPressButtonStyle(scale: 0.98))
+        .appleLiquidGlassSurface(
+            style: course.isSelectedForWidget ? .interactiveTint(Color.blue.opacity(0.08)) : .interactive,
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        ) {
+            Color.clear
+        }
         .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isHovered)
         .onHover { hovering in
             isHovered = hovering

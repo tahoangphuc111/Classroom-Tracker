@@ -1,6 +1,5 @@
 import SwiftUI
 
-// MARK: - Chunky Ember Theme
 public struct ChunkyTheme {
     public static let skyTop = Color(red: 0.38, green: 0.78, blue: 1.00)
     public static let skyBottom = Color(red: 0.14, green: 0.62, blue: 0.98)
