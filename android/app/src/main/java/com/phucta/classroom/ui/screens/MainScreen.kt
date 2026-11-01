@@ -1,6 +1,7 @@
 package com.phucta.classroom.ui.screens
 
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -129,6 +130,7 @@ fun MainScreen() {
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var selectedCourseworkId by rememberSaveable { mutableStateOf<String?>(null) }
+    var noteToEditFromExternal by remember { mutableStateOf<PersonalNote?>(null) }
     var isDemoMode by rememberSaveable { mutableStateOf(false) }
     var currentDayEpoch by remember { mutableLongStateOf(com.phucta.classroom.data.model.ClassroomDateUtils.startOfToday) }
 
@@ -301,6 +303,13 @@ fun MainScreen() {
         }
     }
 
+    val onToggleChecklistItem = remember(scope, repository) {
+        { noteId: String, itemId: String ->
+            scope.launch { repository.toggleChecklistItem(noteId, itemId) }
+            Unit
+        }
+    }
+
     val onSavePersonalNote = remember(scope, repository) {
         { note: PersonalNote ->
             scope.launch { repository.savePersonalNote(note) }
@@ -315,9 +324,11 @@ fun MainScreen() {
         }
     }
 
-    val onSelectTomorrowAssignment = remember {
+    val onSelectTomorrowAssignment = remember(personalNotes) {
         { coursework: Coursework ->
             if (coursework.id.startsWith("note_")) {
+                val noteId = coursework.id.removePrefix("note_")
+                noteToEditFromExternal = personalNotes.find { it.id == noteId }
                 selectedTabIndex = 3
             } else {
                 selectedCourseworkId = coursework.id
@@ -325,13 +336,26 @@ fun MainScreen() {
         }
     }
 
-    val onSelectUpcomingOrCompletedAssignment = remember {
+    val onSelectUpcomingOrCompletedAssignment = remember(personalNotes) {
         { coursework: Coursework ->
-            selectedCourseworkId = coursework.id
+            if (coursework.id.startsWith("note_")) {
+                val noteId = coursework.id.removePrefix("note_")
+                noteToEditFromExternal = personalNotes.find { it.id == noteId }
+                selectedTabIndex = 3
+            } else {
+                selectedCourseworkId = coursework.id
+            }
         }
     }
 
     if (isAuthenticated || isDemoMode) {
+        BackHandler(enabled = drawerState.isOpen) {
+            scope.launch { drawerState.close() }
+        }
+        BackHandler(enabled = !drawerState.isOpen && selectedCourseworkId == null && !showSettingsDialog && selectedTabIndex != 0) {
+            selectedTabIndex = 0
+        }
+
         ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -694,8 +718,11 @@ fun MainScreen() {
                             notes = personalNotes,
                             courses = courses,
                             onToggleCompletion = onTogglePersonalNoteCompletion,
+                            onToggleChecklistItem = onToggleChecklistItem,
                             onSaveNote = onSavePersonalNote,
-                            onDeleteNote = onDeletePersonalNote
+                            onDeleteNote = onDeletePersonalNote,
+                            initialNoteToEdit = noteToEditFromExternal,
+                            onClearInitialNoteToEdit = { noteToEditFromExternal = null }
                         )
                     }
                 }

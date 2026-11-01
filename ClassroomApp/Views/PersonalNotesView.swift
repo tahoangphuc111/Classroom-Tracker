@@ -10,6 +10,7 @@ public struct PersonalNotesView: View {
     public let onDeleteNote: (String) -> Void
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedStatusFilter: StatusFilter = .all
     @State private var selectedCourseId: String? = nil
     @State private var activeSheet: ActiveNoteSheet? = nil
@@ -38,11 +39,14 @@ public struct PersonalNotesView: View {
 
     public enum ActiveNoteSheet: Identifiable {
         case create
+        case createDraft(title: String, courseId: String?, dueDate: Date?)
         case edit(PersonalNote)
 
         public var id: String {
             switch self {
             case .create: return "create"
+            case .createDraft(let title, let courseId, let due):
+                return "draft_\(title)_\(courseId ?? "")_\(due?.timeIntervalSince1970 ?? 0)"
             case .edit(let note): return "edit_\(note.id)"
             }
         }
@@ -176,6 +180,24 @@ public struct PersonalNotesView: View {
                         activeSheet = nil
                     }
                 )
+            case .createDraft(let initialTitle, let initialCourseId, let initialDueDate):
+                CreateOrEditNoteSheet(
+                    existingNote: nil,
+                    courses: courses,
+                    initialTitle: initialTitle,
+                    initialCourseId: initialCourseId,
+                    initialDueDate: initialDueDate,
+                    onSave: { newNote in
+                        onSaveNote(newNote)
+                        quickTodoTitle = ""
+                        quickTodoCourseId = nil
+                        quickTodoDue = .none
+                        activeSheet = nil
+                    },
+                    onCancel: {
+                        activeSheet = nil
+                    }
+                )
             case .edit(let note):
                 CreateOrEditNoteSheet(
                     existingNote: note,
@@ -191,6 +213,9 @@ public struct PersonalNotesView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenCreateNoteSheet"))) { _ in
+            activeSheet = .create
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("CreateNewPersonalNote"))) { _ in
             activeSheet = .create
         }
     }
@@ -328,6 +353,9 @@ public struct PersonalNotesView: View {
             singleLineQuickTodoBar
             compactStackedQuickTodoBar
         }
+        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: quickTodoTitle.isEmpty)
+        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: quickTodoDue)
+        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: quickTodoCourseId)
     }
 
     private var singleLineQuickTodoBar: some View {
@@ -346,8 +374,12 @@ public struct PersonalNotesView: View {
 
             if !quickTodoTitle.trimmingCharacters(in: .whitespaces).isEmpty {
                 quickTodoDueDateMenu
+                    .transition(.scale(scale: 0.92).combined(with: .opacity))
                 quickTodoCourseMenu
+                    .transition(.scale(scale: 0.92).combined(with: .opacity))
             }
+
+            quickTodoExpandButton
 
             quickTodoSubmitButton
         }
@@ -375,6 +407,8 @@ public struct PersonalNotesView: View {
                         submitQuickTodo()
                     }
 
+                quickTodoExpandButton
+
                 quickTodoSubmitButton
             }
 
@@ -384,6 +418,7 @@ public struct PersonalNotesView: View {
                     quickTodoCourseMenu
                     Spacer()
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(.horizontal, 12)
@@ -393,6 +428,46 @@ public struct PersonalNotesView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(Color.platformCardBorder, lineWidth: 1)
         )
+    }
+
+    private var quickTodoExpandButton: some View {
+        Button {
+            let due: Date?
+            let cal = Calendar.current
+            switch quickTodoDue {
+            case .none:
+                due = nil
+            case .today:
+                due = cal.date(bySettingHour: 23, minute: 59, second: 59, of: Date())
+            case .tomorrow:
+                if let tomorrow = cal.date(byAdding: .day, value: 1, to: Date()) {
+                    due = cal.date(bySettingHour: 23, minute: 59, second: 59, of: tomorrow)
+                } else {
+                    due = nil
+                }
+            case .custom:
+                due = nil
+            }
+            let effectiveCourseId: String? = {
+                if let id = quickTodoCourseId {
+                    return id.isEmpty ? nil : id
+                }
+                return selectedCourseId
+            }()
+            activeSheet = .createDraft(
+                title: quickTodoTitle.trimmingCharacters(in: .whitespaces),
+                courseId: effectiveCourseId,
+                dueDate: due
+            )
+        } label: {
+            Image(systemName: "square.and.pencil")
+                .font(.system(size: 13))
+                .foregroundStyle(Color.secondary)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Mở rộng biểu mẫu tạo việc đầy đủ")
     }
 
     private var quickTodoDueDateMenu: some View {
@@ -422,7 +497,7 @@ public struct PersonalNotesView: View {
     private var quickTodoCourseMenu: some View {
         if !courses.isEmpty {
             Menu {
-                Button("Không gắn môn") { quickTodoCourseId = nil }
+                Button("Không gắn môn") { quickTodoCourseId = "" }
                 Divider()
                 ForEach(courses) { course in
                     Button(course.name) { quickTodoCourseId = course.id }
@@ -431,7 +506,16 @@ public struct PersonalNotesView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "book")
                         .font(.system(size: 10.5))
-                    Text(quickTodoCourseId != nil ? (courses.first(where: { $0.id == quickTodoCourseId })?.name ?? "Môn") : "Môn")
+                    let labelText: String = {
+                        if let id = quickTodoCourseId {
+                            if id.isEmpty { return "Không gắn môn" }
+                            return courses.first(where: { $0.id == id })?.name ?? "Môn"
+                        } else if let activeCourseId = selectedCourseId, let course = courses.first(where: { $0.id == activeCourseId }) {
+                            return course.name
+                        }
+                        return "Môn"
+                    }()
+                    Text(labelText)
                         .font(.system(size: 11.5, weight: .medium))
                         .lineLimit(1)
                     Image(systemName: "chevron.down")
@@ -489,7 +573,13 @@ public struct PersonalNotesView: View {
             computedDue = nil
         }
 
-        let selectedCourse = courses.first(where: { $0.id == quickTodoCourseId })
+        let effectiveCourseId: String? = {
+            if let id = quickTodoCourseId {
+                return id.isEmpty ? nil : id
+            }
+            return selectedCourseId
+        }()
+        let selectedCourse = courses.first(where: { $0.id == effectiveCourseId })
 
         let newNote = PersonalNote(
             courseId: selectedCourse?.id,
@@ -500,10 +590,12 @@ public struct PersonalNotesView: View {
             dueDate: computedDue,
             isCompleted: false
         )
-        onSaveNote(newNote)
-        quickTodoTitle = ""
-        quickTodoCourseId = nil
-        quickTodoDue = .none
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+            onSaveNote(newNote)
+            quickTodoTitle = ""
+            quickTodoCourseId = nil
+            quickTodoDue = .none
+        }
     }
 
     private var notesListView: some View {
@@ -665,11 +757,15 @@ public struct PersonalNotesView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)
         .opacity(emptyAppeared ? 1.0 : 0.0)
-        .scaleEffect(emptyAppeared ? 1.0 : 0.95)
-        .offset(y: emptyAppeared ? 0 : 8)
+        .scaleEffect(reduceMotion ? 1.0 : (emptyAppeared ? 1.0 : 0.95))
+        .offset(y: reduceMotion ? 0 : (emptyAppeared ? 0 : 8))
         .onAppear {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
+            if reduceMotion {
                 emptyAppeared = true
+            } else {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
+                    emptyAppeared = true
+                }
             }
         }
     }
@@ -738,34 +834,37 @@ private struct PersonalNoteRowCard: View, Equatable {
             .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(note.title)
-                    .font(.system(size: 15.5, weight: .bold))
-                    .foregroundStyle(note.isCompleted ? Color.platformTextSecondary : Color.platformTextPrimary)
-                    .strikethrough(note.isCompleted, color: Color.platformTextTertiary)
-                    .opacity(note.isCompleted ? 0.72 : 1.0)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .multilineTextAlignment(.leading)
-                    .animation(.spring(response: 0.28, dampingFraction: 0.8), value: note.isCompleted)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(note.title)
+                        .font(.system(size: 15.5, weight: .bold))
+                        .foregroundStyle(note.isCompleted ? Color.platformTextSecondary : Color.platformTextPrimary)
+                        .strikethrough(note.isCompleted, color: Color.platformTextTertiary)
+                        .opacity(note.isCompleted ? 0.72 : 1.0)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
+                        .animation(.spring(response: 0.28, dampingFraction: 0.8), value: note.isCompleted)
 
-                if (note.courseName != nil && !note.courseName!.isEmpty) || note.dueDate != nil {
-                    HStack(spacing: 6) {
-                        if let courseName = note.courseName, !courseName.isEmpty {
-                            Text(courseName)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(Color.blue)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2.5)
-                                .background(Color.blue.opacity(0.1))
-                                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                                .lineLimit(1)
-                        }
+                    if (note.courseName != nil && !note.courseName!.isEmpty) || note.dueDate != nil {
+                        HStack(spacing: 6) {
+                            if let courseName = note.courseName, !courseName.isEmpty {
+                                Text(courseName)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(Color.blue)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2.5)
+                                    .background(Color.blue.opacity(0.1))
+                                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                                    .lineLimit(1)
+                            }
 
-                        if let dueDate = note.dueDate {
-                            dueDateBadge(for: dueDate)
+                            if let dueDate = note.dueDate {
+                                dueDateBadge(for: dueDate)
+                            }
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 if note.hasChecklist {
                     HStack(spacing: 6) {
@@ -797,6 +896,7 @@ private struct PersonalNoteRowCard: View, Equatable {
                                             height: 4
                                         )
                                 }
+                                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: note.checklistProgress)
                         }
                     }
                     .padding(.top, 2)
@@ -808,10 +908,18 @@ private struct PersonalNoteRowCard: View, Equatable {
                                 onToggleChecklistItem(note.id, item.id)
                             } label: {
                                 HStack(spacing: 7) {
-                                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(item.isCompleted ? Color.green : Color.secondary.opacity(0.6))
-                                        .frame(width: 16, height: 16)
+                                    if #available(macOS 14.0, iOS 17.0, *) {
+                                        Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(item.isCompleted ? Color.green : Color.secondary.opacity(0.6))
+                                            .frame(width: 16, height: 16)
+                                            .symbolEffect(.bounce, value: item.isCompleted)
+                                    } else {
+                                        Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(item.isCompleted ? Color.green : Color.secondary.opacity(0.6))
+                                            .frame(width: 16, height: 16)
+                                    }
 
                                     Text(item.title)
                                         .font(.system(size: 13))
@@ -823,15 +931,21 @@ private struct PersonalNoteRowCard: View, Equatable {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .animation(.spring(response: 0.24, dampingFraction: 0.75), value: item.isCompleted)
                             #if os(iOS)
                             .frame(minHeight: 34)
                             #endif
                         }
                         if note.checklist.count > 4 {
-                            Text("+ \(note.checklist.count - 4) mục khác...")
-                                .font(.system(size: 11.5, weight: .medium))
-                                .foregroundStyle(Color.secondary)
-                                .padding(.leading, 23)
+                            Button {
+                                onEdit()
+                            } label: {
+                                Text("+ \(note.checklist.count - 4) mục khác...")
+                                    .font(.system(size: 11.5, weight: .medium))
+                                    .foregroundStyle(Color.secondary)
+                                    .padding(.leading, 23)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.top, 2)
@@ -847,6 +961,7 @@ private struct PersonalNoteRowCard: View, Equatable {
                         .animation(.spring(response: 0.28, dampingFraction: 0.8), value: note.isCompleted)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .onTapGesture {
                 onEdit()
@@ -883,11 +998,12 @@ private struct PersonalNoteRowCard: View, Equatable {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
                 .stroke(isHovered ? Color.platformCardHoverBorder : Color.platformCardBorder, lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(isHovered ? 0.03 : 0.015), radius: 3, x: 0, y: 1)
+        .shadow(color: Color.black.opacity(isHovered ? 0.04 : 0.015), radius: isHovered ? 5 : 2, x: 0, y: isHovered ? 2 : 1)
+        .scaleEffect(isHovered ? 1.008 : 1.0)
         #if os(macOS)
         .onHover { isHovered = $0 }
         #endif
-        .animation(.easeInOut(duration: 0.12), value: isHovered)
+        .animation(.spring(response: 0.24, dampingFraction: 0.72), value: isHovered)
         .contextMenu {
             Button("Chỉnh sửa") { onEdit() }
             Button("Xoá", role: .destructive) { onDelete() }
@@ -911,26 +1027,35 @@ private struct PersonalNoteRowCard: View, Equatable {
             Text("Ngày mai")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(Color.blue)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: true)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2.5)
                 .background(Color.blue.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .layoutPriority(1)
         } else if calendar.isDateInToday(date) {
             Text("Hôm nay")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(Color.orange)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: true)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2.5)
                 .background(Color.orange.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .layoutPriority(1)
         } else {
             Text(formattedDateString(from: date))
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Color.secondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: true)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2.5)
                 .background(Color.primary.opacity(0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .layoutPriority(1)
         }
     }
 }
@@ -968,6 +1093,9 @@ public struct CreateOrEditNoteSheet: View {
     public init(
         existingNote: PersonalNote?,
         courses: [Course],
+        initialTitle: String = "",
+        initialCourseId: String? = nil,
+        initialDueDate: Date? = nil,
         onSave: @escaping (PersonalNote) -> Void,
         onCancel: @escaping () -> Void
     ) {
@@ -976,17 +1104,20 @@ public struct CreateOrEditNoteSheet: View {
         self.onSave = onSave
         self.onCancel = onCancel
 
-        _title = State(initialValue: existingNote?.title ?? "")
+        _title = State(initialValue: existingNote?.title ?? initialTitle)
         _content = State(initialValue: existingNote?.content ?? "")
         _checklist = State(initialValue: existingNote?.checklist ?? [])
-        _selectedCourseId = State(initialValue: existingNote?.courseId ?? "")
+        _selectedCourseId = State(initialValue: existingNote?.courseId ?? initialCourseId ?? "")
 
-        if let due = existingNote?.dueDate {
+        let effectiveDue = existingNote?.dueDate ?? initialDueDate
+        if let due = effectiveDue {
             let cal = Calendar.current
-            if cal.isDateInToday(due) {
+            let comps = cal.dateComponents([.hour, .minute, .second], from: due)
+            let isEndOfDay = (comps.hour == 23 && comps.minute == 59) || (comps.hour == 0 && comps.minute == 0 && comps.second == 0)
+            if isEndOfDay && cal.isDateInToday(due) {
                 _selectedDueDateMode = State(initialValue: .today)
                 _customDueDate = State(initialValue: due)
-            } else if cal.isDateInTomorrow(due) {
+            } else if isEndOfDay && cal.isDateInTomorrow(due) {
                 _selectedDueDateMode = State(initialValue: .tomorrow)
                 _customDueDate = State(initialValue: due)
             } else {
@@ -1003,8 +1134,13 @@ public struct CreateOrEditNoteSheet: View {
         NavigationStack {
             Form {
                 Section("Tiêu đề") {
-                    TextField("Tiêu đề ghi chú / việc cần làm", text: $title)
+                    TextField("", text: $title, prompt: Text("Tiêu đề việc cần làm..."))
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 14.5, weight: .medium))
                         .focused($focusedField, equals: .title)
+                        .onSubmit {
+                            focusedField = .newChecklistItem
+                        }
                 }
 
                 Section {
@@ -1012,22 +1148,39 @@ public struct CreateOrEditNoteSheet: View {
                         HStack(spacing: 8) {
                             Button {
                                 PlatformHaptics.trigger()
-                                item.isCompleted.toggle()
+                                withAnimation(.spring(response: 0.22, dampingFraction: 0.7)) {
+                                    item.isCompleted.toggle()
+                                }
                             } label: {
-                                Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundStyle(item.isCompleted ? Color.green : Color.secondary)
-                                    #if os(iOS)
-                                    .frame(width: 44, height: 44)
-                                    #else
-                                    .frame(width: 32, height: 32)
-                                    #endif
-                                    .contentShape(Rectangle())
+                                if #available(macOS 14.0, iOS 17.0, *) {
+                                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(item.isCompleted ? Color.green : Color.secondary)
+                                        .symbolEffect(.bounce, value: item.isCompleted)
+                                        #if os(iOS)
+                                        .frame(width: 44, height: 44)
+                                        #else
+                                        .frame(width: 28, height: 28)
+                                        #endif
+                                        .contentShape(Rectangle())
+                                } else {
+                                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(item.isCompleted ? Color.green : Color.secondary)
+                                        #if os(iOS)
+                                        .frame(width: 44, height: 44)
+                                        #else
+                                        .frame(width: 28, height: 28)
+                                        #endif
+                                        .contentShape(Rectangle())
+                                }
                             }
                             .buttonStyle(.plain)
 
-                            TextField("Nội dung mục...", text: $item.title)
-                                .strikethrough(item.isCompleted, color: Color.secondary)
+                            TextField("", text: $item.title, prompt: Text("Nội dung mục..."))
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 14))
+                                .strikethrough(item.isCompleted, color: Color.secondary.opacity(0.7))
                                 .foregroundStyle(item.isCompleted ? Color.secondary : Color.platformTextPrimary)
                                 .onSubmit {
                                     focusedField = .newChecklistItem
@@ -1035,7 +1188,9 @@ public struct CreateOrEditNoteSheet: View {
 
                             Button(role: .destructive) {
                                 PlatformHaptics.trigger()
-                                checklist.removeAll { $0.id == item.id }
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+                                    checklist.removeAll { $0.id == item.id }
+                                }
                             } label: {
                                 Image(systemName: "trash")
                                     .font(.system(size: 13))
@@ -1043,23 +1198,29 @@ public struct CreateOrEditNoteSheet: View {
                                     #if os(iOS)
                                     .frame(width: 44, height: 44)
                                     #else
-                                    .frame(width: 32, height: 32)
+                                    .frame(width: 28, height: 28)
                                     #endif
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .help("Xoá mục này")
                         }
                     }
                     .onDelete { indices in
                         PlatformHaptics.trigger()
-                        checklist.remove(atOffsets: indices)
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+                            checklist.remove(atOffsets: indices)
+                        }
                     }
 
                     HStack(spacing: 8) {
                         Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(Color.blue)
 
-                        TextField("Thêm việc cần làm (nhấn Enter)...", text: $newChecklistItemTitle)
+                        TextField("", text: $newChecklistItemTitle, prompt: Text("Thêm việc cần làm (nhấn Enter)..."))
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 14))
                             .focused($focusedField, equals: .newChecklistItem)
                             .onSubmit {
                                 addChecklistItem()
@@ -1071,6 +1232,7 @@ public struct CreateOrEditNoteSheet: View {
                             }
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
+                            .transition(.scale.combined(with: .opacity))
                         }
                     }
                 } header: {
@@ -1098,8 +1260,11 @@ public struct CreateOrEditNoteSheet: View {
                         }
                         TextEditor(text: $content)
                             .font(.system(size: 14))
+                            .lineSpacing(4)
                             .frame(minHeight: 80)
-                            #if os(iOS)
+                            #if os(macOS)
+                            .scrollContentBackground(.hidden)
+                            #elseif os(iOS)
                             .scrollContentBackground(.hidden)
                             #endif
                     }
@@ -1146,6 +1311,7 @@ public struct CreateOrEditNoteSheet: View {
                     }
                     .keyboardShortcut(.return, modifiers: [.command])
                     .buttonStyle(.borderedProminent)
+                    .tint(Color.blue)
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
@@ -1157,10 +1323,12 @@ public struct CreateOrEditNoteSheet: View {
                     selectedCourseId = existing.courseId ?? ""
                     if let due = existing.dueDate {
                         let cal = Calendar.current
-                        if cal.isDateInToday(due) {
+                        let comps = cal.dateComponents([.hour, .minute, .second], from: due)
+                        let isEndOfDay = (comps.hour == 23 && comps.minute == 59) || (comps.hour == 0 && comps.minute == 0 && comps.second == 0)
+                        if isEndOfDay && cal.isDateInToday(due) {
                             selectedDueDateMode = .today
                             customDueDate = due
-                        } else if cal.isDateInTomorrow(due) {
+                        } else if isEndOfDay && cal.isDateInTomorrow(due) {
                             selectedDueDateMode = .tomorrow
                             customDueDate = due
                         } else {
@@ -1171,14 +1339,16 @@ public struct CreateOrEditNoteSheet: View {
                         selectedDueDateMode = .none
                     }
                 } else {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        focusedField = .title
+                    if title.isEmpty {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            focusedField = .title
+                        }
                     }
                 }
             }
         }
         #if os(macOS)
-        .frame(minWidth: 460, minHeight: 460)
+        .frame(minWidth: 480, idealWidth: 500, maxWidth: 540, minHeight: 480, idealHeight: 520)
         #elseif os(iOS)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
@@ -1189,8 +1359,10 @@ public struct CreateOrEditNoteSheet: View {
         let trimmed = newChecklistItemTitle.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         PlatformHaptics.trigger()
-        checklist.append(ChecklistItem(title: trimmed))
-        newChecklistItemTitle = ""
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+            checklist.append(ChecklistItem(title: trimmed))
+            newChecklistItemTitle = ""
+        }
         focusedField = .newChecklistItem
     }
 
@@ -1237,7 +1409,7 @@ public struct CreateOrEditNoteSheet: View {
             id: existingNote?.id ?? UUID().uuidString,
             courseworkId: existingNote?.courseworkId,
             courseId: selectedCourse?.id ?? (selectedCourseId.isEmpty ? nil : selectedCourseId),
-            courseName: selectedCourse?.name ?? existingNote?.courseName,
+            courseName: selectedCourse?.name ?? (selectedCourseId.isEmpty ? nil : existingNote?.courseName),
             title: trimmedTitle,
             content: content.trimmingCharacters(in: .whitespacesAndNewlines),
             checklist: finalChecklist,

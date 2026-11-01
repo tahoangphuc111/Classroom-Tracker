@@ -1,5 +1,6 @@
 package com.phucta.classroom.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -117,9 +118,17 @@ fun CompletedHomeworkScreen(
         }
     }
 
-    var displayLimit by remember(selectedSubjectCategory, searchQuery, completedItems.size) { mutableIntStateOf(30) }
+    var displayLimit by remember(selectedSubjectCategory, searchQuery) { mutableIntStateOf(30) }
     val displayedItems = remember(filteredItems, displayLimit) {
         filteredItems.take(displayLimit)
+    }
+
+    BackHandler(enabled = searchQuery.isNotEmpty() || selectedSubjectCategory != null) {
+        if (searchQuery.isNotEmpty()) {
+            searchQuery = ""
+        } else {
+            selectedSubjectCategory = null
+        }
     }
 
     if (completedItems.isEmpty()) {

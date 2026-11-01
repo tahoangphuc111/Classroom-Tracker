@@ -108,6 +108,7 @@ public struct AppLogoView: View {
 public struct FloatingEmberView: View {
     public let emotion: EmberEmotion
     public var size: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isFloating: Bool = false
 
     public init(emotion: EmberEmotion, size: CGFloat = 52) {
@@ -117,11 +118,13 @@ public struct FloatingEmberView: View {
 
     public var body: some View {
         ChunkyEmberCharacterView(emotion: emotion, size: size)
-            .offset(y: isFloating ? -4 : 4)
-            .scaleEffect(isFloating ? 1.025 : 0.975)
-            .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: isFloating)
+            .offset(y: reduceMotion ? 0 : (isFloating ? -4 : 4))
+            .scaleEffect(reduceMotion ? 1.0 : (isFloating ? 1.025 : 0.975))
+            .animation(reduceMotion ? nil : .easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: isFloating)
             .onAppear {
-                isFloating = true
+                if !reduceMotion {
+                    isFloating = true
+                }
             }
     }
 }
@@ -259,6 +262,7 @@ public struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showCompactCourseFilterSheet: Bool = false
     @State private var showMobileDetailSheet: Bool = false
+    @State private var noteToEditFromReader: PersonalNote? = nil
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -746,6 +750,10 @@ public struct ContentView: View {
             completedDisplayLimit = 30
             let list = currentFilteredList
             if let current = selectedCoursework, list.contains(where: { $0.id == current.id }) {
+                selectedCourseworkIds = selectedCourseworkIds.filter { id in list.contains(where: { $0.id == id }) }
+                if selectedCourseworkIds.isEmpty {
+                    selectedCourseworkIds = [current.id]
+                }
             } else if let first = list.first {
                 selectedCoursework = first
                 selectedCourseworkIds = [first.id]
@@ -1055,15 +1063,30 @@ public struct ContentView: View {
 
     @ViewBuilder
     private var mainAppContainer: some View {
-        #if os(iOS)
-        if isCompactLayout {
-            compactAppView
-        } else {
+        Group {
+            #if os(iOS)
+            if isCompactLayout {
+                compactAppView
+            } else {
+                splitViewContainer
+            }
+            #else
             splitViewContainer
+            #endif
         }
-        #else
-        splitViewContainer
-        #endif
+        .sheet(item: $noteToEditFromReader) { note in
+            CreateOrEditNoteSheet(
+                existingNote: note,
+                courses: courses,
+                onSave: { updated in
+                    savePersonalNoteItem(updated)
+                    noteToEditFromReader = nil
+                },
+                onCancel: {
+                    noteToEditFromReader = nil
+                }
+            )
+        }
     }
 
     #if os(iOS)
@@ -1125,7 +1148,7 @@ public struct ContentView: View {
             .sheet(isPresented: $showMobileDetailSheet) {
                 NavigationStack {
                     homeworkReaderPane
-                        .navigationTitle("Chi tiết bài tập")
+                        .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .confirmationAction) {
@@ -1180,7 +1203,7 @@ public struct ContentView: View {
             .sheet(isPresented: $showMobileDetailSheet) {
                 NavigationStack {
                     homeworkReaderPane
-                        .navigationTitle("Chi tiết bài tập")
+                        .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .confirmationAction) {
@@ -1444,10 +1467,26 @@ public struct ContentView: View {
                     courses: courses,
                     searchText: searchText,
                     onToggleCompletion: { id in
-                        ClassroomStorage.shared.togglePersonalNoteCompletion(id: id)
-                        personalNotes = ClassroomStorage.shared.loadPersonalNotes()
-                        updatePersonalNotesCache()
-                        recomputeBuckets()
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                            ClassroomStorage.shared.togglePersonalNoteCompletion(id: id)
+                            personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                            updatePersonalNotesCache()
+                            recomputeBuckets()
+                            if selectedCoursework?.id == id || selectedCoursework?.id == "note_\(id)" {
+                                if let note = personalNotes.first(where: { $0.id == id }) {
+                                    selectedCoursework = Coursework(
+                                        id: "note_\(note.id)",
+                                        courseId: note.courseId ?? "personal_note",
+                                        courseName: note.courseName ?? "Ghi chú",
+                                        title: note.title,
+                                        description: note.content,
+                                        dueDate: note.dueDate,
+                                        status: note.isCompleted ? .turnedIn : .pending,
+                                        isManuallyCompleted: note.isCompleted
+                                    )
+                                }
+                            }
+                        }
                         if let note = personalNotes.first(where: { $0.id == id }) {
                             if note.isCompleted {
                                 showToast(title: "Đã hoàn thành việc cần làm!", subtitle: note.title, icon: "checkmark.circle.fill", tint: .green)
@@ -1457,30 +1496,43 @@ public struct ContentView: View {
                         }
                     },
                     onToggleChecklistItem: { noteId, itemId in
-                        ClassroomStorage.shared.toggleChecklistItemCompletion(noteId: noteId, itemId: itemId)
-                        personalNotes = ClassroomStorage.shared.loadPersonalNotes()
-                        updatePersonalNotesCache()
-                        recomputeBuckets()
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                            ClassroomStorage.shared.toggleChecklistItemCompletion(noteId: noteId, itemId: itemId)
+                            personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                            updatePersonalNotesCache()
+                            recomputeBuckets()
+                            if selectedCoursework?.id == noteId || selectedCoursework?.id == "note_\(noteId)" {
+                                if let note = personalNotes.first(where: { $0.id == noteId }) {
+                                    selectedCoursework = Coursework(
+                                        id: "note_\(note.id)",
+                                        courseId: note.courseId ?? "personal_note",
+                                        courseName: note.courseName ?? "Ghi chú",
+                                        title: note.title,
+                                        description: note.content,
+                                        dueDate: note.dueDate,
+                                        status: note.isCompleted ? .turnedIn : .pending,
+                                        isManuallyCompleted: note.isCompleted
+                                    )
+                                }
+                            }
+                        }
                     },
                     onSaveNote: { note in
-                        var current = personalNotes
-                        if let index = current.firstIndex(where: { $0.id == note.id }) {
-                            current[index] = note
-                        } else {
-                            current.append(note)
-                        }
-                        ClassroomStorage.shared.savePersonalNotes(current)
-                        personalNotes = ClassroomStorage.shared.loadPersonalNotes()
-                        updatePersonalNotesCache()
-                        recomputeBuckets()
-                        showToast(title: "Đã lưu ghi chú", icon: "checkmark.circle.fill", tint: .green)
+                        savePersonalNoteItem(note)
                     },
                     onDeleteNote: { id in
-                        ClassroomStorage.shared.deletePersonalNote(id: id)
-                        personalNotes = ClassroomStorage.shared.loadPersonalNotes()
-                        updatePersonalNotesCache()
-                        recomputeBuckets()
-                        showToast(title: "Đã xoá ghi chú", icon: "trash.fill", tint: .orange)
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                            ClassroomStorage.shared.deletePersonalNote(id: id)
+                            personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                            updatePersonalNotesCache()
+                            recomputeBuckets()
+                            if selectedCoursework?.id == id || selectedCoursework?.id == "note_\(id)" {
+                                selectedCoursework = nil
+                            }
+                            selectedCourseworkIds.remove(id)
+                            selectedCourseworkIds.remove("note_\(id)")
+                        }
+                        showToast(title: "Đã xoá việc cần làm", icon: "trash.fill", tint: .orange)
                     }
                 )
             } else {
@@ -1510,7 +1562,7 @@ public struct ContentView: View {
                     .sheet(isPresented: $showMobileDetailSheet) {
                         NavigationStack {
                             homeworkReaderPane
-                                .navigationTitle("Chi tiết bài tập")
+                                .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
                                 .navigationBarTitleDisplayMode(.inline)
                                 .toolbar {
                                     ToolbarItem(placement: .confirmationAction) {
@@ -1524,7 +1576,7 @@ public struct ContentView: View {
                 }
                 #else
                 GeometryReader { geometry in
-                    let isWide = geometry.size.width >= 440
+                    let isWide = geometry.size.width >= 520
                     if isWide {
                         let listWidth = min(360, max(260, geometry.size.width * 0.38))
                         HStack(spacing: 0) {
@@ -1544,7 +1596,7 @@ public struct ContentView: View {
                 .sheet(isPresented: $showMobileDetailSheet) {
                     NavigationStack {
                         homeworkReaderPane
-                            .navigationTitle("Chi tiết bài tập")
+                            .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
                             .toolbar {
                                 ToolbarItem(placement: .confirmationAction) {
                                     Button("Xong") { showMobileDetailSheet = false }
@@ -1574,7 +1626,7 @@ public struct ContentView: View {
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.78), value: activeToast)
         .background {
-            if !showSettingsModal {
+            if !showSettingsModal && activeCategory != .notes && activeCategory != .widgetPreview && courseworkNoteToEditCourseworkId == nil {
                 Group {
                     if !isSearchFocused {
                         Button("") { selectNextItem() }
@@ -1592,21 +1644,37 @@ public struct ContentView: View {
                         .keyboardShortcut(.escape, modifiers: [])
                     #if os(macOS)
                     Button("") {
-                        if !isSearchFocused, let item = selectedCoursework {
-                            toggleCompletion(for: item)
+                        if !isSearchFocused {
+                            if selectedCourseworkIds.count > 1 {
+                                batchToggleCompletion(for: selectedCourseworkIds)
+                            } else if let item = selectedCoursework {
+                                toggleCompletion(for: item)
+                            }
                         }
                     }
                     .keyboardShortcut(.space, modifiers: [])
                     Button("") {
-                        if !isSearchFocused, let item = selectedCoursework {
-                            toggleCompletion(for: item)
+                        if !isSearchFocused {
+                            if selectedCourseworkIds.count > 1 {
+                                batchToggleCompletion(for: selectedCourseworkIds)
+                            } else if let item = selectedCoursework {
+                                toggleCompletion(for: item)
+                            }
                         }
                     }
                     .keyboardShortcut("d", modifiers: [.command])
                     Button("") {
                         if let item = selectedCoursework {
-                            triggerHapticFeedback()
-                            openURL(item.destinationURL)
+                            if item.id.hasPrefix("note_") {
+                                let noteId = String(item.id.dropFirst(5))
+                                if let note = personalNotes.first(where: { $0.id == noteId }) {
+                                    triggerHapticFeedback()
+                                    noteToEditFromReader = note
+                                }
+                            } else {
+                                triggerHapticFeedback()
+                                openURL(item.destinationURL)
+                            }
                         }
                     }
                     .keyboardShortcut("o", modifiers: [.command])
@@ -2059,6 +2127,22 @@ public struct ContentView: View {
         #endif
     }
 
+    @ViewBuilder
+    private func assignmentItemRow(item: Coursework, isWide: Bool) -> some View {
+        AssignmentListRow(
+            item: item,
+            isSelected: selectedCourseworkIds.contains(item.id),
+            hasNote: noteCourseworkIds.contains(item.id),
+            onSelect: { cmdPressed in
+                handleItemTap(item, commandPressed: cmdPressed, isWide: isWide)
+            },
+            onToggleCompletion: {
+                toggleCompletion(for: item)
+            }
+        )
+        .equatable()
+    }
+
     private func assignmentListPane(isWide: Bool = true, category: AppFilterCategory? = nil) -> some View {
         let activeCategory = category ?? selectedFilter
         let list = currentFilteredList(for: activeCategory)
@@ -2198,6 +2282,16 @@ public struct ContentView: View {
             }
 
             if selectedCourseworkIds.count > 1 {
+                let allSelectedDone = selectedCourseworkIds.allSatisfy { id in
+                    if let cw = allCoursework.first(where: { $0.id == id }) {
+                        return cw.isCompleted
+                    } else if id.hasPrefix("note_") {
+                        let noteId = String(id.dropFirst(5))
+                        return personalNotes.first(where: { $0.id == noteId })?.isCompleted == true
+                    }
+                    return false
+                }
+
                 HStack(spacing: 8) {
                     Image(systemName: "checklist.checked")
                         .font(.system(size: 12, weight: .semibold))
@@ -2213,13 +2307,13 @@ public struct ContentView: View {
                         batchToggleCompletion(for: selectedCourseworkIds)
                     } label: {
                         HStack(spacing: 4) {
-                            Image(systemName: "checkmark.circle.fill")
-                            Text("Đã nộp")
+                            Image(systemName: allSelectedDone ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
+                            Text(allSelectedDone ? "Chưa nộp" : "Đã nộp")
                         }
                         .font(.system(size: 11, weight: .semibold))
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(Color(red: 0.12, green: 0.62, blue: 0.35))
+                    .tint(allSelectedDone ? Color.orange : Color(red: 0.12, green: 0.62, blue: 0.35))
                     .controlSize(.small)
 
                     Button("Bỏ chọn") {
@@ -2284,18 +2378,7 @@ public struct ContentView: View {
                                     SubjectGroupHeaderRow(courseName: courseName, count: courseItems.count)
 
                                     ForEach(courseItems) { item in
-                                        AssignmentListRow(
-                                            item: item,
-                                            isSelected: selectedCourseworkIds.contains(item.id),
-                                            hasNote: noteCourseworkIds.contains(item.id),
-                                            onSelect: { cmdPressed in
-                                                handleItemTap(item, commandPressed: cmdPressed, isWide: isWide)
-                                            },
-                                            onToggleCompletion: {
-                                                toggleCompletion(for: item)
-                                            }
-                                        )
-                                        .equatable()
+                                        assignmentItemRow(item: item, isWide: isWide)
                                     }
                                 }
                             }
@@ -2304,18 +2387,7 @@ public struct ContentView: View {
                                 CompletedSectionHeaderRow(count: completedItems.count)
 
                                 ForEach(completedItems) { item in
-                                    AssignmentListRow(
-                                        item: item,
-                                        isSelected: selectedCourseworkIds.contains(item.id),
-                                        hasNote: noteCourseworkIds.contains(item.id),
-                                        onSelect: { cmdPressed in
-                                            handleItemTap(item, commandPressed: cmdPressed, isWide: isWide)
-                                        },
-                                        onToggleCompletion: {
-                                            toggleCompletion(for: item)
-                                        }
-                                    )
-                                    .equatable()
+                                    assignmentItemRow(item: item, isWide: isWide)
                                 }
                             }
                         } else if activeCategory == .todayAndTomorrow || activeCategory == .allUpcoming {
@@ -2324,87 +2396,41 @@ public struct ContentView: View {
                             if hasOverdueToDisplay {
                                 SectionHeaderPill(title: "QUÁ HẠN", count: buckets.past.count, icon: "clock.badge.exclamationmark.fill", color: Color(red: 0.86, green: 0.24, blue: 0.26))
                                 ForEach(buckets.past) { item in
-                                    AssignmentListRow(
-                                        item: item,
-                                        isSelected: selectedCourseworkIds.contains(item.id),
-                                        hasNote: noteCourseworkIds.contains(item.id),
-                                        onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
-                                        onToggleCompletion: { toggleCompletion(for: item) }
-                                    )
-                                    .equatable()
+                                    assignmentItemRow(item: item, isWide: isWide)
                                 }
                             }
 
                             if !sections.todays.isEmpty {
                                 SectionHeaderPill(title: "HÔM NAY", count: sections.todays.count, icon: "clock.fill", color: Color(red: 0.95, green: 0.55, blue: 0.10))
                                 ForEach(sections.todays) { item in
-                                    AssignmentListRow(
-                                        item: item,
-                                        isSelected: selectedCourseworkIds.contains(item.id),
-                                        hasNote: noteCourseworkIds.contains(item.id),
-                                        onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
-                                        onToggleCompletion: { toggleCompletion(for: item) }
-                                    )
-                                    .equatable()
+                                    assignmentItemRow(item: item, isWide: isWide)
                                 }
                             }
 
                             if !sections.tomorrows.isEmpty {
                                 SectionHeaderPill(title: "NGÀY MAI", count: sections.tomorrows.count, icon: "calendar", color: Color(red: 0.12, green: 0.55, blue: 0.95))
                                 ForEach(sections.tomorrows) { item in
-                                    AssignmentListRow(
-                                        item: item,
-                                        isSelected: selectedCourseworkIds.contains(item.id),
-                                        hasNote: noteCourseworkIds.contains(item.id),
-                                        onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
-                                        onToggleCompletion: { toggleCompletion(for: item) }
-                                    )
-                                    .equatable()
+                                    assignmentItemRow(item: item, isWide: isWide)
                                 }
                             }
 
                             if !sections.laters.isEmpty {
                                 SectionHeaderPill(title: "SẮP TỚI", count: sections.laters.count, icon: "tray", color: .secondary)
                                 ForEach(sections.laters) { item in
-                                    AssignmentListRow(
-                                        item: item,
-                                        isSelected: selectedCourseworkIds.contains(item.id),
-                                        hasNote: noteCourseworkIds.contains(item.id),
-                                        onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
-                                        onToggleCompletion: { toggleCompletion(for: item) }
-                                    )
-                                    .equatable()
+                                    assignmentItemRow(item: item, isWide: isWide)
                                 }
                             }
 
                             if !sections.noDueDates.isEmpty {
                                 SectionHeaderPill(title: "KHÔNG CÓ HẠN", count: sections.noDueDates.count, icon: "questionmark.circle", color: .secondary)
                                 ForEach(sections.noDueDates) { item in
-                                    AssignmentListRow(
-                                        item: item,
-                                        isSelected: selectedCourseworkIds.contains(item.id),
-                                        hasNote: noteCourseworkIds.contains(item.id),
-                                        onSelect: { cmdPressed in handleItemTap(item, commandPressed: cmdPressed, isWide: isWide) },
-                                        onToggleCompletion: { toggleCompletion(for: item) }
-                                    )
-                                    .equatable()
+                                    assignmentItemRow(item: item, isWide: isWide)
                                 }
                             }
                         } else if activeCategory == .completed {
                             let displayedItems = Array(list.prefix(completedDisplayLimit))
                             ForEach(displayedItems) { item in
-                                AssignmentListRow(
-                                    item: item,
-                                    isSelected: selectedCourseworkIds.contains(item.id),
-                                    hasNote: noteCourseworkIds.contains(item.id),
-                                    onSelect: { cmdPressed in
-                                        handleItemTap(item, commandPressed: cmdPressed, isWide: isWide)
-                                    },
-                                    onToggleCompletion: {
-                                        toggleCompletion(for: item)
-                                    }
-                                )
-                                .equatable()
+                                assignmentItemRow(item: item, isWide: isWide)
                             }
 
                             if list.count > completedDisplayLimit {
@@ -2438,18 +2464,7 @@ public struct ContentView: View {
                             }
                         } else {
                             ForEach(list) { item in
-                                AssignmentListRow(
-                                    item: item,
-                                    isSelected: selectedCourseworkIds.contains(item.id),
-                                    hasNote: noteCourseworkIds.contains(item.id),
-                                    onSelect: { cmdPressed in
-                                        handleItemTap(item, commandPressed: cmdPressed, isWide: isWide)
-                                    },
-                                    onToggleCompletion: {
-                                        toggleCompletion(for: item)
-                                    }
-                                )
-                                .equatable()
+                                assignmentItemRow(item: item, isWide: isWide)
                             }
                         }
                     }
@@ -2659,6 +2674,37 @@ public struct ContentView: View {
             },
             onTriggerHaptic: {
                 triggerHapticFeedback()
+            },
+            onToggleChecklistItem: { noteId, itemId in
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                    ClassroomStorage.shared.toggleChecklistItemCompletion(noteId: noteId, itemId: itemId)
+                    personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                    updatePersonalNotesCache()
+                    recomputeBuckets()
+                    if selectedCoursework?.id == "note_\(noteId)" {
+                        if let note = personalNotes.first(where: { $0.id == noteId }) {
+                            selectedCoursework = Coursework(
+                                id: "note_\(note.id)",
+                                courseId: note.courseId ?? "personal_note",
+                                courseName: note.courseName ?? "Ghi chú",
+                                title: note.title,
+                                description: note.content,
+                                dueDate: note.dueDate,
+                                status: note.isCompleted ? .turnedIn : .pending,
+                                isManuallyCompleted: note.isCompleted
+                            )
+                        }
+                    }
+                }
+            },
+            onEditNote: { noteId in
+                if let note = personalNotes.first(where: { $0.id == noteId }) {
+                    noteToEditFromReader = note
+                }
+            },
+            courses: courses,
+            onSavePersonalNote: { updated in
+                savePersonalNoteItem(updated)
             }
         )
     }
@@ -3240,6 +3286,11 @@ public struct ContentView: View {
     }
 
     private func handleEscape() {
+        if courseworkNoteToEditCourseworkId != nil {
+            courseworkNoteToEditCourseworkId = nil
+            courseworkNoteEditingText = ""
+            return
+        }
         if isSearchFocused {
             isSearchFocused = false
             if !searchText.isEmpty {
@@ -3247,9 +3298,15 @@ public struct ContentView: View {
                     searchText = ""
                 }
             }
+        } else if showMobileDetailSheet {
+            showMobileDetailSheet = false
         } else if !searchText.isEmpty {
             withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
                 searchText = ""
+            }
+        } else if selectedSubjectFilter != "Tất cả" {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                selectedSubjectFilter = "Tất cả"
             }
         } else if !selectedCourseworkIds.isEmpty {
             handleDeselectAll()
@@ -3269,6 +3326,9 @@ public struct ContentView: View {
         guard !list.isEmpty else { return }
         if let current = selectedCoursework, let idx = list.firstIndex(where: { $0.id == current.id }) {
             let nextIdx = min(list.count - 1, idx + 1)
+            if selectedFilter == .completed && nextIdx >= completedDisplayLimit {
+                completedDisplayLimit = min(list.count, completedDisplayLimit + 30)
+            }
             let item = list[nextIdx]
             withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
                 selectedCoursework = item
@@ -3353,6 +3413,36 @@ public struct ContentView: View {
         showToast(title: "Đã cập nhật ghi chú bài tập", icon: "checkmark.circle.fill", tint: .green)
     }
 
+    private func savePersonalNoteItem(_ note: PersonalNote, showFeedbackToast: Bool = true) {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+            var current = personalNotes
+            if let index = current.firstIndex(where: { $0.id == note.id }) {
+                current[index] = note
+            } else {
+                current.append(note)
+            }
+            ClassroomStorage.shared.savePersonalNotes(current)
+            personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+            updatePersonalNotesCache()
+            recomputeBuckets()
+            if selectedCoursework?.id == note.id || selectedCoursework?.id == "note_\(note.id)" {
+                selectedCoursework = Coursework(
+                    id: "note_\(note.id)",
+                    courseId: note.courseId ?? "personal_note",
+                    courseName: note.courseName ?? "Ghi chú",
+                    title: note.title,
+                    description: note.content,
+                    dueDate: note.dueDate,
+                    status: note.isCompleted ? .turnedIn : .pending,
+                    isManuallyCompleted: note.isCompleted
+                )
+            }
+        }
+        if showFeedbackToast {
+            showToast(title: "Đã lưu việc cần làm", icon: "checkmark.circle.fill", tint: .green)
+        }
+    }
+
     private func autoSelectFirstItem() {
         let list = currentFilteredList
         if let first = list.first {
@@ -3366,12 +3456,6 @@ public struct ContentView: View {
 
     private func handleItemTap(_ item: Coursework, commandPressed: Bool = false, isWide: Bool = true) {
         triggerHapticFeedback()
-        if item.id.hasPrefix("note_") {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                selectedFilter = .notes
-            }
-            return
-        }
         if !isWide {
             showMobileDetailSheet = true
         } else {
@@ -3419,14 +3503,25 @@ public struct ContentView: View {
         guard !ids.isEmpty else { return }
         triggerHapticFeedback()
 
+        let allCurrentlyCompleted = ids.allSatisfy { id in
+            if let cw = allCoursework.first(where: { $0.id == id }) {
+                return cw.isCompleted
+            } else if id.hasPrefix("note_") {
+                let noteId = String(id.dropFirst(5))
+                return personalNotes.first(where: { $0.id == noteId })?.isCompleted == true
+            }
+            return false
+        }
+        let targetCompletion = !allCurrentlyCompleted
+
         var notesChanged = false
         for id in ids {
             if let index = allCoursework.firstIndex(where: { $0.id == id }) {
-                allCoursework[index].status = .turnedIn
-                allCoursework[index].isManuallyCompleted = true
+                allCoursework[index].status = targetCompletion ? .turnedIn : .pending
+                allCoursework[index].isManuallyCompleted = targetCompletion
             } else if id.hasPrefix("note_") {
                 let noteId = String(id.dropFirst(5))
-                ClassroomStorage.shared.togglePersonalNoteCompletion(id: noteId)
+                ClassroomStorage.shared.setPersonalNoteCompletion(id: noteId, isCompleted: targetCompletion)
                 notesChanged = true
             }
         }
@@ -3437,9 +3532,36 @@ public struct ContentView: View {
 
         withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
             recomputeBuckets()
-            selectedCourseworkIds.removeAll()
             if let current = selectedCoursework, ids.contains(current.id) {
-                selectedCoursework = allCoursework.first(where: { $0.id == current.id })
+                if current.id.hasPrefix("note_") {
+                    let noteId = String(current.id.dropFirst(5))
+                    if let note = personalNotes.first(where: { $0.id == noteId }) {
+                        let updated = Coursework(
+                            id: "note_\(note.id)",
+                            courseId: note.courseId ?? "personal_note",
+                            courseName: note.courseName ?? "Ghi chú",
+                            title: note.title,
+                            description: note.content,
+                            dueDate: note.dueDate,
+                            status: note.isCompleted ? .turnedIn : .pending,
+                            isManuallyCompleted: note.isCompleted
+                        )
+                        selectedCoursework = updated
+                        selectedCourseworkIds = [updated.id]
+                    } else {
+                        selectedCoursework = nil
+                        selectedCourseworkIds.removeAll()
+                    }
+                } else if let updated = allCoursework.first(where: { $0.id == current.id }) {
+                    selectedCoursework = updated
+                    selectedCourseworkIds = [updated.id]
+                } else {
+                    selectedCoursework = nil
+                    selectedCourseworkIds.removeAll()
+                }
+            } else {
+                selectedCourseworkIds.removeAll()
+                selectedCoursework = nil
             }
         }
 
@@ -3447,9 +3569,9 @@ public struct ContentView: View {
         reminderService.updateReminderContent()
 
         showToast(
-            title: "Đã hoàn thành \(ids.count) mục!",
-            icon: "checkmark.circle.fill",
-            tint: .green
+            title: targetCompletion ? "Đã hoàn thành \(ids.count) mục!" : "Đã chuyển \(ids.count) mục về chưa nộp",
+            icon: targetCompletion ? "checkmark.circle.fill" : "arrow.uturn.backward.circle.fill",
+            tint: targetCompletion ? .green : .orange
         )
     }
 
@@ -3500,30 +3622,33 @@ public struct ContentView: View {
             ClassroomStorage.shared.togglePersonalNoteCompletion(id: noteId)
             self.personalNotes = ClassroomStorage.shared.loadPersonalNotes()
             updatePersonalNotesCache()
+            let updatedNote = personalNotes.first(where: { $0.id == noteId })
+            let isNowCompleted = updatedNote?.isCompleted ?? !item.isCompleted
+            let updatedCoursework = Coursework(
+                id: "note_\(noteId)",
+                courseId: updatedNote?.courseId ?? "personal_note",
+                courseName: updatedNote?.courseName ?? "Ghi chú",
+                title: updatedNote?.title ?? item.title,
+                description: updatedNote?.content ?? item.description,
+                dueDate: updatedNote?.dueDate ?? item.dueDate,
+                status: isNowCompleted ? .turnedIn : .pending,
+                isManuallyCompleted: isNowCompleted
+            )
             withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                 recomputeBuckets()
                 if selectedCoursework?.id == item.id {
-                    if let updated = buckets.tomorrow.first(where: { $0.id == item.id }) {
-                        selectedCoursework = updated
-                    } else if let note = personalNotes.first(where: { $0.id == noteId }) {
-                        selectedCoursework = Coursework(
-                            id: "note_\(note.id)",
-                            courseId: note.courseId ?? "personal_note",
-                            courseName: note.courseName ?? "Ghi chú",
-                            title: note.title,
-                            description: note.content,
-                            dueDate: note.dueDate,
-                            status: note.isCompleted ? .turnedIn : .pending,
-                            isManuallyCompleted: note.isCompleted
-                        )
-                    }
+                    selectedCoursework = updatedCoursework
                 }
             }
             showToast(
-                title: item.isCompleted ? "Đã chuyển về chưa xong" : "Đã hoàn thành ghi chú!",
+                title: isNowCompleted ? "Đã hoàn thành ghi chú!" : "Đã chuyển về chưa xong",
                 subtitle: item.title,
-                icon: item.isCompleted ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill",
-                tint: item.isCompleted ? .orange : .green
+                icon: isNowCompleted ? "checkmark.circle.fill" : "arrow.uturn.backward.circle.fill",
+                tint: isNowCompleted ? .green : .orange,
+                actionTitle: "Hoàn tác",
+                action: { [self] in
+                    toggleCompletion(for: updatedCoursework)
+                }
             )
         }
     }
@@ -3773,122 +3898,147 @@ private struct AssignmentListRow: View, Equatable {
     var body: some View {
         let themeColor = SubjectArtHelper.themeColor(for: item.courseName, title: item.title)
 
-        HStack(alignment: .center, spacing: 9) {
-            Capsule()
-                .fill(isSelected ? Color.blue : Color.clear)
-                .frame(width: 3.5, height: 34)
-                .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isSelected)
+        HStack(alignment: .center, spacing: 0) {
+            HStack(spacing: 9) {
+                Capsule()
+                    .fill(isSelected ? Color.blue : Color.clear)
+                    .frame(width: 3.5, height: 34)
+                    .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isSelected)
+                    .contentShape(Rectangle().inset(by: -8))
+                    .onTapGesture {
+                        #if os(macOS)
+                        let isCmd = NSEvent.modifierFlags.contains(.command)
+                        #else
+                        let isCmd = false
+                        #endif
+                        onSelect(isCmd)
+                    }
 
-            Button {
-                onToggleCompletion()
-            } label: {
-                ZStack(alignment: .bottomTrailing) {
-                    SubjectArtBadgeView(courseName: item.courseName, title: item.title, size: 32)
-                        .equatable()
+                Button {
+                    onToggleCompletion()
+                } label: {
+                    ZStack(alignment: .bottomTrailing) {
+                        SubjectArtBadgeView(courseName: item.courseName, title: item.title, size: 32)
+                            .equatable()
 
-                    if isTurnedIn {
-                        if #available(macOS 14.0, iOS 17.0, *) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
-                                .background(Circle().fill(Color.white).padding(1))
-                                .offset(x: 3, y: 3)
-                                .scaleEffect(checkmarkBounce ? 1.32 : 1.0)
-                                .symbolEffect(.bounce, value: isTurnedIn)
-                                .transition(.scale(scale: 0.5).combined(with: .opacity))
+                        if isTurnedIn {
+                            if #available(macOS 14.0, iOS 17.0, *) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
+                                    .background(Circle().fill(Color.white).padding(1))
+                                    .offset(x: 3, y: 3)
+                                    .scaleEffect(checkmarkBounce ? 1.32 : 1.0)
+                                    .symbolEffect(.bounce, value: isTurnedIn)
+                                    .transition(.scale(scale: 0.5).combined(with: .opacity))
+                            } else {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
+                                    .background(Circle().fill(Color.white).padding(1))
+                                    .offset(x: 3, y: 3)
+                                    .scaleEffect(checkmarkBounce ? 1.32 : 1.0)
+                                    .transition(.scale(scale: 0.5).combined(with: .opacity))
+                            }
                         } else {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
-                                .background(Circle().fill(Color.white).padding(1))
-                                .offset(x: 3, y: 3)
-                                .scaleEffect(checkmarkBounce ? 1.32 : 1.0)
+                            Circle()
+                                .strokeBorder(Color.secondary.opacity(0.35), lineWidth: 1.3)
+                                .background(Circle().fill(Color.platformControlBackground.opacity(0.85)))
+                                .frame(width: 13, height: 13)
+                                .offset(x: 2, y: 2)
+                                .scaleEffect(checkmarkBounce ? 0.9 : 1.0)
                                 .transition(.scale(scale: 0.5).combined(with: .opacity))
                         }
-                    } else {
-                        Circle()
-                            .strokeBorder(Color.secondary.opacity(0.35), lineWidth: 1.3)
-                            .background(Circle().fill(Color.platformControlBackground.opacity(0.85)))
-                            .frame(width: 13, height: 13)
-                            .offset(x: 2, y: 2)
-                            .scaleEffect(checkmarkBounce ? 0.9 : 1.0)
-                            .transition(.scale(scale: 0.5).combined(with: .opacity))
                     }
+                    .scaleEffect(checkmarkBounce ? 1.15 : 1.0)
                 }
-                .scaleEffect(checkmarkBounce ? 1.15 : 1.0)
-            }
-            #if os(macOS)
-            .frame(width: 34, height: 34)
-            #else
-            .frame(width: 44, height: 44)
-            #endif
-            .contentShape(Rectangle())
-            .buttonStyle(SpringPressButtonStyle(scale: 0.92, pressedOpacity: 0.88))
-            .help(isTurnedIn ? "Đã nộp bài (Space hoặc bấm để hoàn tác)" : "Chưa nộp bài (Space hoặc bấm để đánh dấu hoàn thành)")
-
-            VStack(alignment: .leading, spacing: 3.5) {
                 #if os(macOS)
-                Text(item.title)
-                    .font(.system(size: 14, weight: isSelected ? .bold : .semibold))
-                    .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
-                    .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
-                    .opacity(isTurnedIn ? 0.72 : 1.0)
-                    .lineLimit(2)
-
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(themeColor)
-                        .frame(width: 6, height: 6)
-                    Text(item.courseName)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(themeColor)
-                        .lineLimit(1)
-                    if hasNote {
-                        Image(systemName: "square.and.pencil")
-                            .font(.system(size: 10.5, weight: .semibold))
-                            .foregroundStyle(Color.blue)
-                    }
-                }
-                .opacity(isTurnedIn ? 0.75 : 1.0)
+                .frame(width: 34, height: 34)
                 #else
-                Text(item.title)
-                    .font(.system(size: 16.5, weight: isSelected ? .bold : .semibold))
-                    .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
-                    .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
-                    .opacity(isTurnedIn ? 0.72 : 1.0)
-                    .lineLimit(2)
-
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(themeColor)
-                        .frame(width: 6, height: 6)
-                    Text(item.courseName)
-                        .font(.system(size: 13.5, weight: .semibold))
-                        .foregroundStyle(themeColor)
-                        .lineLimit(1)
-                    if hasNote {
-                        Image(systemName: "square.and.pencil")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Color.blue)
-                    }
-                }
-                .opacity(isTurnedIn ? 0.75 : 1.0)
+                .frame(width: 44, height: 44)
                 #endif
+                .contentShape(Rectangle())
+                .buttonStyle(SpringPressButtonStyle(scale: 0.92, pressedOpacity: 0.88))
+                .help(isTurnedIn ? "Đã nộp bài (Space hoặc bấm để hoàn tác)" : "Chưa nộp bài (Space hoặc bấm để đánh dấu hoàn thành)")
             }
+            .padding(.leading, 11)
+            .padding(.trailing, 9)
 
-            Spacer(minLength: 8)
+            HStack(alignment: .center, spacing: 9) {
+                VStack(alignment: .leading, spacing: 3.5) {
+                    #if os(macOS)
+                    Text(item.title)
+                        .font(.system(size: 14, weight: isSelected ? .bold : .semibold))
+                        .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
+                        .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
+                        .opacity(isTurnedIn ? 0.72 : 1.0)
+                        .lineLimit(2)
 
-            DueBadgeView(item: item, compact: true)
-                .equatable()
-                .layoutPriority(1)
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(themeColor)
+                            .frame(width: 6, height: 6)
+                        Text(item.courseName)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(themeColor)
+                            .lineLimit(1)
+                        if hasNote {
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 10.5, weight: .semibold))
+                                .foregroundStyle(Color.blue)
+                        }
+                    }
+                    .opacity(isTurnedIn ? 0.75 : 1.0)
+                    #else
+                    Text(item.title)
+                        .font(.system(size: 16.5, weight: isSelected ? .bold : .semibold))
+                        .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
+                        .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
+                        .opacity(isTurnedIn ? 0.72 : 1.0)
+                        .lineLimit(2)
+
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(themeColor)
+                            .frame(width: 6, height: 6)
+                        Text(item.courseName)
+                            .font(.system(size: 13.5, weight: .semibold))
+                            .foregroundStyle(themeColor)
+                            .lineLimit(1)
+                        if hasNote {
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Color.blue)
+                        }
+                    }
+                    .opacity(isTurnedIn ? 0.75 : 1.0)
+                    #endif
+                }
+
+                Spacer(minLength: 8)
+
+                DueBadgeView(item: item, compact: true)
+                    .equatable()
+                    .layoutPriority(1)
+            }
+            .padding(.trailing, 11)
+            #if os(iOS)
+            .padding(.vertical, 10)
+            .frame(minHeight: 62)
+            #else
+            .padding(.vertical, 6)
+            #endif
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                #if os(macOS)
+                let isCmd = NSEvent.modifierFlags.contains(.command)
+                #else
+                let isCmd = false
+                #endif
+                onSelect(isCmd)
+            }
         }
-        .padding(.horizontal, 11)
-        #if os(iOS)
-        .padding(.vertical, 10)
-        .frame(minHeight: 62)
-        #else
-        .padding(.vertical, 6)
-        #endif
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(isSelected ? Color.platformCardSelectedBackground : Color.platformControlBackground)
@@ -3906,25 +4056,14 @@ private struct AssignmentListRow: View, Equatable {
             isHovered = hovering
         }
         #endif
-        .animation(.easeInOut(duration: 0.12), value: isHovered)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            #if os(macOS)
-            let isCmd = NSEvent.modifierFlags.contains(.command)
-            #else
-            let isCmd = false
-            #endif
-            onSelect(isCmd)
-        }
+        .animation(.spring(response: 0.22, dampingFraction: 0.72), value: isHovered)
         .onChange(of: isTurnedIn) {
-            if isTurnedIn {
-                withAnimation(.spring(response: 0.24, dampingFraction: 0.52)) {
-                    checkmarkBounce = true
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-                    withAnimation(.spring(response: 0.24, dampingFraction: 0.65)) {
-                        checkmarkBounce = false
-                    }
+            withAnimation(.spring(response: 0.24, dampingFraction: 0.52)) {
+                checkmarkBounce = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+                withAnimation(.spring(response: 0.24, dampingFraction: 0.65)) {
+                    checkmarkBounce = false
                 }
             }
         }

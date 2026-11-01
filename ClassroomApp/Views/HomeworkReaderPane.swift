@@ -16,6 +16,12 @@ struct HomeworkReaderPane: View {
     let onCopyToClipboard: (String, String) -> Void
     let onSaveCourseworkNote: (Coursework, String) -> Void
     let onTriggerHaptic: () -> Void
+    var onToggleChecklistItem: ((String, String) -> Void)? = nil
+    var onEditNote: ((String) -> Void)? = nil
+    var courses: [Course] = []
+    var onSavePersonalNote: ((PersonalNote) -> Void)? = nil
+
+    @State private var editingPersonalNote: PersonalNote? = nil
 
     @Environment(\.openURL) private var openURL
     #if os(iOS)
@@ -51,13 +57,17 @@ struct HomeworkReaderPane: View {
                         Divider()
                             .overlay(Color.platformDivider)
 
+                        let isPersonalNote = item.id.hasPrefix("note_")
+                        let noteId = isPersonalNote ? String(item.id.dropFirst(5)) : ""
+                        let personalNoteItem = isPersonalNote ? personalNotes.first(where: { $0.id == noteId }) : nil
+
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
                                 HStack(spacing: 6) {
-                                    Image(systemName: "doc.text.fill")
+                                    Image(systemName: isPersonalNote ? "doc.plaintext.fill" : "doc.text.fill")
                                         .font(.system(size: 14, weight: .semibold))
                                         .foregroundStyle(Color.blue)
-                                    Text("HƯỚNG DẪN BÀI TẬP")
+                                    Text(isPersonalNote ? "NỘI DUNG VIỆC CẦN LÀM" : "HƯỚNG DẪN BÀI TẬP")
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                         .foregroundStyle(Color.platformTextSecondary)
                                 }
@@ -101,7 +111,7 @@ struct HomeworkReaderPane: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: "info.circle")
                                         .foregroundStyle(Color.platformTextTertiary)
-                                    Text("Không có mô tả chi tiết.")
+                                    Text(isPersonalNote ? "Không có nội dung chi tiết." : "Không có mô tả chi tiết.")
                                         .font(.system(size: 14.5))
                                         .foregroundStyle(Color.platformTextSecondary)
                                 }
@@ -116,10 +126,73 @@ struct HomeworkReaderPane: View {
                             }
                         }
 
-                        Divider()
-                            .overlay(Color.platformDivider)
+                        if let pNote = personalNoteItem, pNote.hasChecklist {
+                            Divider()
+                                .overlay(Color.platformDivider)
 
-                        VStack(alignment: .leading, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "checklist")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundStyle(Color.blue)
+                                        Text("DANH SÁCH VIỆC CON")
+                                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                                            .foregroundStyle(Color.platformTextSecondary)
+                                    }
+
+                                    Spacer()
+
+                                    Text("\(pNote.completedChecklistCount)/\(pNote.totalChecklistCount) việc")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(pNote.completedChecklistCount == pNote.totalChecklistCount ? Color.green : Color.secondary)
+                                }
+
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(pNote.checklist) { checkItem in
+                                        Button {
+                                            onTriggerHaptic()
+                                            onToggleChecklistItem?(pNote.id, checkItem.id)
+                                        } label: {
+                                            HStack(spacing: 10) {
+                                                if #available(macOS 14.0, iOS 17.0, *) {
+                                                    Image(systemName: checkItem.isCompleted ? "checkmark.circle.fill" : "circle")
+                                                        .font(.system(size: 15, weight: .semibold))
+                                                        .foregroundStyle(checkItem.isCompleted ? Color.green : Color.secondary.opacity(0.6))
+                                                        .symbolEffect(.bounce, value: checkItem.isCompleted)
+                                                } else {
+                                                    Image(systemName: checkItem.isCompleted ? "checkmark.circle.fill" : "circle")
+                                                        .font(.system(size: 15, weight: .semibold))
+                                                        .foregroundStyle(checkItem.isCompleted ? Color.green : Color.secondary.opacity(0.6))
+                                                }
+                                                Text(checkItem.title)
+                                                    .font(.system(size: 14))
+                                                    .foregroundStyle(checkItem.isCompleted ? Color.platformTextTertiary : Color.platformTextPrimary)
+                                                    .strikethrough(checkItem.isCompleted, color: Color.platformTextTertiary)
+                                                    .lineLimit(2)
+                                                Spacer()
+                                            }
+                                            .contentShape(Rectangle())
+                                        }
+                                        .buttonStyle(SpringPressButtonStyle(scale: 0.98, pressedOpacity: 0.92))
+                                    }
+                                }
+                                .padding(14)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.platformControlBackground)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .stroke(Color.platformCardBorder, lineWidth: 1)
+                                )
+                            }
+                        }
+
+                        if !isPersonalNote {
+                            Divider()
+                                .overlay(Color.platformDivider)
+
+                            VStack(alignment: .leading, spacing: 10) {
                             HStack {
                                 HStack(spacing: 6) {
                                     Image(systemName: "square.and.pencil")
@@ -152,16 +225,23 @@ struct HomeworkReaderPane: View {
 
                             if courseworkNoteToEditCourseworkId == item.id {
                                 VStack(alignment: .trailing, spacing: 8) {
-                                    TextEditor(text: $courseworkNoteEditingText)
-                                        .font(.system(size: 14.5))
-                                        .frame(minHeight: 80)
-                                        .padding(8)
-                                        .background(Color.platformControlBackground)
-                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                .stroke(Color.blue.opacity(0.5), lineWidth: 1.5)
-                                        )
+                                    Group {
+                                        if #available(macOS 13.0, iOS 16.0, *) {
+                                            TextEditor(text: $courseworkNoteEditingText)
+                                                .scrollContentBackground(.hidden)
+                                        } else {
+                                            TextEditor(text: $courseworkNoteEditingText)
+                                        }
+                                    }
+                                    .font(.system(size: 14.5))
+                                    .frame(minHeight: 80)
+                                    .padding(8)
+                                    .background(Color.platformControlBackground)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            .stroke(Color.blue.opacity(0.5), lineWidth: 1.5)
+                                    )
 
                                     HStack(spacing: 8) {
                                         Button("Huỷ") {
@@ -204,6 +284,7 @@ struct HomeworkReaderPane: View {
                                     .padding(.vertical, 4)
                             }
                         }
+                        }
 
                         Spacer(minLength: 16)
 
@@ -211,35 +292,65 @@ struct HomeworkReaderPane: View {
                             #if os(macOS)
                             Spacer()
                             #endif
-                            Button {
-                                onTriggerHaptic()
-                                openURL(item.destinationURL)
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "arrow.up.right.square.fill")
-                                        .font(.system(size: 15.5, weight: .bold))
-                                    Text("Mở bài tập trên Classroom")
-                                        .font(.system(size: 15, weight: .bold))
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.85)
+                            if isPersonalNote {
+                                Button {
+                                    onTriggerHaptic()
+                                    if let personalNoteItem {
+                                        editingPersonalNote = personalNoteItem
+                                    } else {
+                                        onEditNote?(noteId)
+                                    }
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "square.and.pencil")
+                                            .font(.system(size: 15.5, weight: .bold))
+                                        Text("Chỉnh sửa việc cần làm")
+                                            .font(.system(size: 15, weight: .bold))
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.85)
+                                    }
                                     #if os(macOS)
-                                    Text("(⌘O)")
-                                        .font(.system(size: 12, weight: .medium))
-                                        .opacity(0.85)
+                                    .frame(maxWidth: 340)
+                                    #else
+                                    .frame(maxWidth: .infinity)
                                     #endif
+                                    .padding(.vertical, 12)
                                 }
-                                #if os(macOS)
-                                .frame(maxWidth: 340)
-                                #else
-                                .frame(maxWidth: .infinity)
-                                #endif
-                                .padding(.vertical, 12)
+                                .buttonStyle(.borderedProminent)
+                                .tint(Color.blue)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                .help("Chỉnh sửa chi tiết việc cần làm này")
+                            } else {
+                                Button {
+                                    onTriggerHaptic()
+                                    openURL(item.destinationURL)
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "arrow.up.right.square.fill")
+                                            .font(.system(size: 15.5, weight: .bold))
+                                        Text("Mở bài tập trên Classroom")
+                                            .font(.system(size: 15, weight: .bold))
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.85)
+                                        #if os(macOS)
+                                        Text("(⌘O)")
+                                            .font(.system(size: 12, weight: .medium))
+                                            .opacity(0.85)
+                                        #endif
+                                    }
+                                    #if os(macOS)
+                                    .frame(maxWidth: 340)
+                                    #else
+                                    .frame(maxWidth: .infinity)
+                                    #endif
+                                    .padding(.vertical, 12)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(Color.blue)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                .keyboardShortcut("o", modifiers: [.command])
+                                .help("Mở bài tập trực tiếp trên Google Classroom (⌘O)")
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(Color.blue)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            .keyboardShortcut("o", modifiers: [.command])
-                            .help("Mở bài tập trực tiếp trên Google Classroom (⌘O)")
                             #if os(macOS)
                             Spacer()
                             #endif
@@ -262,6 +373,19 @@ struct HomeworkReaderPane: View {
             }
         }
         .animation(.spring(response: 0.32, dampingFraction: 0.85), value: selectedCoursework?.id)
+        .sheet(item: $editingPersonalNote) { note in
+            CreateOrEditNoteSheet(
+                existingNote: note,
+                courses: courses,
+                onSave: { updated in
+                    onSavePersonalNote?(updated)
+                    editingPersonalNote = nil
+                },
+                onCancel: {
+                    editingPersonalNote = nil
+                }
+            )
+        }
     }
 
     private func regularMetaCards(for item: Coursework) -> some View {
@@ -364,7 +488,29 @@ struct HomeworkReaderPane: View {
             VStack(alignment: .leading, spacing: 8) {
                 readerStatusBadge(for: item)
                 readerToggleCompletionButton(for: item)
-                if let desc = item.description, !desc.isEmpty {
+                if item.id.hasPrefix("note_") {
+                    let noteId = String(item.id.dropFirst(5))
+                    Button {
+                        onTriggerHaptic()
+                        onEditNote?(noteId)
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 12, weight: .bold))
+                            Text("Chỉnh sửa")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.platformControlBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.platformCardBorder, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(SpringPressButtonStyle(scale: 0.96))
+                } else if let desc = item.description, !desc.isEmpty {
                     readerCopyPromptButton(for: item, desc: desc)
                 }
             }
@@ -472,7 +618,30 @@ struct HomeworkReaderPane: View {
     private func readerActionButtons(for item: Coursework) -> some View {
         HStack(spacing: 8) {
             readerToggleCompletionButton(for: item)
-            if let desc = item.description, !desc.isEmpty {
+            if item.id.hasPrefix("note_") {
+                let noteId = String(item.id.dropFirst(5))
+                Button {
+                    onTriggerHaptic()
+                    onEditNote?(noteId)
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 12, weight: .bold))
+                        Text("Chỉnh sửa")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.platformControlBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.platformCardBorder, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(SpringPressButtonStyle(scale: 0.96))
+                .help("Chỉnh sửa việc cần làm này")
+            } else if let desc = item.description, !desc.isEmpty {
                 readerCopyPromptButton(for: item, desc: desc)
             }
         }
@@ -601,27 +770,57 @@ struct BatchSelectedSummaryView: View {
             }
             .frame(maxWidth: 360)
 
-            HStack(spacing: 12) {
-                Button {
-                    onMarkAllDone()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "checkmark.circle.fill")
-                        Text("Đánh dấu tất cả đã nộp")
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Color(red: 0.12, green: 0.62, blue: 0.35))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            let allCompleted = !selectedItems.isEmpty && selectedItems.allSatisfy { $0.isCompleted }
 
-                Button("Bỏ chọn") {
-                    onDeselectAll()
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    Button {
+                        onMarkAllDone()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: allCompleted ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
+                            Text(allCompleted ? "Đánh dấu tất cả chưa nộp" : "Đánh dấu tất cả đã nộp")
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(allCompleted ? Color.orange : Color(red: 0.12, green: 0.62, blue: 0.35))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                    Button("Bỏ chọn") {
+                        onDeselectAll()
+                    }
+                    .buttonStyle(.bordered)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
-                .buttonStyle(.bordered)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                VStack(spacing: 8) {
+                    Button {
+                        onMarkAllDone()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: allCompleted ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
+                            Text(allCompleted ? "Đánh dấu tất cả chưa nộp" : "Đánh dấu tất cả đã nộp")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(allCompleted ? Color.orange : Color(red: 0.12, green: 0.62, blue: 0.35))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                    Button("Bỏ chọn") {
+                        onDeselectAll()
+                    }
+                    .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
             }
+            .padding(.horizontal, 16)
 
             Spacer()
         }
@@ -651,14 +850,9 @@ struct HomeworkReaderEmptyStateView: View {
             }
 
             #if os(macOS)
-            HStack(spacing: 8) {
-                KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
-                KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
-                KeyboardShortcutPill(shortcut: "⌘O", label: "Mở Classroom")
-                KeyboardShortcutPill(shortcut: "⌘F", label: "Tìm kiếm")
-                KeyboardShortcutPill(shortcut: "⌘R", label: "Đồng bộ")
-            }
-            .padding(.top, 8)
+            shortcutLegendView
+                .padding(.top, 8)
+                .padding(.horizontal, 16)
             #endif
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -671,6 +865,59 @@ struct HomeworkReaderEmptyStateView: View {
             }
         }
     }
+
+    #if os(macOS)
+    @ViewBuilder
+    private var shortcutLegendView: some View {
+        ViewThatFits(in: .horizontal) {
+            // Tier 1: All 5 in a single row (when width >= 490pt)
+            HStack(spacing: 8) {
+                KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
+                KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
+                KeyboardShortcutPill(shortcut: "⌘O", label: "Mở Classroom")
+                KeyboardShortcutPill(shortcut: "⌘F", label: "Tìm kiếm")
+                KeyboardShortcutPill(shortcut: "⌘R", label: "Đồng bộ")
+            }
+
+            // Tier 2: 2 balanced rows (when width >= 330pt)
+            VStack(spacing: 6) {
+                HStack(spacing: 8) {
+                    KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
+                    KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
+                    KeyboardShortcutPill(shortcut: "⌘O", label: "Mở bài")
+                }
+                HStack(spacing: 8) {
+                    KeyboardShortcutPill(shortcut: "⌘F", label: "Tìm kiếm")
+                    KeyboardShortcutPill(shortcut: "⌘R", label: "Đồng bộ")
+                }
+            }
+
+            // Tier 3: 2 compact rows (when width >= 230pt)
+            VStack(spacing: 6) {
+                HStack(spacing: 8) {
+                    KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
+                    KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
+                }
+                HStack(spacing: 8) {
+                    KeyboardShortcutPill(shortcut: "⌘O", label: "Mở bài")
+                    KeyboardShortcutPill(shortcut: "⌘F", label: "Tìm")
+                }
+            }
+
+            // Tier 4: Primary actions in single row (when width >= 190pt)
+            HStack(spacing: 8) {
+                KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
+                KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
+            }
+
+            // Tier 5: Ultra-compact vertical stack (when width < 190pt)
+            VStack(spacing: 4) {
+                KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
+                KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
+            }
+        }
+    }
+    #endif
 }
 
 struct KeyboardShortcutPill: View {
@@ -682,6 +929,8 @@ struct KeyboardShortcutPill: View {
             Text(shortcut)
                 .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                 .foregroundStyle(Color.platformTextPrimary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: true)
                 .padding(.horizontal, 5.5)
                 .padding(.vertical, 2.5)
                 .background(Color.platformControlBackground)
@@ -695,7 +944,10 @@ struct KeyboardShortcutPill: View {
             Text(label)
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(Color.platformTextSecondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: true)
         }
+        .fixedSize(horizontal: true, vertical: false)
     }
 }
 

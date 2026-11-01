@@ -1,5 +1,6 @@
 package com.phucta.classroom.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -87,6 +88,14 @@ fun AllUpcomingScreen(
     val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForVietnameseSearch() }
     val keyboardController = LocalSoftwareKeyboardController.current
+
+    BackHandler(enabled = searchQuery.isNotEmpty() || selectedSubjectCategory != null) {
+        if (searchQuery.isNotEmpty()) {
+            searchQuery = ""
+        } else {
+            selectedSubjectCategory = null
+        }
+    }
 
     val selectedSubjectCategoryDisplayName = remember(selectedSubjectCategory) {
         selectedSubjectCategory?.let { name ->

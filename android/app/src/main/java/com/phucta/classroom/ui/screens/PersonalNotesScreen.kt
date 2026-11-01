@@ -1,5 +1,6 @@
 package com.phucta.classroom.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -52,6 +53,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -90,6 +92,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -121,7 +124,10 @@ fun PersonalNotesScreen(
     onToggleCompletion: (String, Boolean) -> Unit,
     onSaveNote: (PersonalNote) -> Unit,
     onDeleteNote: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToggleChecklistItem: (String, String) -> Unit = { _, _ -> },
+    initialNoteToEdit: PersonalNote? = null,
+    onClearInitialNoteToEdit: () -> Unit = {}
 ) {
     var selectedStatusTab by rememberSaveable { mutableIntStateOf(0) }
     var selectedCourseId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -140,12 +146,30 @@ fun PersonalNotesScreen(
     val normalizedQuery = remember(debouncedQuery) { debouncedQuery.normalizeForVietnameseSearch() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    BackHandler(enabled = searchQuery.isNotEmpty() || selectedCourseId != null) {
+        if (searchQuery.isNotEmpty()) {
+            searchQuery = ""
+        } else {
+            selectedCourseId = null
+        }
+    }
+
     val searchTokens = remember(normalizedQuery) {
         com.phucta.classroom.data.model.tokenizeSearchQuery(normalizedQuery)
     }
 
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
+    var draftForDialog by remember { mutableStateOf<PersonalNote?>(null) }
     var noteToEdit by remember { mutableStateOf<PersonalNote?>(null) }
+
+    LaunchedEffect(initialNoteToEdit) {
+        if (initialNoteToEdit != null) {
+            selectedStatusTab = if (initialNoteToEdit.isCompleted) 1 else 0
+            selectedCourseId = null
+            noteToEdit = initialNoteToEdit
+            onClearInitialNoteToEdit()
+        }
+    }
 
     val standaloneNotes = remember(notes) {
         notes.filter { it.courseworkId == null }
@@ -391,6 +415,7 @@ fun PersonalNotesScreen(
                             onToggle = onToggle,
                             onEdit = onEdit,
                             onDelete = onDelete,
+                            onToggleChecklistItem = onToggleChecklistItem,
                             modifier = Modifier.animateItem(
                                 fadeInSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
                                 placementSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
@@ -405,15 +430,30 @@ fun PersonalNotesScreen(
         BottomQuickCaptureBar(
             courses = courses,
             onSaveQuickNote = { quickTitle, quickDue, quickCourseId, quickCourseName ->
+                val targetCourseId = quickCourseId ?: selectedCourseId
+                val targetCourse = courses.find { it.id == targetCourseId }
                 val newNote = PersonalNote(
                     title = quickTitle,
                     dueEpochMillis = quickDue,
-                    courseId = quickCourseId,
-                    courseName = quickCourseName
+                    courseId = targetCourse?.id,
+                    courseName = targetCourse?.name ?: quickCourseName
                 )
                 onSaveNote(newNote)
             },
-            onOpenFullDialog = { showCreateDialog = true },
+            onOpenFullDialog = { draftTitle, draftDue ->
+                val targetCourse = courses.find { it.id == selectedCourseId }
+                draftForDialog = if (draftTitle.isNotBlank() || draftDue != null || targetCourse != null) {
+                    PersonalNote(
+                        title = draftTitle,
+                        dueEpochMillis = draftDue,
+                        courseId = targetCourse?.id,
+                        courseName = targetCourse?.name
+                    )
+                } else {
+                    null
+                }
+                showCreateDialog = true
+            },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -423,12 +463,17 @@ fun PersonalNotesScreen(
 
     if (showCreateDialog) {
         CreateOrEditNoteDialog(
-            existingNote = null,
+            existingNote = draftForDialog,
+            isDraft = true,
             courses = courses,
-            onDismiss = { showCreateDialog = false },
+            onDismiss = {
+                showCreateDialog = false
+                draftForDialog = null
+            },
             onSave = { note ->
                 onSaveNote(note)
                 showCreateDialog = false
+                draftForDialog = null
             }
         )
     }
@@ -436,6 +481,7 @@ fun PersonalNotesScreen(
     noteToEdit?.let { note ->
         CreateOrEditNoteDialog(
             existingNote = note,
+            isDraft = false,
             courses = courses,
             onDismiss = { noteToEdit = null },
             onSave = { updated ->
@@ -452,7 +498,8 @@ private fun PersonalNoteCard(
     onToggle: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToggleChecklistItem: ((String, String) -> Unit)? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val view = LocalView.current
@@ -645,114 +692,123 @@ private fun PersonalNoteCard(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
-                .clickable(
-                    interactionSource = cardInteractionSource,
-                    indication = ripple(),
-                    onClick = onEdit
-                )
                 .padding(start = 4.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.Top
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.Top,
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(
+                        interactionSource = cardInteractionSource,
+                        indication = ripple(),
+                        onClick = onEdit
+                    )
+            ) {
+                Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = note.title,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = ChunkyColor.TextPrimary,
-                        onTextLayout = { titleLayoutResultHolder[0] = it },
-                        modifier = Modifier
-                            .weight(1f)
-                            .graphicsLayer { alpha = titleAlpha.value }
-                            .drawWithCache {
-                                val strokeWidthPx = 2.dp.toPx()
-                                onDrawWithContent {
-                                    drawContent()
-                                    val progress = strikethroughProgress.value
-                                    if (progress > 0.001f) {
-                                        val layout = titleLayoutResultHolder[0]
-                                        if (layout != null) {
-                                            for (i in 0 until layout.lineCount) {
-                                                val lineTop = layout.getLineTop(i)
-                                                val lineBottom = layout.getLineBottom(i)
-                                                val lineLeft = layout.getLineLeft(i)
-                                                val lineRight = layout.getLineRight(i)
-                                                val y = (lineTop + lineBottom) / 2f
-                                                val endX = lineLeft + (lineRight - lineLeft) * progress
+                    Row(
+                        verticalAlignment = Alignment.Top,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = note.title,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = ChunkyColor.TextPrimary,
+                            onTextLayout = { titleLayoutResultHolder[0] = it },
+                            modifier = Modifier
+                                .weight(1f)
+                                .graphicsLayer { alpha = titleAlpha.value }
+                                .drawWithCache {
+                                    val strokeWidthPx = 2.dp.toPx()
+                                    onDrawWithContent {
+                                        drawContent()
+                                        val progress = strikethroughProgress.value
+                                        if (progress > 0.001f) {
+                                            val layout = titleLayoutResultHolder[0]
+                                            if (layout != null) {
+                                                for (i in 0 until layout.lineCount) {
+                                                    val lineTop = layout.getLineTop(i)
+                                                    val lineBottom = layout.getLineBottom(i)
+                                                    val lineLeft = layout.getLineLeft(i)
+                                                    val lineRight = layout.getLineRight(i)
+                                                    val y = (lineTop + lineBottom) / 2f
+                                                    val endX = lineLeft + (lineRight - lineLeft) * progress
+                                                    drawLine(
+                                                        color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
+                                                        start = Offset(lineLeft, y),
+                                                        end = Offset(endX, y),
+                                                        strokeWidth = strokeWidthPx,
+                                                        cap = StrokeCap.Round
+                                                    )
+                                                }
+                                            } else {
+                                                val y = size.height / 2f
+                                                val endX = size.width * progress
                                                 drawLine(
                                                     color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
-                                                    start = Offset(lineLeft, y),
+                                                    start = Offset(0f, y),
                                                     end = Offset(endX, y),
                                                     strokeWidth = strokeWidthPx,
                                                     cap = StrokeCap.Round
                                                 )
                                             }
-                                        } else {
-                                            val y = size.height / 2f
-                                            val endX = size.width * progress
-                                            drawLine(
-                                                color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
-                                                start = Offset(0f, y),
-                                                end = Offset(endX, y),
-                                                strokeWidth = strokeWidthPx,
-                                                cap = StrokeCap.Round
-                                            )
                                         }
                                     }
                                 }
-                            }
-                    )
+                        )
 
-                    if (note.isDueTomorrow) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        DueDateBadge(
-                            text = "Ngày mai",
-                            isCompleted = note.isCompleted,
-                            isDueTomorrow = true,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(top = 1.dp)
-                        )
-                    } else if (note.isDueToday) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        DueDateBadge(
-                            text = "Hôm nay",
-                            isCompleted = note.isCompleted,
-                            isDueToday = true,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(top = 1.dp)
-                        )
-                    } else if (note.dueEpochMillis != null) {
-                        val dateStr = ClassroomDateUtils.formatShortDate(note.dueEpochMillis)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        DueDateBadge(
-                            text = dateStr,
-                            isCompleted = note.isCompleted,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(top = 1.dp)
+                        if (note.isDueTomorrow) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            DueDateBadge(
+                                text = "Ngày mai",
+                                isCompleted = note.isCompleted,
+                                isDueTomorrow = true,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(top = 1.dp)
+                            )
+                        } else if (note.isDueToday) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            DueDateBadge(
+                                text = "Hôm nay",
+                                isCompleted = note.isCompleted,
+                                isDueToday = true,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(top = 1.dp)
+                            )
+                        } else if (note.dueEpochMillis != null) {
+                            val dateStr = ClassroomDateUtils.formatShortDate(note.dueEpochMillis)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            DueDateBadge(
+                                text = dateStr,
+                                isCompleted = note.isCompleted,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(top = 1.dp)
+                            )
+                        }
+                    }
+
+                    if (note.content.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = note.content,
+                            fontSize = 14.sp,
+                            color = if (note.isCompleted) ChunkyColor.TextMuted.copy(alpha = 0.7f) else ChunkyColor.TextMuted,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                }
-
-                if (note.content.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = note.content,
-                        fontSize = 14.sp,
-                        color = if (note.isCompleted) ChunkyColor.TextMuted.copy(alpha = 0.7f) else ChunkyColor.TextMuted,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
                 }
 
                 if (note.hasChecklist) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp)
                     ) {
                         Text(
                             text = "${note.completedChecklistCount}/${note.totalChecklistCount} việc con",
@@ -777,6 +833,63 @@ private fun PersonalNoteCard(
                             )
                         }
                     }
+
+                    if (onToggleChecklistItem != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            note.checklist.take(4).forEach { item ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .clickable {
+                                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                            onToggleChecklistItem(note.id, item.id)
+                                        }
+                                        .padding(vertical = 2.dp, horizontal = 2.dp)
+                                ) {
+                                    if (item.isCompleted) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = ChunkyColor.SuccessGreen,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(15.dp)
+                                                .border(1.3.dp, ChunkyColor.TextMuted.copy(alpha = 0.5f), CircleShape)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = item.title,
+                                        fontSize = 12.5.sp,
+                                        color = if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary,
+                                        textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            if (note.checklist.size > 4) {
+                                Text(
+                                    text = "+ ${note.checklist.size - 4} mục khác...",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = ChunkyColor.TextMuted,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .clickable(onClick = onEdit)
+                                        .padding(start = 23.dp, top = 2.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 if (!note.courseName.isNullOrBlank()) {
@@ -785,45 +898,47 @@ private fun PersonalNoteCard(
                 }
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+        }
 
-            Box {
-                IconButton(
-                    onClick = { showMenu = true },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Tùy chọn",
-                        tint = ChunkyColor.TextMuted,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+        Box(
+            modifier = Modifier.padding(top = 2.dp, end = 4.dp)
+        ) {
+            IconButton(
+                onClick = { showMenu = true },
+                modifier = Modifier.size(44.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "Tùy chọn",
+                    tint = ChunkyColor.TextMuted,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
 
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false },
-                    containerColor = ChunkyColor.SurfaceWhite,
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, ChunkyColor.CardBorder)
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Chỉnh sửa", fontWeight = FontWeight.Medium, fontSize = 14.sp) },
-                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = ChunkyColor.SkyBottom, modifier = Modifier.size(18.dp)) },
-                        onClick = {
-                            showMenu = false
-                            onEdit()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Xoá ghi chú", color = ChunkyColor.UrgentAccent, fontWeight = FontWeight.Medium, fontSize = 14.sp) },
-                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = ChunkyColor.UrgentAccent, modifier = Modifier.size(18.dp)) },
-                        onClick = {
-                            showMenu = false
-                            onDelete()
-                        }
-                    )
-                }
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+                containerColor = ChunkyColor.SurfaceWhite,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, ChunkyColor.CardBorder)
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Chỉnh sửa", fontWeight = FontWeight.Medium, fontSize = 14.sp) },
+                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = ChunkyColor.SkyBottom, modifier = Modifier.size(18.dp)) },
+                    onClick = {
+                        showMenu = false
+                        onEdit()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Xoá ghi chú", color = ChunkyColor.UrgentAccent, fontWeight = FontWeight.Medium, fontSize = 14.sp) },
+                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = ChunkyColor.UrgentAccent, modifier = Modifier.size(18.dp)) },
+                    onClick = {
+                        showMenu = false
+                        onDelete()
+                    }
+                )
             }
         }
     }
@@ -833,26 +948,44 @@ private fun PersonalNoteCard(
 private fun CreateOrEditNoteDialog(
     existingNote: PersonalNote?,
     courses: List<Course>,
+    isDraft: Boolean = false,
     onDismiss: () -> Unit,
     onSave: (PersonalNote) -> Unit
 ) {
-    var title by rememberSaveable { mutableStateOf(existingNote?.title ?: "") }
-    var content by rememberSaveable { mutableStateOf(existingNote?.content ?: "") }
-    var selectedCourseId by rememberSaveable { mutableStateOf(existingNote?.courseId ?: "") }
-    var dueDateMode by rememberSaveable {
+    val context = LocalContext.current
+    val dialogKey = existingNote?.id ?: if (isDraft) "draft_${existingNote?.title ?: ""}" else "new_note"
+    var title by rememberSaveable(dialogKey) { mutableStateOf(existingNote?.title ?: "") }
+    var content by rememberSaveable(dialogKey) { mutableStateOf(existingNote?.content ?: "") }
+    var checklist by remember(dialogKey) {
+        mutableStateOf(existingNote?.checklist ?: emptyList())
+    }
+    var newChecklistItemTitle by remember(dialogKey) { mutableStateOf("") }
+    var selectedCourseId by rememberSaveable(dialogKey) { mutableStateOf(existingNote?.courseId ?: "") }
+    val isEndOfDay = remember(dialogKey, existingNote?.dueEpochMillis) {
+        existingNote?.dueEpochMillis?.let { epoch ->
+            val cal = Calendar.getInstance().apply { timeInMillis = epoch }
+            (cal.get(Calendar.HOUR_OF_DAY) == 23 && cal.get(Calendar.MINUTE) == 59) ||
+            (cal.get(Calendar.HOUR_OF_DAY) == 0 && cal.get(Calendar.MINUTE) == 0 && cal.get(Calendar.SECOND) == 0)
+        } ?: false
+    }
+    var dueDateMode by rememberSaveable(dialogKey) {
         mutableIntStateOf(
             when {
-                existingNote?.isDueToday == true -> 1
-                existingNote?.isDueTomorrow == true -> 2
+                existingNote?.isDueToday == true && isEndOfDay -> 1
+                existingNote?.isDueTomorrow == true && isEndOfDay -> 2
                 existingNote?.dueEpochMillis != null -> 3
                 else -> 0
             }
         )
     }
-    val hasCustomDueDate = existingNote?.dueEpochMillis != null && !existingNote.isDueToday && !existingNote.isDueTomorrow
-    val customDateStr = remember(existingNote?.dueEpochMillis) {
-        existingNote?.dueEpochMillis?.let {
-            SimpleDateFormat("d/M", Locale.getDefault()).format(Date(it))
+    var customDueDateEpoch by remember(dialogKey) { mutableStateOf(existingNote?.dueEpochMillis) }
+    val customDateStr = remember(customDueDateEpoch) {
+        customDueDateEpoch?.let {
+            val cal = Calendar.getInstance().apply { timeInMillis = it }
+            val hasTime = !(cal.get(Calendar.HOUR_OF_DAY) == 23 && cal.get(Calendar.MINUTE) == 59) &&
+                          !(cal.get(Calendar.HOUR_OF_DAY) == 0 && cal.get(Calendar.MINUTE) == 0 && cal.get(Calendar.SECOND) == 0)
+            val pattern = if (hasTime) "HH:mm d/M" else "d/M"
+            SimpleDateFormat(pattern, Locale.getDefault()).format(Date(it))
         } ?: ""
     }
 
@@ -864,11 +997,11 @@ private fun CreateOrEditNoteDialog(
         ),
         modifier = Modifier
             .fillMaxWidth(0.92f)
-            .heightIn(max = 560.dp)
+            .heightIn(max = 620.dp)
             .imePadding(),
         title = {
             Text(
-                text = if (existingNote == null) "Ghi chú mới" else "Chỉnh sửa ghi chú",
+                text = if (existingNote == null || isDraft) "Ghi chú mới" else "Chỉnh sửa ghi chú",
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )
@@ -882,10 +1015,132 @@ private fun CreateOrEditNoteDialog(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Tiêu đề ghi chú") },
+                    label = { Text("Tiêu đề việc cần làm") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Danh sách việc con (Checklist):",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = ChunkyColor.TextPrimary
+                )
+
+                if (checklist.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        checklist.forEachIndexed { index, item ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(ChunkyColor.WindowBackground)
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        checklist = checklist.toMutableList().also { list ->
+                                            list[index] = item.copy(isCompleted = !item.isCompleted)
+                                        }
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    if (item.isCompleted) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = ChunkyColor.SuccessGreen,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(18.dp)
+                                                .border(1.5.dp, ChunkyColor.TextMuted.copy(alpha = 0.5f), CircleShape)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = item.title,
+                                    fontSize = 13.sp,
+                                    color = if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary,
+                                    textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(
+                                    onClick = {
+                                        checklist = checklist.toMutableList().also { list ->
+                                            list.removeAt(index)
+                                        }
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Clear,
+                                        contentDescription = "Xoá",
+                                        tint = ChunkyColor.TextMuted,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = newChecklistItemTitle,
+                        onValueChange = { newChecklistItemTitle = it },
+                        placeholder = { Text("Thêm việc cần làm (nhấn Enter)...", fontSize = 12.5.sp) },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                            val trimmed = newChecklistItemTitle.trim()
+                            if (trimmed.isNotEmpty()) {
+                                checklist = checklist + com.phucta.classroom.data.model.ChecklistItem(title = trimmed)
+                                newChecklistItemTitle = ""
+                            }
+                        }),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    IconButton(
+                        onClick = {
+                            val trimmed = newChecklistItemTitle.trim()
+                            if (trimmed.isNotEmpty()) {
+                                checklist = checklist + com.phucta.classroom.data.model.ChecklistItem(title = trimmed)
+                                newChecklistItemTitle = ""
+                            }
+                        },
+                        enabled = newChecklistItemTitle.trim().isNotEmpty(),
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (newChecklistItemTitle.trim().isNotEmpty()) ChunkyColor.SkyBottom else ChunkyColor.WindowBackground)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Thêm mục",
+                            tint = if (newChecklistItemTitle.trim().isNotEmpty()) Color.White else ChunkyColor.TextMuted,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -933,14 +1188,40 @@ private fun CreateOrEditNoteDialog(
                             label = { Text("Ngày mai", fontSize = 12.sp) }
                         )
                     }
-                    if (hasCustomDueDate) {
-                        item {
-                            FilterChip(
-                                selected = dueDateMode == 3,
-                                onClick = { dueDateMode = 3 },
-                                label = { Text("Ngày khác ($customDateStr)", fontSize = 12.sp) }
-                            )
-                        }
+                    item {
+                        FilterChip(
+                            selected = dueDateMode == 3,
+                            onClick = {
+                                val currentCal = Calendar.getInstance().apply {
+                                    timeInMillis = customDueDateEpoch ?: (System.currentTimeMillis() + 86400000L * 2)
+                                }
+                                android.app.DatePickerDialog(
+                                    context,
+                                    { _, year, month, dayOfMonth ->
+                                        val pickedCal = Calendar.getInstance().apply {
+                                            set(Calendar.YEAR, year)
+                                            set(Calendar.MONTH, month)
+                                            set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                                            set(Calendar.HOUR_OF_DAY, 23)
+                                            set(Calendar.MINUTE, 59)
+                                            set(Calendar.SECOND, 59)
+                                            set(Calendar.MILLISECOND, 999)
+                                        }
+                                        customDueDateEpoch = pickedCal.timeInMillis
+                                        dueDateMode = 3
+                                    },
+                                    currentCal.get(Calendar.YEAR),
+                                    currentCal.get(Calendar.MONTH),
+                                    currentCal.get(Calendar.DAY_OF_MONTH)
+                                ).show()
+                            },
+                            label = {
+                                Text(
+                                    if (customDateStr.isNotEmpty() && dueDateMode == 3) "Ngày khác ($customDateStr)" else "Chọn ngày...",
+                                    fontSize = 12.sp
+                                )
+                            }
+                        )
                     }
                 }
 
@@ -1010,20 +1291,34 @@ private fun CreateOrEditNoteDialog(
                                 }
                                 cal.timeInMillis
                             }
+                            3 -> customDueDateEpoch ?: existingNote?.dueEpochMillis
                             0 -> null
                             else -> existingNote?.dueEpochMillis
                         }
                         val courseObj = courses.find { it.id == selectedCourseId }
+                        var finalChecklist = checklist
+                        val pendingItem = newChecklistItemTitle.trim()
+                        if (pendingItem.isNotEmpty()) {
+                            finalChecklist = finalChecklist + com.phucta.classroom.data.model.ChecklistItem(title = pendingItem)
+                        }
+                        finalChecklist = finalChecklist.filter { it.title.trim().isNotEmpty() }
+                        val isDone = if (finalChecklist.isNotEmpty()) {
+                            finalChecklist.all { it.isCompleted }
+                        } else {
+                            existingNote?.isCompleted ?: false
+                        }
+                        val isNewNote = existingNote == null || isDraft
                         val finalNote = PersonalNote(
-                            id = existingNote?.id ?: java.util.UUID.randomUUID().toString(),
-                            courseworkId = existingNote?.courseworkId,
+                            id = if (isNewNote) java.util.UUID.randomUUID().toString() else existingNote.id,
+                            courseworkId = if (isNewNote) null else existingNote.courseworkId,
                             courseId = courseObj?.id,
                             courseName = courseObj?.name,
                             title = trimmedTitle,
                             content = content.trim(),
+                            checklist = finalChecklist,
                             dueEpochMillis = computedDueEpochMillis,
-                            isCompleted = existingNote?.isCompleted ?: false,
-                            createdAt = existingNote?.createdAt ?: System.currentTimeMillis(),
+                            isCompleted = isDone,
+                            createdAt = if (isNewNote) System.currentTimeMillis() else existingNote.createdAt,
                             updatedAt = System.currentTimeMillis()
                         )
                         onSave(finalNote)
@@ -1070,12 +1365,23 @@ private fun CreateOrEditNoteDialog(
 private fun BottomQuickCaptureBar(
     courses: List<Course>,
     onSaveQuickNote: (title: String, dueEpoch: Long?, courseId: String?, courseName: String?) -> Unit,
-    onOpenFullDialog: () -> Unit,
+    onOpenFullDialog: (draftTitle: String, draftDue: Long?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var title by rememberSaveable { mutableStateOf("") }
     var selectedDeadlineMode by rememberSaveable { mutableIntStateOf(1) } // 0: none, 1: tomorrow, 2: today
     val view = LocalView.current
+
+    val openDialogWithDraft = {
+        val currentTitle = title.trim()
+        val due = when (selectedDeadlineMode) {
+            1 -> ClassroomDateUtils.startOfTomorrow + 23 * 3600 * 1000L + 59 * 60 * 1000L
+            2 -> ClassroomDateUtils.startOfToday + 23 * 3600 * 1000L + 59 * 60 * 1000L
+            else -> null
+        }
+        title = ""
+        onOpenFullDialog(currentTitle, due)
+    }
 
     Surface(
         modifier = modifier
@@ -1145,7 +1451,7 @@ private fun BottomQuickCaptureBar(
                             title = ""
                             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                         } else {
-                            onOpenFullDialog()
+                            openDialogWithDraft()
                         }
                     },
                     modifier = Modifier
@@ -1195,7 +1501,7 @@ private fun BottomQuickCaptureBar(
                     color = ChunkyColor.PillBlue,
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .clickable(onClick = onOpenFullDialog)
+                        .clickable(onClick = openDialogWithDraft)
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 )
             }

@@ -85,6 +85,9 @@ public final class ClassroomStorage: @unchecked Sendable {
         return dirs
     }()
 
+    private static var inaccessibleDirectoryPaths: Set<String> = []
+    private static let directoryLock = NSLock()
+
     private var allStorageDirectories: [URL] {
         Self.sharedStorageDirectories
     }
@@ -92,6 +95,11 @@ public final class ClassroomStorage: @unchecked Sendable {
     private func writeDataToAllDirectories(_ data: Data, fileName: String) {
         let logger = Logger(subsystem: "com.phucta.ClassroomTracker", category: "storage")
         for dir in allStorageDirectories {
+            Self.directoryLock.lock()
+            let isInaccessible = Self.inaccessibleDirectoryPaths.contains(dir.path)
+            Self.directoryLock.unlock()
+            if isInaccessible { continue }
+
             do {
                 try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
                 let fileURL = dir.appendingPathComponent(fileName)
@@ -103,6 +111,12 @@ public final class ClassroomStorage: @unchecked Sendable {
                 try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: fileURL.path)
                 logger.notice("WROTE \(data.count) bytes of \(fileName, privacy: .public) to \(fileURL.path, privacy: .public)")
             } catch {
+                let nsError = error as NSError
+                if nsError.domain == NSCocoaErrorDomain && (nsError.code == NSFileWriteNoPermissionError || nsError.code == 513) {
+                    Self.directoryLock.lock()
+                    Self.inaccessibleDirectoryPaths.insert(dir.path)
+                    Self.directoryLock.unlock()
+                }
                 logger.error("Error writing \(fileName, privacy: .public) to \(dir.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
         }
@@ -160,6 +174,11 @@ public final class ClassroomStorage: @unchecked Sendable {
         var bestIsMock: Bool = true
 
         for dir in allStorageDirectories {
+            Self.directoryLock.lock()
+            let isInaccessible = Self.inaccessibleDirectoryPaths.contains(dir.path)
+            Self.directoryLock.unlock()
+            if isInaccessible { continue }
+
             let fileURL = dir.appendingPathComponent(fileName)
             guard FileManager.default.fileExists(atPath: fileURL.path) else { continue }
             do {
@@ -199,6 +218,12 @@ public final class ClassroomStorage: @unchecked Sendable {
                     bestDate = modDate
                 }
             } catch {
+                let nsError = error as NSError
+                if nsError.domain == NSCocoaErrorDomain && (nsError.code == NSFileReadNoPermissionError || nsError.code == 257) {
+                    Self.directoryLock.lock()
+                    Self.inaccessibleDirectoryPaths.insert(dir.path)
+                    Self.directoryLock.unlock()
+                }
                 logger.error("readData FAILED to read \(fileURL.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
         }
@@ -1306,6 +1331,25 @@ public final class ClassroomStorage: @unchecked Sendable {
                 allNotes[index].checklist = allNotes[index].checklist.map { item in
                     var copy = item
                     copy.isCompleted = newStatus
+                    return copy
+                }
+            }
+            allNotes[index].updatedAt = Date()
+            savePersonalNotes(allNotes)
+        }
+    }
+
+    public func setPersonalNoteCompletion(id: String, isCompleted: Bool) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var allNotes = loadPersonalNotes()
+        if let index = allNotes.firstIndex(where: { $0.id == id }) {
+            allNotes[index].isCompleted = isCompleted
+            if !allNotes[index].checklist.isEmpty {
+                allNotes[index].checklist = allNotes[index].checklist.map { item in
+                    var copy = item
+                    copy.isCompleted = isCompleted
                     return copy
                 }
             }

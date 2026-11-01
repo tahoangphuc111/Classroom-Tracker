@@ -666,4 +666,72 @@ class BaoBaiBucketingUtilsTest {
         )
         assertTrue("Completed note must be excluded when includeCompleted is false", listPendingOnly.isEmpty())
     }
+
+    @Test
+    fun testPersonalNoteChecklist_SerializationAndParity() {
+        val checklist = listOf(
+            com.phucta.classroom.data.model.ChecklistItem(id = "item_1", title = "Đọc trang 1-20", isCompleted = false),
+            com.phucta.classroom.data.model.ChecklistItem(id = "item_2", title = "Làm bài 1, 2, 3", isCompleted = true)
+        )
+        val originalNote = PersonalNote(
+            id = "note_complex_hw",
+            courseId = "c1",
+            courseName = "Vật lý",
+            title = "Bài tập con lắc đơn",
+            content = "Ghi chú chi tiết",
+            checklist = checklist,
+            isCompleted = false
+        )
+
+        val entity = com.phucta.classroom.data.local.PersonalNoteEntity.fromDomain(originalNote)
+        val reconstructed = entity.toDomain()
+
+        assertEquals(originalNote.id, reconstructed.id)
+        assertEquals(originalNote.checklist.size, reconstructed.checklist.size)
+        assertEquals("Đọc trang 1-20", reconstructed.checklist[0].title)
+        assertFalse(reconstructed.checklist[0].isCompleted)
+        assertEquals("Làm bài 1, 2, 3", reconstructed.checklist[1].title)
+        assertTrue(reconstructed.checklist[1].isCompleted)
+        assertEquals(0.5f, reconstructed.checklistProgress, 0.01f)
+    }
+
+    @Test
+    fun testPersonalNoteChecklist_TogglingAllItemsCompletesParent() {
+        val checklist = listOf(
+            com.phucta.classroom.data.model.ChecklistItem(id = "item_1", title = "Viết dàn ý", isCompleted = true),
+            com.phucta.classroom.data.model.ChecklistItem(id = "item_2", title = "Viết mở bài", isCompleted = false)
+        )
+        val note = PersonalNote(
+            id = "note_essay",
+            title = "Bài văn nghị luận",
+            checklist = checklist,
+            isCompleted = false
+        )
+
+        // Toggle item_2 to true
+        val updatedChecklist = note.checklist.map {
+            if (it.id == "item_2") it.copy(isCompleted = !it.isCompleted) else it
+        }
+        val allDone = updatedChecklist.isNotEmpty() && updatedChecklist.all { it.isCompleted }
+        val updatedNote = note.copy(
+            checklist = updatedChecklist,
+            isCompleted = allDone
+        )
+
+        assertTrue("Note should be completed when all subitems are completed", updatedNote.isCompleted)
+        assertEquals(1.0f, updatedNote.checklistProgress, 0.01f)
+
+        // Untoggle item_1 to false
+        val revertedChecklist = updatedNote.checklist.map {
+            if (it.id == "item_1") it.copy(isCompleted = !it.isCompleted) else it
+        }
+        val hasIncomplete = revertedChecklist.any { !it.isCompleted }
+        val revertedNote = updatedNote.copy(
+            checklist = revertedChecklist,
+            isCompleted = if (hasIncomplete) false else updatedNote.isCompleted
+        )
+
+        assertFalse("Note should be incomplete when at least one subitem is incomplete", revertedNote.isCompleted)
+        assertEquals(0.5f, revertedNote.checklistProgress, 0.01f)
+    }
 }
