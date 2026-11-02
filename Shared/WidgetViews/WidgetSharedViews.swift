@@ -99,7 +99,8 @@ public struct SubjectArtHelper {
         case .generalAssignment: return "BTH"
         case .historyOrGeography:
             os_unfair_lock_lock(&cacheLock)
-            if let cached = courseBadgeCache[courseName] {
+            let cacheKey = (title != nil && !title!.isEmpty) ? "\(courseName)|\(title!)" : courseName
+            if let cached = courseBadgeCache[cacheKey] {
                 os_unfair_lock_unlock(&cacheLock)
                 return cached
             }
@@ -112,7 +113,7 @@ public struct SubjectArtHelper {
             if courseBadgeCache.count >= 2048 {
                 courseBadgeCache.removeAll()
             }
-            courseBadgeCache[courseName] = code
+            courseBadgeCache[cacheKey] = code
             os_unfair_lock_unlock(&cacheLock)
             return code
         case .other:
@@ -120,13 +121,17 @@ public struct SubjectArtHelper {
             if cleaned.count >= 3 {
                 return String(cleaned.prefix(3)).uppercased()
             }
-            if let title, !title.isEmpty {
-                let titleCleaned = title.trimmingCharacters(in: .whitespacesAndNewlines)
-                if titleCleaned.count >= 3 {
-                    return String(titleCleaned.prefix(3)).uppercased()
-                }
+            let titleCleaned = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if titleCleaned.count >= 3 {
+                return String(titleCleaned.prefix(3)).uppercased()
             }
-            return cleaned.isEmpty ? "MÔN" : cleaned.uppercased()
+            if !cleaned.isEmpty {
+                return cleaned.uppercased()
+            }
+            if !titleCleaned.isEmpty {
+                return titleCleaned.uppercased()
+            }
+            return "MÔN"
         }
     }
 

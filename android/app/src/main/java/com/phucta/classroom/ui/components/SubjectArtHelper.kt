@@ -393,4 +393,9 @@ object SubjectArtHelper {
             }
         }
     }
+
+    fun badgeCode(courseName: String, title: String? = null): String {
+        val cat = category(courseName, title)
+        return badgeCode(cat, courseName, title)
+    }
 }

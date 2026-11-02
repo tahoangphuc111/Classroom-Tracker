@@ -117,14 +117,14 @@ class ClassroomRepository(
                 val existingCourseEntities = courseDao.getAllCourses()
                 val hasOnlyMockCourses = existingCourseEntities.isNotEmpty() &&
                         existingCourseEntities.all { MockDataProvider.isMockCourse(it.id) }
-                val existingCourses = if (hasOnlyMockCourses) emptyList() else existingCourseEntities.map { it.toDomain() }
+                val existingCourses = if (hasOnlyMockCourses) emptyList() else existingCourseEntities.map { it.toDomain() }.filter { !MockDataProvider.isMockCourse(it.id) }
                 val existingSelectionMap = existingCourses.associate { it.id to it.isSelectedForWidget }
                 val mergedCourses = fetchedCourses.map { course ->
                     val preservedSelection = existingSelectionMap[course.id] ?: true
                     course.copy(isSelectedForWidget = preservedSelection)
                 }
                 val selectedCourses = mergedCourses.filter { it.isSelectedForWidget }
-                val existingCoursework = if (hasOnlyMockCourses) emptyList() else courseworkDao.getAllCoursework().toCoursework()
+                val existingCoursework = if (hasOnlyMockCourses) emptyList() else courseworkDao.getAllCoursework().toCoursework().filter { !MockDataProvider.isMockCourseworkId(it.id) }
                 val allCoursework = mutableListOf<Coursework>()
                 var hasAnyFetchErrors = false
                 val chunkSize = 2
@@ -228,7 +228,8 @@ class ClassroomRepository(
         val trimmed = content.trim()
         val existing = personalNoteDao.getNoteForCoursework(courseworkId)
         if (existing != null) {
-            if (trimmed.isEmpty()) {
+            val existingDomain = existing.toDomain()
+            if (trimmed.isEmpty() && existingDomain.checklist.isEmpty() && existing.title.isBlank()) {
                 personalNoteDao.deleteNoteById(existing.id)
             } else {
                 val updated = existing.copy(
@@ -236,7 +237,12 @@ class ClassroomRepository(
                     courseId = courseId ?: existing.courseId,
                     courseName = courseName ?: existing.courseName,
                     updatedAt = System.currentTimeMillis(),
-                    searchIndex = PersonalNote.buildSearchIndex(existing.title, trimmed, courseName ?: existing.courseName)
+                    searchIndex = PersonalNote.buildSearchIndex(
+                        existing.title,
+                        trimmed,
+                        courseName ?: existing.courseName,
+                        existingDomain.checklist
+                    )
                 )
                 personalNoteDao.upsertNote(updated)
             }

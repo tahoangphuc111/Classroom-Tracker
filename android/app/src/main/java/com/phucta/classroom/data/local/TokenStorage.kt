@@ -49,7 +49,7 @@ class TokenStorage(context: Context) {
             prefs.edit()
                 .putString(KEY_AUTH_VERIFIER, verifier)
                 .putString(KEY_AUTH_REDIRECT_URI, redirectUri)
-                .apply()
+                .commit()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -72,7 +72,7 @@ class TokenStorage(context: Context) {
             prefs.edit()
                 .remove(KEY_AUTH_VERIFIER)
                 .remove(KEY_AUTH_REDIRECT_URI)
-                .apply()
+                .commit()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -85,7 +85,7 @@ class TokenStorage(context: Context) {
                 .putString(KEY_REFRESH_TOKEN, tokens.refreshToken)
                 .putInt(KEY_EXPIRES_IN, tokens.expiresIn)
                 .putLong(KEY_EXPIRES_AT, tokens.expiresAt)
-                .apply()
+                .commit()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -110,7 +110,7 @@ class TokenStorage(context: Context) {
 
     fun clearTokens() {
         try {
-            prefs.edit().clear().apply()
+            prefs.edit().clear().commit()
         } catch (e: Exception) {
             e.printStackTrace()
         }

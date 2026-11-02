@@ -50,6 +50,7 @@ targets:
       - path: Shared/Storage
       - path: Shared/WidgetViews
       - path: Shared/Fonts
+      - path: Shared/PlatformUICompat.swift
     settings:
       base:
         PRODUCT_NAME: "Classroom Deadlines"
@@ -97,6 +98,7 @@ targets:
       - path: Shared/Storage
       - path: Shared/WidgetViews
       - path: Shared/Fonts
+      - path: Shared/PlatformUICompat.swift
     settings:
       base:
         PRODUCT_NAME: "Classroom Deadlines"

@@ -284,23 +284,16 @@ object BaoBaiBucketingUtils {
             }
         }
         if (hasNotes) {
-            val activeIds = if (courses.isNotEmpty()) {
-                val set = HashSet<String>(courses.size)
-                for (c in courses) {
-                    if (c.isSelectedForWidget) set.add(c.id)
-                }
-                set
-            } else {
-                emptySet()
-            }
+            val filter = if (courses.isNotEmpty()) getCourseFilter(courses) else null
+            val filterActive = filter != null && filter.hasUnselected && filter.activeCourseIds.isNotEmpty() && filter.allCourseIds.size != filter.activeCourseIds.size
             val noteCount = personalNotes.size
             for (i in 0 until noteCount) {
                 val note = personalNotes[i]
                 if (note.courseworkId == null) {
                     val isEligible = includeCompleted || !note.isCompleted
                     if (isEligible && note.isDueTomorrow) {
-                        val matchesCourse = if (note.courseId != null && activeIds.isNotEmpty()) {
-                            activeIds.contains(note.courseId)
+                        val matchesCourse = if (filterActive && note.courseId != null && filter!!.allCourseIds.contains(note.courseId)) {
+                            filter.activeCourseIds.contains(note.courseId)
                         } else {
                             true
                         }

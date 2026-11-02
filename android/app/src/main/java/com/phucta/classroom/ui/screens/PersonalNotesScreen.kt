@@ -164,7 +164,7 @@ fun PersonalNotesScreen(
 
     LaunchedEffect(initialNoteToEdit) {
         if (initialNoteToEdit != null) {
-            selectedStatusTab = if (initialNoteToEdit.isCompleted) 1 else 0
+            selectedStatusTab = if (initialNoteToEdit.isCompleted) 2 else 1
             selectedCourseId = null
             noteToEdit = initialNoteToEdit
             onClearInitialNoteToEdit()
@@ -963,8 +963,8 @@ private fun CreateOrEditNoteDialog(
     var selectedCourseId by rememberSaveable(dialogKey) { mutableStateOf(existingNote?.courseId ?: "") }
     val isEndOfDay = remember(dialogKey, existingNote?.dueEpochMillis) {
         existingNote?.dueEpochMillis?.let { epoch ->
-            val cal = Calendar.getInstance().apply { timeInMillis = epoch }
-            (cal.get(Calendar.HOUR_OF_DAY) == 23 && cal.get(Calendar.MINUTE) == 59) ||
+            val cal = com.phucta.classroom.data.model.ClassroomDateUtils.createLocalCalendar(epoch)
+            (cal.get(Calendar.HOUR_OF_DAY) == 23 && cal.get(Calendar.MINUTE) >= 55) ||
             (cal.get(Calendar.HOUR_OF_DAY) == 0 && cal.get(Calendar.MINUTE) == 0 && cal.get(Calendar.SECOND) == 0)
         } ?: false
     }
@@ -981,11 +981,11 @@ private fun CreateOrEditNoteDialog(
     var customDueDateEpoch by remember(dialogKey) { mutableStateOf(existingNote?.dueEpochMillis) }
     val customDateStr = remember(customDueDateEpoch) {
         customDueDateEpoch?.let {
-            val cal = Calendar.getInstance().apply { timeInMillis = it }
-            val hasTime = !(cal.get(Calendar.HOUR_OF_DAY) == 23 && cal.get(Calendar.MINUTE) == 59) &&
+            val cal = com.phucta.classroom.data.model.ClassroomDateUtils.createLocalCalendar(it)
+            val hasTime = !(cal.get(Calendar.HOUR_OF_DAY) == 23 && cal.get(Calendar.MINUTE) >= 55) &&
                           !(cal.get(Calendar.HOUR_OF_DAY) == 0 && cal.get(Calendar.MINUTE) == 0 && cal.get(Calendar.SECOND) == 0)
             val pattern = if (hasTime) "HH:mm d/M" else "d/M"
-            SimpleDateFormat(pattern, Locale.getDefault()).format(Date(it))
+            SimpleDateFormat(pattern, com.phucta.classroom.data.model.ClassroomDateUtils.VIETNAMESE_LOCALE).format(Date(it))
         } ?: ""
     }
 
@@ -1192,13 +1192,13 @@ private fun CreateOrEditNoteDialog(
                         FilterChip(
                             selected = dueDateMode == 3,
                             onClick = {
-                                val currentCal = Calendar.getInstance().apply {
-                                    timeInMillis = customDueDateEpoch ?: (System.currentTimeMillis() + 86400000L * 2)
-                                }
+                                val currentCal = com.phucta.classroom.data.model.ClassroomDateUtils.createLocalCalendar(
+                                    customDueDateEpoch ?: (System.currentTimeMillis() + 86400000L * 2)
+                                )
                                 android.app.DatePickerDialog(
                                     context,
                                     { _, year, month, dayOfMonth ->
-                                        val pickedCal = Calendar.getInstance().apply {
+                                        val pickedCal = com.phucta.classroom.data.model.ClassroomDateUtils.createLocalCalendar().apply {
                                             set(Calendar.YEAR, year)
                                             set(Calendar.MONTH, month)
                                             set(Calendar.DAY_OF_MONTH, dayOfMonth)
@@ -1273,7 +1273,7 @@ private fun CreateOrEditNoteDialog(
                     if (trimmedTitle.isNotBlank()) {
                         val computedDueEpochMillis: Long? = when (dueDateMode) {
                             1 -> {
-                                val cal = Calendar.getInstance().apply {
+                                val cal = com.phucta.classroom.data.model.ClassroomDateUtils.createLocalCalendar().apply {
                                     set(Calendar.HOUR_OF_DAY, 23)
                                     set(Calendar.MINUTE, 59)
                                     set(Calendar.SECOND, 59)
@@ -1282,7 +1282,7 @@ private fun CreateOrEditNoteDialog(
                                 cal.timeInMillis
                             }
                             2 -> {
-                                val cal = Calendar.getInstance().apply {
+                                val cal = com.phucta.classroom.data.model.ClassroomDateUtils.createLocalCalendar().apply {
                                     add(Calendar.DAY_OF_YEAR, 1)
                                     set(Calendar.HOUR_OF_DAY, 23)
                                     set(Calendar.MINUTE, 59)
@@ -1375,8 +1375,8 @@ private fun BottomQuickCaptureBar(
     val openDialogWithDraft = {
         val currentTitle = title.trim()
         val due = when (selectedDeadlineMode) {
-            1 -> ClassroomDateUtils.startOfTomorrow + 23 * 3600 * 1000L + 59 * 60 * 1000L
-            2 -> ClassroomDateUtils.startOfToday + 23 * 3600 * 1000L + 59 * 60 * 1000L
+            1 -> ClassroomDateUtils.startOfTomorrow + 23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
+            2 -> ClassroomDateUtils.startOfToday + 23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
             else -> null
         }
         title = ""
@@ -1417,8 +1417,8 @@ private fun BottomQuickCaptureBar(
                         val trimmed = title.trim()
                         if (trimmed.isNotEmpty()) {
                             val due = when (selectedDeadlineMode) {
-                                1 -> ClassroomDateUtils.startOfTomorrow + 23 * 3600 * 1000L + 59 * 60 * 1000L
-                                2 -> ClassroomDateUtils.startOfToday + 23 * 3600 * 1000L + 59 * 60 * 1000L
+                                1 -> ClassroomDateUtils.startOfTomorrow + 23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
+                                2 -> ClassroomDateUtils.startOfToday + 23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
                                 else -> null
                             }
                             onSaveQuickNote(trimmed, due, null, null)
@@ -1443,8 +1443,8 @@ private fun BottomQuickCaptureBar(
                         val trimmed = title.trim()
                         if (trimmed.isNotEmpty()) {
                             val due = when (selectedDeadlineMode) {
-                                1 -> ClassroomDateUtils.startOfTomorrow + 23 * 3600 * 1000L + 59 * 60 * 1000L
-                                2 -> ClassroomDateUtils.startOfToday + 23 * 3600 * 1000L + 59 * 60 * 1000L
+                                1 -> ClassroomDateUtils.startOfTomorrow + 23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
+                                2 -> ClassroomDateUtils.startOfToday + 23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
                                 else -> null
                             }
                             onSaveQuickNote(trimmed, due, null, null)

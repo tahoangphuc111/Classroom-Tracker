@@ -199,4 +199,101 @@ class PersonalNoteTest {
         val shouldDelete = trimmed.isEmpty()
         assertTrue("Coursework attached note with empty trimmed content must be deleted", shouldDelete)
     }
+
+    @Test
+    fun testEndOfDayDetectionAt2355AndLater() {
+        fun isEndOfDay(epoch: Long): Boolean {
+            val cal = Calendar.getInstance().apply { timeInMillis = epoch }
+            return (cal.get(Calendar.HOUR_OF_DAY) == 23 && cal.get(Calendar.MINUTE) >= 55) ||
+                   (cal.get(Calendar.HOUR_OF_DAY) == 0 && cal.get(Calendar.MINUTE) == 0 && cal.get(Calendar.SECOND) == 0)
+        }
+
+        val cal2355 = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 55)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertTrue("23:55 should be detected as end of day", isEndOfDay(cal2355.timeInMillis))
+
+        val cal2358 = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 58)
+            set(Calendar.SECOND, 30)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertTrue("23:58:30 should be detected as end of day", isEndOfDay(cal2358.timeInMillis))
+
+        val cal2359 = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        assertTrue("23:59:59.999 should be detected as end of day", isEndOfDay(cal2359.timeInMillis))
+
+        val calMidnight = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertTrue("00:00:00.000 should be detected as end of day", isEndOfDay(calMidnight.timeInMillis))
+
+        val cal2354 = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 54)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        assertFalse("23:54:59 should NOT be detected as end of day", isEndOfDay(cal2354.timeInMillis))
+    }
+
+    @Test
+    fun testQuickCaptureDeadlineTimestampAlignment() {
+        val todayEndOfDay = com.phucta.classroom.data.model.ClassroomDateUtils.startOfToday +
+                23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
+        val tomorrowEndOfDay = com.phucta.classroom.data.model.ClassroomDateUtils.startOfTomorrow +
+                23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
+
+        val calToday = Calendar.getInstance().apply { timeInMillis = todayEndOfDay }
+        assertEquals(23, calToday.get(Calendar.HOUR_OF_DAY))
+        assertEquals(59, calToday.get(Calendar.MINUTE))
+        assertEquals(59, calToday.get(Calendar.SECOND))
+        assertEquals(999, calToday.get(Calendar.MILLISECOND))
+
+        val calTomorrow = Calendar.getInstance().apply { timeInMillis = tomorrowEndOfDay }
+        assertEquals(23, calTomorrow.get(Calendar.HOUR_OF_DAY))
+        assertEquals(59, calTomorrow.get(Calendar.MINUTE))
+        assertEquals(59, calTomorrow.get(Calendar.SECOND))
+        assertEquals(999, calTomorrow.get(Calendar.MILLISECOND))
+
+        assertEquals("Cuối ngày", com.phucta.classroom.data.model.ClassroomDateUtils.buildTimeOnlyString(todayEndOfDay))
+        assertEquals("Cuối ngày", com.phucta.classroom.data.model.ClassroomDateUtils.buildTimeOnlyString(tomorrowEndOfDay))
+
+        val noteToday = PersonalNote(title = "Task Today", dueEpochMillis = todayEndOfDay)
+        assertTrue("Quick capture today note should be due today", noteToday.isDueToday)
+        assertFalse("Quick capture today note should not be due tomorrow", noteToday.isDueTomorrow)
+
+        val noteTomorrow = PersonalNote(title = "Task Tomorrow", dueEpochMillis = tomorrowEndOfDay)
+        assertTrue("Quick capture tomorrow note should be due tomorrow", noteTomorrow.isDueTomorrow)
+        assertFalse("Quick capture tomorrow note should not be due today", noteTomorrow.isDueToday)
+    }
+
+    @Test
+    fun testBuildSearchIndex_IncludesChecklistItems() {
+        val checklist = listOf(
+            com.phucta.classroom.data.model.ChecklistItem(title = "Nộp bản nháp"),
+            com.phucta.classroom.data.model.ChecklistItem(title = "Chuẩn bị slide")
+        )
+        val note = PersonalNote(
+            title = "Thuyết trình",
+            content = "Phần 1 và 2",
+            courseName = "Tin học",
+            checklist = checklist
+        )
+        assertTrue(note.searchIndex.contains("ban nhap"))
+        assertTrue(note.searchIndex.contains("slide"))
+        assertTrue(note.searchIndex.contains("thuyet trinh"))
+    }
 }

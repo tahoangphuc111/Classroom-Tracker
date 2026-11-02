@@ -40,6 +40,14 @@ object ClassroomDateUtils {
         }
     }
 
+    fun createLocalCalendar(timeInMillis: Long? = null): Calendar {
+        val cal = Calendar.getInstance(TimeZone.getDefault(), Locale.US)
+        if (timeInMillis != null) {
+            cal.timeInMillis = timeInMillis
+        }
+        return cal
+    }
+
     private val utcCalendarPool = object : ThreadLocal<Calendar>() {
         override fun initialValue(): Calendar {
             return Calendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.US)

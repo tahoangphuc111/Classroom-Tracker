@@ -78,7 +78,10 @@ fun CompletedHomeworkScreen(
 ) {
     val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
     val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
-    var selectedSubjectCategory by remember { mutableStateOf<SubjectCategory?>(null) }
+    var selectedSubjectCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    val selectedCategoryEnum = remember(selectedSubjectCategory) {
+        selectedSubjectCategory?.let { runCatching { SubjectCategory.valueOf(it) }.getOrNull() }
+    }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForVietnameseSearch() }
@@ -97,8 +100,8 @@ fun CompletedHomeworkScreen(
         categories.sortedBy { it.name }
     }
 
-    val filteredItems = remember(completedItems, selectedSubjectCategory, searchTokens) {
-        val target = selectedSubjectCategory
+    val filteredItems = remember(completedItems, selectedCategoryEnum, searchTokens) {
+        val target = selectedCategoryEnum
         val byCat = if (target == null) {
             completedItems
         } else {
@@ -265,11 +268,11 @@ fun CompletedHomeworkScreen(
                     ) { cat ->
                         val themeColor = SubjectArtHelper.themeColor(cat)
                         val badge = SubjectArtHelper.badgeCode(cat, "", null)
-                        val isSelected = selectedSubjectCategory == cat
+                        val isSelected = selectedCategoryEnum == cat
                         FilterChip(
                             selected = isSelected,
                             onClick = {
-                                selectedSubjectCategory = if (isSelected) null else cat
+                                selectedSubjectCategory = if (isSelected) null else cat.name
                                 displayLimit = 30
                             },
                             label = {

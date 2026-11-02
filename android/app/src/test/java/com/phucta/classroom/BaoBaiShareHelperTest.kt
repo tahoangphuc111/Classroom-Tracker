@@ -76,4 +76,51 @@ class BaoBaiShareHelperTest {
         assertTrue(formatted.isNotBlank())
         assertTrue(formatted[0].isUpperCase())
     }
+
+    @Test
+    fun testFormatBaoBaiText_TodayAndUpcomingLabels() {
+        val startOfToday = ClassroomDateUtils.startOfToday
+        val todayItems = listOf(
+            Coursework(
+                id = "today_1",
+                courseId = "c1",
+                courseName = "Vật lý",
+                title = "Giải bài tập dao động điều hòa",
+                dueEpochMillis = startOfToday + 20 * 3600 * 1000L,
+                status = SubmissionStatus.PENDING
+            )
+        )
+        val todayText = BaoBaiShareHelper.formatBaoBaiText(
+            items = todayItems,
+            dateEpochMillis = startOfToday,
+            targetDayLabel = "HÔM NAY"
+        )
+        assertTrue(todayText.contains("BÁO BÀI HÔM NAY"))
+        assertTrue(todayText.contains("[Vật lý] Giải bài tập dao động điều hòa"))
+
+        val upcomingText = BaoBaiShareHelper.formatBaoBaiText(
+            items = todayItems,
+            dateEpochMillis = startOfToday,
+            targetDayLabel = "SẮP TỚI"
+        )
+        assertTrue(upcomingText.contains("BÁO BÀI SẮP TỚI"))
+    }
+
+    @Test
+    fun testFormatHeaderDate_ConsistentAcrossSystemLocales() {
+        val originalLocale = java.util.Locale.getDefault()
+        try {
+            // Test with Turkish locale where dotted/undotted 'i' causes differences if system locale is used
+            java.util.Locale.setDefault(java.util.Locale("tr", "TR"))
+            val formattedTr = BaoBaiShareHelper.formatHeaderDate(1770000000000L)
+
+            java.util.Locale.setDefault(java.util.Locale.US)
+            val formattedUs = BaoBaiShareHelper.formatHeaderDate(1770000000000L)
+
+            assertEquals(formattedUs, formattedTr)
+            assertTrue(formattedTr[0].isUpperCase())
+        } finally {
+            java.util.Locale.setDefault(originalLocale)
+        }
+    }
 }

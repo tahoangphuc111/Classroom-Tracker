@@ -915,6 +915,7 @@ public final class ClassroomStorage: @unchecked Sendable {
                 try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_coursework.json"))
                 try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_widget_coursework.json"))
                 try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_metadata.json"))
+                try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_oauth_tokens.json"))
                 if includePersonalNotes {
                     try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_personal_notes.json"))
                 }
@@ -1128,7 +1129,7 @@ public final class ClassroomStorage: @unchecked Sendable {
     ]
 
     public static var mockCoursework: [Coursework] {
-        let calendar = Calendar.current
+        let calendar = ClassroomDateFormatters.gregorianCalendar
         let now = Date()
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now.addingTimeInterval(24 * 3600)
         let tomorrowDue = calendar.date(bySettingHour: 17, minute: 30, second: 0, of: tomorrow) ?? now.addingTimeInterval(26 * 3600)

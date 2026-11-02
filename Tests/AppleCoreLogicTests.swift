@@ -598,8 +598,27 @@ struct TestRunner {
             assertCondition(ClassroomStorage.shared.hasUserLoggedIn == true, "hasUserLoggedIn must be true when real Google Classroom courses exist")
 
             ClassroomStorage.shared.clearAllData()
+            ClassroomStorage.shared.flushIOQueue()
             ClassroomStorage.shared.invalidateMemoryCache()
             assertCondition(ClassroomStorage.shared.hasUserLoggedIn == false, "hasUserLoggedIn must be false after clearAllData")
+
+            // Verify cached_oauth_tokens.json is removed by clearAllData
+            for dir in ClassroomStorage.sharedStorageDirectories {
+                if FileManager.default.fileExists(atPath: dir.path) || (try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)) != nil {
+                    let tokenFile = dir.appendingPathComponent("cached_oauth_tokens.json")
+                    if (try? "{}".data(using: .utf8)?.write(to: tokenFile)) != nil {
+                        ClassroomStorage.shared.invalidateMemoryCache()
+                        assertCondition(ClassroomStorage.shared.hasUserLoggedIn == true, "Token file presence must trigger hasUserLoggedIn == true")
+
+                        ClassroomStorage.shared.clearAllData()
+                        ClassroomStorage.shared.flushIOQueue()
+                        ClassroomStorage.shared.invalidateMemoryCache()
+                        assertCondition(!FileManager.default.fileExists(atPath: tokenFile.path), "cached_oauth_tokens.json must be removed by clearAllData")
+                        assertCondition(ClassroomStorage.shared.hasUserLoggedIn == false, "hasUserLoggedIn must be false after token file deletion via clearAllData")
+                        break
+                    }
+                }
+            }
 
             ClassroomStorage.shared.saveUserLoggedIn(initialStatus)
         }

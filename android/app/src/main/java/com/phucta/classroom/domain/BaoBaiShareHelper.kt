@@ -8,7 +8,6 @@ import com.phucta.classroom.data.model.ClassroomDateUtils
 import com.phucta.classroom.data.model.Coursework
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 import java.util.TimeZone
 
 object BaoBaiShareHelper {
@@ -18,7 +17,7 @@ object BaoBaiShareHelper {
             headerDateFormat.timeZone = TimeZone.getDefault()
             headerDateFormat.format(Date(dateEpochMillis))
         }
-        return raw.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+        return raw.replaceFirstChar { if (it.isLowerCase()) it.titlecase(ClassroomDateUtils.VIETNAMESE_LOCALE) else it.toString() }
     }
     fun formatBaoBaiText(
         items: List<Coursework>,

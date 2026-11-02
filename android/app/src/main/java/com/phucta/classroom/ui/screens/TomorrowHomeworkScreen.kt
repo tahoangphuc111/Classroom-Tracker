@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phucta.classroom.R
+import com.phucta.classroom.data.model.ClassroomDateUtils
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.domain.BaoBaiShareHelper
 import com.phucta.classroom.ui.components.AssignmentCard
@@ -293,7 +294,21 @@ fun TomorrowHomeworkScreen(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(color = Color.White),
                                     onClick = {
-                                        val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(tomorrowItems)
+                                        val targetDayLabel = when {
+                                            hasTomorrowTasks -> "NGÀY MAI"
+                                            hasTodayTasks -> "HÔM NAY"
+                                            else -> "SẮP TỚI"
+                                        }
+                                        val dateEpoch = when {
+                                            hasTomorrowTasks -> ClassroomDateUtils.startOfTomorrow
+                                            hasTodayTasks -> ClassroomDateUtils.startOfToday
+                                            else -> tomorrowItems.firstOrNull { it.dueEpochMillis != null }?.dueEpochMillis ?: ClassroomDateUtils.startOfTomorrow
+                                        }
+                                        val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(
+                                            items = tomorrowItems,
+                                            dateEpochMillis = dateEpoch,
+                                            targetDayLabel = targetDayLabel
+                                        )
                                         BaoBaiShareHelper.copyToClipboard(context, baoBaiText)
                                         Toast.makeText(context, "Đã sao chép báo bài!", Toast.LENGTH_SHORT).show()
                                     }
@@ -329,8 +344,27 @@ fun TomorrowHomeworkScreen(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(color = Color.White),
                                     onClick = {
-                                        val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(tomorrowItems)
-                                        val shareIntent = BaoBaiShareHelper.createShareIntent(baoBaiText, "Báo bài ngày mai")
+                                        val targetDayLabel = when {
+                                            hasTomorrowTasks -> "NGÀY MAI"
+                                            hasTodayTasks -> "HÔM NAY"
+                                            else -> "SẮP TỚI"
+                                        }
+                                        val shareTitle = when {
+                                            hasTomorrowTasks -> "Báo bài ngày mai"
+                                            hasTodayTasks -> "Báo bài hôm nay"
+                                            else -> "Báo bài sắp tới"
+                                        }
+                                        val dateEpoch = when {
+                                            hasTomorrowTasks -> ClassroomDateUtils.startOfTomorrow
+                                            hasTodayTasks -> ClassroomDateUtils.startOfToday
+                                            else -> tomorrowItems.firstOrNull { it.dueEpochMillis != null }?.dueEpochMillis ?: ClassroomDateUtils.startOfTomorrow
+                                        }
+                                        val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(
+                                            items = tomorrowItems,
+                                            dateEpochMillis = dateEpoch,
+                                            targetDayLabel = targetDayLabel
+                                        )
+                                        val shareIntent = BaoBaiShareHelper.createShareIntent(baoBaiText, shareTitle)
                                         val chooser = Intent.createChooser(shareIntent, "Chia sẻ báo bài qua")
                                         context.startActivity(chooser)
                                     }

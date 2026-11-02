@@ -38,6 +38,7 @@
 		2736130891BCB099470BAD25 /* CourseSelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F79A1C14FBCF2E5F061B8 /* CourseSelectionRow.swift */; };
 		2DD93070A44A2BADA23319EE /* empty_state_all_caught_up.png in Resources */ = {isa = PBXBuildFile; fileRef = C5154DC9BE53EB1D8066B230 /* empty_state_all_caught_up.png */; };
 		30D09F2015D9A5E912960AFD /* empty_gray.png in Resources */ = {isa = PBXBuildFile; fileRef = 6A24D37C1B8544FD08D7EEEF /* empty_gray.png */; };
+		31210A665DA2CE481AE12D07 /* PlatformUICompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF386037AC3117B38590B24 /* PlatformUICompat.swift */; };
 		32A9D6AB8CD67C5930DFA090 /* ember_celebrating.svg in Resources */ = {isa = PBXBuildFile; fileRef = 7DE543871FC2F140693C327E /* ember_celebrating.svg */; };
 		3501C0CC7F4105BA6F589923 /* ClassroomWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 268C4F8AF62E9B98477FE3D7 /* ClassroomWidgetBundle.swift */; };
 		3ED1A76AC56D493110556312 /* empty_gray.png in Resources */ = {isa = PBXBuildFile; fileRef = 6A24D37C1B8544FD08D7EEEF /* empty_gray.png */; };
@@ -111,6 +112,7 @@
 		C6E731B59470CBAE352E89E9 /* hero_gray.png in Resources */ = {isa = PBXBuildFile; fileRef = 465C485ADE179EE967BB7843 /* hero_gray.png */; };
 		C768A49C57F6329018704CFD /* Outfit.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2B5B470280F43B64B25B5B3B /* Outfit.ttf */; };
 		C8A7644A05A0EC9B89276B58 /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
+		C97F83B9986E0EC73DC666E4 /* PlatformUICompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF386037AC3117B38590B24 /* PlatformUICompat.swift */; };
 		CD98A7F27D77B3B825A6EF9F /* BeVietnamPro-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */; };
 		CDE9B0D0654FD9B94E4D9295 /* EveningReminderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74DF3B3C4B88510916B56233 /* EveningReminderService.swift */; };
 		CFFD98A3CE699E345D3F36BF /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
@@ -686,6 +688,7 @@
 				843474698FC0949AC025D89A /* LargeWidgetView.swift in Sources */,
 				4C3044602C711FE33D56936C /* MediumWidgetView.swift in Sources */,
 				25499A6E32C4A03F9C07936E /* PersonalNote.swift in Sources */,
+				C97F83B9986E0EC73DC666E4 /* PlatformUICompat.swift in Sources */,
 				81716866BE0A0FDEBF6D6B2C /* SmallWidgetView.swift in Sources */,
 				8FE49AF4C480914FF41344F4 /* WidgetSharedViews.swift in Sources */,
 				01D07892F24E0E6560C4CFCE /* WidgetVectorArt.swift in Sources */,
@@ -739,6 +742,7 @@
 				B0D3E9BC239FC8AE303DB424 /* LargeWidgetView.swift in Sources */,
 				5B00F034FE2B8F6DBBD0413E /* MediumWidgetView.swift in Sources */,
 				931457AFB0AB6F7F8E244578 /* PersonalNote.swift in Sources */,
+				31210A665DA2CE481AE12D07 /* PlatformUICompat.swift in Sources */,
 				4B5EC507E4557E97831FB0F1 /* SmallWidgetView.swift in Sources */,
 				7BED0A874936FBF7E89B66A7 /* WidgetSharedViews.swift in Sources */,
 				5C4423BBF792AD9417E76A07 /* WidgetVectorArt.swift in Sources */,

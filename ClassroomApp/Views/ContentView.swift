@@ -384,7 +384,7 @@ public struct ContentView: View {
         var noDates: [Coursework] = []
         var comp: [Coursework] = []
 
-        let calendar = Calendar.current
+        let calendar = ClassroomDateFormatters.gregorianCalendar
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
@@ -658,7 +658,7 @@ public struct ContentView: View {
                 noDueDates: targetCategory == .allUpcoming ? buckets.noDueDate : []
             )
         } else {
-            let calendar = Calendar.current
+            let calendar = ClassroomDateFormatters.gregorianCalendar
             let now = Date()
             let startOfToday = calendar.startOfDay(for: now)
             guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
@@ -2653,8 +2653,9 @@ public struct ContentView: View {
         let items = buckets.tomorrow
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "vi_VN")
+        formatter.calendar = ClassroomDateFormatters.gregorianCalendar
         formatter.dateFormat = "EEEE, 'ngày' dd/MM"
-        let dateStr = formatter.string(from: Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date())
+        let dateStr = formatter.string(from: ClassroomDateFormatters.gregorianCalendar.date(byAdding: .day, value: 1, to: Date()) ?? Date())
 
         if items.isEmpty {
             return """

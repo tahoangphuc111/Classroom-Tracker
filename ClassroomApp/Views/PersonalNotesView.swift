@@ -448,7 +448,7 @@ public struct PersonalNotesView: View {
     private var quickTodoExpandButton: some View {
         Button {
             let due: Date?
-            let cal = Calendar.current
+            let cal = ClassroomDateFormatters.gregorianCalendar
             switch quickTodoDue {
             case .none:
                 due = nil
@@ -571,7 +571,7 @@ public struct PersonalNotesView: View {
 
         PlatformHaptics.trigger()
 
-        let cal = Calendar.current
+        let cal = ClassroomDateFormatters.gregorianCalendar
         let computedDue: Date?
         switch quickTodoDue {
         case .none:
@@ -1042,7 +1042,7 @@ private struct PersonalNoteRowCard: View, Equatable {
 
     @ViewBuilder
     private func dueDateBadge(for date: Date) -> some View {
-        let calendar = Calendar.current
+        let calendar = ClassroomDateFormatters.gregorianCalendar
         if calendar.isDateInTomorrow(date) {
             Text("Ngày mai")
                 .font(.system(size: 11, weight: .bold))
@@ -1131,9 +1131,9 @@ public struct CreateOrEditNoteSheet: View {
 
         let effectiveDue = existingNote?.dueDate ?? initialDueDate
         if let due = effectiveDue {
-            let cal = Calendar.current
+            let cal = ClassroomDateFormatters.gregorianCalendar
             let comps = cal.dateComponents([.hour, .minute, .second], from: due)
-            let isEndOfDay = (comps.hour == 23 && comps.minute == 59) || (comps.hour == 0 && comps.minute == 0 && comps.second == 0)
+            let isEndOfDay = (comps.hour == 23 && (comps.minute ?? 0) >= 55) || (comps.hour == 0 && (comps.minute ?? 0) == 0 && (comps.second ?? 0) == 0)
             if isEndOfDay && cal.isDateInToday(due) {
                 _selectedDueDateMode = State(initialValue: .today)
                 _customDueDate = State(initialValue: due)
@@ -1342,9 +1342,9 @@ public struct CreateOrEditNoteSheet: View {
                     checklist = existing.checklist
                     selectedCourseId = existing.courseId ?? ""
                     if let due = existing.dueDate {
-                        let cal = Calendar.current
+                        let cal = ClassroomDateFormatters.gregorianCalendar
                         let comps = cal.dateComponents([.hour, .minute, .second], from: due)
-                        let isEndOfDay = (comps.hour == 23 && comps.minute == 59) || (comps.hour == 0 && comps.minute == 0 && comps.second == 0)
+                        let isEndOfDay = (comps.hour == 23 && (comps.minute ?? 0) >= 55) || (comps.hour == 0 && (comps.minute ?? 0) == 0 && (comps.second ?? 0) == 0)
                         if isEndOfDay && cal.isDateInToday(due) {
                             selectedDueDateMode = .today
                             customDueDate = due
@@ -1397,7 +1397,7 @@ public struct CreateOrEditNoteSheet: View {
         }
         finalChecklist = finalChecklist.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
 
-        let cal = Calendar.current
+        let cal = ClassroomDateFormatters.gregorianCalendar
         let computedDueDate: Date?
         switch selectedDueDateMode {
         case .none:

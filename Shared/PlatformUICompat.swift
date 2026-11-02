@@ -82,6 +82,61 @@ public extension Color {
     }
 }
 
+public enum AppleOSDetector {
+    public static var isAppleOS: Bool {
+        #if os(macOS) || os(iOS)
+        return true
+        #else
+        return false
+        #endif
+    }
+
+    public static var supportsLiquidGlass: Bool {
+        #if os(macOS) || os(iOS)
+        if #available(iOS 26.0, macOS 27.0, *) {
+            return true
+        } else {
+            return false
+        }
+        #else
+        return false
+        #endif
+    }
+
+    public static var isAppleOS27OrNewer: Bool {
+        #if os(macOS) || os(iOS)
+        if #available(iOS 27.0, macOS 27.0, *) {
+            return true
+        } else {
+            return false
+        }
+        #else
+        return false
+        #endif
+    }
+
+    public static var currentOSDescription: String {
+        let version = ProcessInfo.processInfo.operatingSystemVersion
+        #if os(macOS)
+        return "macOS \(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
+        #elseif os(iOS)
+        return "iOS \(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
+        #else
+        return "Non-Apple OS"
+        #endif
+    }
+
+    public static var designEngineStatus: String {
+        if supportsLiquidGlass {
+            return "Apple Liquid Glass SDK"
+        } else if isAppleOS {
+            return "Apple OS Material Fallback"
+        } else {
+            return "Standard Daylight Palette"
+        }
+    }
+}
+
 public enum PlatformClipboard {
     public static func copy(_ text: String) {
         #if os(macOS)

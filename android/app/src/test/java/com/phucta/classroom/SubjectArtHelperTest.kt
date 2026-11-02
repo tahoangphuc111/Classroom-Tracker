@@ -67,14 +67,40 @@ class SubjectArtHelperTest {
         val theme1 = SubjectArtHelper.theme("Kỹ năng mềm")
         assertEquals("KỸ ", theme1.badgeCode)
 
+        val theme1Trimmed = SubjectArtHelper.theme("  Kỹ năng mềm  ")
+        assertEquals("KỸ ", theme1Trimmed.badgeCode)
+
         val theme2 = SubjectArtHelper.theme("", "Khảo sát đầu năm")
         assertEquals("KHẢ", theme2.badgeCode)
 
         val theme3 = SubjectArtHelper.theme("", "")
         assertEquals("MÔN", theme3.badgeCode)
 
+        val theme3Whitespace = SubjectArtHelper.theme("   ", "   ")
+        assertEquals("MÔN", theme3Whitespace.badgeCode)
+
         val theme4 = SubjectArtHelper.theme("AI", "")
         assertEquals("AI", theme4.badgeCode)
+
+        val theme4Padded = SubjectArtHelper.theme("  AI  ", "")
+        assertEquals("AI", theme4Padded.badgeCode)
+
+        // Course < 3 chars fallback to title >= 3 chars
+        val themeCourseShortTitleLong = SubjectArtHelper.badgeCode(SubjectCategory.OTHER, "A", "Khảo sát đầu năm")
+        assertEquals("KHẢ", themeCourseShortTitleLong)
+
+        // Course < 3 chars and title < 3 chars uses course
+        val themeBothShort = SubjectArtHelper.badgeCode(SubjectCategory.OTHER, "A", "B")
+        assertEquals("A", themeBothShort)
+
+        // Empty course and title < 3 chars uses title
+        val themeTitleShort = SubjectArtHelper.badgeCode(SubjectCategory.OTHER, "", "ML")
+        assertEquals("ML", themeTitleShort)
+
+        // Convenience overload matches Swift parity
+        assertEquals("TOÁ", SubjectArtHelper.badgeCode("Toán 12"))
+        assertEquals("LÝ", SubjectArtHelper.badgeCode("Vật lý 10"))
+        assertEquals("KỸ ", SubjectArtHelper.badgeCode("Kỹ năng mềm"))
     }
 
     @Test

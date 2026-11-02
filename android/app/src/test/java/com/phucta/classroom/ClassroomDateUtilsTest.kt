@@ -6,11 +6,16 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Calendar
+import java.util.Locale
+import java.util.TimeZone
 
 class ClassroomDateUtilsTest {
+    private fun gregorianCalendar(timeZone: TimeZone = TimeZone.getDefault()): Calendar =
+        Calendar.getInstance(timeZone, Locale.US)
+
     @Test
     fun testEndOfDayFormatting() {
-        val cal = Calendar.getInstance().apply {
+        val cal = gregorianCalendar().apply {
             set(Calendar.HOUR_OF_DAY, 23)
             set(Calendar.MINUTE, 57)
         }
@@ -38,7 +43,7 @@ class ClassroomDateUtilsTest {
         )
         assertNotNull(epoch)
 
-        val cal = Calendar.getInstance().apply { timeInMillis = epoch!! }
+        val cal = gregorianCalendar().apply { timeInMillis = epoch!! }
         assertEquals(2026, cal.get(Calendar.YEAR))
         assertEquals(9, cal.get(Calendar.MONTH))
         assertEquals(15, cal.get(Calendar.DAY_OF_MONTH))
@@ -60,7 +65,7 @@ class ClassroomDateUtilsTest {
         )
         assertNotNull(epoch)
 
-        val calUtc = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply { timeInMillis = epoch!! }
+        val calUtc = gregorianCalendar(TimeZone.getTimeZone("UTC")).apply { timeInMillis = epoch!! }
         assertEquals(2026, calUtc.get(Calendar.YEAR))
         assertEquals(9, calUtc.get(Calendar.MONTH))
         assertEquals(15, calUtc.get(Calendar.DAY_OF_MONTH))
@@ -73,10 +78,10 @@ class ClassroomDateUtilsTest {
         assertEquals("Không hạn", ClassroomDateUtils.compactDueString(null, isCompleted = false))
         assertEquals("Đã nộp", ClassroomDateUtils.compactDueString(System.currentTimeMillis(), isCompleted = true))
 
-        val calOverdue = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -2) }
+        val calOverdue = gregorianCalendar().apply { add(Calendar.DAY_OF_YEAR, -2) }
         assertEquals("Quá hạn", ClassroomDateUtils.compactDueString(calOverdue.timeInMillis, isCompleted = false))
 
-        val calTodayEndOfDay = Calendar.getInstance().apply {
+        val calTodayEndOfDay = gregorianCalendar().apply {
             set(Calendar.HOUR_OF_DAY, 23)
             set(Calendar.MINUTE, 59)
             set(Calendar.SECOND, 59)
@@ -84,14 +89,14 @@ class ClassroomDateUtilsTest {
         }
         assertEquals("Cuối ngày", ClassroomDateUtils.compactDueString(calTodayEndOfDay.timeInMillis, isCompleted = false))
 
-        val calToday2355 = Calendar.getInstance().apply {
+        val calToday2355 = gregorianCalendar().apply {
             set(Calendar.HOUR_OF_DAY, 23)
             set(Calendar.MINUTE, 55)
             set(Calendar.SECOND, 0)
         }
         assertEquals("Cuối ngày", ClassroomDateUtils.compactDueString(calToday2355.timeInMillis, isCompleted = false))
 
-        val calTomorrowEndOfDay = Calendar.getInstance().apply {
+        val calTomorrowEndOfDay = gregorianCalendar().apply {
             add(Calendar.DAY_OF_YEAR, 1)
             set(Calendar.HOUR_OF_DAY, 23)
             set(Calendar.MINUTE, 59)
@@ -100,7 +105,7 @@ class ClassroomDateUtilsTest {
         }
         assertEquals("Mai", ClassroomDateUtils.compactDueString(calTomorrowEndOfDay.timeInMillis, isCompleted = false))
 
-        val calTomorrow2355 = Calendar.getInstance().apply {
+        val calTomorrow2355 = gregorianCalendar().apply {
             add(Calendar.DAY_OF_YEAR, 1)
             set(Calendar.HOUR_OF_DAY, 23)
             set(Calendar.MINUTE, 55)
@@ -108,7 +113,7 @@ class ClassroomDateUtilsTest {
         }
         assertEquals("Mai", ClassroomDateUtils.compactDueString(calTomorrow2355.timeInMillis, isCompleted = false))
 
-        val calToday1430 = Calendar.getInstance().apply {
+        val calToday1430 = gregorianCalendar().apply {
             set(Calendar.HOUR_OF_DAY, 14)
             set(Calendar.MINUTE, 30)
             set(Calendar.SECOND, 0)
@@ -118,10 +123,10 @@ class ClassroomDateUtilsTest {
             assertEquals("14:30", ClassroomDateUtils.compactDueString(calToday1430.timeInMillis, isCompleted = false))
         }
 
-        val calTodayOverdue = Calendar.getInstance().apply { add(Calendar.MINUTE, -15) }
+        val calTodayOverdue = gregorianCalendar().apply { add(Calendar.MINUTE, -15) }
         assertEquals("Quá hạn", ClassroomDateUtils.compactDueString(calTodayOverdue.timeInMillis, isCompleted = false))
 
-        val calTomorrow1430 = Calendar.getInstance().apply {
+        val calTomorrow1430 = gregorianCalendar().apply {
             add(Calendar.DAY_OF_YEAR, 1)
             set(Calendar.HOUR_OF_DAY, 14)
             set(Calendar.MINUTE, 30)
@@ -132,14 +137,14 @@ class ClassroomDateUtilsTest {
 
     @Test
     fun testCountdownBadge_Completed() {
-        val cal = Calendar.getInstance().apply { add(Calendar.HOUR_OF_DAY, 2) }
+        val cal = gregorianCalendar().apply { add(Calendar.HOUR_OF_DAY, 2) }
         val badge = ClassroomDateUtils.countdownBadgeString(cal.timeInMillis, isCompleted = true)
         assertEquals("Đã hoàn thành", badge)
     }
 
     @Test
     fun testCountdownBadge_Overdue() {
-        val cal = Calendar.getInstance().apply { add(Calendar.HOUR_OF_DAY, -2) }
+        val cal = gregorianCalendar().apply { add(Calendar.HOUR_OF_DAY, -2) }
         val badge = ClassroomDateUtils.countdownBadgeString(cal.timeInMillis, isCompleted = false)
         assertTrue(badge.startsWith("Quá hạn"))
     }
@@ -155,7 +160,7 @@ class ClassroomDateUtilsTest {
             seconds = null
         )
         assertNotNull(epoch)
-        val cal = Calendar.getInstance().apply { timeInMillis = epoch!! }
+        val cal = gregorianCalendar().apply { timeInMillis = epoch!! }
         assertEquals(2024, cal.get(Calendar.YEAR))
         assertEquals(Calendar.FEBRUARY, cal.get(Calendar.MONTH))
         assertEquals(29, cal.get(Calendar.DAY_OF_MONTH))
@@ -176,7 +181,7 @@ class ClassroomDateUtilsTest {
             seconds = null
         )
         assertNotNull(epoch)
-        val cal = Calendar.getInstance().apply { timeInMillis = epoch!! }
+        val cal = gregorianCalendar().apply { timeInMillis = epoch!! }
         assertEquals(2026, cal.get(Calendar.YEAR))
         assertEquals(Calendar.DECEMBER, cal.get(Calendar.MONTH))
         assertEquals(31, cal.get(Calendar.DAY_OF_MONTH))
@@ -188,7 +193,7 @@ class ClassroomDateUtilsTest {
 
     @Test
     fun testMidnightBoundaryTransitions() {
-        val calTodayEndOfDay = Calendar.getInstance().apply {
+        val calTodayEndOfDay = gregorianCalendar().apply {
             set(Calendar.HOUR_OF_DAY, 23)
             set(Calendar.MINUTE, 59)
             set(Calendar.SECOND, 59)
@@ -197,7 +202,7 @@ class ClassroomDateUtilsTest {
         assertTrue("23:59:59.999 today should be due today", ClassroomDateUtils.isDueToday(calTodayEndOfDay.timeInMillis))
         org.junit.Assert.assertFalse("23:59:59.999 today should not be due tomorrow", ClassroomDateUtils.isDueTomorrow(calTodayEndOfDay.timeInMillis))
 
-        val calTomorrowStartOfDay = Calendar.getInstance().apply {
+        val calTomorrowStartOfDay = gregorianCalendar().apply {
             add(Calendar.DAY_OF_YEAR, 1)
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
@@ -326,7 +331,7 @@ class ClassroomDateUtilsTest {
 
     @Test
     fun testEndOfDayBoundary_2355_Threshold() {
-        val cal = Calendar.getInstance()
+        val cal = gregorianCalendar()
 
         cal.set(Calendar.HOUR_OF_DAY, 23)
         cal.set(Calendar.MINUTE, 54)
