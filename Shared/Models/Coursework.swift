@@ -197,14 +197,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         let time = timeOnlyString
         let isEndOfDay = (time == "Cuối ngày")
 
-        if isOverdue {
-            if isDueToday {
-                return isEndOfDay ? "Quá hạn (hôm nay)" : "Quá hạn (\(time))"
-            } else {
-                let dayStr = ClassroomDateFormatters.shortDate.string(from: dueDate)
-                return "Quá hạn (\(dayStr))"
-            }
-        } else if isDueToday {
+        if isDueToday {
             return isEndOfDay ? "Hết hôm nay" : "Hôm nay, \(time)"
         } else if isDueTomorrow {
             return isEndOfDay ? "Hết ngày mai" : "Ngày mai, \(time)"
@@ -225,9 +218,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         let time = timeOnlyString
         let isEndOfDay = (time == "Cuối ngày")
 
-        if dueDate.timeIntervalSinceReferenceDate < Date.timeIntervalSinceReferenceDate {
-            return "Quá hạn"
-        } else if isDueToday {
+        if isDueToday {
             return isEndOfDay ? "Cuối ngày" : time
         } else if isDueTomorrow {
             return isEndOfDay ? "Mai" : "Mai \(time)"
@@ -423,13 +414,16 @@ public extension String {
     }
 }
 
-public extension Coursework {
-    func searchRelevanceScore(for tokens: [String], rawNormalizedQuery: String) -> Int {
+public enum VietnameseSearchScorer {
+    public static func calculateScore(
+        tokens: [String],
+        rawNormalizedQuery: String,
+        normTitle: String,
+        normCourse: String,
+        normContentOrDesc: String,
+        checklistTitles: [String] = []
+    ) -> Int {
         guard !tokens.isEmpty else { return 0 }
-        let normTitle = self.normalizedTitle
-        let normCourse = self.normalizedCourseName
-        let normDesc = self.normalizedDescription
-
         var score = 0
         let rawQueryLen = rawNormalizedQuery.utf8.count
         var titleMatchRange: Range<String.Index>? = nil
@@ -481,8 +475,16 @@ public extension Coursework {
             if courseMatched {
                 score += 15
             }
-            if !normDesc.isEmpty && normDesc.utf8.count >= rawQueryLen && normDesc.range(of: token, options: .literal) != nil {
+            if !normContentOrDesc.isEmpty && normContentOrDesc.utf8.count >= rawQueryLen && normContentOrDesc.range(of: token, options: .literal) != nil {
                 score += 5
+            }
+            if !checklistTitles.isEmpty {
+                for rawTitle in checklistTitles {
+                    let normItem = rawTitle.normalizedForVietnameseSearch()
+                    if normItem.utf8.count >= rawQueryLen && normItem.range(of: token, options: .literal) != nil {
+                        score += 5
+                    }
+                }
             }
             return score
         }
@@ -511,11 +513,44 @@ public extension Coursework {
             if normCourse.utf8.count >= tokenLen && normCourse.range(of: token, options: .literal) != nil {
                 score += 15
             }
-            if !normDesc.isEmpty && normDesc.utf8.count >= tokenLen && normDesc.range(of: token, options: .literal) != nil {
+            if !normContentOrDesc.isEmpty && normContentOrDesc.utf8.count >= tokenLen && normContentOrDesc.range(of: token, options: .literal) != nil {
                 score += 5
             }
         }
+
+        if !checklistTitles.isEmpty {
+            for rawTitle in checklistTitles {
+                let normItem = rawTitle.normalizedForVietnameseSearch()
+                let normItemLen = normItem.utf8.count
+                if rawQueryLen > 0 && normItemLen >= rawQueryLen {
+                    if normItem == rawNormalizedQuery {
+                        score += 60
+                    } else if normItem.range(of: rawNormalizedQuery, options: .literal) != nil {
+                        score += 30
+                    }
+                }
+                for token in tokens {
+                    let tokenLen = token.utf8.count
+                    if tokenLen > 0 && normItemLen >= tokenLen && normItem.range(of: token, options: .literal) != nil {
+                        score += 8
+                    }
+                }
+            }
+        }
+
         return score
+    }
+}
+
+public extension Coursework {
+    func searchRelevanceScore(for tokens: [String], rawNormalizedQuery: String) -> Int {
+        VietnameseSearchScorer.calculateScore(
+            tokens: tokens,
+            rawNormalizedQuery: rawNormalizedQuery,
+            normTitle: normalizedTitle,
+            normCourse: normalizedCourseName,
+            normContentOrDesc: normalizedDescription
+        )
     }
 }
 

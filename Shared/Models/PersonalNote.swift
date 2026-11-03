@@ -155,124 +155,13 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
     }
 
     public func searchRelevanceScore(for tokens: [String], rawNormalizedQuery: String) -> Int {
-        guard !tokens.isEmpty else { return 0 }
-        let normTitle = self.normalizedTitle
-        let normCourse = self.normalizedCourseName
-        let normContent = self.normalizedContent
-
-        var score = 0
-        let rawQueryLen = rawNormalizedQuery.utf8.count
-        var titleMatchRange: Range<String.Index>? = nil
-        var courseMatched = false
-        if rawQueryLen > 0 {
-            if normTitle == rawNormalizedQuery {
-                score += 200
-                titleMatchRange = normTitle.startIndex..<normTitle.endIndex
-            } else if normTitle.hasPrefix(rawNormalizedQuery) {
-                score += 120
-                titleMatchRange = normTitle.startIndex..<normTitle.index(normTitle.startIndex, offsetBy: rawQueryLen)
-            } else if normTitle.utf8.count >= rawQueryLen, let r = normTitle.range(of: rawNormalizedQuery, options: .literal) {
-                score += 80
-                titleMatchRange = r
-            }
-
-            if normCourse == rawNormalizedQuery {
-                score += 100
-                courseMatched = true
-            } else if normCourse.hasPrefix(rawNormalizedQuery) {
-                score += 60
-                courseMatched = true
-            } else if normCourse.utf8.count >= rawQueryLen && normCourse.range(of: rawNormalizedQuery, options: .literal) != nil {
-                score += 40
-                courseMatched = true
-            }
-        }
-
-        if tokens.count == 1 && rawQueryLen > 0 && tokens[0] == rawNormalizedQuery {
-            let token = rawNormalizedQuery
-            if let matchRange = titleMatchRange {
-                score += 30
-                var isWordBoundary = (matchRange.lowerBound == normTitle.startIndex) ||
-                    (normTitle[normTitle.index(before: matchRange.lowerBound)] == " ")
-                if !isWordBoundary {
-                    var searchRange = matchRange.upperBound..<normTitle.endIndex
-                    while let nextRange = normTitle.range(of: token, options: .literal, range: searchRange) {
-                        if normTitle[normTitle.index(before: nextRange.lowerBound)] == " " {
-                            isWordBoundary = true
-                            break
-                        }
-                        searchRange = nextRange.upperBound..<normTitle.endIndex
-                    }
-                }
-                if isWordBoundary {
-                    score += 15
-                }
-            }
-            if courseMatched {
-                score += 15
-            }
-            if !normContent.isEmpty && normContent.utf8.count >= rawQueryLen && normContent.range(of: token, options: .literal) != nil {
-                score += 5
-            }
-            if !checklist.isEmpty {
-                for item in checklist {
-                    let normItem = item.title.normalizedForVietnameseSearch()
-                    if normItem.utf8.count >= rawQueryLen && normItem.range(of: token, options: .literal) != nil {
-                        score += 5
-                    }
-                }
-            }
-            return score
-        }
-
-        for token in tokens {
-            let tokenLen = token.utf8.count
-            if tokenLen == 0 { continue }
-            if normTitle.utf8.count >= tokenLen, let matchRange = normTitle.range(of: token, options: .literal) {
-                score += 30
-                var isWordBoundary = (matchRange.lowerBound == normTitle.startIndex) ||
-                    (normTitle[normTitle.index(before: matchRange.lowerBound)] == " ")
-                if !isWordBoundary {
-                    var searchRange = matchRange.upperBound..<normTitle.endIndex
-                    while let nextRange = normTitle.range(of: token, options: .literal, range: searchRange) {
-                        if normTitle[normTitle.index(before: nextRange.lowerBound)] == " " {
-                            isWordBoundary = true
-                            break
-                        }
-                        searchRange = nextRange.upperBound..<normTitle.endIndex
-                    }
-                }
-                if isWordBoundary {
-                    score += 15
-                }
-            }
-            if normCourse.utf8.count >= tokenLen && normCourse.range(of: token, options: .literal) != nil {
-                score += 15
-            }
-            if !normContent.isEmpty && normContent.utf8.count >= tokenLen && normContent.range(of: token, options: .literal) != nil {
-                score += 5
-            }
-        }
-
-        if !checklist.isEmpty {
-            for item in checklist {
-                let normItem = item.title.normalizedForVietnameseSearch()
-                let normItemLen = normItem.utf8.count
-                if rawQueryLen > 0 && normItemLen >= rawQueryLen {
-                    if normItem == rawNormalizedQuery {
-                        score += 60
-                    } else if normItem.range(of: rawNormalizedQuery, options: .literal) != nil {
-                        score += 30
-                    }
-                }
-                for token in tokens {
-                    let tokenLen = token.utf8.count
-                    if tokenLen > 0 && normItemLen >= tokenLen && normItem.range(of: token, options: .literal) != nil {
-                        score += 8
-                    }
-                }
-            }
-        }
-        return score
+        VietnameseSearchScorer.calculateScore(
+            tokens: tokens,
+            rawNormalizedQuery: rawNormalizedQuery,
+            normTitle: normalizedTitle,
+            normCourse: normalizedCourseName,
+            normContentOrDesc: normalizedContent,
+            checklistTitles: checklist.map(\.title)
+        )
     }
 }

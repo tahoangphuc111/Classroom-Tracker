@@ -1101,14 +1101,7 @@ public struct CreateOrEditNoteSheet: View {
     @State private var selectedDueDateMode: DueDateMode
     @State private var customDueDate: Date
 
-    public enum DueDateMode: String, CaseIterable, Identifiable {
-        case none = "Không đặt hạn"
-        case today = "Hôm nay"
-        case tomorrow = "Ngày mai"
-        case custom = "Chọn ngày"
-
-        public var id: String { rawValue }
-    }
+    public typealias DueDateMode = PersonalNotesView.DueDateMode
 
     public init(
         existingNote: PersonalNote?,

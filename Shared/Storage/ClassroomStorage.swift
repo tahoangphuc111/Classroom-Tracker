@@ -861,8 +861,16 @@ public final class ClassroomStorage: @unchecked Sendable {
 
         if includeNotes {
             let tomorrowNotes = getTomorrowPersonalNotes(includeCompleted: includeCompleted)
+            let courseList = courses ?? loadCourses()
+            let activeCourseIds = Set(courseList.filter(\.isSelectedForWidget).map(\.id))
+            let allCourseIds = Set(courseList.map(\.id))
+            let isFilterActive = !activeCourseIds.isEmpty && activeCourseIds.count < allCourseIds.count
+
             for note in tomorrowNotes {
                 if note.courseworkId == nil {
+                    if isFilterActive, let cid = note.courseId, allCourseIds.contains(cid), !activeCourseIds.contains(cid) {
+                        continue
+                    }
                     let noteCoursework = Coursework(
                         id: "note_\(note.id)",
                         courseId: note.courseId ?? "personal_note",

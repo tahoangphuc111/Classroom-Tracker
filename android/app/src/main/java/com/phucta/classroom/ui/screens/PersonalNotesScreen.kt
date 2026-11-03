@@ -1,5 +1,8 @@
 package com.phucta.classroom.ui.screens
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -944,6 +947,12 @@ private fun PersonalNoteCard(
     }
 }
 
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
 @Composable
 private fun CreateOrEditNoteDialog(
     existingNote: PersonalNote?,
@@ -1192,28 +1201,35 @@ private fun CreateOrEditNoteDialog(
                         FilterChip(
                             selected = dueDateMode == 3,
                             onClick = {
+                                val targetContext = context.findActivity() ?: context
                                 val currentCal = com.phucta.classroom.data.model.ClassroomDateUtils.createLocalCalendar(
                                     customDueDateEpoch ?: (System.currentTimeMillis() + 86400000L * 2)
                                 )
-                                android.app.DatePickerDialog(
-                                    context,
-                                    { _, year, month, dayOfMonth ->
-                                        val pickedCal = com.phucta.classroom.data.model.ClassroomDateUtils.createLocalCalendar().apply {
-                                            set(Calendar.YEAR, year)
-                                            set(Calendar.MONTH, month)
-                                            set(Calendar.DAY_OF_MONTH, dayOfMonth)
-                                            set(Calendar.HOUR_OF_DAY, 23)
-                                            set(Calendar.MINUTE, 59)
-                                            set(Calendar.SECOND, 59)
-                                            set(Calendar.MILLISECOND, 999)
-                                        }
-                                        customDueDateEpoch = pickedCal.timeInMillis
-                                        dueDateMode = 3
-                                    },
-                                    currentCal.get(Calendar.YEAR),
-                                    currentCal.get(Calendar.MONTH),
-                                    currentCal.get(Calendar.DAY_OF_MONTH)
-                                ).show()
+                                val activity = targetContext as? Activity
+                                if (activity == null || (!activity.isFinishing && !activity.isDestroyed)) {
+                                    try {
+                                        android.app.DatePickerDialog(
+                                            targetContext,
+                                            { _, year, month, dayOfMonth ->
+                                                val pickedCal = com.phucta.classroom.data.model.ClassroomDateUtils.createLocalCalendar().apply {
+                                                    set(Calendar.YEAR, year)
+                                                    set(Calendar.MONTH, month)
+                                                    set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                                                    set(Calendar.HOUR_OF_DAY, 23)
+                                                    set(Calendar.MINUTE, 59)
+                                                    set(Calendar.SECOND, 59)
+                                                    set(Calendar.MILLISECOND, 999)
+                                                }
+                                                customDueDateEpoch = pickedCal.timeInMillis
+                                                dueDateMode = 3
+                                            },
+                                            currentCal.get(Calendar.YEAR),
+                                            currentCal.get(Calendar.MONTH),
+                                            currentCal.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    } catch (_: Exception) {
+                                    }
+                                }
                             },
                             label = {
                                 Text(
@@ -1296,6 +1312,8 @@ private fun CreateOrEditNoteDialog(
                             else -> existingNote?.dueEpochMillis
                         }
                         val courseObj = courses.find { it.id == selectedCourseId }
+                        val resolvedCourseId = courseObj?.id ?: selectedCourseId.ifEmpty { null }
+                        val resolvedCourseName = courseObj?.name ?: if (existingNote?.courseId == resolvedCourseId) existingNote?.courseName else null
                         var finalChecklist = checklist
                         val pendingItem = newChecklistItemTitle.trim()
                         if (pendingItem.isNotEmpty()) {
@@ -1311,8 +1329,8 @@ private fun CreateOrEditNoteDialog(
                         val finalNote = PersonalNote(
                             id = if (isNewNote) java.util.UUID.randomUUID().toString() else existingNote.id,
                             courseworkId = if (isNewNote) null else existingNote.courseworkId,
-                            courseId = courseObj?.id,
-                            courseName = courseObj?.name,
+                            courseId = resolvedCourseId,
+                            courseName = resolvedCourseName,
                             title = trimmedTitle,
                             content = content.trim(),
                             checklist = finalChecklist,

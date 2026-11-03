@@ -836,7 +836,7 @@ public struct ContentView: View {
             if authService.isAuthenticated {
                 ClassroomStorage.shared.saveUserLoggedIn(true)
                 ClassroomStorage.shared.notifyWidgetReload()
-                Task {
+                Task { @MainActor in
                     await apiService.syncAll()
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
                         refreshData()
@@ -858,7 +858,7 @@ public struct ContentView: View {
             showSettingsModal = true
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TriggerSync"))) { _ in
-            Task {
+            Task { @MainActor in
                 triggerHapticFeedback()
                 await apiService.syncAll()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -871,6 +871,10 @@ public struct ContentView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 NotificationCenter.default.post(name: NSNotification.Name("OpenCreateNoteSheet"), object: nil)
             }
+        }
+        .onDisappear {
+            toastDismissTask?.cancel()
+            toastDismissTask = nil
         }
     }
 
@@ -1633,6 +1637,7 @@ public struct ContentView: View {
                                 let noteId = String(item.id.dropFirst(5))
                                 if let note = personalNotes.first(where: { $0.id == noteId }) {
                                     triggerHapticFeedback()
+                                    showMobileDetailSheet = false
                                     noteToEditFromReader = note
                                 }
                             } else {
@@ -1672,7 +1677,7 @@ public struct ContentView: View {
 
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    Task {
+                    Task { @MainActor in
                         triggerHapticFeedback()
                         await apiService.syncAll()
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -2118,6 +2123,7 @@ public struct ContentView: View {
         AssignmentListRow(
             item: item,
             isSelected: selectedCourseworkIds.contains(item.id),
+            isWide: isWide,
             hasNote: noteCourseworkIds.contains(item.id),
             onSelect: { cmdPressed in
                 handleItemTap(item, commandPressed: cmdPressed, isWide: isWide)
@@ -2127,6 +2133,7 @@ public struct ContentView: View {
             }
         )
         .equatable()
+        .id(item.id)
     }
 
     private func assignmentListPane(isWide: Bool = true, category: AppFilterCategory? = nil) -> some View {
@@ -2526,6 +2533,10 @@ public struct ContentView: View {
         let isAllDone = totalCount > 0 && incompleteCount == 0
         let progressFraction = totalCount > 0 ? Double(completedCount) / Double(totalCount) : 0.0
 
+        let hasTomorrowTasks = !buckets.tomorrowStrict.isEmpty
+        let hasTodayTasks = !buckets.today.isEmpty
+        let titleSuffix = hasTomorrowTasks ? "ngày mai" : (hasTodayTasks ? "hôm nay" : "sắp tới")
+
         let emotion: EmberEmotion = {
             if isAllDone { return .celebrating }
             if incompleteCount >= 3 { return .stressed }
@@ -2537,11 +2548,11 @@ public struct ContentView: View {
                 FloatingEmberView(emotion: emotion, size: 52)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(isAllDone ? "Xuất sắc! Đã xong hết" : "Báo bài ngày mai")
+                    Text(isAllDone ? "Xuất sắc! Đã xong hết" : "Báo bài \(titleSuffix)")
                         .font(.system(size: 15.5, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.white)
 
-                    Text(isAllDone ? "Đã hoàn thành toàn bộ bài tập ngày mai." : "Còn \(incompleteCount) bài tập cần nộp.")
+                    Text(isAllDone ? "Đã hoàn thành toàn bộ bài tập \(titleSuffix)." : "Còn \(incompleteCount) bài tập cần nộp.")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Color.white.opacity(0.92))
                         .lineLimit(1)
@@ -2651,17 +2662,35 @@ public struct ContentView: View {
 
     private var formattedBaoBaiShareText: String {
         let items = buckets.tomorrow
+        let hasTomorrowTasks = !buckets.tomorrowStrict.isEmpty
+        let hasTodayTasks = !buckets.today.isEmpty
+        let targetDayLabel = hasTomorrowTasks ? "NGÀY MAI" : (hasTodayTasks ? "HÔM NAY" : "SẮP TỚI")
+
+        let cal = ClassroomDateFormatters.gregorianCalendar
+        let targetDate: Date = {
+            if hasTomorrowTasks {
+                return cal.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+            } else if hasTodayTasks {
+                return Date()
+            } else {
+                return items.first?.dueDate ?? (cal.date(byAdding: .day, value: 1, to: Date()) ?? Date())
+            }
+        }()
+
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "vi_VN")
-        formatter.calendar = ClassroomDateFormatters.gregorianCalendar
+        formatter.calendar = cal
         formatter.dateFormat = "EEEE, 'ngày' dd/MM"
-        let dateStr = formatter.string(from: ClassroomDateFormatters.gregorianCalendar.date(byAdding: .day, value: 1, to: Date()) ?? Date())
+        var dateStr = formatter.string(from: targetDate)
+        if let firstChar = dateStr.first {
+            dateStr = firstChar.uppercased() + dateStr.dropFirst()
+        }
 
         if items.isEmpty {
             return """
-            BÁO BÀI NGÀY MAI (\(dateStr))
+            BÁO BÀI \(targetDayLabel) (\(dateStr))
 
-            Tuyệt vời! Ngày mai bạn không có bài tập nào cần làm.
+            Tuyệt vời! Bạn không có bài tập nào cần làm.
             Nghỉ ngơi thật tốt nhé!
 
             ---
@@ -2669,16 +2698,31 @@ public struct ContentView: View {
             """
         }
 
+        let totalCount = items.count
+        var completedCount = 0
         var lines = [
-            "BÁO BÀI NGÀY MAI (\(dateStr))\n"
+            "BÁO BÀI \(targetDayLabel) (\(dateStr))\n"
         ]
-        for item in items {
-            let statusTag = item.isCompleted ? "[Đã xong]" : "[Chưa xong]"
+        for (index, item) in items.enumerated() {
+            if item.isCompleted {
+                completedCount += 1
+            }
             let courseTag = !item.courseName.isEmpty ? "[\(item.courseName)]" : "[Chung]"
-            let dueStr = item.dueDate != nil ? "Hạn: \(item.timeOnlyString)" : "Không hạn"
-            lines.append("\(statusTag) \(courseTag) \(item.title) (\(dueStr))")
+            let dueStr: String
+            if item.dueDate != nil {
+                if item.isDueTomorrow {
+                    dueStr = "Hạn: \(item.timeOnlyString)"
+                } else {
+                    let shortDay = ClassroomDateFormatters.shortDate.string(from: item.dueDate!)
+                    dueStr = "Hạn: \(item.timeOnlyString) (\(shortDay))"
+                }
+            } else {
+                dueStr = "Không có hạn nộp"
+            }
+            let statusSuffix = item.isCompleted ? " (Đã xong)" : ""
+            lines.append("\(index + 1). \(courseTag) \(item.title) — \(dueStr)\(statusSuffix)")
         }
-        lines.append("\n---\nClassroom Tracker")
+        lines.append("\n---\nTiến độ: \(completedCount)/\(totalCount) bài hoàn thành\nClassroom Tracker")
         return lines.joined(separator: "\n")
     }
 
@@ -2733,6 +2777,7 @@ public struct ContentView: View {
             },
             onEditNote: { noteId in
                 if let note = personalNotes.first(where: { $0.id == noteId }) {
+                    showMobileDetailSheet = false
                     noteToEditFromReader = note
                 }
             },
@@ -2935,381 +2980,33 @@ public struct ContentView: View {
     }
 
     private var settingsSheetView: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    if authService.isAuthenticated {
-                        HStack(spacing: 12) {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 38))
-                                .foregroundStyle(Color.blue)
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(authService.currentUserName ?? "Tài khoản Google")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(.primary)
-
-                                Text(authService.currentUserEmail ?? "Không rõ")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-                        }
-                        .padding(.vertical, 4)
-
-                        Button {
-                            Task {
-                                triggerHapticFeedback()
-                                await apiService.syncAll()
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    refreshData()
-                                }
-                                if let error = apiService.syncErrorMessage {
-                                    showToast(
-                                        title: "Đồng bộ thất bại",
-                                        subtitle: error,
-                                        icon: "exclamationmark.triangle.fill",
-                                        tint: .red
-                                    )
-                                } else {
-                                    showToast(
-                                        title: "Đồng bộ hoàn tất!",
-                                        subtitle: "Đã cập nhật dữ liệu mới nhất từ Classroom",
-                                        icon: "checkmark.circle.fill",
-                                        tint: .green
-                                    )
-                                }
-                            }
-                        } label: {
-                            HStack {
-                                Image(systemName: "arrow.clockwise")
-                                Text(apiService.isSyncing ? "Đang đồng bộ..." : "Đồng bộ bài tập ngay")
-                            }
-                        }
-                        .disabled(apiService.isSyncing)
-
-                        Button("Đăng xuất", role: .destructive) {
-                            showLogoutConfirmation = true
-                        }
-                    } else {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Chưa kết nối tài khoản Google Classroom")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(.primary)
-
-                            Text("Đăng nhập để đồng bộ bài tập và hạn chót từ các lớp học của bạn.")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 4)
-
-                        Button {
-                            showSettingsModal = false
-                            startGoogleLogin()
-                        } label: {
-                            HStack {
-                                Image(systemName: "person.badge.key.fill")
-                                Text("Đăng nhập bằng Google")
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                } header: {
-                    Label("Tài khoản", systemImage: "person.crop.circle")
-                }
-
-                Section {
-                    Toggle("Nhắc nhở mỗi tối", isOn: Binding(
-                        get: { reminderService.isEnabled },
-                        set: { newValue in
-                            if newValue {
-                                Task {
-                                    let granted = await reminderService.requestAuthorization()
-                                    if granted {
-                                        reminderService.isEnabled = true
-                                    } else {
-                                        reminderService.isEnabled = false
-                                        showToast(
-                                            title: "Chưa cấp quyền thông báo",
-                                            subtitle: "Vui lòng bật quyền Thông báo trong Cài đặt hệ thống để nhận báo bài",
-                                            icon: "bell.slash",
-                                            tint: .orange
-                                        )
-                                    }
-                                }
-                            } else {
-                                reminderService.isEnabled = false
-                            }
-                        }
-                    ))
-                    .toggleStyle(.switch)
-
-                    if reminderService.isEnabled {
-                        DatePicker(
-                            "Giờ báo bài",
-                            selection: Binding(
-                                get: {
-                                    var c = Calendar.autoupdatingCurrent.dateComponents([.year, .month, .day], from: Date())
-                                    c.hour = reminderService.reminderHour
-                                    c.minute = reminderService.reminderMinute
-                                    return Calendar.autoupdatingCurrent.date(from: c) ?? Date()
-                                },
-                                set: { newDate in
-                                    let comps = Calendar.autoupdatingCurrent.dateComponents([.hour, .minute], from: newDate)
-                                    reminderService.setReminderTime(hour: comps.hour ?? 20, minute: comps.minute ?? 0)
-                                }
-                            ),
-                            displayedComponents: .hourAndMinute
-                        )
-
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Xem trước thông báo:")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                            Text(reminderService.previewNotificationText())
-                                .font(.system(size: 12.5))
-                                .foregroundStyle(.primary)
-                                .padding(9)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color.platformSubtleFill)
-                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        }
-                        .padding(.vertical, 2)
-                    }
-                } header: {
-                    Label("Báo bài buổi tối", systemImage: "moon.stars.fill")
-                } footer: {
-                    Text("Ứng dụng tự động thông báo tóm tắt các bài tập cần nộp vào ngày mai để bạn chuẩn bị tập vở và soạn cặp.")
-                }
-
-                Section {
-                    HStack {
-                        Text("Phiên bản hiện tại:")
-                        Spacer()
-                        Text("v\(updateService.currentVersion)")
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if !updateService.statusMessage.isEmpty {
-                        Text(updateService.statusMessage)
-                            .font(.caption2)
-                            .foregroundStyle(updateService.updateAvailable ? .blue : .secondary)
-                    }
-
-                    if updateService.updateAvailable {
-                        Button {
-                            Task {
-                                await updateService.downloadAndInstall()
-                            }
-                        } label: {
-                            HStack {
-                                if updateService.isDownloading {
-                                    ProgressView().controlSize(.small)
-                                    Text("Đang tải bản cập nhật...")
-                                } else {
-                                    Image(systemName: "arrow.down.circle.fill")
-                                    Text("Cập nhật lên v\(updateService.latestVersion) ngay")
-                                }
-                            }
-                        }
-                        .disabled(updateService.isDownloading)
-                    } else {
-                        Button {
-                            Task {
-                                await updateService.checkForUpdates(isUserInitiated: true)
-                            }
-                        } label: {
-                            HStack {
-                                if updateService.isChecking {
-                                    ProgressView().controlSize(.small)
-                                    Text("Đang kiểm tra...")
-                                } else {
-                                    Image(systemName: "arrow.clockwise")
-                                    Text("Kiểm tra bản cập nhật mới")
-                                }
-                            }
-                        }
-                        .disabled(updateService.isChecking)
-                    }
-                } header: {
-                    Label("Cập nhật ứng dụng", systemImage: "arrow.triangle.2.circlepath")
-                }
-
-                Section {
-                    DisclosureGroup(
-                        isExpanded: $isAdvancedSettingsExpanded,
-                        content: {
-                            VStack(alignment: .leading, spacing: 14) {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("Dữ liệu thử nghiệm")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(.primary)
-
-                                    Text("Dùng để kiểm tra giao diện và thẻ bài tập khi không có dữ liệu thật.")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-
-                                    Button("Nạp lại dữ liệu mẫu (Hôm nay & mai)") {
-                                        ClassroomStorage.shared.saveCourses(ClassroomStorage.mockCourses)
-                                        ClassroomStorage.shared.saveCoursework(ClassroomStorage.mockCoursework)
-                                        refreshData()
-                                        autoSelectFirstItem()
-                                        showToast(
-                                            title: "Đã nạp lại dữ liệu mẫu!",
-                                            subtitle: "Bao gồm các bài tập mẫu cho hôm nay & ngày mai",
-                                            icon: "sparkles",
-                                            tint: .purple
-                                        )
-                                    }
-                                    .font(.system(size: 12))
-                                }
-
-                                Divider()
-
-                                #if os(macOS)
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("GitHub Token (Tùy chọn)")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(.primary)
-
-                                    Text("Chỉ cần thiết nếu kiểm tra bản cập nhật từ kho lưu trữ GitHub riêng tư.")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-
-                                    TextField("GitHub Personal Access Token", text: Binding(
-                                        get: { updateService.githubToken },
-                                        set: { updateService.githubToken = $0 }
-                                    ))
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(size: 12, design: .monospaced))
-                                }
-
-                                Divider()
-                                #endif
-
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Cấu hình Google Client ID riêng")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(.primary)
-
-                                    Text("Ứng dụng đã có sẵn Google Client ID mặc định. Người dùng thông thường không cần chỉnh sửa phần này.")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Client ID:")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        TextField("Google Client ID", text: $clientIdInput)
-                                            .textFieldStyle(.roundedBorder)
-                                            .font(.system(size: 12, design: .monospaced))
-                                    }
-
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Client Secret (Tùy chọn):")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        SecureField("Google Client Secret", text: $clientSecretInput)
-                                            .textFieldStyle(.roundedBorder)
-                                            .font(.system(size: 12, design: .monospaced))
-                                    }
-
-                                    HStack {
-                                        Button("Khôi phục mặc định") {
-                                            clientIdInput = GoogleOAuthService.bundledClientId
-                                            clientSecretInput = GoogleOAuthService.bundledClientSecret
-                                            authService.configuredClientId = GoogleOAuthService.bundledClientId
-                                            authService.configuredClientSecret = GoogleOAuthService.bundledClientSecret
-                                            showToast(
-                                                title: "Đã khôi phục Client ID mặc định",
-                                                icon: "arrow.counterclockwise",
-                                                tint: .blue
-                                            )
-                                        }
-                                        .font(.system(size: 12))
-
-                                        Spacer()
-
-                                        Button("Lưu Client ID riêng") {
-                                            authService.configuredClientId = clientIdInput
-                                            authService.configuredClientSecret = clientSecretInput
-                                            showToast(
-                                                title: "Đã lưu cấu hình Client ID",
-                                                icon: "checkmark.circle.fill",
-                                                tint: .green
-                                            )
-                                        }
-                                        .font(.system(size: 12, weight: .semibold))
-                                    }
-                                    .padding(.top, 4)
-                                }
-                            }
-                            .padding(.vertical, 6)
-                        },
-                        label: {
-                            Label("Tùy chọn nâng cao", systemImage: "slider.horizontal.3")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                    )
-                } header: {
-                    Text("Dành cho nhà phát triển")
-                }
-
-                Section {
-                    HStack {
-                        Label("Hệ điều hành", systemImage: "apple.logo")
-                        Spacer()
-                        Text(AppleOSDetector.currentOSDescription)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    HStack {
-                        Label("Giao diện Liquid Glass", systemImage: "sparkles")
-                        Spacer()
-                        Text(AppleOSDetector.supportsLiquidGlass ? "Hoạt động" : "Tương thích")
-                            .foregroundStyle(AppleOSDetector.supportsLiquidGlass ? Color.green : Color.secondary)
-                    }
-                } header: {
-                    Text("Thiết bị & Hệ thống")
-                }
+        SettingsSheetView(
+            authService: authService,
+            apiService: apiService,
+            reminderService: reminderService,
+            updateService: updateService,
+            isPresented: $showSettingsModal,
+            showLogoutConfirmation: $showLogoutConfirmation,
+            isDemoMode: $isDemoMode,
+            clientIdInput: $clientIdInput,
+            clientSecretInput: $clientSecretInput,
+            isAdvancedSettingsExpanded: $isAdvancedSettingsExpanded,
+            onRefreshData: {
+                refreshData()
+            },
+            onAutoSelectFirstItem: {
+                autoSelectFirstItem()
+            },
+            onTriggerHaptic: {
+                triggerHapticFeedback()
+            },
+            onShowToast: { title, subtitle, icon, tint in
+                showToast(title: title, subtitle: subtitle, icon: icon, tint: tint)
+            },
+            onStartGoogleLogin: {
+                startGoogleLogin()
             }
-            .formStyle(.grouped)
-            .navigationTitle("Cài đặt")
-            .confirmationDialog(
-                "Đăng xuất khỏi Google?",
-                isPresented: $showLogoutConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Đăng xuất và xóa cache", role: .destructive) {
-                    authService.signOut()
-                    isDemoMode = false
-                    refreshData()
-                    autoSelectFirstItem()
-                    showSettingsModal = false
-                }
-                Button("Hủy", role: .cancel) {}
-            } message: {
-                Text("Bạn có chắc chắn muốn đăng xuất tài khoản Google? Dữ liệu bài tập offline trên thiết bị sẽ được xóa.")
-            }
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Xong") {
-                        showSettingsModal = false
-                    }
-                    .keyboardShortcut(.defaultAction)
-                    .keyboardShortcut(.cancelAction)
-                    .fontWeight(.semibold)
-                }
-            }
-            #if os(macOS)
-            .frame(minWidth: 460, minHeight: 400)
-            #elseif os(iOS)
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
-            #endif
-        }
+        )
     }
 
     private func triggerHapticFeedback() {
@@ -3336,7 +3033,7 @@ public struct ContentView: View {
             )
         }
 
-        toastDismissTask = Task {
+        toastDismissTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 3_500_000_000)
             if !Task.isCancelled {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -3438,7 +3135,9 @@ public struct ContentView: View {
     }
 
     private func updatePersonalNotesCache() {
-        self.noteCourseworkIds = Set(personalNotes.lazy.filter { !$0.content.isEmpty }.compactMap(\.courseworkId))
+        self.noteCourseworkIds = Set(personalNotes.lazy.filter {
+            !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !$0.checklist.isEmpty
+        }.compactMap(\.courseworkId))
         var pending = 0
         var total = 0
         for note in personalNotes where note.courseworkId == nil {
@@ -3459,7 +3158,9 @@ public struct ContentView: View {
         recomputeBuckets()
 
         if let current = selectedCoursework, currentFilteredList.contains(where: { $0.id == current.id }) {
-            if let updated = allCoursework.first(where: { $0.id == current.id }) {
+            if let updated = currentFilteredList.first(where: { $0.id == current.id }) {
+                self.selectedCoursework = updated
+            } else if let updated = allCoursework.first(where: { $0.id == current.id }) {
                 self.selectedCoursework = updated
             }
         } else {
@@ -3600,36 +3301,21 @@ public struct ContentView: View {
 
         withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
             recomputeBuckets()
-            if let current = selectedCoursework, ids.contains(current.id) {
-                if current.id.hasPrefix("note_") {
-                    let noteId = String(current.id.dropFirst(5))
-                    if let note = personalNotes.first(where: { $0.id == noteId }) {
-                        let updated = Coursework(
-                            id: "note_\(note.id)",
-                            courseId: note.courseId ?? "personal_note",
-                            courseName: note.courseName ?? "Ghi chú",
-                            title: note.title,
-                            description: note.content,
-                            dueDate: note.dueDate,
-                            status: note.isCompleted ? .turnedIn : .pending,
-                            isManuallyCompleted: note.isCompleted
-                        )
-                        selectedCoursework = updated
-                        selectedCourseworkIds = [updated.id]
-                    } else {
-                        selectedCoursework = nil
-                        selectedCourseworkIds.removeAll()
-                    }
-                } else if let updated = allCoursework.first(where: { $0.id == current.id }) {
-                    selectedCoursework = updated
-                    selectedCourseworkIds = [updated.id]
+            let availableList = currentFilteredList
+            let availableIds = Set(availableList.map(\.id))
+            let retainedSelectedIds = selectedCourseworkIds.intersection(availableIds)
+            selectedCourseworkIds = retainedSelectedIds
+
+            if let current = selectedCoursework {
+                if retainedSelectedIds.contains(current.id) {
+                    selectedCoursework = availableList.first(where: { $0.id == current.id })
+                } else if let firstRemainingId = retainedSelectedIds.first {
+                    selectedCoursework = availableList.first(where: { $0.id == firstRemainingId })
                 } else {
                     selectedCoursework = nil
-                    selectedCourseworkIds.removeAll()
                 }
-            } else {
-                selectedCourseworkIds.removeAll()
-                selectedCoursework = nil
+            } else if let firstRemainingId = retainedSelectedIds.first {
+                selectedCoursework = availableList.first(where: { $0.id == firstRemainingId })
             }
         }
 
@@ -3743,7 +3429,7 @@ public struct ContentView: View {
     private func startGoogleLogin() {
         isSigningIn = true
         errorMessage = nil
-        Task {
+        Task { @MainActor in
             do {
                 try await authService.startSignIn()
                 await apiService.syncAll()
@@ -3813,641 +3499,3 @@ public struct ContentView: View {
     }
 }
 
-public struct ToastMessage: Identifiable, Equatable {
-    public let id = UUID()
-    public let title: String
-    public let subtitle: String?
-    public let icon: String
-    public let tint: Color
-    public var actionTitle: String? = nil
-    public var action: (() -> Void)? = nil
-
-    public static func == (lhs: ToastMessage, rhs: ToastMessage) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
-private struct FloatingToastHUD: View {
-    let toast: ToastMessage
-    let onDismiss: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: toast.icon)
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(toast.tint)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(toast.title)
-                    .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.platformTextPrimary)
-
-                if let sub = toast.subtitle, !sub.isEmpty {
-                    Text(sub)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Color.platformTextSecondary)
-                        .lineLimit(2)
-                }
-            }
-
-            if let actionTitle = toast.actionTitle, let action = toast.action {
-                Button(actionTitle) {
-                    action()
-                    onDismiss()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.mini)
-                .tint(toast.tint)
-                .font(.system(size: 11, weight: .semibold))
-            }
-
-            Button {
-                onDismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 9.5, weight: .bold))
-                    .foregroundStyle(Color.platformTextTertiary)
-                    .frame(width: 24, height: 24)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .padding(.leading, 2)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .frame(maxWidth: 380)
-        .appleLiquidGlassSurface(
-            style: .regular,
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        ) {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white)
-        }
-        .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 6)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(toast.tint.opacity(0.35), lineWidth: 1)
-        )
-    }
-}
-
-private struct SectionHeaderPill: View {
-    let title: String
-    let count: Int
-    let icon: String
-    let color: Color
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(color)
-
-            Text(title)
-                .font(.system(size: 13.5, weight: .bold, design: .rounded))
-                .foregroundStyle(color)
-
-            Spacer()
-
-            Text("\(count) bài")
-                .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                .foregroundStyle(color)
-                .padding(.horizontal, 7.5)
-                .padding(.vertical, 2.5)
-                .background(color.opacity(0.14))
-                .clipShape(Capsule())
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(color.opacity(0.06))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(color.opacity(0.14), lineWidth: 1)
-        )
-        .padding(.top, 6)
-        .padding(.bottom, 2)
-    }
-}
-
-private struct RowSelectedShadowModifier: ViewModifier {
-    let isSelected: Bool
-    func body(content: Content) -> some View {
-        if isSelected {
-            #if os(macOS)
-            content.shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 1)
-            #else
-            content.shadow(color: Color.black.opacity(0.04), radius: 3, x: 0, y: 1)
-            #endif
-        } else {
-            content
-        }
-    }
-}
-
-private struct AssignmentListRow: View, Equatable {
-    let item: Coursework
-    let isSelected: Bool
-    var hasNote: Bool = false
-    let onSelect: (Bool) -> Void
-    let onToggleCompletion: () -> Void
-
-    @State private var isHovered: Bool = false
-    @State private var checkmarkBounce: Bool = false
-    @Environment(\.openURL) private var openURL
-
-    static func == (lhs: AssignmentListRow, rhs: AssignmentListRow) -> Bool {
-        lhs.item == rhs.item && lhs.isSelected == rhs.isSelected && lhs.hasNote == rhs.hasNote
-    }
-
-    var isTurnedIn: Bool {
-        item.isCompleted
-    }
-
-    var body: some View {
-        let themeColor = SubjectArtHelper.themeColor(for: item.courseName, title: item.title)
-
-        HStack(alignment: .center, spacing: 0) {
-            HStack(spacing: 9) {
-                Capsule()
-                    .fill(isSelected ? Color.blue : Color.clear)
-                    .frame(width: 3.5, height: 34)
-                    .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isSelected)
-                    .contentShape(Rectangle().inset(by: -8))
-                    .onTapGesture {
-                        #if os(macOS)
-                        let isCmd = NSEvent.modifierFlags.contains(.command)
-                        #else
-                        let isCmd = false
-                        #endif
-                        onSelect(isCmd)
-                    }
-
-                Button {
-                    onToggleCompletion()
-                } label: {
-                    ZStack(alignment: .bottomTrailing) {
-                        SubjectArtBadgeView(courseName: item.courseName, title: item.title, size: 32)
-                            .equatable()
-
-                        if isTurnedIn {
-                            if #available(macOS 14.0, iOS 17.0, *) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
-                                    .background(Circle().fill(Color.white).padding(1))
-                                    .offset(x: 3, y: 3)
-                                    .scaleEffect(checkmarkBounce ? 1.32 : 1.0)
-                                    .symbolEffect(.bounce, value: isTurnedIn)
-                                    .transition(.scale(scale: 0.5).combined(with: .opacity))
-                            } else {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
-                                    .background(Circle().fill(Color.white).padding(1))
-                                    .offset(x: 3, y: 3)
-                                    .scaleEffect(checkmarkBounce ? 1.32 : 1.0)
-                                    .transition(.scale(scale: 0.5).combined(with: .opacity))
-                            }
-                        } else {
-                            Circle()
-                                .strokeBorder(Color.secondary.opacity(0.35), lineWidth: 1.3)
-                                .background(Circle().fill(Color.platformControlBackground.opacity(0.85)))
-                                .frame(width: 13, height: 13)
-                                .offset(x: 2, y: 2)
-                                .scaleEffect(checkmarkBounce ? 0.9 : 1.0)
-                                .transition(.scale(scale: 0.5).combined(with: .opacity))
-                        }
-                    }
-                    .scaleEffect(checkmarkBounce ? 1.15 : 1.0)
-                }
-                #if os(macOS)
-                .frame(width: 34, height: 34)
-                #else
-                .frame(width: 44, height: 44)
-                #endif
-                .contentShape(Rectangle())
-                .buttonStyle(SpringPressButtonStyle(scale: 0.92, pressedOpacity: 0.88))
-                .help(isTurnedIn ? "Đã nộp bài (Space hoặc bấm để hoàn tác)" : "Chưa nộp bài (Space hoặc bấm để đánh dấu hoàn thành)")
-            }
-            .padding(.leading, 11)
-            .padding(.trailing, 9)
-
-            HStack(alignment: .center, spacing: 9) {
-                VStack(alignment: .leading, spacing: 3.5) {
-                    #if os(macOS)
-                    Text(item.title)
-                        .font(.system(size: 14, weight: isSelected ? .bold : .semibold))
-                        .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
-                        .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
-                        .opacity(isTurnedIn ? 0.72 : 1.0)
-                        .lineLimit(2)
-
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(themeColor)
-                            .frame(width: 6, height: 6)
-                        Text(item.courseName)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(themeColor)
-                            .lineLimit(1)
-                        if hasNote {
-                            Image(systemName: "square.and.pencil")
-                                .font(.system(size: 10.5, weight: .semibold))
-                                .foregroundStyle(Color.blue)
-                        }
-                    }
-                    .opacity(isTurnedIn ? 0.75 : 1.0)
-                    #else
-                    Text(item.title)
-                        .font(.system(size: 16.5, weight: isSelected ? .bold : .semibold))
-                        .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
-                        .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
-                        .opacity(isTurnedIn ? 0.72 : 1.0)
-                        .lineLimit(2)
-
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(themeColor)
-                            .frame(width: 6, height: 6)
-                        Text(item.courseName)
-                            .font(.system(size: 13.5, weight: .semibold))
-                            .foregroundStyle(themeColor)
-                            .lineLimit(1)
-                        if hasNote {
-                            Image(systemName: "square.and.pencil")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(Color.blue)
-                        }
-                    }
-                    .opacity(isTurnedIn ? 0.75 : 1.0)
-                    #endif
-                }
-
-                Spacer(minLength: 8)
-
-                DueBadgeView(item: item, compact: true)
-                    .equatable()
-                    .layoutPriority(1)
-            }
-            .padding(.trailing, 11)
-            #if os(iOS)
-            .padding(.vertical, 10)
-            .frame(minHeight: 62)
-            #else
-            .padding(.vertical, 6)
-            #endif
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                #if os(macOS)
-                let isCmd = NSEvent.modifierFlags.contains(.command)
-                #else
-                let isCmd = false
-                #endif
-                onSelect(isCmd)
-            }
-        }
-        .appleLiquidGlassSurface(
-            style: isSelected ? .interactiveTint(Color.blue.opacity(0.14)) : .interactive,
-            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-        ) {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(isSelected ? Color.platformCardSelectedBackground : Color.platformControlBackground)
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(
-                    isSelected ? Color.platformCardSelectedBorder : (isHovered ? Color.platformCardHoverBorder : Color.platformCardBorder),
-                    lineWidth: isSelected ? 1.2 : 1
-                )
-        )
-        .modifier(RowSelectedShadowModifier(isSelected: isSelected))
-        #if os(macOS)
-        .onHover { hovering in
-            isHovered = hovering
-        }
-        #endif
-        .animation(.spring(response: 0.22, dampingFraction: 0.72), value: isHovered)
-        .onChange(of: isTurnedIn) {
-            withAnimation(.spring(response: 0.24, dampingFraction: 0.52)) {
-                checkmarkBounce = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-                withAnimation(.spring(response: 0.24, dampingFraction: 0.65)) {
-                    checkmarkBounce = false
-                }
-            }
-        }
-        .contextMenu {
-            Button {
-                onToggleCompletion()
-            } label: {
-                Label(
-                    isTurnedIn ? "Đánh dấu chưa nộp" : "Đánh dấu đã nộp",
-                    systemImage: isTurnedIn ? "arrow.uturn.backward" : "checkmark.circle"
-                )
-            }
-
-            Button {
-                PlatformClipboard.copy(item.title)
-            } label: {
-                Label("Sao chép tiêu đề", systemImage: "doc.on.doc")
-            }
-
-            if let link = item.alternateLink, let url = URL(string: link) {
-                Button {
-                    PlatformClipboard.copy(link)
-                } label: {
-                    Label("Sao chép liên kết", systemImage: "link")
-                }
-
-                Button {
-                    openURL(url)
-                } label: {
-                    Label("Mở trên Google Classroom", systemImage: "arrow.up.right")
-                }
-            }
-        }
-    }
-}
-
-private struct AssignmentListEmptyView: View {
-    let filter: ContentView.AppFilterCategory
-    let isSearching: Bool
-    let searchText: String
-    let onClearSearch: () -> Void
-    var onSwitchToUpcoming: (() -> Void)? = nil
-
-    @State private var hasAppeared: Bool = false
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Spacer()
-
-            if !isSearching && (filter == .tomorrow || filter == .todayAndTomorrow) {
-                #if os(macOS)
-                let emptyImg = NSImage(named: "EmptyAllCaughtUp")
-                #else
-                let emptyImg = UIImage(named: "EmptyAllCaughtUp")
-                #endif
-                if emptyImg != nil {
-                    Image("EmptyAllCaughtUp")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 120, height: 120)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .padding(.bottom, 2)
-                } else {
-                    FloatingEmberView(emotion: .sleeping, size: 76)
-                        .padding(.bottom, 2)
-                }
-            } else if !isSearching && filter == .past {
-                FloatingEmberView(emotion: .celebrating, size: 76)
-                    .padding(.bottom, 2)
-            } else {
-                ZStack {
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [emptyTint.opacity(0.18), emptyTint.opacity(0.0)],
-                                center: .center,
-                                startRadius: 10,
-                                endRadius: 54
-                            )
-                        )
-                        .frame(width: 92, height: 92)
-
-                    if #available(macOS 14.0, iOS 17.0, *) {
-                        Image(systemName: emptyIcon)
-                            .font(.system(size: 34, weight: .light))
-                            .foregroundStyle(emptyTint)
-                            .symbolEffect(.bounce, value: hasAppeared)
-                    } else {
-                        Image(systemName: emptyIcon)
-                            .font(.system(size: 34, weight: .light))
-                            .foregroundStyle(emptyTint)
-                    }
-                }
-            }
-
-            VStack(spacing: 6) {
-                Text(emptyTitle)
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.platformTextPrimary)
-
-                Text(emptySubtitle)
-                    .font(.system(size: 13.5))
-                    .foregroundStyle(Color.platformTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-                    .lineSpacing(3.5)
-            }
-
-            if isSearching {
-                AdaptiveGlassContainer(spacing: 4) {
-                    Button("Xóa tìm kiếm") {
-                        onClearSearch()
-                    }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.blue)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .appleLiquidGlassSurface(
-                        style: .interactiveTint(Color.blue.opacity(0.12)),
-                        in: Capsule()
-                    ) {
-                        Capsule().fill(Color.blue.opacity(0.10))
-                    }
-                    .overlay(
-                        Capsule().stroke(Color.blue.opacity(0.25), lineWidth: 1)
-                    )
-                }
-                .padding(.top, 4)
-            } else if (filter == .tomorrow || filter == .todayAndTomorrow), let onSwitchToUpcoming {
-                AdaptiveGlassContainer(spacing: 4) {
-                    Button {
-                        onSwitchToUpcoming()
-                    } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: "tray")
-                                .font(.system(size: 12))
-                            Text("Xem tất cả bài tập sắp tới")
-                                .font(.system(size: 13.5, weight: .semibold))
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.blue)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .appleLiquidGlassSurface(
-                        style: .interactiveTint(Color.blue.opacity(0.12)),
-                        in: Capsule()
-                    ) {
-                        Capsule().fill(Color.blue.opacity(0.10))
-                    }
-                    .overlay(
-                        Capsule().stroke(Color.blue.opacity(0.25), lineWidth: 1)
-                    )
-                }
-                .padding(.top, 4)
-            }
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .opacity(hasAppeared ? 1.0 : 0.0)
-        .scaleEffect(hasAppeared ? 1.0 : 0.94)
-        .offset(y: hasAppeared ? 0 : 10)
-        .onAppear {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
-                hasAppeared = true
-            }
-        }
-    }
-
-    private var emptyIcon: String {
-        if isSearching { return "magnifyingglass" }
-        switch filter {
-        case .tomorrow: return "calendar.badge.checkmark"
-        case .todayAndTomorrow: return "sun.max"
-        case .allUpcoming: return "tray"
-        case .past: return "checkmark.seal.fill"
-        case .completed: return "doc.text.magnifyingglass"
-        case .notes: return "square.and.pencil"
-        case .widgetPreview: return "macwindow"
-        }
-    }
-
-    private var emptyTint: Color {
-        if isSearching { return .blue }
-        switch filter {
-        case .tomorrow: return Color(red: 0.15, green: 0.65, blue: 0.45)
-        case .todayAndTomorrow: return .orange
-        case .allUpcoming: return .blue
-        case .past: return .green
-        case .completed: return .secondary
-        case .notes: return .orange
-        case .widgetPreview: return .purple
-        }
-    }
-
-    private var emptyTitle: String {
-        if isSearching { return "Không tìm thấy bài tập nào" }
-        switch filter {
-        case .tomorrow: return "Ngày mai không có bài tập"
-        case .todayAndTomorrow: return "Không có bài tập hôm nay & mai"
-        case .allUpcoming: return "Không có bài tập sắp tới"
-        case .past: return "Không có bài tập quá hạn!"
-        case .completed: return "Chưa có bài tập hoàn thành"
-        case .notes: return "Chưa có ghi chú nào"
-        case .widgetPreview: return "Xem trước Widget"
-        }
-    }
-
-    private var emptySubtitle: String {
-        if isSearching {
-            return "Không có bài tập nào khớp với từ khóa \"\(searchText)\"."
-        }
-        switch filter {
-        case .tomorrow:
-            return "Tất cả bài tập ngày mai đã hoàn thành hoặc chưa có bài mới. Bạn có thể yên tâm nghỉ ngơi!"
-        case .todayAndTomorrow:
-            return "Bạn đã làm xong mọi việc cần nộp hôm nay và ngày mai. Hãy nghỉ ngơi nhé!"
-        case .allUpcoming:
-            return "Hiện không có bài tập nào trong danh sách theo dõi."
-        case .past:
-            return "Tuyệt vời! Bạn đang duy trì tiến độ hoàn hảo, không có bài tập nào bị trễ."
-        case .completed:
-            return "Các bài tập bạn đã nộp hoặc đánh dấu hoàn thành sẽ xuất hiện tại đây."
-        case .notes:
-            return "Các ghi chú cá nhân của bạn sẽ hiển thị tại đây."
-        case .widgetPreview:
-            return "Kéo thả widget ra màn hình chính để theo dõi nhanh bài tập."
-        }
-    }
-}
-
-private struct GuideStepRow: View {
-    let step: String
-    let text: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text(step)
-                .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .frame(width: 20, height: 20)
-                .appleLiquidGlassSurface(
-                    style: .interactiveTint(Color.blue.opacity(0.85)),
-                    in: RoundedRectangle(cornerRadius: 6, style: .continuous)
-                ) {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.blue, Color(red: 0.10, green: 0.45, blue: 0.95)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                }
-
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(Color.platformTextPrimary)
-        }
-    }
-}
-
-private struct SubjectGroupHeaderRow: View {
-    let courseName: String
-    let count: Int
-
-    var body: some View {
-        let themeColor = SubjectArtHelper.themeColor(for: courseName)
-
-        HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(themeColor)
-                .frame(width: 4, height: 14)
-
-            Text(courseName.uppercased())
-                .font(.system(size: 11.5, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.platformTextPrimary)
-
-            Text("\(count) bài")
-                .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                .foregroundStyle(themeColor)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(themeColor.opacity(0.12), in: Capsule())
-
-            Spacer()
-        }
-        .padding(.top, 6)
-        .padding(.bottom, 2)
-    }
-}
-
-private struct CompletedSectionHeaderRow: View {
-    let count: Int
-
-    var body: some View {
-        HStack(spacing: 7) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(Color.green)
-
-            Text("ĐÃ HOÀN THÀNH (\(count))")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.platformTextSecondary)
-
-            Spacer()
-        }
-        .padding(.top, 12)
-        .padding(.bottom, 2)
-    }
-}

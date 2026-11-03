@@ -215,7 +215,7 @@ fun MainScreen() {
         val set = HashSet<String>()
         for (note in personalNotes) {
             val cid = note.courseworkId
-            if (cid != null && note.content.isNotBlank()) {
+            if (cid != null && (note.content.isNotBlank() || note.checklist.isNotEmpty())) {
                 set.add(cid)
             }
         }
@@ -229,30 +229,38 @@ fun MainScreen() {
             if (id.startsWith("note_")) {
                 val noteId = id.removePrefix("note_")
                 scope.launch {
-                    repository.togglePersonalNoteCompletion(noteId, completed)
-                    if (completed) {
-                        val result = snackbarHostState.showSnackbar(
-                            message = "Đã hoàn thành ghi chú!",
-                            actionLabel = "Hoàn tác",
-                            duration = androidx.compose.material3.SnackbarDuration.Short
-                        )
-                        if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                            repository.togglePersonalNoteCompletion(noteId, false)
+                    try {
+                        repository.togglePersonalNoteCompletion(noteId, completed)
+                        if (completed) {
+                            val result = snackbarHostState.showSnackbar(
+                                message = "Đã hoàn thành ghi chú!",
+                                actionLabel = "Hoàn tác",
+                                duration = androidx.compose.material3.SnackbarDuration.Short
+                            )
+                            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                repository.togglePersonalNoteCompletion(noteId, false)
+                            }
                         }
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Không thể cập nhật ghi chú: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
                     }
                 }
             } else {
                 scope.launch {
-                    repository.toggleTaskCompletion(id, completed)
-                    if (completed) {
-                        val result = snackbarHostState.showSnackbar(
-                            message = "Đã hoàn thành bài tập!",
-                            actionLabel = "Hoàn tác",
-                            duration = androidx.compose.material3.SnackbarDuration.Short
-                        )
-                        if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                            repository.toggleTaskCompletion(id, false)
+                    try {
+                        repository.toggleTaskCompletion(id, completed)
+                        if (completed) {
+                            val result = snackbarHostState.showSnackbar(
+                                message = "Đã hoàn thành bài tập!",
+                                actionLabel = "Hoàn tác",
+                                duration = androidx.compose.material3.SnackbarDuration.Short
+                            )
+                            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                repository.toggleTaskCompletion(id, false)
+                            }
                         }
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Không thể cập nhật bài tập: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
                     }
                 }
             }
@@ -265,30 +273,38 @@ fun MainScreen() {
             if (id.startsWith("note_")) {
                 val noteId = id.removePrefix("note_")
                 scope.launch {
-                    repository.togglePersonalNoteCompletion(noteId, completed)
-                    if (completed) {
-                        val result = snackbarHostState.showSnackbar(
-                            message = "Đã hoàn thành ghi chú!",
-                            actionLabel = "Hoàn tác",
-                            duration = androidx.compose.material3.SnackbarDuration.Short
-                        )
-                        if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                            repository.togglePersonalNoteCompletion(noteId, false)
+                    try {
+                        repository.togglePersonalNoteCompletion(noteId, completed)
+                        if (completed) {
+                            val result = snackbarHostState.showSnackbar(
+                                message = "Đã hoàn thành ghi chú!",
+                                actionLabel = "Hoàn tác",
+                                duration = androidx.compose.material3.SnackbarDuration.Short
+                            )
+                            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                repository.togglePersonalNoteCompletion(noteId, false)
+                            }
                         }
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Không thể cập nhật ghi chú: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
                     }
                 }
             } else {
                 scope.launch {
-                    repository.toggleTaskCompletion(id, completed)
-                    if (completed) {
-                        val result = snackbarHostState.showSnackbar(
-                            message = "Đã hoàn thành bài tập!",
-                            actionLabel = "Hoàn tác",
-                            duration = androidx.compose.material3.SnackbarDuration.Short
-                        )
-                        if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                            repository.toggleTaskCompletion(id, false)
+                    try {
+                        repository.toggleTaskCompletion(id, completed)
+                        if (completed) {
+                            val result = snackbarHostState.showSnackbar(
+                                message = "Đã hoàn thành bài tập!",
+                                actionLabel = "Hoàn tác",
+                                duration = androidx.compose.material3.SnackbarDuration.Short
+                            )
+                            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                repository.toggleTaskCompletion(id, false)
+                            }
                         }
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Không thể cập nhật bài tập: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
                     }
                 }
             }
@@ -296,30 +312,54 @@ fun MainScreen() {
         }
     }
 
-    val onTogglePersonalNoteCompletion = remember(scope, repository) {
+    val onTogglePersonalNoteCompletion = remember(scope, repository, snackbarHostState) {
         { noteId: String, completed: Boolean ->
-            scope.launch { repository.togglePersonalNoteCompletion(noteId, completed) }
+            scope.launch {
+                try {
+                    repository.togglePersonalNoteCompletion(noteId, completed)
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("Không thể cập nhật ghi chú: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                }
+            }
             Unit
         }
     }
 
-    val onToggleChecklistItem = remember(scope, repository) {
+    val onToggleChecklistItem = remember(scope, repository, snackbarHostState) {
         { noteId: String, itemId: String ->
-            scope.launch { repository.toggleChecklistItem(noteId, itemId) }
+            scope.launch {
+                try {
+                    repository.toggleChecklistItem(noteId, itemId)
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("Không thể cập nhật mục: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                }
+            }
             Unit
         }
     }
 
-    val onSavePersonalNote = remember(scope, repository) {
+    val onSavePersonalNote = remember(scope, repository, snackbarHostState) {
         { note: PersonalNote ->
-            scope.launch { repository.savePersonalNote(note) }
+            scope.launch {
+                try {
+                    repository.savePersonalNote(note)
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("Không thể lưu ghi chú: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                }
+            }
             Unit
         }
     }
 
-    val onDeletePersonalNote = remember(scope, repository) {
+    val onDeletePersonalNote = remember(scope, repository, snackbarHostState) {
         { noteId: String ->
-            scope.launch { repository.deletePersonalNote(noteId) }
+            scope.launch {
+                try {
+                    repository.deletePersonalNote(noteId)
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("Không thể xóa ghi chú: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                }
+            }
             Unit
         }
     }
@@ -397,7 +437,11 @@ fun MainScreen() {
                             TextButton(
                                 onClick = {
                                     scope.launch {
-                                        repository.updateAllCoursesWidgetSelection(!allSelected)
+                                        try {
+                                            repository.updateAllCoursesWidgetSelection(!allSelected)
+                                        } catch (e: Exception) {
+                                            snackbarHostState.showSnackbar("Không thể cập nhật danh sách lớp: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                                        }
                                     }
                                 },
                                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
@@ -445,10 +489,14 @@ fun MainScreen() {
                                         role = Role.Checkbox,
                                         onClick = {
                                             scope.launch {
-                                                repository.updateCourseWidgetSelection(
-                                                    course.id,
-                                                    !course.isSelectedForWidget
-                                                )
+                                                try {
+                                                    repository.updateCourseWidgetSelection(
+                                                        course.id,
+                                                        !course.isSelectedForWidget
+                                                    )
+                                                } catch (e: Exception) {
+                                                    snackbarHostState.showSnackbar("Không thể cập nhật môn học: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                                                }
                                             }
                                         }
                                     )
@@ -500,9 +548,17 @@ fun MainScreen() {
                             isSyncing = isSyncing,
                             onSyncClick = {
                                 scope.launch {
-                                    val result = repository.syncAll()
-                                    if (result.isSuccess) {
-                                        snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+                                    try {
+                                        val result = repository.syncAll()
+                                        if (result.isSuccess) {
+                                            snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+                                        } else {
+                                            result.exceptionOrNull()?.let { e ->
+                                                snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
                                     }
                                 }
                             }
@@ -654,9 +710,17 @@ fun MainScreen() {
                 isRefreshing = isSyncing,
                 onRefresh = {
                     scope.launch {
-                        val result = repository.syncAll()
-                        if (result.isSuccess) {
-                            snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+                        try {
+                            val result = repository.syncAll()
+                            if (result.isSuccess) {
+                                snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+                            } else {
+                                result.exceptionOrNull()?.let { e ->
+                                    snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
                         }
                     }
                 },
@@ -731,11 +795,23 @@ fun MainScreen() {
         }
     } else {
         WelcomeLoginScreen(
-            onSignIn = { scope.launch { oauthManager.startSignIn(context) } },
+            onSignIn = {
+                scope.launch {
+                    try {
+                        oauthManager.startSignIn(context)
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Không thể đăng nhập: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                    }
+                }
+            },
             onDemoMode = {
                 scope.launch {
-                    repository.populateMockDataManually()
-                    isDemoMode = true
+                    try {
+                        repository.populateMockDataManually()
+                        isDemoMode = true
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Không thể tải dữ liệu mẫu: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                    }
                 }
             },
             onOpenSettings = { showSettingsDialog = true }
@@ -797,17 +873,41 @@ fun MainScreen() {
             initialClientSecret = customClientSecret,
             onDismiss = { showSettingsDialog = false },
             onSignIn = {
-                scope.launch { oauthManager.startSignIn(context) }
+                scope.launch {
+                    try {
+                        oauthManager.startSignIn(context)
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Không thể đăng nhập: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                    }
+                }
             },
             onSignOut = {
                 isDemoMode = false
-                scope.launch { repository.clearAllData() }
+                scope.launch {
+                    try {
+                        repository.clearAllData()
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Không thể đăng xuất: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                    }
+                }
             },
             onSyncNow = {
-                scope.launch { repository.syncAll() }
+                scope.launch {
+                    try {
+                        repository.syncAll()
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Đồng bộ thất bại: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                    }
+                }
             },
             onSaveCustomCredentials = { customId, customSecret ->
-                scope.launch { preferences.saveCustomCredentials(customId, customSecret) }
+                scope.launch {
+                    try {
+                        preferences.saveCustomCredentials(customId, customSecret)
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Không thể lưu cấu hình: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                    }
+                }
             }
         )
     }

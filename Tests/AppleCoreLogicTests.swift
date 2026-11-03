@@ -406,6 +406,21 @@ struct TestRunner {
             ClassroomStorage.shared.deletePersonalNote(id: "standalone_1")
             let notesAfterDelete = ClassroomStorage.shared.loadPersonalNotes()
             assertCondition(!notesAfterDelete.contains { $0.id == "standalone_1" }, "Personal note must be deleted")
+
+            // Test personal note active course filtering in getTomorrowCoursework
+            let testCourses = [
+                Course(id: "c_active", name: "Toán", isSelectedForWidget: true),
+                Course(id: "c_inactive", name: "Văn", isSelectedForWidget: false)
+            ]
+            let noteActive = PersonalNote(id: "note_active", courseworkId: nil, courseId: "c_active", courseName: "Toán", title: "Note Toán", dueDate: tomorrowDate)
+            let noteInactive = PersonalNote(id: "note_inactive", courseworkId: nil, courseId: "c_inactive", courseName: "Văn", title: "Note Văn", dueDate: tomorrowDate)
+            let noteUntagged = PersonalNote(id: "note_untagged", courseworkId: nil, courseId: nil, courseName: nil, title: "Note Chung", dueDate: tomorrowDate)
+            ClassroomStorage.shared.savePersonalNotes([noteActive, noteInactive, noteUntagged])
+            let filteredTomorrow = ClassroomStorage.shared.getTomorrowCoursework(items: [], courses: testCourses, includeCompleted: true, includeNotes: true)
+            assertCondition(filteredTomorrow.contains { $0.id == "note_note_active" }, "Active course personal note must be included in tomorrow coursework")
+            assertCondition(!filteredTomorrow.contains { $0.id == "note_note_inactive" }, "Inactive course personal note must be excluded from tomorrow coursework")
+            assertCondition(filteredTomorrow.contains { $0.id == "note_note_untagged" }, "Untagged personal note must be preserved in tomorrow coursework")
+            ClassroomStorage.shared.savePersonalNotes([])
         }
 
         do {
