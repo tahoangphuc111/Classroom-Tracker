@@ -517,7 +517,7 @@ public struct WidgetAppleGlassBackground: View {
     }
 
     public var body: some View {
-        #if os(macOS) || os(iOS)
+        #if (os(macOS) || os(iOS)) && compiler(>=6.4)
         if #available(iOS 26.0, macOS 27.0, *) {
             Color.clear
                 .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
@@ -525,6 +525,9 @@ public struct WidgetAppleGlassBackground: View {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(.ultraThinMaterial)
         }
+        #elseif os(macOS) || os(iOS)
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(.ultraThinMaterial)
         #else
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(Color.white)

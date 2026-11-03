@@ -92,7 +92,7 @@ public enum AppleOSDetector {
     }
 
     public static var supportsLiquidGlass: Bool {
-        #if os(macOS) || os(iOS)
+        #if (os(macOS) || os(iOS)) && compiler(>=6.4)
         if #available(iOS 26.0, macOS 27.0, *) {
             return true
         } else {

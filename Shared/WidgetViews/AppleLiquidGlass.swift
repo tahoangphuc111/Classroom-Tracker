@@ -22,7 +22,7 @@ public extension View {
         isEnabled: Bool = true,
         @ViewBuilder fallback: () -> Fallback
     ) -> some View {
-        #if os(macOS) || os(iOS)
+        #if (os(macOS) || os(iOS)) && compiler(>=6.4)
         if isEnabled && AppleOSDetector.supportsLiquidGlass {
             if #available(iOS 26.0, macOS 27.0, *) {
                 switch style {
@@ -125,7 +125,7 @@ public struct AdaptiveGlassContainer<Content: View>: View {
     }
 
     public var body: some View {
-        #if os(macOS) || os(iOS)
+        #if (os(macOS) || os(iOS)) && compiler(>=6.4)
         if AppleOSDetector.supportsLiquidGlass {
             if #available(iOS 26.0, macOS 27.0, *) {
                 if let spacing = spacing {
