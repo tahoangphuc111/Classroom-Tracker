@@ -130,7 +130,7 @@ object BaoBaiBucketingUtils {
     }
 
     private fun sortPreFiltered(
-        items: ArrayList<Coursework>,
+        items: List<Coursework>,
         searchTokens: List<String>,
         rawNormalizedQuery: String,
         comparator: Comparator<Coursework>
@@ -162,8 +162,12 @@ object BaoBaiBucketingUtils {
             }
             return result
         }
-        items.sortWith(comparator)
-        return items
+        return if (items is ArrayList<Coursework>) {
+            items.sortWith(comparator)
+            items
+        } else {
+            items.sortedWith(comparator)
+        }
     }
 
     private fun sortInternal(
@@ -410,7 +414,7 @@ object BaoBaiBucketingUtils {
             return computeBuckets(items, emptyList(), searchTokens, rawNormalizedQuery)
         }
         val hasTomorrow = tomorrow.isNotEmpty() || completedTomorrow.isNotEmpty()
-        val hasToday = today.isNotEmpty() || completedToday.isNotEmpty()
+        val hasToday = today.isNotEmpty()
         val hasLater = later.isNotEmpty() || completedLater.isNotEmpty()
         val hasNoDate = noDate.isNotEmpty() || completedNoDate.isNotEmpty()
         val tomorrowCandidates: List<Coursework> = when {
@@ -424,16 +428,7 @@ object BaoBaiBucketingUtils {
                     list
                 }
             }
-            hasToday -> {
-                if (completedToday.isEmpty()) today
-                else if (today.isEmpty()) completedToday
-                else {
-                    val list = ArrayList<Coursework>(today.size + completedToday.size)
-                    list.addAll(today)
-                    list.addAll(completedToday)
-                    list
-                }
-            }
+            hasToday -> today
             hasLater -> {
                 if (completedLater.isEmpty()) later
                 else if (later.isEmpty()) completedLater
@@ -474,7 +469,7 @@ object BaoBaiBucketingUtils {
         } else if (tomorrowCandidates === noDate) {
             sortedNoDate
         } else {
-            sortPreFiltered(tomorrowCandidates as ArrayList<Coursework>, searchTokens, rawNormalizedQuery, COURSEWORK_COMPARATOR)
+            sortPreFiltered(tomorrowCandidates, searchTokens, rawNormalizedQuery, COURSEWORK_COMPARATOR)
         }
         return CourseworkBuckets(
             overdue = sortedOverdue,

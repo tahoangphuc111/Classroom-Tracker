@@ -403,4 +403,63 @@ class ClassroomDateUtilsTest {
             ClassroomDateUtils.ensureDayBoundaries()
         }
     }
+
+    @Test
+    fun testClearCaches_ResetsAllCachesAndRecalculates() {
+        val originalTz = java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh"))
+            ClassroomDateUtils.ensureDayBoundaries()
+            val initialToday = ClassroomDateUtils.startOfToday
+            val initialTomorrow = ClassroomDateUtils.startOfTomorrow
+            val initialDayAfter = ClassroomDateUtils.startOfDayAfter
+            assertTrue(initialToday > 0)
+            assertTrue(initialTomorrow > initialToday)
+            assertTrue(initialDayAfter > initialTomorrow)
+
+            val epoch = 1700000000000L
+            val initialFormatted = ClassroomDateUtils.buildTimeOnlyString(epoch)
+            assertEquals("05:13", initialFormatted)
+
+            ClassroomDateUtils.clearCaches()
+
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+            val newFormatted = ClassroomDateUtils.buildTimeOnlyString(epoch)
+            assertEquals("22:13", newFormatted)
+
+            val recalculatedToday = ClassroomDateUtils.startOfToday
+            val recalculatedTomorrow = ClassroomDateUtils.startOfTomorrow
+            val recalculatedDayAfter = ClassroomDateUtils.startOfDayAfter
+            assertTrue(recalculatedToday > 0)
+            assertTrue(recalculatedTomorrow > recalculatedToday)
+            assertTrue(recalculatedDayAfter > recalculatedTomorrow)
+        } finally {
+            java.util.TimeZone.setDefault(originalTz)
+            ClassroomDateUtils.clearCaches()
+        }
+    }
+
+    @Test
+    fun testLOG08_TimeZoneChange_ResetsTomorrowAndDayAfterBoundaries() {
+        val originalTz = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"))
+            ClassroomDateUtils.ensureDayBoundaries()
+            val initialTomorrow = ClassroomDateUtils.startOfTomorrow
+            val initialDayAfter = ClassroomDateUtils.startOfDayAfter
+
+            // Switch timezone without calling clearCaches to exercise checkTimeZone()
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            ClassroomDateUtils.ensureDayBoundaries()
+            val utcTomorrow = ClassroomDateUtils.startOfTomorrow
+            val utcDayAfter = ClassroomDateUtils.startOfDayAfter
+
+            // UTC midnight occurs 7 hours after Ho Chi Minh (UTC+7) midnight in epoch millis
+            assertEquals(7 * 3600 * 1000L, utcTomorrow - initialTomorrow)
+            assertEquals(7 * 3600 * 1000L, utcDayAfter - initialDayAfter)
+        } finally {
+            TimeZone.setDefault(originalTz)
+            ClassroomDateUtils.clearCaches()
+        }
+    }
 }

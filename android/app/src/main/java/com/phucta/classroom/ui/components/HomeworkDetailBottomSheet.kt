@@ -3,6 +3,8 @@ package com.phucta.classroom.ui.components
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,12 +19,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -33,6 +37,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -65,6 +70,7 @@ fun HomeworkDetailBottomSheet(
     coursework: Coursework?,
     onDismiss: () -> Unit,
     onToggleCompletion: (String, Boolean) -> Unit,
+    modifier: Modifier = Modifier,
     initialNoteContent: String? = null,
     onSaveNote: (String) -> Unit = {}
 ) {
@@ -73,11 +79,19 @@ fun HomeworkDetailBottomSheet(
     val view = androidx.compose.ui.platform.LocalView.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    val safeDismiss: () -> Unit = {
+        try {
+            onDismiss()
+        } catch (_: Exception) {
+        }
+    }
+
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = safeDismiss,
         sheetState = sheetState,
         containerColor = ChunkyColor.SurfaceWhite,
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        modifier = modifier
     ) {
         Column(
             modifier = Modifier
@@ -88,19 +102,39 @@ fun HomeworkDetailBottomSheet(
                 .verticalScroll(rememberScrollState())
         ) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SubjectBadgePill(
-                    courseName = coursework.courseName,
-                    title = coursework.title
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = coursework.courseName,
-                    color = ChunkyColor.TextMuted,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp
-                )
+                Row(
+                    modifier = Modifier.weight(1f, fill = false),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SubjectBadgePill(
+                        courseName = coursework.courseName,
+                        title = coursework.title
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = coursework.courseName,
+                        color = ChunkyColor.TextMuted,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                IconButton(
+                    onClick = safeDismiss,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Đóng chi tiết bài tập",
+                        tint = ChunkyColor.TextMuted
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -221,6 +255,7 @@ fun HomeworkDetailBottomSheet(
                 if (!isEditingNote) {
                     TextButton(
                         onClick = { isEditingNote = true },
+                        modifier = Modifier.heightIn(min = 48.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
@@ -261,10 +296,13 @@ fun HomeworkDetailBottomSheet(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
-                        TextButton(onClick = {
-                            isEditingNote = false
-                            noteDraft = initialNoteContent ?: ""
-                        }) {
+                        TextButton(
+                            onClick = {
+                                isEditingNote = false
+                                noteDraft = initialNoteContent ?: ""
+                            },
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        ) {
                             Text("Huỷ", color = ChunkyColor.TextMuted)
                         }
 
@@ -275,6 +313,7 @@ fun HomeworkDetailBottomSheet(
                                 onSaveNote(noteDraft)
                                 isEditingNote = false
                             },
+                            modifier = Modifier.heightIn(min = 48.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SkyBottom),
                             shape = RoundedCornerShape(8.dp)
                         ) {
@@ -310,34 +349,47 @@ fun HomeworkDetailBottomSheet(
             Spacer(modifier = Modifier.height(24.dp))
 
             val onCopyClick: () -> Unit = {
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                val clipText = buildString {
-                    append(coursework.title)
-                    append(" - ")
-                    append(coursework.courseName)
-                    if (coursework.dueEpochMillis != null) {
-                        append("\nHạn nộp: ")
-                        append(coursework.formattedFullDueDate)
+                try {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    val clipText = buildString {
+                        append(coursework.title)
+                        append(" - ")
+                        append(coursework.courseName)
+                        if (coursework.dueEpochMillis != null) {
+                            append("\nHạn nộp: ")
+                            append(coursework.formattedFullDueDate)
+                        }
+                        if (!coursework.description.isNullOrBlank()) {
+                            append("\n\n")
+                            append(coursework.description)
+                        }
+                        if (!coursework.alternateLink.isNullOrBlank()) {
+                            append("\n\nLink: ")
+                            append(coursework.alternateLink)
+                        }
                     }
-                    if (!coursework.description.isNullOrBlank()) {
-                        append("\n\n")
-                        append(coursework.description)
+                    val clip = android.content.ClipData.newPlainText("Bài tập", clipText)
+                    clipboard?.setPrimaryClip(clip)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    } else {
+                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                     }
-                    if (!coursework.alternateLink.isNullOrBlank()) {
-                        append("\n\nLink: ")
-                        append(coursework.alternateLink)
-                    }
+                    android.widget.Toast.makeText(context, "Đã sao chép thông tin bài tập!", android.widget.Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    android.widget.Toast.makeText(
+                        context,
+                        "Không thể sao chép thông tin bài tập",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
                 }
-                val clip = android.content.ClipData.newPlainText("Bài tập", clipText)
-                clipboard?.setPrimaryClip(clip)
-                view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-                android.widget.Toast.makeText(context, "Đã sao chép thông tin bài tập!", android.widget.Toast.LENGTH_SHORT).show()
             }
 
             val onOpenBrowserClick: () -> Unit = {
                 try {
-                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(coursework.destinationURL)).apply {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                    val targetUrl = coursework.alternateLink?.takeIf { it.isNotBlank() } ?: coursework.destinationURL
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     context.startActivity(intent)
@@ -361,9 +413,13 @@ fun HomeworkDetailBottomSheet(
                             onClick = {
                                 val next = !coursework.isCompleted
                                 if (next) {
-                                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    } else {
+                                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                    }
                                 } else {
-                                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 }
                                 onToggleCompletion(coursework.id, next)
                             },
@@ -465,9 +521,13 @@ fun HomeworkDetailBottomSheet(
                             onClick = {
                                 val next = !coursework.isCompleted
                                 if (next) {
-                                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    } else {
+                                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                    }
                                 } else {
-                                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 }
                                 onToggleCompletion(coursework.id, next)
                             },
@@ -499,7 +559,7 @@ fun HomeworkDetailBottomSheet(
 
                         OutlinedButton(
                             onClick = onCopyClick,
-                            modifier = Modifier.heightIn(min = 48.dp),
+                            modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
                             border = BorderStroke(1.dp, ChunkyColor.CardBorder),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = ChunkyColor.SurfaceWhite,
@@ -510,7 +570,7 @@ fun HomeworkDetailBottomSheet(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Sao chép",
+                                contentDescription = "Sao chép thông tin bài tập",
                                 tint = ChunkyColor.TextPrimary,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -520,7 +580,7 @@ fun HomeworkDetailBottomSheet(
 
                         OutlinedButton(
                             onClick = onOpenBrowserClick,
-                            modifier = Modifier.heightIn(min = 48.dp),
+                            modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
                             border = BorderStroke(1.dp, ChunkyColor.SkyBottom.copy(alpha = 0.5f)),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = ChunkyColor.SkyBottom.copy(alpha = 0.08f),

@@ -70,7 +70,7 @@ private val TOKEN_FLAG_MAP: Map<String, Int> = run {
     fun add(word: String, flag: Int) {
         map[word] = (map[word] ?: 0) or flag
     }
-    add(arrayOf("toan", "math", "maths", "calculus", "algebra", "geometry", "trigonometry", "statistics", "discrete"), FLAG_MATH)
+    add(arrayOf("toan", "toán", "math", "maths", "calculus", "algebra", "geometry", "trigonometry", "statistics", "discrete"), FLAG_MATH)
     add(arrayOf("android", "ios", "swift", "python", "java", "cntt", "it", "ctdl", "cpp", "kotlin", "javascript", "typescript"), FLAG_CS)
     add(arrayOf("network", "networking", "tcp", "socket", "cybersecurity"), FLAG_NETWORKING)
     add(arrayOf("biology", "bio", "genetics", "ecology"), FLAG_BIO)
@@ -92,12 +92,12 @@ private val TOKEN_FLAG_MAP: Map<String, Int> = run {
     add(arrayOf("dia", "địa"), FLAG_DIA)
     add(arrayOf("van", "văn"), FLAG_VAN)
     add("anh", FLAG_ANH)
-    add("triết", FLAG_TRIET)
+    add(arrayOf("triết", "triet"), FLAG_TRIET)
     add(arrayOf("mạng", "mang"), FLAG_MANG)
     add("cloud", FLAG_CLOUD)
     add("soundcloud", FLAG_SOUNDCLOUD)
     add("tin", FLAG_TIN)
-    add("tự", FLAG_TU)
+    add(arrayOf("tự", "tu"), FLAG_TU)
     add("vẽ", FLAG_VE)
     map
 }
@@ -110,9 +110,14 @@ private class TokenTrieNode {
 private val TOKEN_TRIE: TokenTrieNode = run {
     val root = TokenTrieNode()
     fun insert(word: String, flag: Int) {
+        val nfc = if (java.text.Normalizer.isNormalized(word, java.text.Normalizer.Form.NFC)) {
+            word
+        } else {
+            java.text.Normalizer.normalize(word, java.text.Normalizer.Form.NFC)
+        }
         var curr = root
-        for (i in 0 until word.length) {
-            val c = word[i]
+        for (i in 0 until nfc.length) {
+            val c = nfc[i]
             var child = curr.children[c]
             if (child == null) {
                 child = TokenTrieNode()
@@ -144,13 +149,16 @@ private fun scanTokenFlags(text: String): Int {
     var start = -1
     for (i in 0 until len) {
         val ch = text[i]
-        val isWordChar = (ch in 'a'..'z') || (ch in '0'..'9') || (ch > '\u007F' && Character.isLetterOrDigit(ch))
+        val isWordChar = (ch in 'a'..'z') || (ch in '0'..'9') ||
+            (ch > '\u007F' && (Character.isLetterOrDigit(ch) ||
+                Character.getType(ch) == Character.NON_SPACING_MARK.toInt() ||
+                Character.getType(ch) == Character.COMBINING_SPACING_MARK.toInt()))
         if (isWordChar) {
             if (start == -1) start = i
         } else {
             if (start != -1) {
                 val tokenLen = i - start
-                if (tokenLen in 2..14) {
+                if (tokenLen in 2..20) {
                     flags = flags or lookupTokenFlag(text, start, i)
                 }
                 start = -1
@@ -159,7 +167,7 @@ private fun scanTokenFlags(text: String): Int {
     }
     if (start != -1) {
         val tokenLen = len - start
-        if (tokenLen in 2..14) {
+        if (tokenLen in 2..20) {
             flags = flags or lookupTokenFlag(text, start, len)
         }
     }
@@ -246,96 +254,180 @@ object SubjectArtHelper {
         return theme
     }
 
+    private val GEOGRAPHY_EXCLUDE_REGEX = Regex("""(?Ui)\b(địa\s+điểm|dia\s+diem|địa\s+chỉ|dia\s+chi)\b""")
+    private val GEOGRAPHY_MATCH_REGEX = Regex("""(?Ui)\b(địa\s+lý|địa\s+lí|dia\s+ly|dia\s+li|địa|dia)\b""")
+
+    fun isGeography(courseName: String?, title: String? = null): Boolean {
+        fun check(s: String?): Boolean {
+            if (s.isNullOrBlank()) return false
+            val stripped = GEOGRAPHY_EXCLUDE_REGEX.replace(s, " ")
+            return GEOGRAPHY_MATCH_REGEX.containsMatchIn(stripped)
+        }
+        return check(courseName) || check(title)
+    }
+
     private fun computeCategory(courseName: String, title: String? = null): SubjectCategory {
-        val courseLower = courseName.lowercase()
+        val courseNormalized = if (java.text.Normalizer.isNormalized(courseName, java.text.Normalizer.Form.NFC)) {
+            courseName
+        } else {
+            java.text.Normalizer.normalize(courseName, java.text.Normalizer.Form.NFC)
+        }
+        val courseLower = courseNormalized.lowercase()
         val courseFlags = scanTokenFlags(courseLower)
 
         fun match(text: String, flags: Int): SubjectCategory? {
             return when {
                 ((flags and FLAG_MATH != 0) || text.contains("toán") ||
-                        text.contains("giải tích") || text.contains("đại số") || text.contains("hình học") ||
-                        text.contains("xác suất") || text.contains("lượng giác") || text.contains("đạo hàm") ||
-                        text.contains("tích phân") || text.contains("toán cao cấp") || text.contains("toán rời rạc") ||
-                        text.contains("thống kê") || text.contains("vi phân") || text.contains("ma trận")) &&
-                        !text.contains("điện toán") -> SubjectCategory.MATH
+                        text.contains("giải tích") || text.contains("giai tich") ||
+                        text.contains("đại số") || text.contains("dai so") ||
+                        text.contains("hình học") || text.contains("hinh hoc") ||
+                        text.contains("xác suất") || text.contains("xac suat") ||
+                        text.contains("lượng giác") || text.contains("luong giac") ||
+                        text.contains("đạo hàm") || text.contains("dao ham") ||
+                        text.contains("tích phân") || text.contains("tich phan") ||
+                        text.contains("toán cao cấp") || text.contains("toan cao cap") ||
+                        text.contains("toán rời rạc") || text.contains("toan roi rac") ||
+                        text.contains("thống kê") || text.contains("thong ke") ||
+                        text.contains("vi phân") || text.contains("vi phan") ||
+                        text.contains("ma trận") || text.contains("ma tran")) &&
+                        !text.contains("điện toán") && !text.contains("dien toan") &&
+                        !text.contains("an toàn") && !text.contains("an toan") &&
+                        !text.contains("thanh toán") && !text.contains("thanh toan") &&
+                        !text.contains("hoàn toàn") && !text.contains("hoan toan") -> SubjectCategory.MATH
 
-                text.contains("vật lý") || text.contains("vật lí") || (flags and FLAG_PHYSICS != 0) ||
-                        text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") ||
-                        text.contains("cơ học") || text.contains("nhiệt học") || text.contains("quang học") ||
-                        text.contains("điện từ") || text.contains("vật lý đại cương") || text.contains("vật lí đại cương") ||
-                        text.contains("dao động") || text.contains("sóng cơ") ||
-                        ((flags and FLAG_LY != 0) && !text.contains("quản lý") && !text.contains("quản lí") &&
-                                !text.contains("xử lý") && !text.contains("xử lí") &&
-                                !text.contains("tâm lý") && !text.contains("tâm lí") &&
-                                !text.contains("pháp lý") && !text.contains("pháp lí") &&
-                                !text.contains("địa lý") && !text.contains("địa lí") &&
-                                !text.contains("triết lý") && !text.contains("triết lí") &&
-                                !text.contains("lý thuyết") && !text.contains("lí thuyết") &&
-                                !text.contains("lý luận") && !text.contains("lí luận") &&
-                                !text.contains("lý do") && !text.contains("lí do")) -> SubjectCategory.PHYSICS
+                text.contains("vật lý") || text.contains("vật lí") || text.contains("vat ly") || text.contains("vat li") || (flags and FLAG_PHYSICS != 0) ||
+                        text.contains("môn lý") || text.contains("môn lí") || text.contains("mon ly") || text.contains("mon li") ||
+                        text.contains("sbt lý") || text.contains("sbt lí") || text.contains("sbt ly") || text.contains("sbt li") ||
+                        text.contains("cơ học") || text.contains("co hoc") || text.contains("nhiệt học") || text.contains("nhiet hoc") ||
+                        text.contains("quang học") || text.contains("quang hoc") ||
+                        text.contains("điện từ") || text.contains("dien tu") ||
+                        text.contains("vật lý đại cương") || text.contains("vật lí đại cương") || text.contains("vat ly dai cuong") || text.contains("vat li dai cuong") ||
+                        text.contains("dao động") || text.contains("dao dong") || text.contains("sóng cơ") || text.contains("song co") ||
+                        ((flags and FLAG_LY != 0) &&
+                                !text.contains("quản lý") && !text.contains("quản lí") && !text.contains("quan ly") && !text.contains("quan li") &&
+                                !text.contains("xử lý") && !text.contains("xử lí") && !text.contains("xu ly") && !text.contains("xu li") &&
+                                !text.contains("tâm lý") && !text.contains("tâm lí") && !text.contains("tam ly") && !text.contains("tam li") &&
+                                !text.contains("pháp lý") && !text.contains("pháp lí") && !text.contains("phap ly") && !text.contains("phap li") &&
+                                !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("dia ly") && !text.contains("dia li") &&
+                                !text.contains("triết lý") && !text.contains("triết lí") && !text.contains("triet ly") && !text.contains("triet li") &&
+                                !text.contains("lý thuyết") && !text.contains("lí thuyết") && !text.contains("ly thuyet") && !text.contains("li thuyet") &&
+                                !text.contains("lý luận") && !text.contains("lí luận") && !text.contains("ly luan") && !text.contains("li luan") &&
+                                !text.contains("lý do") && !text.contains("lí do") && !text.contains("ly do") && !text.contains("li do") &&
+                                !text.contains("hợp lý") && !text.contains("hợp lí") && !text.contains("hop ly") && !text.contains("hop li") &&
+                                !text.contains("đại lý") && !text.contains("đại lí") && !text.contains("dai ly") && !text.contains("dai li")) -> SubjectCategory.PHYSICS
 
-                text.contains("hóa học") || text.contains("hoá học") || text.contains("môn hóa") || text.contains("môn hoá") ||
-                        text.contains("hóa hữu cơ") || text.contains("hoá hữu cơ") || text.contains("hóa vô cơ") || text.contains("hoá vô cơ") ||
-                        text.contains("hóa đại cương") || text.contains("hoá đại cương") || text.contains("hóa phân tích") || text.contains("hoá phân tích") ||
+                text.contains("hóa học") || text.contains("hoá học") || text.contains("hoa hoc") ||
+                        text.contains("môn hóa") || text.contains("môn hoá") || text.contains("mon hoa") ||
+                        text.contains("hóa hữu cơ") || text.contains("hoá hữu cơ") || text.contains("hoa huu co") ||
+                        text.contains("hóa vô cơ") || text.contains("hoá vô cơ") || text.contains("hoa vo co") ||
+                        text.contains("hóa đại cương") || text.contains("hoá đại cương") || text.contains("hoa dai cuong") ||
+                        text.contains("hóa phân tích") || text.contains("hoá phân tích") || text.contains("hoa phan tich") ||
                         (flags and FLAG_CHEM != 0) ||
-                        ((flags and FLAG_HOA != 0) && !text.contains("tự động hóa") && !text.contains("tự động hoá") &&
-                                !text.contains("tiến hóa") && !text.contains("tiến hoá") &&
-                                !text.contains("tiêu hóa") && !text.contains("tiêu hoá") &&
-                                !text.contains("hóa đơn") && !text.contains("hoá đơn") &&
-                                !text.contains("văn hóa") && !text.contains("văn hoá") &&
-                                !text.contains("tối ưu hóa") && !text.contains("tối ưu hoá") &&
-                                !text.contains("chuẩn hóa") && !text.contains("chuẩn hoá") &&
-                                !text.contains("công nghiệp hóa") && !text.contains("công nghiệp hoá") &&
-                                !text.contains("hiện đại hóa") && !text.contains("hiện đại hoá") &&
-                                !text.contains("ảo hóa") && !text.contains("ảo hoá") &&
-                                !text.contains("số hóa") && !text.contains("số hoá")) -> SubjectCategory.CHEMISTRY
+                        ((flags and FLAG_HOA != 0) &&
+                                !text.contains("tự động hóa") && !text.contains("tự động hoá") && !text.contains("tu dong hoa") &&
+                                !text.contains("tiến hóa") && !text.contains("tiến hoá") && !text.contains("tien hoa") &&
+                                !text.contains("tiêu hóa") && !text.contains("tiêu hoá") && !text.contains("tieu hoa") &&
+                                !text.contains("hóa đơn") && !text.contains("hoá đơn") && !text.contains("hoa don") &&
+                                !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("van hoa") &&
+                                !text.contains("tối ưu hóa") && !text.contains("tối ưu hoá") && !text.contains("toi uu hoa") &&
+                                !text.contains("chuẩn hóa") && !text.contains("chuẩn hoá") && !text.contains("chuan hoa") &&
+                                !text.contains("công nghiệp hóa") && !text.contains("công nghiệp hoá") && !text.contains("cong nghiep hoa") &&
+                                !text.contains("hiện đại hóa") && !text.contains("hiện đại hoá") && !text.contains("hien dai hoa") &&
+                                !text.contains("ảo hóa") && !text.contains("ảo hoá") && !text.contains("ao hoa") &&
+                                !text.contains("số hóa") && !text.contains("số hoá") && !text.contains("so hoa") &&
+                                !text.contains("hòa bình") && !text.contains("hoà bình") && !text.contains("hoa binh") &&
+                                !text.contains("hòa hợp") && !text.contains("hoà hợp") && !text.contains("hoa hop") &&
+                                !text.contains("hóa thân") && !text.contains("hoá thân") && !text.contains("hoa than")) -> SubjectCategory.CHEMISTRY
 
-                text.contains("sinh học") || text.contains("môn sinh") || (flags and FLAG_BIO != 0) ||
-                        text.contains("y học") || text.contains("di truyền") || text.contains("tế bào") ||
-                        text.contains("vi sinh") || text.contains("sinh thái") || text.contains("tiêu hóa") || text.contains("tiêu hoá") ||
-                        ((flags and FLAG_SINH != 0) && !text.contains("học sinh") &&
-                                !text.contains("sinh viên") && !text.contains("sinh hoạt")) -> SubjectCategory.BIOLOGY
+                text.contains("sinh học") || text.contains("sinh hoc") || text.contains("môn sinh") || text.contains("mon sinh") || (flags and FLAG_BIO != 0) ||
+                        text.contains("y học") || text.contains("y hoc") || text.contains("di truyền") || text.contains("di truyen") || text.contains("tế bào") || text.contains("te bao") ||
+                        text.contains("vi sinh") || text.contains("sinh thái") || text.contains("sinh thai") || text.contains("tiêu hóa") || text.contains("tiêu hoá") || text.contains("tieu hoa") ||
+                        ((flags and FLAG_SINH != 0) &&
+                                !text.contains("học sinh") && !text.contains("hoc sinh") &&
+                                !text.contains("sinh viên") && !text.contains("sinh vien") &&
+                                !text.contains("sinh hoạt") && !text.contains("sinh hoat")) -> SubjectCategory.BIOLOGY
 
-                text.contains("lịch sử") || (flags and FLAG_HISTORY != 0) ||
-                        (((flags and FLAG_SU != 0)) && !text.contains("sử dụng") && !text.contains("lịch sự")) ||
-                        text.contains("địa lý") || text.contains("địa lí") || (flags and FLAG_GEOGRAPHY != 0) ||
-                        (((flags and FLAG_DIA != 0)) && !text.contains("địa chỉ") && !text.contains("địa điểm")) -> SubjectCategory.HISTORY_OR_GEOGRAPHY
+                text.contains("lịch sử") || (text.contains("lich su") && !text.contains("lịch sự") && !text.contains("lich su trong") && !text.contains("giao tiep") && !text.contains("ung xu")) || (flags and FLAG_HISTORY != 0) ||
+                        (((flags and FLAG_SU != 0)) &&
+                                !text.contains("sử dụng") && !text.contains("su dung") &&
+                                !text.contains("lịch sự") && !text.contains("lich su trong") &&
+                                !text.contains("giao tiep") && !text.contains("ung xu")) ||
+                        (flags and FLAG_GEOGRAPHY != 0) ||
+                        isGeography(text) -> SubjectCategory.HISTORY_OR_GEOGRAPHY
 
-                text.contains("ngữ văn") || text.contains("tiếng việt") || (flags and FLAG_LIT != 0) ||
-                        (((flags and FLAG_VAN != 0)) && !text.contains("văn phòng") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("văn minh") && !text.contains("văn bản") && !text.contains("luận văn")) -> SubjectCategory.LITERATURE
+                text.contains("ngữ văn") || text.contains("ngu van") || text.contains("tiếng việt") || text.contains("tieng viet") || (flags and FLAG_LIT != 0) ||
+                        (((flags and FLAG_VAN != 0)) &&
+                                !text.contains("văn phòng") && !text.contains("van phong") &&
+                                !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("van hoa") &&
+                                !text.contains("văn minh") && !text.contains("van minh") &&
+                                !text.contains("văn bản") && !text.contains("van ban") &&
+                                !text.contains("luận văn") && !text.contains("luan van")) -> SubjectCategory.LITERATURE
 
-                text.contains("tiếng anh") || (flags and FLAG_ENG != 0) ||
-                        ((flags and FLAG_ANH != 0) && !text.contains("hình ảnh") && !text.contains("âm thanh") && !text.contains("thầy") && !text.contains("cô") && !text.contains("gv")) -> SubjectCategory.ENGLISH
+                text.contains("tiếng anh") || text.contains("tieng anh") || (flags and FLAG_ENG != 0) ||
+                        ((flags and FLAG_ANH != 0) &&
+                                !text.contains("hình ảnh") && !text.contains("hinh anh") &&
+                                !text.contains("âm thanh") && !text.contains("am thanh") &&
+                                !text.contains("thầy") && !text.contains("thay") &&
+                                !text.contains("cô") && !text.contains("co ") &&
+                                !text.contains("gv")) -> SubjectCategory.ENGLISH
 
-                (flags and FLAG_GDCD != 0) || text.contains("triết học") || text.contains("chính trị") ||
-                        text.contains("pháp luật") || text.contains("kinh tế và pháp luật") || (flags and FLAG_LAW != 0) ||
-                        text.contains("tư tưởng") || text.contains("mác - lênin") || text.contains("mác lênin") ||
-                        text.contains("tư tưởng hồ chí minh") || text.contains("pháp luật đại cương") ||
-                        ((flags and FLAG_TRIET != 0) && !text.contains("triết lý")) -> SubjectCategory.CIVICS_OR_PHILOSOPHY
+                (flags and FLAG_GDCD != 0) || text.contains("triết học") || text.contains("triet hoc") ||
+                        text.contains("chính trị") || text.contains("chinh tri") ||
+                        text.contains("pháp luật") || text.contains("phap luat") ||
+                        text.contains("kinh tế và pháp luật") || text.contains("kinh te va phap luat") ||
+                        (flags and FLAG_LAW != 0) ||
+                        text.contains("tư tưởng") || text.contains("tu tuong") ||
+                        text.contains("mác - lênin") || text.contains("mác lênin") || text.contains("mac - lenin") || text.contains("mac lenin") ||
+                        text.contains("tư tưởng hồ chí minh") || text.contains("tu tuong ho chi minh") ||
+                        text.contains("pháp luật đại cương") || text.contains("phap luat dai cuong") ||
+                        ((flags and FLAG_TRIET != 0) && !text.contains("triết lý") && !text.contains("triet ly")) -> SubjectCategory.CIVICS_OR_PHILOSOPHY
 
-                text.contains("an ninh mạng") || text.contains("mạng máy tính") ||
-                        text.contains("an toàn thông tin") || text.contains("hệ thống phân tán") || text.contains("quản trị mạng") ||
+                text.contains("an ninh mạng") || text.contains("an ninh mang") ||
+                        text.contains("mạng máy tính") || text.contains("mang may tinh") ||
+                        text.contains("an toàn thông tin") || text.contains("an toan thong tin") ||
+                        text.contains("hệ thống phân tán") || text.contains("he thong phan tan") ||
+                        text.contains("quản trị mạng") || text.contains("quan tri mang") ||
                         (flags and FLAG_NETWORKING != 0) ||
-                        ((flags and FLAG_MANG != 0) && !text.contains("mạng xã hội")) ||
+                        ((flags and FLAG_MANG != 0) && !text.contains("mạng xã hội") && !text.contains("mang xa hoi")) ||
                         ((flags and FLAG_CLOUD != 0) && (flags and FLAG_SOUNDCLOUD == 0)) -> SubjectCategory.NETWORKING
 
-                ((flags and FLAG_ECON != 0) || text.contains("kinh tế") || text.contains("quản trị") || text.contains("tài chính") ||
-                        text.contains("marketing") || text.contains("kế toán")) && !text.contains("quản trị mạng") -> SubjectCategory.ECONOMICS
+                ((flags and FLAG_ECON != 0) || text.contains("kinh tế") || text.contains("kinh te") ||
+                        text.contains("quản trị") || text.contains("quan tri") ||
+                        text.contains("tài chính") || text.contains("tai chinh") ||
+                        text.contains("marketing") || text.contains("kế toán") || text.contains("ke toan")) &&
+                        !text.contains("quản trị mạng") && !text.contains("quan tri mang") -> SubjectCategory.ECONOMICS
 
-                text.contains("đồ họa") || text.contains("thiết kế") || text.contains("mỹ thuật") ||
-                        (flags and FLAG_DESIGN != 0) || ((flags and FLAG_VE != 0) && !text.contains("bản vẽ kỹ thuật")) -> SubjectCategory.ART_AND_DESIGN
+                text.contains("đồ họa") || text.contains("do hoa") ||
+                        text.contains("thiết kế") || text.contains("thiet ke") ||
+                        text.contains("mỹ thuật") || text.contains("my thuat") ||
+                        (flags and FLAG_DESIGN != 0) ||
+                        ((flags and FLAG_VE != 0) && !text.contains("bản vẽ kỹ thuật") && !text.contains("ban ve ky thuat")) -> SubjectCategory.ART_AND_DESIGN
 
-                text.contains("lập trình") || text.contains("tin học") || text.contains("di động") ||
+                text.contains("lập trình") || text.contains("lap trinh") ||
+                        text.contains("tin học") || text.contains("tin hoc") ||
+                        text.contains("di động") || text.contains("di dong") ||
                         (flags and FLAG_CS != 0) ||
-                        text.contains("công nghệ thông tin") || text.contains("thuật toán") ||
-                        text.contains("cơ sở dữ liệu") || text.contains("khoa học máy tính") ||
-                        text.contains("cấu trúc dữ liệu") ||
-                        text.contains("trí tuệ nhân tạo") || text.contains("machine learning") ||
-                        text.contains("hệ điều hành") || text.contains("kiến trúc máy tính") ||
-                        ((flags and FLAG_TIN != 0) && !text.contains("thông tin") && !text.contains("bản tin") && !text.contains("tin tức") && !text.contains("niềm tin") && (flags and FLAG_TU == 0)) -> SubjectCategory.COMPUTER_SCIENCE
+                        text.contains("công nghệ thông tin") || text.contains("cong nghe thong tin") ||
+                        text.contains("thuật toán") || text.contains("thuat toan") ||
+                        text.contains("cơ sở dữ liệu") || text.contains("co so du lieu") ||
+                        text.contains("khoa học máy tính") || text.contains("khoa hoc may tinh") ||
+                        text.contains("cấu trúc dữ liệu") || text.contains("cau truc du lieu") ||
+                        text.contains("trí tuệ nhân tạo") || text.contains("tri tue nhan tao") ||
+                        text.contains("machine learning") ||
+                        text.contains("hệ điều hành") || text.contains("he dieu hanh") ||
+                        text.contains("kiến trúc máy tính") || text.contains("kien truc may tinh") ||
+                        ((flags and FLAG_TIN != 0) &&
+                                !text.contains("thông tin") && !text.contains("thong tin") &&
+                                !text.contains("bản tin") && !text.contains("ban tin") &&
+                                !text.contains("tin tức") && !text.contains("tin tuc") &&
+                                !text.contains("niềm tin") && !text.contains("niem tin") &&
+                                (flags and FLAG_TU == 0)) -> SubjectCategory.COMPUTER_SCIENCE
 
-                text.contains("nhiệm vụ") || (flags and FLAG_ASSIGNMENT != 0) || text.contains("thực hành") ||
-                        text.contains("bài tập") || text.contains("dự án") -> SubjectCategory.GENERAL_ASSIGNMENT
+                text.contains("nhiệm vụ") || text.contains("nhiem vu") ||
+                        (flags and FLAG_ASSIGNMENT != 0) ||
+                        text.contains("thực hành") || text.contains("thuc hanh") ||
+                        text.contains("bài tập") || text.contains("bai tap") ||
+                        text.contains("dự án") || text.contains("du an") -> SubjectCategory.GENERAL_ASSIGNMENT
 
                 else -> null
             }
@@ -344,7 +436,12 @@ object SubjectArtHelper {
         match(courseLower, courseFlags)?.let { return it }
 
         if (!title.isNullOrBlank()) {
-            val titleLower = title.lowercase()
+            val titleNormalized = if (java.text.Normalizer.isNormalized(title, java.text.Normalizer.Form.NFC)) {
+                title
+            } else {
+                java.text.Normalizer.normalize(title, java.text.Normalizer.Form.NFC)
+            }
+            val titleLower = titleNormalized.lowercase()
             val titleFlags = scanTokenFlags(titleLower)
             match(titleLower, titleFlags)?.let { return it }
         }
@@ -397,7 +494,7 @@ object SubjectArtHelper {
             SubjectCategory.PHYSICS -> "LÝ"
             SubjectCategory.CHEMISTRY -> "HOÁ"
             SubjectCategory.BIOLOGY -> "SINH"
-            SubjectCategory.HISTORY_OR_GEOGRAPHY -> if (courseName.contains("địa", ignoreCase = true) || title?.contains("địa", ignoreCase = true) == true || courseName.contains("dia", ignoreCase = true) || title?.contains("dia", ignoreCase = true) == true) "ĐỊA" else "SỬ"
+            SubjectCategory.HISTORY_OR_GEOGRAPHY -> if (isGeography(courseName, title)) "ĐỊA" else "SỬ"
             SubjectCategory.LITERATURE -> "VĂN"
             SubjectCategory.ENGLISH -> "ANH"
             SubjectCategory.CIVICS_OR_PHILOSOPHY -> "GDCD"

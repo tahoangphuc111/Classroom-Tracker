@@ -186,7 +186,23 @@ class ClassroomRepository(
                 Result.success(Unit)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                _syncErrorMessage.value = "Lỗi đồng bộ: ${e.localizedMessage}"
+                val friendlyMessage = when {
+                    e is java.net.UnknownHostException ->
+                        "Không có kết nối mạng. Vui lòng kiểm tra lại đường truyền."
+                    e is java.net.SocketTimeoutException ->
+                        "Kết nối mạng quá hạn. Vui lòng thử lại sau."
+                    e.message?.contains("Phiên đăng nhập") == true ||
+                    e.message?.contains("Chưa đăng nhập") == true ||
+                    e.message?.contains("401") == true ->
+                        "Phiên đăng nhập đã hết hạn hoặc bị thu hồi. Vui lòng đăng nhập lại."
+                    e.message?.contains("429") == true ->
+                        "Đã đạt giới hạn yêu cầu Google Classroom. Vui lòng đợi trong giây lát."
+                    !e.localizedMessage.isNullOrBlank() ->
+                        "Lỗi đồng bộ: ${e.localizedMessage}"
+                    else ->
+                        "Lỗi đồng bộ dữ liệu. Vui lòng thử lại sau."
+                }
+                _syncErrorMessage.value = friendlyMessage
                 Result.failure(e)
             } finally {
                 _isSyncing.value = false
@@ -328,7 +344,11 @@ class ClassroomRepository(
             } else {
                 incoming.status
             }
-            val resolvedManuallyCompleted = localIsManuallyCompleted || incoming.isManuallyCompleted
+            val resolvedManuallyCompleted = if (incoming.status == SubmissionStatus.TURNED_IN || incoming.status == SubmissionStatus.RETURNED) {
+                false
+            } else {
+                localIsManuallyCompleted || incoming.isManuallyCompleted
+            }
             return incoming.copy(
                 status = resolvedStatus,
                 isManuallyCompleted = resolvedManuallyCompleted

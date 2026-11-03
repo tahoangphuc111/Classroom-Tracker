@@ -77,11 +77,6 @@ public final class ClassroomStorage: @unchecked Sendable {
                 dirs.append(appSupport)
             }
         }
-        if let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-            if !dirs.contains(docs) {
-                dirs.append(docs)
-            }
-        }
         return dirs
     }()
 
@@ -103,13 +98,33 @@ public final class ClassroomStorage: @unchecked Sendable {
             do {
                 try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
                 let fileURL = dir.appendingPathComponent(fileName)
-                do {
-                    try data.write(to: fileURL, options: .atomic)
-                } catch {
-                    try data.write(to: fileURL, options: [])
+                let coordinator = NSFileCoordinator(filePresenter: nil)
+                var coordError: NSError?
+                var writeSuccess = false
+
+                coordinator.coordinate(writingItemAt: fileURL, options: [], error: &coordError) { targetURL in
+                    do {
+                        try data.write(to: targetURL, options: .atomic)
+                        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+                        writeSuccess = true
+                    } catch {
+                        if (try? data.write(to: targetURL, options: [])) != nil {
+                            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+                            writeSuccess = true
+                        }
+                    }
                 }
-                try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: fileURL.path)
-                logger.notice("WROTE \(data.count) bytes of \(fileName, privacy: .public) to \(fileURL.path, privacy: .public)")
+
+                if !writeSuccess && coordError != nil {
+                    do {
+                        try data.write(to: fileURL, options: .atomic)
+                        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
+                    } catch {
+                        try data.write(to: fileURL, options: [])
+                        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
+                    }
+                }
+                logger.notice("WROTE \(data.count) bytes of \(fileName, privacy: .public)")
             } catch {
                 let nsError = error as NSError
                 if nsError.domain == NSCocoaErrorDomain && (nsError.code == NSFileWriteNoPermissionError || nsError.code == 513) {
@@ -117,7 +132,7 @@ public final class ClassroomStorage: @unchecked Sendable {
                     Self.inaccessibleDirectoryPaths.insert(dir.path)
                     Self.directoryLock.unlock()
                 }
-                logger.error("Error writing \(fileName, privacy: .public) to \(dir.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                logger.error("Error writing \(fileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
         }
     }
@@ -184,9 +199,18 @@ public final class ClassroomStorage: @unchecked Sendable {
             do {
                 let attrs = try FileManager.default.attributesOfItem(atPath: fileURL.path)
                 let modDate = attrs[.modificationDate] as? Date ?? .distantPast
-                let data = try Data(contentsOf: fileURL)
+
+                let coordinator = NSFileCoordinator(filePresenter: nil)
+                var coordError: NSError?
+                var readData: Data?
+
+                coordinator.coordinate(readingItemAt: fileURL, options: [], error: &coordError) { targetURL in
+                    readData = try? Data(contentsOf: targetURL)
+                }
+
+                let data = readData ?? (try? Data(contentsOf: fileURL)) ?? Data()
                 guard !data.isEmpty else {
-                    logger.error("readData: file is 0 bytes at \(fileURL.path, privacy: .public)")
+                    logger.error("readData: file is 0 bytes or unreadable for \(fileName, privacy: .public)")
                     continue
                 }
 
@@ -203,7 +227,7 @@ public final class ClassroomStorage: @unchecked Sendable {
                     continue
                 }
 
-                logger.notice("readData found \(data.count) bytes in \(dir.path, privacy: .public), isMock=\(isMock), modDate=\(modDate)")
+                logger.notice("readData found \(data.count) bytes of \(fileName, privacy: .public), isMock=\(isMock), modDate=\(modDate)")
 
                 if bestData == nil {
                     bestData = data
@@ -224,7 +248,7 @@ public final class ClassroomStorage: @unchecked Sendable {
                     Self.inaccessibleDirectoryPaths.insert(dir.path)
                     Self.directoryLock.unlock()
                 }
-                logger.error("readData FAILED to read \(fileURL.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                logger.error("readData FAILED for \(fileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
         }
 
@@ -623,16 +647,6 @@ public final class ClassroomStorage: @unchecked Sendable {
         cachedCourseworkTimestamp = timestamp
         lock.unlock()
 
-        let validIds = Set(items.map(\.id))
-        let existingNotes = loadPersonalNotes()
-        let prunedNotes = existingNotes.filter { note in
-            guard let cwId = note.courseworkId else { return true }
-            return validIds.contains(cwId)
-        }
-        if prunedNotes.count != existingNotes.count {
-            savePersonalNotes(prunedNotes)
-        }
-
         ioQueue.async { [weak self] in
             guard let self else { return }
             guard let encoded = try? Self.jsonEncoder.encode(items) else { return }
@@ -916,8 +930,7 @@ public final class ClassroomStorage: @unchecked Sendable {
             ud.synchronize()
         }
 
-        ioQueue.async { [weak self] in
-            guard let self else { return }
+        let performDiskClean = {
             for dir in self.allStorageDirectories {
                 try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_courses.json"))
                 try? FileManager.default.removeItem(at: dir.appendingPathComponent("cached_classroom_coursework.json"))
@@ -946,6 +959,12 @@ public final class ClassroomStorage: @unchecked Sendable {
             }
 
             self.notifyWidgetReload()
+        }
+
+        if DispatchQueue.getSpecific(key: Self.ioQueueKey) != nil {
+            performDiskClean()
+        } else {
+            ioQueue.sync(execute: performDiskClean)
         }
     }
 

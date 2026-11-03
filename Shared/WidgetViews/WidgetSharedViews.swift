@@ -27,27 +27,27 @@ public struct SubjectArtHelper {
         public let bannerBackground: Color
     }
 
-    private static var cacheLock = os_unfair_lock_s()
+    private static let cacheLock = NSLock()
     private static var courseCategoryCache: [String: SubjectCategory] = [:]
     private static var categoryCache: [String: SubjectCategory] = [:]
     private static var courseBadgeCache: [String: String] = [:]
 
     public static func category(for courseName: String, title: String? = nil) -> SubjectCategory {
-        os_unfair_lock_lock(&cacheLock)
+        cacheLock.lock()
         let courseCat: SubjectCategory
         if let cached = courseCategoryCache[courseName] {
             courseCat = cached
-            os_unfair_lock_unlock(&cacheLock)
+            cacheLock.unlock()
         } else {
-            os_unfair_lock_unlock(&cacheLock)
+            cacheLock.unlock()
             let computed = computeCategory(for: courseName, title: nil)
-            os_unfair_lock_lock(&cacheLock)
+            cacheLock.lock()
             if courseCategoryCache.count >= 2048 {
                 courseCategoryCache.removeAll()
             }
             courseCategoryCache[courseName] = computed
             courseCat = computed
-            os_unfair_lock_unlock(&cacheLock)
+            cacheLock.unlock()
         }
 
         if courseCat != .other || title == nil || title!.isEmpty {
@@ -55,20 +55,20 @@ public struct SubjectArtHelper {
         }
 
         let key = "\(courseName)|\(title ?? "")"
-        os_unfair_lock_lock(&cacheLock)
+        cacheLock.lock()
         if let cached = categoryCache[key] {
-            os_unfair_lock_unlock(&cacheLock)
+            cacheLock.unlock()
             return cached
         }
-        os_unfair_lock_unlock(&cacheLock)
+        cacheLock.unlock()
 
         let computed = computeCategory(for: courseName, title: title)
-        os_unfair_lock_lock(&cacheLock)
+        cacheLock.lock()
         if categoryCache.count >= 2048 {
             categoryCache.removeAll()
         }
         categoryCache[key] = computed
-        os_unfair_lock_unlock(&cacheLock)
+        cacheLock.unlock()
 
         return computed
     }
@@ -98,23 +98,23 @@ public struct SubjectArtHelper {
         case .networking: return "MẠNG"
         case .generalAssignment: return "BTH"
         case .historyOrGeography:
-            os_unfair_lock_lock(&cacheLock)
+            cacheLock.lock()
             let cacheKey = (title != nil && !title!.isEmpty) ? "\(courseName)|\(title!)" : courseName
             if let cached = courseBadgeCache[cacheKey] {
-                os_unfair_lock_unlock(&cacheLock)
+                cacheLock.unlock()
                 return cached
             }
-            os_unfair_lock_unlock(&cacheLock)
+            cacheLock.unlock()
 
             let isDia = courseName.localizedCaseInsensitiveContains("địa") || (title?.localizedCaseInsensitiveContains("địa") == true) || courseName.localizedCaseInsensitiveContains("dia") || (title?.localizedCaseInsensitiveContains("dia") == true)
             let code = isDia ? "ĐỊA" : "SỬ"
 
-            os_unfair_lock_lock(&cacheLock)
+            cacheLock.lock()
             if courseBadgeCache.count >= 2048 {
                 courseBadgeCache.removeAll()
             }
             courseBadgeCache[cacheKey] = code
-            os_unfair_lock_unlock(&cacheLock)
+            cacheLock.unlock()
             return code
         case .other:
             let cleaned = courseName.trimmingCharacters(in: .whitespacesAndNewlines)

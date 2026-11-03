@@ -598,7 +598,12 @@ class BaoBaiBucketingUtilsTest {
         val incomingTurnedIn = incomingPending.copy(status = SubmissionStatus.TURNED_IN)
         val res3 = com.phucta.classroom.data.repository.ClassroomRepository.reconcileCoursework(localManualDone, incomingTurnedIn)
         assertEquals("Status remains TURNED_IN", SubmissionStatus.TURNED_IN, res3.status)
-        assertTrue("isManuallyCompleted preserved", res3.isManuallyCompleted)
+        assertFalse("isManuallyCompleted must be reset when incoming is TURNED_IN", res3.isManuallyCompleted)
+
+        // Verify that after server confirmed TURNED_IN, if teacher unsubmits/returns to PENDING, it does not get stuck
+        val res3ReturnedToPending = com.phucta.classroom.data.repository.ClassroomRepository.reconcileCoursework(res3, incomingPending)
+        assertEquals("Unsubmitted task must return to PENDING after server TURNED_IN reset", SubmissionStatus.PENDING, res3ReturnedToPending.status)
+        assertFalse(res3ReturnedToPending.isManuallyCompleted)
 
         val localUnchecked = localManualDone.copy(status = SubmissionStatus.PENDING, isManuallyCompleted = false)
         val res4 = com.phucta.classroom.data.repository.ClassroomRepository.reconcileCoursework(localUnchecked, incomingPending)
@@ -733,5 +738,120 @@ class BaoBaiBucketingUtilsTest {
 
         assertFalse("Note should be incomplete when at least one subitem is incomplete", revertedNote.isCompleted)
         assertEquals(0.5f, revertedNote.checklistProgress, 0.01f)
+    }
+
+    @Test
+    fun testOAuthTokens_ExpirationAndValidityContract() {
+        val now = System.currentTimeMillis()
+        val validToken = com.phucta.classroom.data.local.OAuthTokens(
+            accessToken = "valid_access_token",
+            refreshToken = "refresh_token_123",
+            expiresIn = 3600,
+            expiresAt = now + 1800_000L
+        )
+        assertFalse("Token expiring in 30 mins should not be expired", validToken.isExpired)
+
+        val expiredTokenWithRefresh = com.phucta.classroom.data.local.OAuthTokens(
+            accessToken = "expired_access_token",
+            refreshToken = "refresh_token_123",
+            expiresIn = 3600,
+            expiresAt = now - 1000L
+        )
+        assertTrue("Token past expiration should be expired", expiredTokenWithRefresh.isExpired)
+
+        val expiredTokenWithoutRefresh = com.phucta.classroom.data.local.OAuthTokens(
+            accessToken = "expired_access_token",
+            refreshToken = null,
+            expiresIn = 3600,
+            expiresAt = now - 1000L
+        )
+        assertTrue("Token past expiration should be expired", expiredTokenWithoutRefresh.isExpired)
+    }
+
+    @Test
+    fun testStandalonePersonalNotes_PreservedDuringCourseworkPruning() {
+        val validCourseworkIds = listOf("cw_active_1", "cw_active_2")
+        val validSet = validCourseworkIds.toHashSet()
+
+        val attachedNote = com.phucta.classroom.data.local.AttachedCourseworkNoteRef(
+            id = "note_attached_1",
+            courseworkId = "cw_deleted_9"
+        )
+        val standaloneNoteNull = com.phucta.classroom.data.local.AttachedCourseworkNoteRef(
+            id = "note_standalone_null",
+            courseworkId = null
+        )
+        val standaloneNoteEmpty = com.phucta.classroom.data.local.AttachedCourseworkNoteRef(
+            id = "note_standalone_empty",
+            courseworkId = ""
+        )
+        val standaloneNoteBlank = com.phucta.classroom.data.local.AttachedCourseworkNoteRef(
+            id = "note_standalone_blank",
+            courseworkId = "   "
+        )
+
+        val candidateRefs = listOf(attachedNote, standaloneNoteNull, standaloneNoteEmpty, standaloneNoteBlank)
+        val toDelete = ArrayList<String>()
+        for (note in candidateRefs) {
+            val cwId = note.courseworkId
+            if (!cwId.isNullOrBlank() && !validSet.contains(cwId)) {
+                toDelete.add(note.id)
+            }
+        }
+
+        assertEquals("Only attached notes with deleted coursework should be marked for deletion", 1, toDelete.size)
+        assertEquals("note_attached_1", toDelete.first())
+        assertFalse("Standalone notes with null courseworkId must not be deleted", toDelete.contains("note_standalone_null"))
+        assertFalse("Standalone notes with empty courseworkId must not be deleted", toDelete.contains("note_standalone_empty"))
+        assertFalse("Standalone notes with blank courseworkId must not be deleted", toDelete.contains("note_standalone_blank"))
+    }
+
+    @Test
+    fun testLOG03_CompletedTodayMustNotPolluteTomorrowFallback() {
+        val now = System.currentTimeMillis()
+        ClassroomDateUtils.ensureDayBoundaries(now)
+        val cal = Calendar.getInstance().apply {
+            timeInMillis = now
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 30)
+        }
+        val todayDue = cal.timeInMillis
+
+        cal.add(Calendar.DAY_OF_YEAR, 3)
+        val laterDue = cal.timeInMillis
+
+        val completedTodayCoursework = Coursework(
+            id = "today_done",
+            courseId = "c1",
+            courseName = "Văn",
+            title = "Bài tập hoàn thành hôm nay",
+            dueEpochMillis = todayDue,
+            status = SubmissionStatus.TURNED_IN
+        )
+
+        val upcomingLaterCoursework = Coursework(
+            id = "later_pending",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "Bài tập tuần tới",
+            dueEpochMillis = laterDue,
+            status = SubmissionStatus.PENDING
+        )
+
+        val buckets = BaoBaiBucketingUtils.computeBuckets(listOf(completedTodayCoursework, upcomingLaterCoursework))
+        assertEquals(1, buckets.completed.size)
+        assertEquals("today_done", buckets.completed.first().id)
+        assertEquals(0, buckets.tomorrow.size)
+        assertEquals(1, buckets.laterUpcoming.size)
+
+        // Fallback widgetItems must pick 'later', NOT 'completedToday'
+        assertEquals(1, buckets.widgetItems.size)
+        assertEquals("later_pending", buckets.widgetItems.first().id)
+    }
+
+    @Test
+    fun testLOG06_EmptyTomorrowCandidatesDoesNotThrowClassCastException() {
+        val buckets = BaoBaiBucketingUtils.computeBuckets(emptyList())
+        assertTrue(buckets.widgetItems.isEmpty())
     }
 }

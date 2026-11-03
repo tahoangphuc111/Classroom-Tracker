@@ -15,13 +15,13 @@ If you work on this codebase, these are the non-negotiable rules and behaviors t
 In Vietnamese schools, students pack their schoolbags in the afternoon or evening for the next day. The traditional *sổ báo bài* (assignment notebook) is all about what is due tomorrow. 
 
 - **Today is considered done**: By the time an evening study session happens, homework due today has already been submitted or dealt with at school. Showing today's completed tasks on tomorrow's prep screen just adds clutter.
+- **Expired tasks auto-complete (Past Due Considered Done)**: In accordance with the "Tomorrow First" and "Today is considered done" philosophy, when an assignment's deadline has passed (`dueDate < now` / `dueEpochMillis < System.currentTimeMillis()`), the app intentionally evaluates `isCompleted == true`. Once the deadline passes, the task is considered concluded/expired in the context of prep (Báo bài) rather than remaining as an open blocker. This is an intentional architectural invariant on both Apple (`Coursework.swift`) and Android (`Coursework.kt`).
 - **The default view is Tomorrow**: Both the main screen and home screen widgets focus on coursework due between the start of tomorrow (`00:00:00`) and the start of the day after (`23:59:59`).
 - **Fallback sequence when tomorrow is empty**:
-  1. Overdue incomplete tasks (stuff that was missed).
-  2. Tasks due today that are still incomplete.
-  3. Upcoming tasks further out.
-  4. Undated tasks.
-  5. Empty state ("Ngày mai rảnh rồi!" / All caught up).
+  1. Incomplete tasks due today or nearest upcoming.
+  2. Upcoming tasks further out.
+  3. Undated tasks.
+  4. Empty state ("Ngày mai rảnh rồi!" / All caught up).
 
 Do not change the widgets or main landing screen to default to "Today" or a flat "All Upcoming" list.
 

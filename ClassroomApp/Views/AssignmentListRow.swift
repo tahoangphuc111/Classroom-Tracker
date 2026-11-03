@@ -270,6 +270,7 @@ struct AssignmentListRow: View, Equatable {
                 onSelect(isCmd)
             }
         }
+        .contentShape(Rectangle())
         .appleLiquidGlassSurface(
             style: isSelected ? .interactiveTint(Color.blue.opacity(0.14)) : .interactive,
             in: RoundedRectangle(cornerRadius: 10, style: .continuous)

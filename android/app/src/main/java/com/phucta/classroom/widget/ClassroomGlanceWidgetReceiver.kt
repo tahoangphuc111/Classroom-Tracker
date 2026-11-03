@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import com.phucta.classroom.data.model.ClassroomDateUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -15,14 +16,29 @@ class ClassroomGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        when (intent.action) {
+        val action = intent.action
+        if (action == "com.phucta.classroom.action.UPDATE_WIDGET") {
+            if (intent.`package` != null && intent.`package` != context.packageName) {
+                return
+            }
+        }
+        if (processAction(action)) {
+            triggerWidgetUpdate(context)
+        }
+    }
+
+    internal fun processAction(action: String?): Boolean {
+        return when (action) {
             Intent.ACTION_TIMEZONE_CHANGED -> {
                 TimeZone.setDefault(null)
-                triggerWidgetUpdate(context)
+                ClassroomDateUtils.clearCaches()
+                true
             }
-            Intent.ACTION_TIME_CHANGED, Intent.ACTION_DATE_CHANGED, "com.phucta.classroom.action.UPDATE_WIDGET" -> {
-                triggerWidgetUpdate(context)
+            Intent.ACTION_TIME_CHANGED, Intent.ACTION_DATE_CHANGED, "android.intent.action.TIME_SET", "com.phucta.classroom.action.UPDATE_WIDGET" -> {
+                ClassroomDateUtils.clearCaches()
+                true
             }
+            else -> false
         }
     }
 

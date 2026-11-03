@@ -370,7 +370,8 @@ struct SettingsSheetView: View {
                 titleVisibility: .visible
             ) {
                 Button("Đăng xuất và xóa cache", role: .destructive) {
-                    authService.signOut()
+                    authService.signOut(includePersonalNotes: false)
+                    ClassroomStorage.shared.clearAllData(includePersonalNotes: false)
                     isDemoMode = false
                     onRefreshData()
                     onAutoSelectFirstItem()

@@ -55,6 +55,7 @@ class GoogleOAuthManager(
 
     private var activeCodeVerifier: String? = null
     private var activeRedirectUri: String? = null
+    private var activeAuthState: String? = null
 
     companion object {
         val SCOPES = listOf(
@@ -78,20 +79,29 @@ class GoogleOAuthManager(
         return Base64.encodeToString(digest, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
     }
 
+    private fun generateState(): String {
+        val bytes = ByteArray(16)
+        SecureRandom().nextBytes(bytes)
+        return Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+    }
+
     suspend fun startSignIn(context: Context) {
         _authErrorMessage.value = null
         val clientId = preferences.getEffectiveClientId()
         val verifier = generateCodeVerifier()
         activeCodeVerifier = verifier
 
+        val state = generateState()
+        activeAuthState = state
+
         val redirectUri = if (clientId == ClassroomPreferences.BUNDLED_CLIENT_ID) {
             val reversedClientId = clientId.split(".").reversed().joinToString(".")
             "$reversedClientId:/oauth2redirect/google"
         } else {
-            "com.phucta.classroom:/oauth2redirect"
+            "com.phucta.classroom://oauth2redirect"
         }
         activeRedirectUri = redirectUri
-        tokenStorage.saveAuthFlowState(verifier, redirectUri)
+        tokenStorage.saveAuthFlowState(verifier, redirectUri, state)
 
         val challenge = generateCodeChallenge(verifier)
 
@@ -102,6 +112,7 @@ class GoogleOAuthManager(
             .appendQueryParameter("scope", SCOPES.joinToString(" "))
             .appendQueryParameter("code_challenge", challenge)
             .appendQueryParameter("code_challenge_method", "S256")
+            .appendQueryParameter("state", state)
             .appendQueryParameter("access_type", "offline")
             .appendQueryParameter("prompt", "select_account consent")
             .build()
@@ -129,18 +140,24 @@ class GoogleOAuthManager(
             return@withContext false
         }
 
-        val code = uri.getQueryParameter("code") ?: return@withContext false
-        val verifier = activeCodeVerifier ?: tokenStorage.loadAuthFlowVerifier() ?: return@withContext false
-        val redirectUri = activeRedirectUri ?: tokenStorage.loadAuthFlowRedirectUri() ?: run {
-            val scheme = uri.scheme ?: ""
-            if (scheme.startsWith("com.googleusercontent.apps.")) {
-                "$scheme:/oauth2redirect/google"
-            } else {
-                "com.phucta.classroom:/oauth2redirect"
-            }
-        }
-
         try {
+            val returnedState = uri.getQueryParameter("state")
+            val expectedState = activeAuthState ?: tokenStorage.loadAuthFlowState()
+            if (returnedState.isNullOrBlank() || expectedState.isNullOrBlank() || returnedState != expectedState) {
+                _authErrorMessage.value = "Xác thực không hợp lệ: Lỗi CSRF state mismatch"
+                return@withContext false
+            }
+
+            val code = uri.getQueryParameter("code") ?: return@withContext false
+            val verifier = activeCodeVerifier ?: tokenStorage.loadAuthFlowVerifier() ?: return@withContext false
+            val redirectUri = activeRedirectUri ?: tokenStorage.loadAuthFlowRedirectUri() ?: run {
+                val scheme = uri.scheme ?: ""
+                if (scheme.startsWith("com.googleusercontent.apps.")) {
+                    "$scheme:/oauth2redirect/google"
+                } else {
+                    "com.phucta.classroom://oauth2redirect"
+                }
+            }
             val clientId = preferences.getEffectiveClientId()
             val clientSecret = preferences.getEffectiveClientSecret()
 
@@ -188,6 +205,7 @@ class GoogleOAuthManager(
         } finally {
             activeCodeVerifier = null
             activeRedirectUri = null
+            activeAuthState = null
             tokenStorage.clearAuthFlowState()
         }
     }
@@ -206,8 +224,12 @@ class GoogleOAuthManager(
                 return@withLock freshTokens.accessToken
             }
 
-            val refreshToken = currentTokens.refreshToken
-                ?: throw IllegalStateException("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.")
+            val refreshToken = currentTokens.refreshToken?.takeIf { it.isNotBlank() }
+            if (refreshToken == null) {
+                signOut()
+                _authErrorMessage.value = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+                throw IllegalStateException("Phiên đăng nhập đã bị thu hồi.")
+            }
 
             val clientId = preferences.getEffectiveClientId()
             val clientSecret = preferences.getEffectiveClientSecret()

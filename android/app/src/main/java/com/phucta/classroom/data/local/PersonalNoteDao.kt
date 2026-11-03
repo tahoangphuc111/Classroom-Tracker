@@ -45,7 +45,7 @@ interface PersonalNoteDao {
     @Query("DELETE FROM personal_notes WHERE coursework_id = :courseworkId")
     suspend fun deleteNoteByCourseworkId(courseworkId: String)
 
-    @Query("SELECT id, coursework_id FROM personal_notes WHERE coursework_id IS NOT NULL")
+    @Query("SELECT id, coursework_id FROM personal_notes WHERE coursework_id IS NOT NULL AND TRIM(coursework_id) != ''")
     suspend fun getCourseworkAttachedNoteRefs(): List<AttachedCourseworkNoteRef>
 
     @Transaction
@@ -60,7 +60,7 @@ interface PersonalNoteDao {
         val toDelete = ArrayList<String>()
         for (note in attached) {
             val cwId = note.courseworkId
-            if (cwId != null && !validSet.contains(cwId)) {
+            if (!cwId.isNullOrBlank() && !validSet.contains(cwId)) {
                 toDelete.add(note.id)
             }
         }
@@ -71,7 +71,7 @@ interface PersonalNoteDao {
         }
     }
 
-    @Query("DELETE FROM personal_notes WHERE coursework_id IS NOT NULL")
+    @Query("DELETE FROM personal_notes WHERE coursework_id IS NOT NULL AND TRIM(coursework_id) != ''")
     suspend fun deleteAllCourseworkAttachedNotes()
 
     @Query("SELECT * FROM personal_notes WHERE search_index LIKE '%' || :query || '%' ORDER BY updated_at DESC")

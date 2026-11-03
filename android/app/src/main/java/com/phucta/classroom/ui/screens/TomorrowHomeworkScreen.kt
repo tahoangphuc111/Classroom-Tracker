@@ -1,6 +1,8 @@
 package com.phucta.classroom.ui.screens
 
 import android.content.Intent
+import android.os.Build
+import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -67,6 +69,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -158,14 +161,14 @@ fun TomorrowHomeworkScreen(
         if (tomorrowItems.isNotEmpty()) {
             item(key = "tomorrow_hero_banner", contentType = "hero_banner") {
                 TomorrowEditorialHeroCard(
-                    scrollOffsetProvider = {
-                        if (lazyListState.firstVisibleItemIndex == 0) lazyListState.firstVisibleItemScrollOffset else 400
-                    },
                     modifier = Modifier.animateItem(
                         fadeInSpec = ItemFadeSpring,
                         placementSpec = ItemPlacementSpring,
                         fadeOutSpec = ItemFadeSpring
-                    )
+                    ),
+                    scrollOffsetProvider = {
+                        if (lazyListState.firstVisibleItemIndex == 0) lazyListState.firstVisibleItemScrollOffset else 400
+                    }
                 )
             }
         }
@@ -295,25 +298,38 @@ fun TomorrowHomeworkScreen(
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(color = Color.White),
+                                    role = Role.Button,
                                     onClick = {
-                                        val targetDayLabel = when {
-                                            hasTomorrowTasks -> "NGÀY MAI"
-                                            hasTodayTasks -> "HÔM NAY"
-                                            else -> "SẮP TỚI"
+                                        try {
+                                            val targetDayLabel = when {
+                                                hasTomorrowTasks -> "NGÀY MAI"
+                                                hasTodayTasks -> "HÔM NAY"
+                                                else -> "SẮP TỚI"
+                                            }
+                                            val dateEpoch = when {
+                                                hasTomorrowTasks -> ClassroomDateUtils.startOfTomorrow
+                                                hasTodayTasks -> ClassroomDateUtils.startOfToday
+                                                else -> tomorrowItems.firstOrNull { it.dueEpochMillis != null }?.dueEpochMillis ?: ClassroomDateUtils.startOfTomorrow
+                                            }
+                                            val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(
+                                                items = tomorrowItems,
+                                                dateEpochMillis = dateEpoch,
+                                                targetDayLabel = targetDayLabel
+                                            )
+                                            val copied = BaoBaiShareHelper.copyToClipboard(context, baoBaiText)
+                                            if (copied) {
+                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                } else {
+                                                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                                }
+                                                Toast.makeText(context, "Đã sao chép báo bài!", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                Toast.makeText(context, "Không thể sao chép báo bài", Toast.LENGTH_SHORT).show()
+                                            }
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Không thể sao chép báo bài", Toast.LENGTH_SHORT).show()
                                         }
-                                        val dateEpoch = when {
-                                            hasTomorrowTasks -> ClassroomDateUtils.startOfTomorrow
-                                            hasTodayTasks -> ClassroomDateUtils.startOfToday
-                                            else -> tomorrowItems.firstOrNull { it.dueEpochMillis != null }?.dueEpochMillis ?: ClassroomDateUtils.startOfTomorrow
-                                        }
-                                        val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(
-                                            items = tomorrowItems,
-                                            dateEpochMillis = dateEpoch,
-                                            targetDayLabel = targetDayLabel
-                                        )
-                                        BaoBaiShareHelper.copyToClipboard(context, baoBaiText)
-                                        view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-                                        Toast.makeText(context, "Đã sao chép báo bài!", Toast.LENGTH_SHORT).show()
                                     }
                                 )
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -346,31 +362,38 @@ fun TomorrowHomeworkScreen(
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(color = Color.White),
+                                    role = Role.Button,
                                     onClick = {
-                                        val targetDayLabel = when {
-                                            hasTomorrowTasks -> "NGÀY MAI"
-                                            hasTodayTasks -> "HÔM NAY"
-                                            else -> "SẮP TỚI"
+                                        try {
+                                            val targetDayLabel = when {
+                                                hasTomorrowTasks -> "NGÀY MAI"
+                                                hasTodayTasks -> "HÔM NAY"
+                                                else -> "SẮP TỚI"
+                                            }
+                                            val shareTitle = when {
+                                                hasTomorrowTasks -> "Báo bài ngày mai"
+                                                hasTodayTasks -> "Báo bài hôm nay"
+                                                else -> "Báo bài sắp tới"
+                                            }
+                                            val dateEpoch = when {
+                                                hasTomorrowTasks -> ClassroomDateUtils.startOfTomorrow
+                                                hasTodayTasks -> ClassroomDateUtils.startOfToday
+                                                else -> tomorrowItems.firstOrNull { it.dueEpochMillis != null }?.dueEpochMillis ?: ClassroomDateUtils.startOfTomorrow
+                                            }
+                                            val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(
+                                                items = tomorrowItems,
+                                                dateEpochMillis = dateEpoch,
+                                                targetDayLabel = targetDayLabel
+                                            )
+                                            view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                                            val shareIntent = BaoBaiShareHelper.createShareIntent(baoBaiText, shareTitle)
+                                            val chooser = Intent.createChooser(shareIntent, "Chia sẻ báo bài qua").apply {
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            }
+                                            context.startActivity(chooser)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Không thể chia sẻ báo bài", Toast.LENGTH_SHORT).show()
                                         }
-                                        val shareTitle = when {
-                                            hasTomorrowTasks -> "Báo bài ngày mai"
-                                            hasTodayTasks -> "Báo bài hôm nay"
-                                            else -> "Báo bài sắp tới"
-                                        }
-                                        val dateEpoch = when {
-                                            hasTomorrowTasks -> ClassroomDateUtils.startOfTomorrow
-                                            hasTodayTasks -> ClassroomDateUtils.startOfToday
-                                            else -> tomorrowItems.firstOrNull { it.dueEpochMillis != null }?.dueEpochMillis ?: ClassroomDateUtils.startOfTomorrow
-                                        }
-                                        val baoBaiText = BaoBaiShareHelper.formatBaoBaiText(
-                                            items = tomorrowItems,
-                                            dateEpochMillis = dateEpoch,
-                                            targetDayLabel = targetDayLabel
-                                        )
-                                        view.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
-                                        val shareIntent = BaoBaiShareHelper.createShareIntent(baoBaiText, shareTitle)
-                                        val chooser = Intent.createChooser(shareIntent, "Chia sẻ báo bài qua")
-                                        context.startActivity(chooser)
                                     }
                                 )
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -673,8 +696,8 @@ private fun HomeworkProgressBar(
 
 @Composable
 private fun TomorrowEditorialHeroCard(
-    scrollOffsetProvider: () -> Int = { 0 },
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    scrollOffsetProvider: () -> Int = { 0 }
 ) {
     Box(
         modifier = modifier

@@ -263,18 +263,10 @@ public final class ClassroomAPIService: ObservableObject {
             }
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                if courses.isEmpty {
-                    throw ClassroomAPIError.invalidResponse
-                } else {
-                    break
-                }
+                throw ClassroomAPIError.invalidResponse
             }
             guard (200...299).contains(httpResponse.statusCode) else {
-                if courses.isEmpty {
-                    throw ClassroomAPIError.httpError(statusCode: httpResponse.statusCode)
-                } else {
-                    break
-                }
+                throw ClassroomAPIError.httpError(statusCode: httpResponse.statusCode)
             }
 
             let decoded = try Self.jsonDecoder.decode(GoogleCoursesListResponse.self, from: data)
@@ -295,6 +287,9 @@ public final class ClassroomAPIService: ObservableObject {
             }
             pageToken = decoded.nextPageToken
             pageCount += 1
+            if pageToken != nil {
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
         } while pageToken != nil && pageCount < 10
 
         return courses
@@ -305,7 +300,7 @@ public final class ClassroomAPIService: ObservableObject {
         async let submissionsMapFetch = fetchSubmissionsMap(courseId: course.id, accessToken: accessToken)
 
         let rawItems = try await rawCourseworkFetch
-        let submissionsMap = await submissionsMapFetch
+        let submissionsMap = try await submissionsMapFetch
         let now = Date()
 
         return rawItems.compactMap { raw in
@@ -370,44 +365,27 @@ public final class ClassroomAPIService: ObservableObject {
 
             let (data, response) = try await dataWithRetry(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
-                if allItems.isEmpty { throw ClassroomAPIError.invalidResponse }
-                break
+                throw ClassroomAPIError.invalidResponse
             }
             guard (200...299).contains(httpResponse.statusCode) else {
-                if allItems.isEmpty { throw ClassroomAPIError.httpError(statusCode: httpResponse.statusCode) }
-                break
+                throw ClassroomAPIError.httpError(statusCode: httpResponse.statusCode)
             }
 
-            if let decoded = try? Self.jsonDecoder.decode(GoogleCourseworkListResponse.self, from: data),
-               let items = decoded.courseWork {
+            let decoded = try Self.jsonDecoder.decode(GoogleCourseworkListResponse.self, from: data)
+            if let items = decoded.courseWork {
                 allItems.append(contentsOf: items)
-                pageToken = decoded.nextPageToken
-            } else {
-                break
             }
+            pageToken = decoded.nextPageToken
             pageCount += 1
-        } while pageToken != nil && pageCount < 10
-
-        if allItems.isEmpty {
-            guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses/\(courseId)/courseWork") else { return allItems }
-            components.queryItems = [URLQueryItem(name: "pageSize", value: "50")]
-            if let url = components.url {
-                var request = URLRequest(url: url)
-                request.timeoutInterval = 15
-                request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-                if let (data, response) = try? await dataWithRetry(for: request),
-                   let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode),
-                   let decoded = try? Self.jsonDecoder.decode(GoogleCourseworkListResponse.self, from: data),
-                   let items = decoded.courseWork {
-                    allItems.append(contentsOf: items)
-                }
+            if pageToken != nil {
+                try? await Task.sleep(nanoseconds: 200_000_000)
             }
-        }
+        } while pageToken != nil && pageCount < 10
 
         return allItems
     }
 
-    private nonisolated func fetchSubmissionsMap(courseId: String, accessToken: String) async -> [String: GoogleSubmissionItem] {
+    private nonisolated func fetchSubmissionsMap(courseId: String, accessToken: String) async throws -> [String: GoogleSubmissionItem] {
         var map: [String: GoogleSubmissionItem] = [:]
         var pageToken: String? = nil
         var pageCount = 0
@@ -428,21 +406,23 @@ public final class ClassroomAPIService: ObservableObject {
             request.timeoutInterval = 15
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
-            do {
-                let (data, response) = try await dataWithRetry(for: request)
-                guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                    break
+            let (data, response) = try await dataWithRetry(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw ClassroomAPIError.invalidResponse
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                throw ClassroomAPIError.httpError(statusCode: httpResponse.statusCode)
+            }
+            let decoded = try Self.jsonDecoder.decode(GoogleSubmissionsListResponse.self, from: data)
+            for item in decoded.studentSubmissions ?? [] {
+                if let cwId = item.courseWorkId, !cwId.isEmpty {
+                    map[cwId] = item
                 }
-                let decoded = try Self.jsonDecoder.decode(GoogleSubmissionsListResponse.self, from: data)
-                for item in decoded.studentSubmissions ?? [] {
-                    if let cwId = item.courseWorkId, !cwId.isEmpty {
-                        map[cwId] = item
-                    }
-                }
-                pageToken = decoded.nextPageToken
-                pageCount += 1
-            } catch {
-                break
+            }
+            pageToken = decoded.nextPageToken
+            pageCount += 1
+            if pageToken != nil {
+                try? await Task.sleep(nanoseconds: 200_000_000)
             }
         } while pageToken != nil && pageCount < 10
 

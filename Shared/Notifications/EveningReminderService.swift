@@ -113,11 +113,20 @@ public final class EveningReminderService: ObservableObject {
 
         let content = buildNotificationContent()
 
-        var dateComponents = DateComponents()
-        dateComponents.hour = reminderHour
-        dateComponents.minute = reminderMinute
+        let calendar = Calendar.current
+        let now = Date()
+        var targetDateComponents = calendar.dateComponents([.year, .month, .day], from: now)
+        targetDateComponents.hour = reminderHour
+        targetDateComponents.minute = reminderMinute
+        targetDateComponents.second = 0
 
-        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+        guard var targetDate = calendar.date(from: targetDateComponents) else { return }
+        if targetDate <= now {
+            targetDate = calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
+        }
+
+        let scheduleComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: targetDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: scheduleComponents, repeats: false)
         let request = UNNotificationRequest(
             identifier: Self.notificationIdentifier,
             content: content,

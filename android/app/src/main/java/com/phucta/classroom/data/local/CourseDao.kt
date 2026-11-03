@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -26,8 +27,17 @@ interface CourseDao {
     @Query("UPDATE courses SET is_selected_for_widget = :isSelected")
     suspend fun updateAllWidgetSelection(isSelected: Boolean)
 
+    @Transaction
+    suspend fun deleteCoursesNotIn(validCourseIds: List<String>) {
+        if (validCourseIds.isEmpty()) {
+            deleteAllCourses()
+        } else {
+            deleteCoursesNotInInternal(validCourseIds)
+        }
+    }
+
     @Query("DELETE FROM courses WHERE id NOT IN (:validCourseIds)")
-    suspend fun deleteCoursesNotIn(validCourseIds: List<String>)
+    suspend fun deleteCoursesNotInInternal(validCourseIds: List<String>)
 
     @Query("DELETE FROM courses")
     suspend fun deleteAllCourses()

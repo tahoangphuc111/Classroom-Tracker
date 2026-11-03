@@ -40,17 +40,36 @@ class SubjectArtHelperTest {
         assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Xử lý Tín hiệu Số"))
         assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Tâm lý học Đại cương"))
         assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Pháp lý và Đạo đức"))
+        assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Địa lý tự nhiên"))
+        assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Triết lý kinh doanh"))
+
+        // Unaccented guards
+        assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Quan ly Du an Phan mem"))
+        assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Xu ly Tin hieu So"))
+        assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Tam ly hoc Dai cuong"))
+        assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Phap ly va Dao duc"))
+        assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Dia ly tu nhien"))
+        assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Triet ly kinh doanh"))
     }
 
     @Test
     fun testNegativeTokenGuards_Chemistry() {
         assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Văn hóa Việt Nam"))
         assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Hóa đơn và Chứng từ"))
+        assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Tự động hóa quá trình sản xuất"))
+        assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Chuẩn hóa cơ sở dữ liệu"))
+
+        // Unaccented guards
+        assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Van hoa Viet Nam"))
+        assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Hoa don va Chung tu"))
+        assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Tu dong hoa qua trinh san xuat"))
+        assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Chuan hoa co so du lieu"))
     }
 
     @Test
     fun testNegativeTokenGuards_Biology() {
         assertNotEquals(SubjectCategory.BIOLOGY, SubjectArtHelper.category("Sinh hoạt Lớp Chủ nhiệm"))
+        assertNotEquals(SubjectCategory.BIOLOGY, SubjectArtHelper.category("Sinh hoat Lop Chu nhiem"))
     }
 
     @Test
@@ -58,8 +77,48 @@ class SubjectArtHelperTest {
         assertNotEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Sử dụng phần mềm văn phòng"))
         assertNotEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Lịch sự trong giao tiếp"))
 
+        // Unaccented guards
+        assertNotEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Su dung phan mem van phong"))
+        assertNotEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Lich su trong giao tiep"))
+
         assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Lịch sử Việt Nam"))
         assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Sử 12"))
+        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Lich su Viet Nam"))
+        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Su 12"))
+    }
+
+    @Test
+    fun testUnicodeNfdAndUnaccentedMatching() {
+        // NFD decomposed forms:
+        // "Lý 10" with decomposed acute accent
+        val nfdLy = java.text.Normalizer.normalize("Lý 10", java.text.Normalizer.Form.NFD)
+        assertEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category(nfdLy))
+
+        // "Hóa 11" with decomposed acute accent
+        val nfdHoa = java.text.Normalizer.normalize("Hóa 11", java.text.Normalizer.Form.NFD)
+        assertEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category(nfdHoa))
+
+        // "Sử 12" with decomposed horn and hook
+        val nfdSu = java.text.Normalizer.normalize("Sử 12", java.text.Normalizer.Form.NFD)
+        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category(nfdSu))
+
+        // "Quản lý" decomposed must not match PHYSICS
+        val nfdQuanLy = java.text.Normalizer.normalize("Quản lý Dự án", java.text.Normalizer.Form.NFD)
+        assertNotEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category(nfdQuanLy))
+
+        // "Văn hóa" decomposed must not match CHEMISTRY
+        val nfdVanHoa = java.text.Normalizer.normalize("Văn hóa Doanh nghiệp", java.text.Normalizer.Form.NFD)
+        assertNotEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category(nfdVanHoa))
+
+        // Unaccented positive matching
+        assertEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Vat ly Dai cuong"))
+        assertEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Mon ly 12"))
+        assertEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Hoa hoc Huu co"))
+        assertEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Mon hoa 11"))
+        assertEquals(SubjectCategory.MATH, SubjectArtHelper.category("Toan Giai tich 12"))
+        assertEquals(SubjectCategory.LITERATURE, SubjectArtHelper.category("Ngu van 11"))
+        assertEquals(SubjectCategory.ENGLISH, SubjectArtHelper.category("Tieng Anh 12"))
+        assertEquals(SubjectCategory.COMPUTER_SCIENCE, SubjectArtHelper.category("Tin hoc 12"))
     }
 
     @Test
@@ -219,5 +278,24 @@ class SubjectArtHelperTest {
 
         val diaTheme = SubjectArtHelper.theme("Dia 10")
         assertEquals("ĐỊA", diaTheme.badgeCode)
+    }
+
+    @Test
+    fun testUI04_GeographyBadge_ExcludesCompoundWordsLikeDiaDiemAndDiaChi() {
+        // Course has "Lịch sử" but also "Địa điểm" - badge must be "SỬ", not "ĐỊA"
+        val courseWithLocation = "Lịch sử 12 - Địa điểm P.301"
+        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category(courseWithLocation))
+        assertEquals("SỬ", SubjectArtHelper.badgeCode(courseWithLocation))
+
+        // Course with "Địa chỉ" in history
+        val courseWithAddress = "Lịch sử 10 - Địa chỉ lớp học"
+        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category(courseWithAddress))
+        assertEquals("SỬ", SubjectArtHelper.badgeCode(courseWithAddress))
+
+        // Legitimate Geography courses
+        assertEquals("ĐỊA", SubjectArtHelper.badgeCode("Địa lý 12"))
+        assertEquals("ĐỊA", SubjectArtHelper.badgeCode("Địa lí 11"))
+        assertEquals("ĐỊA", SubjectArtHelper.badgeCode("Môn Địa 10 - Địa điểm phòng 101"))
+        assertEquals("ĐỊA", SubjectArtHelper.badgeCode("Dia ly 12"))
     }
 }

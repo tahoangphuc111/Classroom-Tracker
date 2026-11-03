@@ -80,6 +80,8 @@ object ClassroomDateUtils {
                         shortDateCache.clear()
                         dayAndDateCache.clear()
                         cachedStartOfToday = 0L
+                        cachedStartOfTomorrow = 0L
+                        cachedStartOfDayAfter = 0L
                         cacheExpirationTime = 0L
                     }
                 }
@@ -96,7 +98,11 @@ object ClassroomDateUtils {
             shortDateCache.clear()
             dayAndDateCache.clear()
             cachedStartOfToday = 0L
+            cachedStartOfTomorrow = 0L
+            cachedStartOfDayAfter = 0L
             cacheExpirationTime = 0L
+            cachedTimeZone = null
+            cachedTimeZoneId = ""
         }
     }
 

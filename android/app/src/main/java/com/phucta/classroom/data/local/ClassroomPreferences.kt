@@ -30,7 +30,7 @@ class ClassroomPreferences(context: Context) {
         val KEY_CUSTOM_CLIENT_SECRET = stringPreferencesKey("custom_client_secret")
 
         const val BUNDLED_CLIENT_ID = "1024991814751-qs4rkg9pa09r092lp083l3e9gk6e3mru.apps.googleusercontent.com"
-        const val BUNDLED_CLIENT_SECRET = "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"
+        const val BUNDLED_CLIENT_SECRET = ""
     }
 
     private val safePreferencesFlow: Flow<Preferences> = appContext.dataStore.data

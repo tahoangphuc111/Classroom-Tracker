@@ -71,8 +71,6 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
             throw NSError(domain: "LoopbackOAuthServer", code: -1, userInfo: [NSLocalizedDescriptionKey: "Không thể tạo socket cục bộ"])
         }
 
-        var opt: Int32 = 1
-        setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, socklen_t(MemoryLayout<Int32>.size))
         #if os(macOS) || os(iOS)
         var nosigpipe: Int32 = 1
         setsockopt(serverFd, SOL_SOCKET, SO_NOSIGPIPE, &nosigpipe, socklen_t(MemoryLayout<Int32>.size))
@@ -116,7 +114,7 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
         return ActiveLoopbackServer(serverFd: serverFd, port: port, handle: handle)
     }
 
-    public func waitForAuthorizationCode(server: ActiveLoopbackServer, timeoutSeconds: Int = 180) async throws -> String {
+    public func waitForAuthorizationCode(server: ActiveLoopbackServer, expectedState: String? = nil, timeoutSeconds: Int = 180) async throws -> String {
         let resumeGuard = ContinuationGuard()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
@@ -163,6 +161,23 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
 
                     let requestString = String(cString: buffer)
 
+                    // Validate Host header to protect against DNS rebinding / host spoofing
+                    let lines = requestString.components(separatedBy: "\r\n")
+                    var hostHeader: String?
+                    for line in lines {
+                        if line.lowercased().hasPrefix("host:") {
+                            hostHeader = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
+                            break
+                        }
+                    }
+                    let validHosts = ["127.0.0.1:\(port)", "localhost:\(port)", "127.0.0.1", "localhost"]
+                    guard let host = hostHeader, validHosts.contains(host) else {
+                        let forbiddenResponse = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                        _ = forbiddenResponse.withCString { send(clientFd, $0, strlen($0), 0) }
+                        Darwin.close(clientFd)
+                        continue
+                    }
+
                     if requestString.contains("GET /favicon.ico") {
                         let notFoundResponse = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
                         _ = notFoundResponse.withCString { send(clientFd, $0, strlen($0), 0) }
@@ -172,6 +187,7 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
 
                     var authCode: String?
                     var oauthError: String?
+                    var returnedState: String?
 
                     if let uriStart = requestString.range(of: "GET ")?.upperBound,
                        let uriEnd = requestString.range(of: " HTTP/")?.lowerBound,
@@ -183,6 +199,7 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                         if let components = URLComponents(string: fullUrlString) {
                             authCode = components.queryItems?.first(where: { $0.name == "code" })?.value
                             oauthError = components.queryItems?.first(where: { $0.name == "error" })?.value
+                            returnedState = components.queryItems?.first(where: { $0.name == "state" })?.value
                         }
 
                         if authCode == nil && oauthError == nil {
@@ -202,9 +219,21 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                                         authCode = val
                                     } else if key == "error" && oauthError == nil {
                                         oauthError = val
+                                    } else if key == "state" && returnedState == nil {
+                                        returnedState = val
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // Verify state parameter to prevent CSRF / Code Injection
+                    if let expectedState, !expectedState.isEmpty {
+                        guard let returnedState, returnedState == expectedState else {
+                            let badRequestResponse = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                            _ = badRequestResponse.withCString { send(clientFd, $0, strlen($0), 0) }
+                            Darwin.close(clientFd)
+                            continue
                         }
                     }
 

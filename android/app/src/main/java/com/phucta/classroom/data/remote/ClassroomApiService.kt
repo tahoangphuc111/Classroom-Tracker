@@ -183,10 +183,7 @@ class ClassroomApiService(
             val (shouldContinue, newPageToken) = try {
                 executeWithRetry(request).use { response ->
                     if (!response.isSuccessful) {
-                        if (pageCourses.isEmpty()) {
-                            throw IllegalStateException("Không lấy được danh sách lớp học (${response.code})")
-                        }
-                        return@use Pair(false, null)
+                        throw IllegalStateException("Không lấy được danh sách lớp học (${response.code})")
                     }
                     val body = response.body?.string() ?: return@use Pair(false, null)
                     val decoded = json.decodeFromString<GoogleCoursesResponse>(body)
@@ -209,12 +206,14 @@ class ClassroomApiService(
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                if (pageCourses.isEmpty()) throw e
-                Pair(false, null)
+                throw e
             }
             if (!shouldContinue) break
             pageToken = newPageToken
             pageCount++
+            if (pageToken != null) {
+                delay(200)
+            }
         } while (pageToken != null && pageCount < 10)
         return pageCourses
     }
@@ -275,10 +274,7 @@ class ClassroomApiService(
             val (shouldContinue, newPageToken) = try {
                 executeWithRetry(request).use { response ->
                     if (!response.isSuccessful) {
-                        if (allItems.isEmpty()) {
-                            throw IOException("HTTP ${response.code} khi tải bài tập lớp $courseId")
-                        }
-                        return@use Pair(false, null)
+                        throw IOException("HTTP ${response.code} khi tải bài tập lớp $courseId (trang ${pageCount + 1})")
                     }
                     val body = response.body?.string() ?: return@use Pair(false, null)
                     val decoded = json.decodeFromString<GoogleCourseworkResponse>(body)
@@ -287,15 +283,18 @@ class ClassroomApiService(
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                if (allItems.isEmpty()) throw e
-                Pair(false, null)
+                throw e
             }
             if (!shouldContinue) break
             pageToken = newPageToken
             pageCount++
+            if (pageToken != null) {
+                delay(200)
+            }
         } while (pageToken != null && pageCount < 10)
         if (allItems.isEmpty()) {
             try {
+                delay(200)
                 val urlBuilder = "https://classroom.googleapis.com/v1/courses/$courseId/courseWork".toHttpUrl().newBuilder()
                     .addQueryParameter("pageSize", "50")
                 val request = Request.Builder()
@@ -332,7 +331,7 @@ class ClassroomApiService(
             val (shouldContinue, newPageToken) = try {
                 executeWithRetry(request).use { response ->
                     if (!response.isSuccessful) {
-                        return@use Pair(false, null)
+                        throw IOException("HTTP ${response.code} khi tải danh sách nộp bài lớp $courseId (trang ${pageCount + 1})")
                     }
                     val body = response.body?.string() ?: return@use Pair(false, null)
                     val decoded = json.decodeFromString<GoogleSubmissionsResponse>(body)
@@ -345,11 +344,14 @@ class ClassroomApiService(
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                Pair(false, null)
+                throw e
             }
             if (!shouldContinue) break
             pageToken = newPageToken
             pageCount++
+            if (pageToken != null) {
+                delay(200)
+            }
         } while (pageToken != null && pageCount < 10)
         return map
     }

@@ -16,5 +16,11 @@
         <string>VGWH8K5259.group.com.phucta.classroom</string>
         <string>group.com.phucta.classroom</string>
     </array>
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)group.com.phucta.classroom</string>
+        <string>4J32CASZVT.group.com.phucta.classroom</string>
+        <string>group.com.phucta.classroom</string>
+    </array>
 </dict>
 </plist>

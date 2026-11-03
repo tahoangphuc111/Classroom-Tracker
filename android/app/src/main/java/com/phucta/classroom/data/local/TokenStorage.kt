@@ -17,6 +17,13 @@ data class OAuthTokens(
 
 class TokenStorage(context: Context) {
     private val appContext = context.applicationContext
+
+    init {
+        try {
+            appContext.deleteSharedPreferences("secure_oauth_tokens_fallback")
+        } catch (_: Exception) {}
+    }
+
     private val prefs: SharedPreferences by lazy {
         try {
             val masterKey = MasterKey.Builder(appContext)
@@ -31,7 +38,8 @@ class TokenStorage(context: Context) {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (e: Exception) {
-            appContext.getSharedPreferences("secure_oauth_tokens_fallback", Context.MODE_PRIVATE)
+            android.util.Log.e("TokenStorage", "Android KeyStore / EncryptedSharedPreferences initialization failed", e)
+            throw IllegalStateException("Failed to initialize secure encrypted storage for OAuth tokens", e)
         }
     }
 
@@ -42,14 +50,20 @@ class TokenStorage(context: Context) {
         private const val KEY_EXPIRES_AT = "expires_at"
         private const val KEY_AUTH_VERIFIER = "auth_verifier"
         private const val KEY_AUTH_REDIRECT_URI = "auth_redirect_uri"
+        private const val KEY_AUTH_STATE = "auth_state"
     }
 
-    fun saveAuthFlowState(verifier: String, redirectUri: String) {
+    fun saveAuthFlowState(verifier: String, redirectUri: String, state: String? = null) {
         try {
-            prefs.edit()
+            val editor = prefs.edit()
                 .putString(KEY_AUTH_VERIFIER, verifier)
                 .putString(KEY_AUTH_REDIRECT_URI, redirectUri)
-                .commit()
+            if (state != null) {
+                editor.putString(KEY_AUTH_STATE, state)
+            } else {
+                editor.remove(KEY_AUTH_STATE)
+            }
+            editor.apply()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -67,12 +81,19 @@ class TokenStorage(context: Context) {
         null
     }
 
+    fun loadAuthFlowState(): String? = try {
+        prefs.getString(KEY_AUTH_STATE, null)
+    } catch (e: Exception) {
+        null
+    }
+
     fun clearAuthFlowState() {
         try {
             prefs.edit()
                 .remove(KEY_AUTH_VERIFIER)
                 .remove(KEY_AUTH_REDIRECT_URI)
-                .commit()
+                .remove(KEY_AUTH_STATE)
+                .apply()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -85,7 +106,7 @@ class TokenStorage(context: Context) {
                 .putString(KEY_REFRESH_TOKEN, tokens.refreshToken)
                 .putInt(KEY_EXPIRES_IN, tokens.expiresIn)
                 .putLong(KEY_EXPIRES_AT, tokens.expiresAt)
-                .commit()
+                .apply()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -110,7 +131,7 @@ class TokenStorage(context: Context) {
 
     fun clearTokens() {
         try {
-            prefs.edit().clear().commit()
+            prefs.edit().clear().apply()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -118,6 +139,10 @@ class TokenStorage(context: Context) {
 
     fun hasValidTokens(): Boolean {
         val tokens = loadTokens() ?: return false
-        return tokens.accessToken.isNotBlank()
+        if (tokens.accessToken.isBlank()) return false
+        if (tokens.isExpired) {
+            return !tokens.refreshToken.isNullOrBlank()
+        }
+        return true
     }
 }

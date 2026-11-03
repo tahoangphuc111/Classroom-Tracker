@@ -19,8 +19,7 @@ class ClassroomSyncWorker(
             val syncResult = app.repository.syncAll()
             if (syncResult.isFailure) {
                 val error = syncResult.exceptionOrNull()
-                val isAuthError = !app.oauthManager.isAuthenticated.value ||
-                        (error is IllegalStateException && error.message?.contains("Phiên đăng nhập") == true)
+                val isAuthError = isAuthenticationError(app, error)
                 if (isAuthError || runAttemptCount >= 3) {
                     return Result.failure()
                 }
@@ -29,11 +28,23 @@ class ClassroomSyncWorker(
             Result.success()
         } catch (e: Exception) {
             e.printStackTrace()
-            if (!app.oauthManager.isAuthenticated.value || runAttemptCount >= 3) {
+            val isAuthError = isAuthenticationError(app, e)
+            if (isAuthError || runAttemptCount >= 3) {
                 Result.failure()
             } else {
                 Result.retry()
             }
         }
+    }
+
+    private fun isAuthenticationError(app: ClassroomApplication, throwable: Throwable?): Boolean {
+        if (!app.oauthManager.isAuthenticated.value) return true
+        val message = throwable?.message ?: return false
+        return message.contains("Phiên đăng nhập", ignoreCase = true) ||
+                message.contains("Chưa đăng nhập", ignoreCase = true) ||
+                message.contains("Chưa kết nối", ignoreCase = true) ||
+                message.contains("401") ||
+                message.contains("403") ||
+                message.contains("invalid_grant", ignoreCase = true)
     }
 }

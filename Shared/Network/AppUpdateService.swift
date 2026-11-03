@@ -201,13 +201,8 @@ public final class AppUpdateService: ObservableObject {
             try? fileManager.removeItem(at: destinationUrl)
             try fileManager.moveItem(at: tempLocalUrl, to: destinationUrl)
 
-            let opened = NSWorkspace.shared.open(destinationUrl)
-            if opened {
-                statusMessage = "Đã tải xong! Đang mở trình cài đặt..."
-            } else {
-                NSWorkspace.shared.activateFileViewerSelecting([destinationUrl])
-                statusMessage = "Đã lưu tệp cài đặt vào thư mục Downloads. Vui lòng mở tệp để cài đặt."
-            }
+            NSWorkspace.shared.activateFileViewerSelecting([destinationUrl])
+            statusMessage = "Đã tải xong tệp cài đặt về thư mục Downloads. Vui lòng kiểm tra và mở tệp trong Finder để xác nhận cài đặt."
         } catch {
             statusMessage = "Lỗi khi tải cập nhật: \(error.localizedDescription)"
         }

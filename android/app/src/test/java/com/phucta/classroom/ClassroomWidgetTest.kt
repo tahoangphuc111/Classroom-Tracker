@@ -1,10 +1,13 @@
 package com.phucta.classroom
 
+import com.phucta.classroom.data.model.ClassroomDateUtils
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.SubmissionStatus
 import com.phucta.classroom.ui.components.EmberEmotion
 import com.phucta.classroom.ui.components.SubjectArtHelper
 import com.phucta.classroom.widget.ClassroomGlanceWidget
+import com.phucta.classroom.widget.ClassroomGlanceWidgetReceiver
+import android.content.Intent
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Calendar
@@ -223,5 +226,35 @@ class ClassroomWidgetTest {
         assertEquals(1, widgetCoursework.size)
         assertEquals("real_cw_456", widgetCoursework.first().id)
         org.junit.Assert.assertFalse("Mock coursework must be filtered out", widgetCoursework.any { com.phucta.classroom.data.local.MockDataProvider.isMockCourseworkId(it.id) })
+    }
+
+    @Test
+    fun testReceiverProcessAction_ClearsCachesForSystemBroadcasts() {
+        val receiver = ClassroomGlanceWidgetReceiver()
+
+        // Precondition: ensure caches are populated
+        ClassroomDateUtils.ensureDayBoundaries()
+        val originalToday = ClassroomDateUtils.startOfToday
+        org.junit.Assert.assertTrue(originalToday > 0)
+
+        // 1. UPDATE_WIDGET custom action
+        val handledUpdate = receiver.processAction("com.phucta.classroom.action.UPDATE_WIDGET")
+        org.junit.Assert.assertTrue("Custom UPDATE_WIDGET action must be handled", handledUpdate)
+
+        // 2. TIMEZONE_CHANGED
+        val handledTz = receiver.processAction(Intent.ACTION_TIMEZONE_CHANGED)
+        org.junit.Assert.assertTrue("ACTION_TIMEZONE_CHANGED must be handled", handledTz)
+
+        // 3. TIME_CHANGED
+        val handledTime = receiver.processAction(Intent.ACTION_TIME_CHANGED)
+        org.junit.Assert.assertTrue("ACTION_TIME_CHANGED must be handled", handledTime)
+
+        // 4. DATE_CHANGED
+        val handledDate = receiver.processAction(Intent.ACTION_DATE_CHANGED)
+        org.junit.Assert.assertTrue("ACTION_DATE_CHANGED must be handled", handledDate)
+
+        // 5. Unrelated action should not be handled
+        val handledUnrelated = receiver.processAction("android.intent.action.BATTERY_LOW")
+        org.junit.Assert.assertFalse("Unrelated intent must not be handled", handledUnrelated)
     }
 }
