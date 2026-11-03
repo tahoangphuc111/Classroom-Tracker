@@ -56,11 +56,12 @@ object DueDateBadgeDefaults {
         isCompleted: Boolean,
         isOverdue: Boolean,
         isDueToday: Boolean,
-        isDueTomorrow: Boolean
+        isDueTomorrow: Boolean,
+        isUrgent: Boolean = false
     ): DueDateBadgeColors {
         return when {
             isCompleted -> completedColors
-            isOverdue -> overdueColors
+            isOverdue || isUrgent -> overdueColors
             isDueToday -> todayColors
             isDueTomorrow -> tomorrowColors
             else -> neutralColors
@@ -78,13 +79,15 @@ fun DueDateBadge(
     isOverdue: Boolean = false,
     isDueToday: Boolean = false,
     isDueTomorrow: Boolean = false,
+    isUrgent: Boolean = false,
     fontSize: TextUnit = 12.sp
 ) {
     val colors = DueDateBadgeDefaults.colors(
         isCompleted = isCompleted,
         isOverdue = isOverdue,
         isDueToday = isDueToday,
-        isDueTomorrow = isDueTomorrow
+        isDueTomorrow = isDueTomorrow,
+        isUrgent = isUrgent
     )
 
     Box(

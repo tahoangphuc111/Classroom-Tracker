@@ -102,6 +102,41 @@ private val TOKEN_FLAG_MAP: Map<String, Int> = run {
     map
 }
 
+private class TokenTrieNode {
+    var flag: Int = 0
+    val children = java.util.HashMap<Char, TokenTrieNode>()
+}
+
+private val TOKEN_TRIE: TokenTrieNode = run {
+    val root = TokenTrieNode()
+    fun insert(word: String, flag: Int) {
+        var curr = root
+        for (i in 0 until word.length) {
+            val c = word[i]
+            var child = curr.children[c]
+            if (child == null) {
+                child = TokenTrieNode()
+                curr.children[c] = child
+            }
+            curr = child
+        }
+        curr.flag = curr.flag or flag
+    }
+    for ((word, flag) in TOKEN_FLAG_MAP) {
+        insert(word, flag)
+    }
+    root
+}
+
+private fun lookupTokenFlag(text: String, start: Int, end: Int): Int {
+    var curr = TOKEN_TRIE
+    for (i in start until end) {
+        val next = curr.children[text[i]] ?: return 0
+        curr = next
+    }
+    return curr.flag
+}
+
 private fun scanTokenFlags(text: String): Int {
     val len = text.length
     if (len == 0) return 0
@@ -115,10 +150,8 @@ private fun scanTokenFlags(text: String): Int {
         } else {
             if (start != -1) {
                 val tokenLen = i - start
-                if (tokenLen <= 14) {
-                    val token = text.substring(start, i)
-                    val f = TOKEN_FLAG_MAP[token]
-                    if (f != null) flags = flags or f
+                if (tokenLen in 2..14) {
+                    flags = flags or lookupTokenFlag(text, start, i)
                 }
                 start = -1
             }
@@ -126,10 +159,8 @@ private fun scanTokenFlags(text: String): Int {
     }
     if (start != -1) {
         val tokenLen = len - start
-        if (tokenLen <= 14) {
-            val token = text.substring(start, len)
-            val f = TOKEN_FLAG_MAP[token]
-            if (f != null) flags = flags or f
+        if (tokenLen in 2..14) {
+            flags = flags or lookupTokenFlag(text, start, len)
         }
     }
     return flags
@@ -221,11 +252,12 @@ object SubjectArtHelper {
 
         fun match(text: String, flags: Int): SubjectCategory? {
             return when {
-                !text.contains("điện toán") && (text.contains("toán") || (flags and FLAG_MATH != 0) ||
+                ((flags and FLAG_MATH != 0) || text.contains("toán") ||
                         text.contains("giải tích") || text.contains("đại số") || text.contains("hình học") ||
                         text.contains("xác suất") || text.contains("lượng giác") || text.contains("đạo hàm") ||
                         text.contains("tích phân") || text.contains("toán cao cấp") || text.contains("toán rời rạc") ||
-                        text.contains("thống kê") || text.contains("vi phân") || text.contains("ma trận")) -> SubjectCategory.MATH
+                        text.contains("thống kê") || text.contains("vi phân") || text.contains("ma trận")) &&
+                        !text.contains("điện toán") -> SubjectCategory.MATH
 
                 text.contains("vật lý") || text.contains("vật lí") || (flags and FLAG_PHYSICS != 0) ||
                         text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") ||
@@ -287,8 +319,8 @@ object SubjectArtHelper {
                         ((flags and FLAG_MANG != 0) && !text.contains("mạng xã hội")) ||
                         ((flags and FLAG_CLOUD != 0) && (flags and FLAG_SOUNDCLOUD == 0)) -> SubjectCategory.NETWORKING
 
-                !text.contains("quản trị mạng") && (text.contains("kinh tế") || text.contains("quản trị") || text.contains("tài chính") ||
-                        text.contains("marketing") || text.contains("kế toán") || (flags and FLAG_ECON != 0)) -> SubjectCategory.ECONOMICS
+                ((flags and FLAG_ECON != 0) || text.contains("kinh tế") || text.contains("quản trị") || text.contains("tài chính") ||
+                        text.contains("marketing") || text.contains("kế toán")) && !text.contains("quản trị mạng") -> SubjectCategory.ECONOMICS
 
                 text.contains("đồ họa") || text.contains("thiết kế") || text.contains("mỹ thuật") ||
                         (flags and FLAG_DESIGN != 0) || ((flags and FLAG_VE != 0) && !text.contains("bản vẽ kỹ thuật")) -> SubjectCategory.ART_AND_DESIGN

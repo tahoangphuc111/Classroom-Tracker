@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -137,6 +138,21 @@ fun AllUpcomingScreen(
         categories.sortedBy { it.name }
     }
 
+    val categoryCountMap = remember(activeCoursework) {
+        val map = java.util.EnumMap<SubjectCategory, Int>(SubjectCategory::class.java)
+        for (item in activeCoursework) {
+            if (!item.isCompleted) {
+                val cat = SubjectArtHelper.category(item.courseName, item.title)
+                map[cat] = (map[cat] ?: 0) + 1
+            }
+        }
+        map
+    }
+
+    val allIncompleteCount = remember(activeCoursework) {
+        activeCoursework.count { !it.isCompleted }
+    }
+
     val searchTokens = remember(normalizedQuery) {
         com.phucta.classroom.data.model.tokenizeSearchQuery(normalizedQuery)
     }
@@ -199,8 +215,36 @@ fun AllUpcomingScreen(
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
         )
+
+        if (searchQuery.isNotBlank()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Tìm thấy ${filteredItems.size} bài tập",
+                    fontSize = 12.sp,
+                    color = ChunkyColor.TextMuted,
+                    fontWeight = FontWeight.Medium
+                )
+                androidx.compose.material3.TextButton(
+                    onClick = { searchQuery = "" },
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                ) {
+                    Text(
+                        text = "Xóa tìm kiếm",
+                        fontSize = 12.sp,
+                        color = ChunkyColor.SkyBottom,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
 
         if (availableSubjectCategories.isNotEmpty()) {
             LazyRow(
@@ -214,7 +258,7 @@ fun AllUpcomingScreen(
                     FilterChip(
                         selected = selectedSubjectCategory == null,
                         onClick = { selectedSubjectCategory = null },
-                        label = { Text("Tất cả", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
+                        label = { Text(if (allIncompleteCount > 0) "Tất cả ($allIncompleteCount)" else "Tất cả", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
                         colors = FilterChipDefaults.filterChipColors(
                             containerColor = ChunkyColor.SurfaceWhite,
                             labelColor = ChunkyColor.TextPrimary,
@@ -239,6 +283,7 @@ fun AllUpcomingScreen(
                     val themeColor = SubjectArtHelper.themeColor(cat)
                     val badge = SubjectArtHelper.badgeCode(cat, "", null)
                     val isSelected = selectedSubjectCategory == cat.name
+                    val catCount = categoryCountMap[cat] ?: 0
                     FilterChip(
                         selected = isSelected,
                         onClick = {
@@ -246,7 +291,7 @@ fun AllUpcomingScreen(
                         },
                         label = {
                             Text(
-                                text = badge,
+                                text = if (catCount > 0) "$badge ($catCount)" else badge,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )

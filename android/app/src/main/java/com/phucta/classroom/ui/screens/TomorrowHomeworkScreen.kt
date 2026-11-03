@@ -97,6 +97,7 @@ fun TomorrowHomeworkScreen(
     currentDayEpoch: Long = com.phucta.classroom.data.model.ClassroomDateUtils.startOfToday
 ) {
     val context = LocalContext.current
+    val view = androidx.compose.ui.platform.LocalView.current
     val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
     val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
     val incompleteCount = remember(tomorrowItems) { tomorrowItems.count { !it.isCompleted } }
@@ -175,6 +176,7 @@ fun TomorrowHomeworkScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(ChunkyColor.SkyGradient)
+                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
                     .padding(16.dp)
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -310,6 +312,7 @@ fun TomorrowHomeworkScreen(
                                             targetDayLabel = targetDayLabel
                                         )
                                         BaoBaiShareHelper.copyToClipboard(context, baoBaiText)
+                                        view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                                         Toast.makeText(context, "Đã sao chép báo bài!", Toast.LENGTH_SHORT).show()
                                     }
                                 )
@@ -364,6 +367,7 @@ fun TomorrowHomeworkScreen(
                                             dateEpochMillis = dateEpoch,
                                             targetDayLabel = targetDayLabel
                                         )
+                                        view.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
                                         val shareIntent = BaoBaiShareHelper.createShareIntent(baoBaiText, shareTitle)
                                         val chooser = Intent.createChooser(shareIntent, "Chia sẻ báo bài qua")
                                         context.startActivity(chooser)
@@ -639,7 +643,11 @@ private fun HomeworkProgressBar(
         label = "progressAnim"
     )
 
-    val barColor = if (isAllDone) Color(0xFF6EE7B7) else Color.White
+    val barBrush = if (isAllDone) {
+        Brush.horizontalGradient(listOf(Color(0xFF34D399), Color(0xFF10B981)))
+    } else {
+        Brush.horizontalGradient(listOf(Color.White, Color(0xFFBAE6FD)))
+    }
     val trackColor = Color.White.copy(alpha = 0.25f)
 
     Canvas(
@@ -655,7 +663,7 @@ private fun HomeworkProgressBar(
         val progress = animatedProgress.value.coerceIn(0f, 1f)
         if (progress > 0.001f) {
             drawRoundRect(
-                color = barColor,
+                brush = barBrush,
                 size = Size(width = size.width * progress, height = size.height),
                 cornerRadius = cornerRadius
             )
@@ -695,11 +703,28 @@ private fun TomorrowEditorialHeroCard(
                     Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            ChunkyColor.WindowBackground.copy(alpha = 0.28f)
+                            Color(0x881E293B)
                         )
                     )
                 )
         )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 14.dp, bottom = 12.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xDD0F172A))
+                .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+        ) {
+            Text(
+                text = "Báo bài Ngày mai • Sẵn sàng trước khi tới lớp ✨",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.5.sp,
+                letterSpacing = 0.3.sp
+            )
+        }
     }
 }
 

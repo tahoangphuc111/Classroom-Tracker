@@ -509,21 +509,13 @@ private fun PersonalNoteCard(
 
     val cardInteractionSource = remember { MutableInteractionSource() }
     val isCardPressed by cardInteractionSource.collectIsPressedAsState()
-    val cardScaleX = animateFloatAsState(
-        targetValue = if (isCardPressed) 1.01f else 1.0f,
+    val cardPressScale = animateFloatAsState(
+        targetValue = if (isCardPressed) 1f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = 400f
         ),
-        label = "noteCardScaleX"
-    )
-    val cardScaleY = animateFloatAsState(
-        targetValue = if (isCardPressed) 0.97f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = 400f
-        ),
-        label = "noteCardScaleY"
+        label = "noteCardPressScale"
     )
 
     val checkInteractionSource = remember { MutableInteractionSource() }
@@ -621,8 +613,9 @@ private fun PersonalNoteCard(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
-                scaleX = cardScaleX.value
-                scaleY = cardScaleY.value
+                val scale = 0.015f * cardPressScale.value
+                scaleX = 1.0f - scale
+                scaleY = 1.0f - scale
             }
             .clip(RoundedCornerShape(12.dp))
             .background(ChunkyColor.SurfaceWhite)

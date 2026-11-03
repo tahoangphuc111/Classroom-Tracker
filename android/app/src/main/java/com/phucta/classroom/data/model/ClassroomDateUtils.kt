@@ -13,8 +13,20 @@ object ClassroomDateUtils {
 
     private val timeOnlyFormat = SimpleDateFormat("HH:mm", Locale.US)
     private val shortDateFormat = SimpleDateFormat("d/M", VIETNAMESE_LOCALE)
-    private val dayAndDateFormat = SimpleDateFormat("E, d/M", VIETNAMESE_LOCALE)
-    private val fullDueDateFormat = SimpleDateFormat("EEEE, 'ngày' d 'tháng' M, yyyy 'lúc' HH:mm", VIETNAMESE_LOCALE)
+    private val dayAndDateFormatPool = object : ThreadLocal<SimpleDateFormat>() {
+        override fun initialValue(): SimpleDateFormat {
+            return SimpleDateFormat("E, d/M", VIETNAMESE_LOCALE).apply {
+                timeZone = TimeZone.getDefault()
+            }
+        }
+    }
+    private val fullDueDateFormatPool = object : ThreadLocal<SimpleDateFormat>() {
+        override fun initialValue(): SimpleDateFormat {
+            return SimpleDateFormat("EEEE, 'ngày' d 'tháng' M, yyyy 'lúc' HH:mm", VIETNAMESE_LOCALE).apply {
+                timeZone = TimeZone.getDefault()
+            }
+        }
+    }
 
     @Volatile
     private var cachedStartOfToday: Long = 0L
@@ -159,10 +171,9 @@ object ClassroomDateUtils {
         val cached = dayAndDateCache[dueEpochMillis]
         if (cached != null) return cached
 
-        val formatted = synchronized(dayAndDateFormat) {
-            dayAndDateFormat.timeZone = TimeZone.getDefault()
-            dayAndDateFormat.format(Date(dueEpochMillis))
-        }
+        val format = dayAndDateFormatPool.get() ?: SimpleDateFormat("E, d/M", VIETNAMESE_LOCALE)
+        format.timeZone = TimeZone.getDefault()
+        val formatted = format.format(Date(dueEpochMillis))
         if (dayAndDateCache.size >= 2048) {
             dayAndDateCache.clear()
         }
@@ -204,10 +215,9 @@ object ClassroomDateUtils {
         val cached = fullDueDateCache[dueEpochMillis]
         if (cached != null) return cached
 
-        val formatted = synchronized(fullDueDateFormat) {
-            fullDueDateFormat.timeZone = TimeZone.getDefault()
-            fullDueDateFormat.format(Date(dueEpochMillis))
-        }
+        val format = fullDueDateFormatPool.get() ?: SimpleDateFormat("EEEE, 'ngày' d 'tháng' M, yyyy 'lúc' HH:mm", VIETNAMESE_LOCALE)
+        format.timeZone = TimeZone.getDefault()
+        val formatted = format.format(Date(dueEpochMillis))
         val result = formatted.replaceFirstChar { if (it.isLowerCase()) it.titlecase(VIETNAMESE_LOCALE) else it.toString() }
         if (fullDueDateCache.size >= 1000) {
             fullDueDateCache.clear()

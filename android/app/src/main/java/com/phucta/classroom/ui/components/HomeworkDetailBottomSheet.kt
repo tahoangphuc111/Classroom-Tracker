@@ -70,6 +70,7 @@ fun HomeworkDetailBottomSheet(
 ) {
     if (coursework == null) return
     val context = LocalContext.current
+    val view = androidx.compose.ui.platform.LocalView.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
@@ -329,11 +330,13 @@ fun HomeworkDetailBottomSheet(
                 }
                 val clip = android.content.ClipData.newPlainText("Bài tập", clipText)
                 clipboard?.setPrimaryClip(clip)
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                 android.widget.Toast.makeText(context, "Đã sao chép thông tin bài tập!", android.widget.Toast.LENGTH_SHORT).show()
             }
 
             val onOpenBrowserClick: () -> Unit = {
                 try {
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(coursework.destinationURL)).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
@@ -356,7 +359,13 @@ fun HomeworkDetailBottomSheet(
                     ) {
                         Button(
                             onClick = {
-                                onToggleCompletion(coursework.id, !coursework.isCompleted)
+                                val next = !coursework.isCompleted
+                                if (next) {
+                                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                                } else {
+                                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                                }
+                                onToggleCompletion(coursework.id, next)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -454,7 +463,13 @@ fun HomeworkDetailBottomSheet(
                     ) {
                         Button(
                             onClick = {
-                                onToggleCompletion(coursework.id, !coursework.isCompleted)
+                                val next = !coursework.isCompleted
+                                if (next) {
+                                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                                } else {
+                                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                                }
+                                onToggleCompletion(coursework.id, next)
                             },
                             modifier = Modifier
                                 .weight(1f)

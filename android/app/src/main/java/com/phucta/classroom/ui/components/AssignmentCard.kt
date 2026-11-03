@@ -201,8 +201,9 @@ fun AssignmentCard(
             .heightIn(min = 48.dp)
             .graphicsLayer {
                 val scale = cardPressScale.value
-                scaleX = 1.0f + 0.01f * scale
-                scaleY = 1.0f - 0.03f * scale
+                val pressFactor = 0.015f * scale
+                scaleX = 1.0f - pressFactor
+                scaleY = 1.0f - pressFactor
                 shape = CardShape
                 clip = true
             }
@@ -415,6 +416,7 @@ fun AssignmentCard(
                 isOverdue = isOverdue || coursework.isPast,
                 isDueToday = coursework.isDueToday,
                 isDueTomorrow = coursework.isDueTomorrow,
+                isUrgent = coursework.isUrgent,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 1.dp)
             )

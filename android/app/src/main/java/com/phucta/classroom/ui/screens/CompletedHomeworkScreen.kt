@@ -100,6 +100,15 @@ fun CompletedHomeworkScreen(
         categories.sortedBy { it.name }
     }
 
+    val completedCountMap = remember(completedItems) {
+        val map = java.util.EnumMap<SubjectCategory, Int>(SubjectCategory::class.java)
+        for (item in completedItems) {
+            val cat = SubjectArtHelper.category(item.courseName, item.title)
+            map[cat] = (map[cat] ?: 0) + 1
+        }
+        map
+    }
+
     val filteredItems = remember(completedItems, selectedCategoryEnum, searchTokens) {
         val target = selectedCategoryEnum
         val byCat = if (target == null) {
@@ -190,6 +199,32 @@ fun CompletedHomeworkScreen(
                 .fillMaxSize()
                 .background(ChunkyColor.WindowBackground)
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(ChunkyColor.CompletedBadgeBackground)
+                    .border(1.dp, ChunkyColor.CompletedBadgeBorder, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = ChunkyColor.SuccessGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Đã hoàn thành ${completedItems.size} bài tập!",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.5.sp,
+                        color = ChunkyColor.CompletedBadgeText
+                    )
+                }
+            }
+
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = {
@@ -240,7 +275,7 @@ fun CompletedHomeworkScreen(
                             },
                             label = {
                                 Text(
-                                    text = "Tất cả",
+                                    text = "Tất cả (${completedItems.size})",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -269,6 +304,7 @@ fun CompletedHomeworkScreen(
                         val themeColor = SubjectArtHelper.themeColor(cat)
                         val badge = SubjectArtHelper.badgeCode(cat, "", null)
                         val isSelected = selectedCategoryEnum == cat
+                        val catCount = completedCountMap[cat] ?: 0
                         FilterChip(
                             selected = isSelected,
                             onClick = {
@@ -277,7 +313,7 @@ fun CompletedHomeworkScreen(
                             },
                             label = {
                                 Text(
-                                    text = badge,
+                                    text = if (catCount > 0) "$badge ($catCount)" else badge,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )

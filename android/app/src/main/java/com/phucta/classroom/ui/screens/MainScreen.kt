@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.size
@@ -43,8 +44,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.filled.Upcoming
@@ -60,6 +63,8 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -84,6 +89,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -133,6 +139,8 @@ fun MainScreen() {
     var noteToEditFromExternal by remember { mutableStateOf<PersonalNote?>(null) }
     var isDemoMode by rememberSaveable { mutableStateOf(false) }
     var currentDayEpoch by remember { mutableLongStateOf(com.phucta.classroom.data.model.ClassroomDateUtils.startOfToday) }
+    var drawerSearchQuery by rememberSaveable { mutableStateOf("") }
+    val view = LocalView.current
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -388,6 +396,16 @@ fun MainScreen() {
         }
     }
 
+    val isAnyCourseFiltered = remember(courses) { courses.any { !it.isSelectedForWidget } }
+    val displayedCoursesInDrawer = remember(courses, drawerSearchQuery) {
+        if (drawerSearchQuery.isBlank()) {
+            courses
+        } else {
+            val q = drawerSearchQuery.trim().lowercase()
+            courses.filter { it.name.lowercase().contains(q) }
+        }
+    }
+
     if (isAuthenticated || isDemoMode) {
         BackHandler(enabled = drawerState.isOpen) {
             scope.launch { drawerState.close() }
@@ -454,6 +472,49 @@ fun MainScreen() {
                                 )
                             }
                         }
+
+                        if (courses.size > 5) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = drawerSearchQuery,
+                                onValueChange = { drawerSearchQuery = it },
+                                placeholder = { Text("Tìm tên môn học...", fontSize = 12.5.sp) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Search,
+                                        contentDescription = null,
+                                        tint = ChunkyColor.TextMuted,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (drawerSearchQuery.isNotEmpty()) {
+                                        IconButton(
+                                            onClick = { drawerSearchQuery = "" },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Clear,
+                                                contentDescription = "Clear",
+                                                tint = ChunkyColor.TextMuted,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(8.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = ChunkyColor.WindowBackground,
+                                    unfocusedContainerColor = ChunkyColor.WindowBackground,
+                                    focusedBorderColor = ChunkyColor.SkyBottom,
+                                    unfocusedBorderColor = ChunkyColor.CardBorder
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 40.dp)
+                            )
+                        }
                     }
                 }
 
@@ -477,7 +538,7 @@ fun MainScreen() {
                         contentPadding = PaddingValues(bottom = 24.dp)
                     ) {
                         items(
-                            items = courses,
+                            items = displayedCoursesInDrawer,
                             key = { it.id },
                             contentType = { "course_filter_item" }
                         ) { course ->
@@ -530,17 +591,48 @@ fun MainScreen() {
             topBar = {
                 TopAppBar(
                     title = {
-                        Text(
-                            text = "Classroom Tracker",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 19.sp,
-                            color = ChunkyColor.TextPrimary
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Classroom Tracker",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = ChunkyColor.TextPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(ChunkyColor.SkyBottom.copy(alpha = 0.10f))
+                                    .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                            ) {
+                                Text(
+                                    text = com.phucta.classroom.data.model.ClassroomDateUtils.formatDayAndDate(currentDayEpoch),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ChunkyColor.SkyBottom
+                                )
+                            }
+                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = ChunkyColor.SurfaceWhite),
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.FilterList, contentDescription = "Filter Courses", tint = ChunkyColor.TextPrimary)
+                            BadgedBox(
+                                badge = {
+                                    if (isAnyCourseFiltered) {
+                                        Badge(
+                                            containerColor = ChunkyColor.SkyBottom,
+                                            modifier = Modifier.size(6.dp)
+                                        )
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.FilterList,
+                                    contentDescription = "Filter Courses",
+                                    tint = if (isAnyCourseFiltered) ChunkyColor.SkyBottom else ChunkyColor.TextPrimary
+                                )
+                            }
                         }
                     },
                     actions = {
@@ -576,7 +668,10 @@ fun MainScreen() {
                 ) {
                     NavigationBarItem(
                         selected = selectedTabIndex == 0,
-                        onClick = { selectedTabIndex = 0 },
+                        onClick = {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                            selectedTabIndex = 0
+                        },
                         icon = {
                             BadgedBox(
                                 badge = {
@@ -612,7 +707,10 @@ fun MainScreen() {
                     )
                     NavigationBarItem(
                         selected = selectedTabIndex == 1,
-                        onClick = { selectedTabIndex = 1 },
+                        onClick = {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                            selectedTabIndex = 1
+                        },
                         icon = {
                             BadgedBox(
                                 badge = {
@@ -648,7 +746,10 @@ fun MainScreen() {
                     )
                     NavigationBarItem(
                         selected = selectedTabIndex == 2,
-                        onClick = { selectedTabIndex = 2 },
+                        onClick = {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                            selectedTabIndex = 2
+                        },
                         icon = { Icon(Icons.Default.CheckCircle, contentDescription = null) },
                         label = {
                             Text(
@@ -669,7 +770,10 @@ fun MainScreen() {
                     )
                     NavigationBarItem(
                         selected = selectedTabIndex == 3,
-                        onClick = { selectedTabIndex = 3 },
+                        onClick = {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                            selectedTabIndex = 3
+                        },
                         icon = {
                             BadgedBox(
                                 badge = {

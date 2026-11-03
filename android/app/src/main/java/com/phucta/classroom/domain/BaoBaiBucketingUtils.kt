@@ -65,8 +65,13 @@ object BaoBaiBucketingUtils {
             return@Comparator 1
         }
 
-        val titleDiff = first.title.compareTo(second.title, ignoreCase = true)
-        if (titleDiff != 0) titleDiff else first.id.compareTo(second.id)
+        val normTitleDiff = first.normalizedTitle.compareTo(second.normalizedTitle)
+        if (normTitleDiff != 0) {
+            normTitleDiff
+        } else {
+            val titleDiff = first.title.compareTo(second.title, ignoreCase = true)
+            if (titleDiff != 0) titleDiff else first.id.compareTo(second.id)
+        }
     }
 
     val SAME_STATUS_COURSEWORK_COMPARATOR = Comparator<Coursework> { first, second ->
@@ -83,14 +88,14 @@ object BaoBaiBucketingUtils {
             return@Comparator 1
         }
 
-        val titleDiff = first.title.compareTo(second.title, ignoreCase = true)
-        if (titleDiff != 0) titleDiff else first.id.compareTo(second.id)
+        val normTitleDiff = first.normalizedTitle.compareTo(second.normalizedTitle)
+        if (normTitleDiff != 0) {
+            normTitleDiff
+        } else {
+            val titleDiff = first.title.compareTo(second.title, ignoreCase = true)
+            if (titleDiff != 0) titleDiff else first.id.compareTo(second.id)
+        }
     }
-
-    private class ScoredCoursework(
-        val item: Coursework,
-        val score: Int
-    )
 
     fun sortCoursework(
         items: List<Coursework>,
@@ -133,9 +138,10 @@ object BaoBaiBucketingUtils {
         val count = items.size
         if (count <= 1) return items
         if (searchTokens.isNotEmpty()) {
-            val scoredItems = Array(count) { index ->
-                val item = items[index]
-                val score = com.phucta.classroom.data.model.calculateSearchRelevance(
+            val scores = IntArray(count)
+            for (i in 0 until count) {
+                val item = items[i]
+                scores[i] = com.phucta.classroom.data.model.calculateSearchRelevance(
                     queryTokens = searchTokens,
                     rawNormalizedQuery = rawNormalizedQuery,
                     title = item.title,
@@ -144,15 +150,15 @@ object BaoBaiBucketingUtils {
                     normalizedTitle = item.normalizedTitle,
                     normalizedCourseName = item.normalizedCourseName
                 )
-                ScoredCoursework(item, score)
             }
-            scoredItems.sortWith { a, b ->
-                val diff = b.score.compareTo(a.score)
-                if (diff != 0) diff else comparator.compare(a.item, b.item)
+            val indices = Array(count) { it }
+            indices.sortWith { i1, i2 ->
+                val diff = scores[i2].compareTo(scores[i1])
+                if (diff != 0) diff else comparator.compare(items[i1], items[i2])
             }
             val result = ArrayList<Coursework>(count)
             for (i in 0 until count) {
-                result.add(scoredItems[i].item)
+                result.add(items[indices[i]])
             }
             return result
         }
@@ -348,10 +354,10 @@ object BaoBaiBucketingUtils {
         val later = ArrayList<Coursework>(estCapacity)
         val noDate = ArrayList<Coursework>(estCapacity)
         val completed = ArrayList<Coursework>(estCapacity)
-        var completedTomorrowCount = 0
-        var completedTodayCount = 0
-        var completedLaterCount = 0
-        var completedNoDateCount = 0
+        val completedTomorrow = ArrayList<Coursework>()
+        val completedToday = ArrayList<Coursework>()
+        val completedLater = ArrayList<Coursework>()
+        val completedNoDate = ArrayList<Coursework>()
         var anyMatchesLoadedCourses = false
         for (i in 0 until totalCount) {
             val item = items[i]
@@ -381,14 +387,14 @@ object BaoBaiBucketingUtils {
                 completed.add(item)
                 if (due != null) {
                     if (due in startOfTomorrow until startOfDayAfter) {
-                        completedTomorrowCount++
+                        completedTomorrow.add(item)
                     } else if (due in now until startOfTomorrow) {
-                        completedTodayCount++
+                        completedToday.add(item)
                     } else if (due >= startOfDayAfter) {
-                        completedLaterCount++
+                        completedLater.add(item)
                     }
                 } else {
-                    completedNoDateCount++
+                    completedNoDate.add(item)
                 }
             } else {
                 when {
@@ -403,98 +409,48 @@ object BaoBaiBucketingUtils {
         if (filterActive && !anyMatchesLoadedCourses) {
             return computeBuckets(items, emptyList(), searchTokens, rawNormalizedQuery)
         }
-        val hasTomorrow = tomorrow.isNotEmpty() || completedTomorrowCount > 0
-        val hasToday = today.isNotEmpty() || completedTodayCount > 0
-        val hasLater = later.isNotEmpty() || completedLaterCount > 0
-        val hasNoDate = noDate.isNotEmpty() || completedNoDateCount > 0
+        val hasTomorrow = tomorrow.isNotEmpty() || completedTomorrow.isNotEmpty()
+        val hasToday = today.isNotEmpty() || completedToday.isNotEmpty()
+        val hasLater = later.isNotEmpty() || completedLater.isNotEmpty()
+        val hasNoDate = noDate.isNotEmpty() || completedNoDate.isNotEmpty()
         val tomorrowCandidates: List<Coursework> = when {
             hasTomorrow -> {
-                if (completedTomorrowCount == 0) tomorrow
-                else if (tomorrow.isEmpty()) {
-                    val list = ArrayList<Coursework>(completedTomorrowCount)
-                    for (c in completed) {
-                        val d = c.dueEpochMillis
-                        if (d != null && d in startOfTomorrow until startOfDayAfter) {
-                            list.add(c)
-                        }
-                    }
-                    list
-                } else {
-                    val list = ArrayList<Coursework>(tomorrow.size + completedTomorrowCount)
+                if (completedTomorrow.isEmpty()) tomorrow
+                else if (tomorrow.isEmpty()) completedTomorrow
+                else {
+                    val list = ArrayList<Coursework>(tomorrow.size + completedTomorrow.size)
                     list.addAll(tomorrow)
-                    for (c in completed) {
-                        val d = c.dueEpochMillis
-                        if (d != null && d in startOfTomorrow until startOfDayAfter) {
-                            list.add(c)
-                        }
-                    }
+                    list.addAll(completedTomorrow)
                     list
                 }
             }
             hasToday -> {
-                if (completedTodayCount == 0) today
-                else if (today.isEmpty()) {
-                    val list = ArrayList<Coursework>(completedTodayCount)
-                    for (c in completed) {
-                        val d = c.dueEpochMillis
-                        if (d != null && d in now until startOfTomorrow) {
-                            list.add(c)
-                        }
-                    }
-                    list
-                } else {
-                    val list = ArrayList<Coursework>(today.size + completedTodayCount)
+                if (completedToday.isEmpty()) today
+                else if (today.isEmpty()) completedToday
+                else {
+                    val list = ArrayList<Coursework>(today.size + completedToday.size)
                     list.addAll(today)
-                    for (c in completed) {
-                        val d = c.dueEpochMillis
-                        if (d != null && d in now until startOfTomorrow) {
-                            list.add(c)
-                        }
-                    }
+                    list.addAll(completedToday)
                     list
                 }
             }
             hasLater -> {
-                if (completedLaterCount == 0) later
-                else if (later.isEmpty()) {
-                    val list = ArrayList<Coursework>(completedLaterCount)
-                    for (c in completed) {
-                        val d = c.dueEpochMillis
-                        if (d != null && d >= startOfDayAfter) {
-                            list.add(c)
-                        }
-                    }
-                    list
-                } else {
-                    val list = ArrayList<Coursework>(later.size + completedLaterCount)
+                if (completedLater.isEmpty()) later
+                else if (later.isEmpty()) completedLater
+                else {
+                    val list = ArrayList<Coursework>(later.size + completedLater.size)
                     list.addAll(later)
-                    for (c in completed) {
-                        val d = c.dueEpochMillis
-                        if (d != null && d >= startOfDayAfter) {
-                            list.add(c)
-                        }
-                    }
+                    list.addAll(completedLater)
                     list
                 }
             }
             hasNoDate -> {
-                if (completedNoDateCount == 0) noDate
-                else if (noDate.isEmpty()) {
-                    val list = ArrayList<Coursework>(completedNoDateCount)
-                    for (c in completed) {
-                        if (c.dueEpochMillis == null) {
-                            list.add(c)
-                        }
-                    }
-                    list
-                } else {
-                    val list = ArrayList<Coursework>(noDate.size + completedNoDateCount)
+                if (completedNoDate.isEmpty()) noDate
+                else if (noDate.isEmpty()) completedNoDate
+                else {
+                    val list = ArrayList<Coursework>(noDate.size + completedNoDate.size)
                     list.addAll(noDate)
-                    for (c in completed) {
-                        if (c.dueEpochMillis == null) {
-                            list.add(c)
-                        }
-                    }
+                    list.addAll(completedNoDate)
                     list
                 }
             }
