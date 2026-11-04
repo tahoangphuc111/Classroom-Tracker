@@ -47,7 +47,8 @@ public final class ClassroomAPIService: ObservableObject {
             let fetchedCourses = try await fetchActiveCourses(accessToken: accessToken)
             guard GoogleOAuthService.shared.isAuthenticated, !Task.isCancelled else { return }
 
-            let existingCourses = ClassroomStorage.shared.loadCourses()
+            let rawCourses = ClassroomStorage.shared.loadCourses()
+            let existingCourses = ClassroomStorage.isMockCourses(rawCourses) ? [] : rawCourses
             let existingMap = Dictionary(existingCourses.map { ($0.id, $0.isSelectedForWidget) }, uniquingKeysWith: { _, new in new })
 
             let mergedCourses = fetchedCourses.map { course in

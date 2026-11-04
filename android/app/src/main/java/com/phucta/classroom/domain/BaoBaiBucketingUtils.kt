@@ -272,7 +272,8 @@ object BaoBaiBucketingUtils {
         val startOfDayAfter = ClassroomDateUtils.startOfDayAfter
         val estCap = maxOf(4, relevant.size shr 2)
         val tomorrowFiltered = ArrayList<Coursework>(estCap)
-        val todayFiltered = ArrayList<Coursework>(estCap)
+        val todayIncompleteFiltered = ArrayList<Coursework>(estCap)
+        val todayCompletedFiltered = ArrayList<Coursework>(estCap)
         val upcomingFiltered = ArrayList<Coursework>(estCap)
         val undatedFiltered = ArrayList<Coursework>(estCap)
         val count = relevant.size
@@ -285,7 +286,11 @@ object BaoBaiBucketingUtils {
                 if (due in startOfTomorrow until startOfDayAfter) {
                     tomorrowFiltered.add(item)
                 } else if (due in now until startOfTomorrow) {
-                    todayFiltered.add(item)
+                    if (item.isCompleted) {
+                        if (includeCompleted) todayCompletedFiltered.add(item)
+                    } else {
+                        todayIncompleteFiltered.add(item)
+                    }
                 } else if (due >= startOfDayAfter) {
                     upcomingFiltered.add(item)
                 }
@@ -325,9 +330,10 @@ object BaoBaiBucketingUtils {
             }
         }
         if (tomorrowFiltered.isNotEmpty()) return sortInternal(tomorrowFiltered, emptyList(), "")
-        if (todayFiltered.isNotEmpty()) return sortInternal(todayFiltered, emptyList(), "")
+        if (todayIncompleteFiltered.isNotEmpty()) return sortInternal(todayIncompleteFiltered, emptyList(), "")
         if (upcomingFiltered.isNotEmpty()) return sortInternal(upcomingFiltered, emptyList(), "")
         if (undatedFiltered.isNotEmpty()) return sortInternal(undatedFiltered, emptyList(), "")
+        if (todayCompletedFiltered.isNotEmpty()) return sortInternal(todayCompletedFiltered, emptyList(), "")
         return emptyList()
     }
 
@@ -417,6 +423,7 @@ object BaoBaiBucketingUtils {
         val hasToday = today.isNotEmpty()
         val hasLater = later.isNotEmpty() || completedLater.isNotEmpty()
         val hasNoDate = noDate.isNotEmpty() || completedNoDate.isNotEmpty()
+        val hasCompletedToday = completedToday.isNotEmpty()
         val tomorrowCandidates: List<Coursework> = when {
             hasTomorrow -> {
                 if (completedTomorrow.isEmpty()) tomorrow
@@ -449,6 +456,7 @@ object BaoBaiBucketingUtils {
                     list
                 }
             }
+            hasCompletedToday -> completedToday
             else -> emptyList()
         }
         val sortedOverdue = sortPreFiltered(overdue, searchTokens, rawNormalizedQuery, SAME_STATUS_COURSEWORK_COMPARATOR)

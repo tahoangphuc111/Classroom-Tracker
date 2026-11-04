@@ -424,6 +424,51 @@ struct TestRunner {
         }
 
         do {
+            let cal = ClassroomDateFormatters.gregorianCalendar
+            let now = Date()
+            let todayEvening = cal.date(bySettingHour: 23, minute: 50, second: 0, of: now) ?? now.addingTimeInterval(3600)
+            let inTwoDays = cal.date(byAdding: .day, value: 2, to: now) ?? now.addingTimeInterval(86400 * 2)
+
+            let completedTodayTask = Coursework(
+                id: "cw_today_finished",
+                courseId: "c_1",
+                courseName: "Toán",
+                title: "Bài hoàn thành chiều nay",
+                dueDate: todayEvening,
+                status: .turnedIn,
+                isManuallyCompleted: true
+            )
+
+            let upcomingTask = Coursework(
+                id: "cw_upcoming_later",
+                courseId: "c_1",
+                courseName: "Sinh",
+                title: "Bài tập 2 ngày nữa",
+                dueDate: inTwoDays,
+                status: .pending,
+                isManuallyCompleted: false
+            )
+
+            let fallbackResult = ClassroomStorage.shared.getTomorrowCoursework(
+                items: [completedTodayTask, upcomingTask],
+                courses: [],
+                includeCompleted: true,
+                includeNotes: false
+            )
+            assertCondition(fallbackResult.count == 1, "Fallback when tomorrow is empty must contain 1 item")
+            assertCondition(fallbackResult.first?.id == "cw_upcoming_later", "Completed today task must not block fallback to upcoming task")
+
+            let lastResortResult = ClassroomStorage.shared.getTomorrowCoursework(
+                items: [completedTodayTask],
+                courses: [],
+                includeCompleted: true,
+                includeNotes: false
+            )
+            assertCondition(lastResortResult.count == 1, "Fallback when only completed today task exists must contain 1 item")
+            assertCondition(lastResortResult.first?.id == "cw_today_finished", "Completed today task must be returned as last resort fallback")
+        }
+
+        do {
             let itemExactTitle = Coursework(id: "cw_exact", courseId: "c1", courseName: "12A1", title: "Giải tích", description: "Bình thường")
             let itemPrefixTitle = Coursework(id: "cw_prefix", courseId: "c1", courseName: "12A1", title: "Giải tích chương 1", description: "Bình thường")
             let itemDescOnly = Coursework(id: "cw_desc", courseId: "c1", courseName: "12A1", title: "Bài tập cuối tuần", description: "Làm bài tập giải tích SGK")

@@ -89,6 +89,29 @@ class BaoBaiBucketingUtilsTest {
         val fallbackBatch = BaoBaiBucketingUtils.getTomorrowCoursework(listOf(futureTask))
         assertFalse(fallbackBatch.isEmpty())
         assertEquals("future_task", fallbackBatch.first().id)
+
+        // Completed task due today must not block fallback to futureTask
+        val now = System.currentTimeMillis()
+        val todayEveningCal = Calendar.getInstance().apply {
+            timeInMillis = now
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 50)
+        }
+        val completedToday = Coursework(
+            id = "today_finished",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "Đã làm xong chiều nay",
+            dueEpochMillis = todayEveningCal.timeInMillis,
+            status = SubmissionStatus.TURNED_IN,
+            isManuallyCompleted = true
+        )
+        val fallbackWithCompletedToday = BaoBaiBucketingUtils.getTomorrowCoursework(
+            listOf(completedToday, futureTask),
+            includeCompleted = true
+        )
+        assertEquals(1, fallbackWithCompletedToday.size)
+        assertEquals("future_task", fallbackWithCompletedToday.first().id)
     }
 
     @Test
@@ -853,5 +876,33 @@ class BaoBaiBucketingUtilsTest {
     fun testLOG06_EmptyTomorrowCandidatesDoesNotThrowClassCastException() {
         val buckets = BaoBaiBucketingUtils.computeBuckets(emptyList())
         assertTrue(buckets.widgetItems.isEmpty())
+    }
+
+    @Test
+    fun testLOG07_WhenNoTomorrowOrUpcomingOrUndated_CompletedTodayIsLastResortFallback() {
+        val now = System.currentTimeMillis()
+        val cal = Calendar.getInstance().apply {
+            timeInMillis = now
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 50)
+        }
+        val todayDue = cal.timeInMillis
+
+        val completedTodayCoursework = Coursework(
+            id = "today_done_only",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "Đã làm xong chiều nay",
+            dueEpochMillis = todayDue,
+            status = SubmissionStatus.TURNED_IN
+        )
+
+        val buckets = BaoBaiBucketingUtils.computeBuckets(listOf(completedTodayCoursework))
+        assertEquals(1, buckets.completed.size)
+        assertEquals(0, buckets.tomorrow.size)
+        assertEquals(0, buckets.laterUpcoming.size)
+        // With no tomorrow, no upcoming, and no undated tasks, completedToday is the last-resort fallback
+        assertEquals(1, buckets.widgetItems.size)
+        assertEquals("today_done_only", buckets.widgetItems.first().id)
     }
 }

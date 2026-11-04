@@ -850,8 +850,8 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
 
         var tomorrowFiltered: [Coursework] = []
-        var overdueFiltered: [Coursework] = []
-        var todayFiltered: [Coursework] = []
+        var todayIncompleteFiltered: [Coursework] = []
+        var todayCompletedFiltered: [Coursework] = []
         var laterUpcoming: [Coursework] = []
         var undated: [Coursework] = []
 
@@ -864,10 +864,12 @@ public final class ClassroomStorage: @unchecked Sendable {
 
             if dueDate >= startOfTomorrow && dueDate < startOfDayAfter {
                 if isEligible { tomorrowFiltered.append(item) }
-            } else if dueDate < now && !item.isCompleted {
-                overdueFiltered.append(item)
             } else if dueDate >= now && dueDate < startOfTomorrow {
-                if isEligible { todayFiltered.append(item) }
+                if item.isCompleted {
+                    if includeCompleted { todayCompletedFiltered.append(item) }
+                } else {
+                    todayIncompleteFiltered.append(item)
+                }
             } else if dueDate >= startOfDayAfter {
                 if isEligible { laterUpcoming.append(item) }
             }
@@ -901,10 +903,10 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
 
         if !tomorrowFiltered.isEmpty { return sortCoursework(tomorrowFiltered) }
-        if !overdueFiltered.isEmpty { return sortCoursework(overdueFiltered) }
-        if !todayFiltered.isEmpty { return sortCoursework(todayFiltered) }
+        if !todayIncompleteFiltered.isEmpty { return sortCoursework(todayIncompleteFiltered) }
         if !laterUpcoming.isEmpty { return sortCoursework(laterUpcoming) }
         if !undated.isEmpty { return sortCoursework(undated) }
+        if !todayCompletedFiltered.isEmpty { return sortCoursework(todayCompletedFiltered) }
 
         return []
     }
