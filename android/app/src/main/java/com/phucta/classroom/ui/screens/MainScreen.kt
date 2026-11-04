@@ -939,6 +939,13 @@ fun MainScreen() {
         HomeworkDetailBottomSheet(
             coursework = activeSelectedCoursework,
             initialNoteContent = attachedNote?.content,
+            attachedNote = attachedNote,
+            onToggleChecklistItem = onToggleChecklistItem,
+            onEditNoteInNotes = { note ->
+                selectedCourseworkId = null
+                noteToEditFromExternal = note
+                selectedTabIndex = 3
+            },
             onDismiss = { selectedCourseworkId = null },
             onToggleCompletion = { id, completed ->
                 scope.launch {

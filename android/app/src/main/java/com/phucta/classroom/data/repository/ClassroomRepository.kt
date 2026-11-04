@@ -245,7 +245,7 @@ class ClassroomRepository(
         val existing = personalNoteDao.getNoteForCoursework(courseworkId)
         if (existing != null) {
             val existingDomain = existing.toDomain()
-            if (trimmed.isEmpty() && existingDomain.checklist.isEmpty() && existing.title.isBlank()) {
+            if (trimmed.isEmpty() && existingDomain.checklist.isEmpty()) {
                 personalNoteDao.deleteNoteById(existing.id)
             } else {
                 val updated = existing.copy(

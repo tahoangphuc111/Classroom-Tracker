@@ -687,6 +687,29 @@ struct TestRunner {
         }
 
         do {
+            let noteToKeep = PersonalNote(
+                id: "preserve_on_logout_note",
+                title: "Ghi chú cần lưu lại",
+                content: "Nội dung không được mất khi đăng xuất",
+                isCompleted: false
+            )
+            ClassroomStorage.shared.savePersonalNotes([noteToKeep])
+            ClassroomStorage.shared.flushIOQueue()
+
+            ClassroomStorage.shared.clearAllData(includePersonalNotes: false)
+            ClassroomStorage.shared.flushIOQueue()
+
+            let reloadedNotes = ClassroomStorage.shared.loadPersonalNotes()
+            assertCondition(reloadedNotes.contains { $0.id == "preserve_on_logout_note" }, "clearAllData(includePersonalNotes: false) must preserve user personal notes")
+            assertCondition(!ClassroomStorage.shared.hasUserLoggedIn, "hasUserLoggedIn must be false after clearAllData")
+
+            ClassroomStorage.shared.clearAllData(includePersonalNotes: true)
+            ClassroomStorage.shared.flushIOQueue()
+            let emptyNotes = ClassroomStorage.shared.loadPersonalNotes()
+            assertCondition(emptyNotes.isEmpty, "clearAllData(includePersonalNotes: true) must wipe personal notes")
+        }
+
+        do {
             assertCondition(AppleOSDetector.isAppleOS, "AppleOSDetector.isAppleOS must be true on Apple platforms")
             assertCondition(!AppleOSDetector.currentOSDescription.isEmpty, "AppleOSDetector.currentOSDescription must not be empty")
             assertCondition(

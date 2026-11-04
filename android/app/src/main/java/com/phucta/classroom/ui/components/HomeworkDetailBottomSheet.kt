@@ -8,6 +8,7 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -22,12 +23,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.foundation.layout.Arrangement
@@ -57,10 +61,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phucta.classroom.data.model.Coursework
+import com.phucta.classroom.data.model.PersonalNote
 import com.phucta.classroom.ui.theme.ChunkyColor
 import com.phucta.classroom.ui.theme.OutfitFontFamily
 
@@ -72,6 +78,9 @@ fun HomeworkDetailBottomSheet(
     onToggleCompletion: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
     initialNoteContent: String? = null,
+    attachedNote: PersonalNote? = null,
+    onToggleChecklistItem: ((String, String) -> Unit)? = null,
+    onEditNoteInNotes: ((PersonalNote) -> Unit)? = null,
     onSaveNote: (String) -> Unit = {}
 ) {
     if (coursework == null) return
@@ -232,6 +241,94 @@ fun HomeworkDetailBottomSheet(
                 }
             }
 
+            if (attachedNote != null && attachedNote.checklist.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = ChunkyColor.Hairline)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.EditNote,
+                            contentDescription = null,
+                            tint = ChunkyColor.SkyBottom,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "DANH SÁCH CẦN LÀM (CHECKLIST)",
+                            color = ChunkyColor.TextMuted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+
+                    Text(
+                        text = "${attachedNote.completedChecklistCount}/${attachedNote.totalChecklistCount}",
+                        color = ChunkyColor.TextMuted,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(ChunkyColor.WindowBackground)
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    attachedNote.checklist.forEach { item ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    } else {
+                                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                    }
+                                    onToggleChecklistItem?.invoke(attachedNote.id, item.id)
+                                }
+                                .padding(vertical = 4.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (item.isCompleted) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = ChunkyColor.SuccessGreen,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .border(1.5.dp, ChunkyColor.TextMuted.copy(alpha = 0.5f), CircleShape)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = item.title,
+                                color = if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary,
+                                fontSize = 14.sp,
+                                textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(color = ChunkyColor.Hairline)
             Spacer(modifier = Modifier.height(16.dp))
@@ -252,18 +349,45 @@ fun HomeworkDetailBottomSheet(
                     letterSpacing = 0.5.sp
                 )
 
-                if (!isEditingNote) {
-                    TextButton(
-                        onClick = { isEditingNote = true },
-                        modifier = Modifier.heightIn(min = 48.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = if (initialNoteContent.isNullOrBlank()) "+ Thêm ghi chú" else "Chỉnh sửa",
-                            color = ChunkyColor.SkyBottom,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (attachedNote != null && onEditNoteInNotes != null) {
+                        TextButton(
+                            onClick = {
+                                safeDismiss()
+                                onEditNoteInNotes(attachedNote)
+                            },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = ChunkyColor.SkyBottom,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Mở trong Ghi chú",
+                                color = ChunkyColor.SkyBottom,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    if (!isEditingNote) {
+                        TextButton(
+                            onClick = { isEditingNote = true },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (initialNoteContent.isNullOrBlank()) "+ Thêm ghi chú" else "Chỉnh sửa",
+                                color = ChunkyColor.SkyBottom,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }
