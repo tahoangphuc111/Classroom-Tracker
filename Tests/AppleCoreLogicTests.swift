@@ -646,6 +646,14 @@ struct TestRunner {
             ClassroomStorage.shared.cleanUpOrphanedNotes(validCourseworkIds: ["some_other_id"])
             let notesAfterCleanup = ClassroomStorage.shared.loadPersonalNotes()
             assertCondition(!notesAfterCleanup.contains { $0.courseworkId == "cw_parent_1" }, "Orphaned note attached to deleted coursework must be pruned")
+
+            // Empty attached note without checklist must be removed
+            ClassroomStorage.shared.saveNoteForCoursework(courseworkId: "cw_parent_empty", title: "Bài tập xóa", content: "Lời dặn tạm")
+            let notesWithTemp = ClassroomStorage.shared.loadPersonalNotes()
+            assertCondition(notesWithTemp.contains { $0.courseworkId == "cw_parent_empty" }, "Attached note with content should exist")
+            ClassroomStorage.shared.saveNoteForCoursework(courseworkId: "cw_parent_empty", title: "Bài tập xóa", content: "   ")
+            let notesAfterEmpty = ClassroomStorage.shared.loadPersonalNotes()
+            assertCondition(!notesAfterEmpty.contains { $0.courseworkId == "cw_parent_empty" }, "Empty attached note without checklist must be pruned")
         }
 
         do {

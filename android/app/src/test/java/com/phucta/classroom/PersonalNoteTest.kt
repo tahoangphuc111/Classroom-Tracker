@@ -296,4 +296,27 @@ class PersonalNoteTest {
         assertTrue(note.searchIndex.contains("slide"))
         assertTrue(note.searchIndex.contains("thuyet trinh"))
     }
+
+    @Test
+    fun testAttachedNoteRetentionLogic() {
+        val emptyAttachedNote = PersonalNote(
+            id = "note-empty",
+            courseworkId = "cw-1",
+            title = "Bài tập",
+            content = "   ",
+            checklist = emptyList()
+        )
+        val shouldDelete = emptyAttachedNote.courseworkId != null &&
+            emptyAttachedNote.content.trim().isEmpty() &&
+            emptyAttachedNote.checklist.isEmpty()
+        assertTrue("Attached note with blank content and empty checklist should be eligible for deletion", shouldDelete)
+
+        val noteWithChecklistOnly = emptyAttachedNote.copy(
+            checklist = listOf(com.phucta.classroom.data.model.ChecklistItem(title = "Việc 1"))
+        )
+        val shouldDeleteWithChecklist = noteWithChecklistOnly.courseworkId != null &&
+            noteWithChecklistOnly.content.trim().isEmpty() &&
+            noteWithChecklistOnly.checklist.isEmpty()
+        assertFalse("Attached note with checklist must not be deleted even if content is empty", shouldDeleteWithChecklist)
+    }
 }

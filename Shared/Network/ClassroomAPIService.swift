@@ -61,7 +61,9 @@ public final class ClassroomAPIService: ObservableObject {
 
             let selectedCourses = mergedCourses.filter(\.isSelectedForWidget)
             var allCoursework: [Coursework] = []
-            let existingCoursework = ClassroomStorage.shared.loadCoursework()
+            let rawExisting = ClassroomStorage.shared.loadCoursework()
+            let existingCoursework = ClassroomStorage.isMockCoursework(rawExisting) ? [] : rawExisting
+            var hasAnyFetchErrors = false
 
             if !selectedCourses.isEmpty {
                 try? await Task.sleep(nanoseconds: 300_000_000)
@@ -88,6 +90,7 @@ public final class ClassroomAPIService: ObservableObject {
                         if let items = result {
                             allCoursework.append(contentsOf: items)
                         } else {
+                            hasAnyFetchErrors = true
                             let preserved = existingCoursework.filter { $0.courseId == courseId }
                             allCoursework.append(contentsOf: preserved)
                         }
@@ -117,8 +120,10 @@ public final class ClassroomAPIService: ObservableObject {
             let finalCoursework = ClassroomStorage.shared.reconcileCoursework(incoming: uniqueCoursework)
 
             ClassroomStorage.shared.saveCoursework(finalCoursework)
-            let validIds = Set(finalCoursework.map(\.id))
-            ClassroomStorage.shared.cleanUpOrphanedNotes(validCourseworkIds: validIds)
+            if !hasAnyFetchErrors {
+                let validIds = Set(finalCoursework.map(\.id))
+                ClassroomStorage.shared.cleanUpOrphanedNotes(validCourseworkIds: validIds)
+            }
             ClassroomStorage.shared.saveLastSyncTime(Date())
             ClassroomStorage.shared.saveUserLoggedIn(true)
         } catch {

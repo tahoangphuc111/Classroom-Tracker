@@ -333,8 +333,8 @@ fun HomeworkDetailBottomSheet(
             HorizontalDivider(color = ChunkyColor.Hairline)
             Spacer(modifier = Modifier.height(16.dp))
 
-            var isEditingNote by rememberSaveable { mutableStateOf(false) }
-            var noteDraft by rememberSaveable(initialNoteContent) { mutableStateOf(initialNoteContent ?: "") }
+            var isEditingNote by rememberSaveable(coursework.id) { mutableStateOf(false) }
+            var noteDraft by rememberSaveable(coursework.id, initialNoteContent) { mutableStateOf(initialNoteContent ?: "") }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

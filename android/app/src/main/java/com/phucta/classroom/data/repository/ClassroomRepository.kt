@@ -231,7 +231,11 @@ class ClassroomRepository(
         personalNoteDao.getNoteForCoursework(courseworkId)?.toDomain()
     }
     suspend fun savePersonalNote(note: PersonalNote) = withContext(Dispatchers.IO) {
-        personalNoteDao.upsertNote(PersonalNoteEntity.fromDomain(note))
+        if (note.courseworkId != null && note.content.trim().isEmpty() && note.checklist.isEmpty()) {
+            personalNoteDao.deleteNoteById(note.id)
+        } else {
+            personalNoteDao.upsertNote(PersonalNoteEntity.fromDomain(note))
+        }
         notifyWidgetReload()
     }
     suspend fun saveNoteForCoursework(

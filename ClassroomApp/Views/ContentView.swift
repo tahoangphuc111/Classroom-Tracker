@@ -3151,7 +3151,10 @@ public struct ContentView: View {
     private func savePersonalNoteItem(_ note: PersonalNote, showFeedbackToast: Bool = true) {
         withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
             var current = personalNotes
-            if let index = current.firstIndex(where: { $0.id == note.id }) {
+            let trimmedContent = note.content.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let cwId = note.courseworkId, !cwId.isEmpty, trimmedContent.isEmpty, note.checklist.isEmpty {
+                current.removeAll { $0.id == note.id }
+            } else if let index = current.firstIndex(where: { $0.id == note.id }) {
                 current[index] = note
             } else {
                 current.append(note)
