@@ -461,6 +461,13 @@ fun HomeworkDetailBottomSheet(
                         lineHeight = 21.sp
                     )
                 }
+            } else if (attachedNote != null && attachedNote.checklist.isNotEmpty()) {
+                Text(
+                    text = "Chưa có nội dung lời dặn thêm (đang có ${attachedNote.checklist.size} việc cần làm ở trên).",
+                    color = ChunkyColor.TextMuted,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
             } else {
                 Text(
                     text = "Chưa có ghi chú nào cho bài tập này.",

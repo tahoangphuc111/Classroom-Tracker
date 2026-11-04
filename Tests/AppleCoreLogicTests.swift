@@ -569,6 +569,86 @@ struct TestRunner {
         }
 
         do {
+            let future = Date().addingTimeInterval(86400 * 3)
+            let initialPending = Coursework(
+                id: "cw_unsubmit_full_lifecycle",
+                courseId: "c_storage",
+                courseName: "Hóa học",
+                title: "Báo cáo thực hành",
+                dueDate: future,
+                status: .pending,
+                isManuallyCompleted: false
+            )
+            ClassroomStorage.shared.saveCoursework([initialPending])
+
+            // Step 1: Student checks off locally
+            ClassroomStorage.shared.toggleCourseworkCompletion(id: "cw_unsubmit_full_lifecycle", completed: true)
+            let localChecked = ClassroomStorage.shared.loadCoursework().first { $0.id == "cw_unsubmit_full_lifecycle" }!
+            assertCondition(localChecked.status == .turnedIn && localChecked.isManuallyCompleted, "Step 1: Local checkmark set")
+
+            // Step 2: Next sync still pending from Google -> local completion preserved
+            let syncPending = ClassroomStorage.shared.reconcileCoursework(incoming: [initialPending]).first!
+            assertCondition(syncPending.status == .turnedIn && syncPending.isManuallyCompleted, "Step 2: Sync pending preserves local turnedIn")
+
+            // Step 3: Google server confirms turned in -> isManuallyCompleted must reset to false
+            let serverTurnedIn = Coursework(
+                id: "cw_unsubmit_full_lifecycle",
+                courseId: "c_storage",
+                courseName: "Hóa học",
+                title: "Báo cáo thực hành",
+                dueDate: future,
+                status: .turnedIn,
+                isManuallyCompleted: false
+            )
+            ClassroomStorage.shared.saveCoursework([syncPending])
+            let syncServerTurnedIn = ClassroomStorage.shared.reconcileCoursework(incoming: [serverTurnedIn]).first!
+            assertCondition(syncServerTurnedIn.status == .turnedIn, "Step 3: Server turnedIn is .turnedIn")
+            assertCondition(syncServerTurnedIn.isManuallyCompleted == false, "Step 3: Server turnedIn must reset isManuallyCompleted to false")
+
+            // Step 4: Teacher returns assignment back to PENDING (Unsubmit/Return)
+            ClassroomStorage.shared.saveCoursework([syncServerTurnedIn])
+            let teacherReturnedToPending = Coursework(
+                id: "cw_unsubmit_full_lifecycle",
+                courseId: "c_storage",
+                courseName: "Hóa học",
+                title: "Báo cáo thực hành",
+                dueDate: future,
+                status: .pending,
+                isManuallyCompleted: false
+            )
+            let finalSync = ClassroomStorage.shared.reconcileCoursework(incoming: [teacherReturnedToPending]).first!
+            assertCondition(finalSync.status == .pending, "Step 4: Assignment must return to .pending when teacher un-submits")
+            assertCondition(finalSync.isManuallyCompleted == false, "Step 4: isManuallyCompleted must remain false")
+        }
+
+        do {
+            let noteWithChecklist = PersonalNote(
+                id: "cw_note_chk_preserve",
+                courseworkId: "cw_parent_1",
+                courseId: "c1",
+                courseName: "Sinh học",
+                title: "Bài tập di truyền",
+                content: "Đọc SGK trang 45",
+                checklist: [ChecklistItem(title: "Làm bài 1"), ChecklistItem(title: "Làm bài 2")],
+                dueDate: Date().addingTimeInterval(86400)
+            )
+            ClassroomStorage.shared.savePersonalNotes([noteWithChecklist])
+
+            // Save coursework note with empty text
+            ClassroomStorage.shared.saveNoteForCoursework(courseworkId: "cw_parent_1", title: "Bài tập di truyền", content: "   ")
+            let notesAfterEmptyContent = ClassroomStorage.shared.loadPersonalNotes()
+            let preservedNote = notesAfterEmptyContent.first { $0.courseworkId == "cw_parent_1" }
+            assertCondition(preservedNote != nil, "Coursework note must NOT be removed when content is cleared if checklist is present")
+            assertCondition(preservedNote?.content == "", "Preserved note content must be empty")
+            assertCondition(preservedNote?.checklist.count == 2, "Checklist items must be preserved")
+
+            // Orphaned note cleanup test
+            ClassroomStorage.shared.cleanUpOrphanedNotes(validCourseworkIds: ["some_other_id"])
+            let notesAfterCleanup = ClassroomStorage.shared.loadPersonalNotes()
+            assertCondition(!notesAfterCleanup.contains { $0.courseworkId == "cw_parent_1" }, "Orphaned note attached to deleted coursework must be pruned")
+        }
+
+        do {
             assertCondition("ĐẠI SỐ & GIẢI TÍCH".normalizedForVietnameseSearch() == "dai so & giai tich", "Uppercase Đ and diacritics must be properly normalized")
             assertCondition("Giáo Dục Kinh Tế Và Pháp Luật".normalizedForVietnameseSearch() == "giao duc kinh te va phap luat", "Complex compound Vietnamese title must be diacritic-stripped")
             assertCondition("Lịch Sử & Địa Lý".normalizedForVietnameseSearch() == "lich su & dia ly", "Multiple words with diacritics must be diacritic-stripped")

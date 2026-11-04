@@ -1012,11 +1012,20 @@ public final class ClassroomStorage: @unchecked Sendable {
         return incoming.map { item in
             guard let fresh = cachedMap[item.id] else { return item }
             var updated = item
-            if fresh.isManuallyCompleted {
-                updated.isManuallyCompleted = true
-                if updated.status == .pending || updated.status == .late {
-                    updated.status = fresh.status == .returned ? .returned : .turnedIn
-                }
+            let localIsManuallyCompleted = fresh.isManuallyCompleted
+            let incomingIsPendingOrLate = item.status == .pending || item.status == .late
+            let shouldPreserveLocalStatus = incomingIsPendingOrLate && localIsManuallyCompleted
+
+            if shouldPreserveLocalStatus {
+                updated.status = fresh.status == .returned ? .returned : .turnedIn
+            } else {
+                updated.status = item.status
+            }
+
+            if item.status == .turnedIn || item.status == .returned {
+                updated.isManuallyCompleted = false
+            } else {
+                updated.isManuallyCompleted = localIsManuallyCompleted || item.isManuallyCompleted
             }
             return updated
         }
@@ -1317,13 +1326,23 @@ public final class ClassroomStorage: @unchecked Sendable {
         var allNotes = loadPersonalNotes()
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         if let index = allNotes.firstIndex(where: { $0.courseworkId == courseworkId }) {
-            if trimmed.isEmpty {
+            if trimmed.isEmpty && allNotes[index].checklist.isEmpty {
                 allNotes.remove(at: index)
             } else {
-                allNotes[index].content = trimmed
-                allNotes[index].updatedAt = Date()
-                if let courseId { allNotes[index].courseId = courseId }
-                if let courseName { allNotes[index].courseName = courseName }
+                let existing = allNotes[index]
+                allNotes[index] = PersonalNote(
+                    id: existing.id,
+                    courseworkId: existing.courseworkId,
+                    courseId: courseId ?? existing.courseId,
+                    courseName: courseName ?? existing.courseName,
+                    title: title.isEmpty ? existing.title : title,
+                    content: trimmed,
+                    checklist: existing.checklist,
+                    dueDate: existing.dueDate,
+                    isCompleted: existing.isCompleted,
+                    createdAt: existing.createdAt,
+                    updatedAt: Date()
+                )
             }
         } else if !trimmed.isEmpty {
             let newNote = PersonalNote(
@@ -1336,6 +1355,23 @@ public final class ClassroomStorage: @unchecked Sendable {
             allNotes.append(newNote)
         }
         savePersonalNotes(allNotes)
+    }
+
+    public func cleanUpOrphanedNotes(validCourseworkIds: Set<String>) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var allNotes = loadPersonalNotes()
+        let originalCount = allNotes.count
+        allNotes.removeAll { note in
+            if let cwId = note.courseworkId, !cwId.isEmpty {
+                return !validCourseworkIds.contains(cwId)
+            }
+            return false
+        }
+        if allNotes.count != originalCount {
+            savePersonalNotes(allNotes)
+        }
     }
 
     public func deletePersonalNote(id: String) {

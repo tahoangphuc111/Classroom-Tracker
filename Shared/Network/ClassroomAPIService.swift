@@ -117,6 +117,8 @@ public final class ClassroomAPIService: ObservableObject {
             let finalCoursework = ClassroomStorage.shared.reconcileCoursework(incoming: uniqueCoursework)
 
             ClassroomStorage.shared.saveCoursework(finalCoursework)
+            let validIds = Set(finalCoursework.map(\.id))
+            ClassroomStorage.shared.cleanUpOrphanedNotes(validCourseworkIds: validIds)
             ClassroomStorage.shared.saveLastSyncTime(Date())
             ClassroomStorage.shared.saveUserLoggedIn(true)
         } catch {

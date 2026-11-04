@@ -60,6 +60,8 @@ struct HomeworkReaderPane: View {
                         let isPersonalNote = item.id.hasPrefix("note_")
                         let noteId = isPersonalNote ? String(item.id.dropFirst(5)) : ""
                         let personalNoteItem = isPersonalNote ? personalNotes.first(where: { $0.id == noteId }) : nil
+                        let attachedCourseworkNote = !isPersonalNote ? personalNotes.first(where: { $0.courseworkId == item.id }) : nil
+                        let activeChecklistNote = personalNoteItem ?? attachedCourseworkNote
 
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
@@ -126,7 +128,7 @@ struct HomeworkReaderPane: View {
                             }
                         }
 
-                        if let pNote = personalNoteItem, pNote.hasChecklist {
+                        if let pNote = activeChecklistNote, pNote.hasChecklist {
                             Divider()
                                 .overlay(Color.platformDivider)
 
@@ -136,7 +138,7 @@ struct HomeworkReaderPane: View {
                                         Image(systemName: "checklist")
                                             .font(.system(size: 14, weight: .semibold))
                                             .foregroundStyle(Color.blue)
-                                        Text("DANH SÁCH VIỆC CON")
+                                        Text(isPersonalNote ? "DANH SÁCH VIỆC CON" : "DANH SÁCH CẦN LÀM (CHECKLIST)")
                                             .font(.system(size: 14, weight: .bold, design: .rounded))
                                             .foregroundStyle(Color.platformTextSecondary)
                                     }
@@ -205,6 +207,27 @@ struct HomeworkReaderPane: View {
 
                                 Spacer()
 
+                                if let attached = attachedCourseworkNote {
+                                    Button {
+                                        onTriggerHaptic()
+                                        if let onEditNote = onEditNote {
+                                            onEditNote(attached.id)
+                                        } else {
+                                            editingPersonalNote = attached
+                                        }
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "arrow.up.forward.app")
+                                                .font(.system(size: 11.5))
+                                            Text("Mở trong Ghi chú")
+                                                .font(.system(size: 13, weight: .medium))
+                                        }
+                                        .foregroundStyle(Color.blue)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help("Mở toàn bộ ghi chú và danh sách việc cần làm trong mục Ghi chú")
+                                }
+
                                 if courseworkNoteToEditCourseworkId != item.id {
                                     Button {
                                         let currentNote = personalNotes.first { $0.courseworkId == item.id }
@@ -264,7 +287,7 @@ struct HomeworkReaderPane: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                                     }
                                 }
-                            } else if let note = personalNotes.first(where: { $0.courseworkId == item.id }), !note.content.isEmpty {
+                            } else if let note = attachedCourseworkNote, !note.content.isEmpty {
                                 Text(note.content)
                                     .font(.system(size: 15))
                                     .foregroundStyle(Color.platformTextPrimary)
@@ -276,6 +299,12 @@ struct HomeworkReaderPane: View {
                                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                                             .stroke(Color.orange.opacity(0.2), lineWidth: 1)
                                     )
+                            } else if let note = attachedCourseworkNote, note.hasChecklist {
+                                Text("Chưa có nội dung lời dặn thêm (đang có \(note.totalChecklistCount) việc cần làm ở danh sách trên).")
+                                    .font(.system(size: 13.5))
+                                    .foregroundStyle(Color.platformTextTertiary)
+                                    .italic()
+                                    .padding(.vertical, 4)
                             } else {
                                 Text("Chưa có ghi chú nào cho bài tập này. Nhấn 'Thêm ghi chú' để ghi lời dặn hoặc lưu ý.")
                                     .font(.system(size: 13.5))
