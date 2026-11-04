@@ -106,8 +106,7 @@ public struct SubjectArtHelper {
             }
             cacheLock.unlock()
 
-            let isDia = courseName.localizedCaseInsensitiveContains("địa") || (title?.localizedCaseInsensitiveContains("địa") == true) || courseName.localizedCaseInsensitiveContains("dia") || (title?.localizedCaseInsensitiveContains("dia") == true)
-            let code = isDia ? "ĐỊA" : "SỬ"
+            let code = isGeography(courseName: courseName, title: title) ? "ĐỊA" : "SỬ"
 
             cacheLock.lock()
             if courseBadgeCache.count >= 2048 {
@@ -227,11 +226,29 @@ public struct SubjectArtHelper {
         return flags
     }
 
+    public static func isGeography(courseName: String, title: String? = nil) -> Bool {
+        func check(_ text: String?) -> Bool {
+            guard let text, !text.isEmpty else { return false }
+            let lower = text.lowercased()
+            let cleaned = lower
+                .replacingOccurrences(of: "địa điểm", with: " ")
+                .replacingOccurrences(of: "dia diem", with: " ")
+                .replacingOccurrences(of: "địa chỉ", with: " ")
+                .replacingOccurrences(of: "dia chi", with: " ")
+            if cleaned.contains("địa lý") || cleaned.contains("địa lí") || cleaned.contains("dia ly") || cleaned.contains("dia li") {
+                return true
+            }
+            let flags = scanTokenFlags(in: cleaned)
+            return flags.contains(.geography) || flags.contains(.dia)
+        }
+        return check(courseName) || check(title)
+    }
+
     private static func computeCategory(for courseName: String, title: String? = nil) -> SubjectCategory {
         func matchCategory(text: String, flags: TokenFlags) -> SubjectCategory? {
             if !text.contains("điện toán") && (text.contains("toán") || flags.contains(.math) || text.contains("giải tích") || text.contains("đại số") || text.contains("hình học") || text.contains("xác suất") || text.contains("lượng giác") || text.contains("đạo hàm") || text.contains("tích phân") || text.contains("toán cao cấp") || text.contains("toán rời rạc") || text.contains("thống kê") || text.contains("vi phân") || text.contains("ma trận")) {
                 return .math
-            } else if text.contains("vật lý") || text.contains("vật lí") || flags.contains(.physics) || text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") || text.contains("cơ học") || text.contains("nhiệt học") || text.contains("quang học") || text.contains("điện từ") || text.contains("vật lý đại cương") || text.contains("vật lí đại cương") || text.contains("dao động") || text.contains("sóng cơ") || (flags.contains(.ly) && !text.contains("quản lý") && !text.contains("quản lí") && !text.contains("xử lý") && !text.contains("xử lí") && !text.contains("tâm lý") && !text.contains("tâm lí") && !text.contains("pháp lý") && !text.contains("pháp lí") && !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("triết lý") && !text.contains("triết lí") && !text.contains("lý thuyết") && !text.contains("lí thuyết") && !text.contains("lý luận") && !text.contains("lí luận") && !text.contains("lý do") && !text.contains("lí do")) {
+            } else if text.contains("vật lý") || text.contains("vật lí") || flags.contains(.physics) || text.contains("môn lý") || text.contains("môn lí") || text.contains("sbt lý") || text.contains("sbt lí") || text.contains("cơ học") || text.contains("nhiệt học") || text.contains("quang học") || text.contains("điện từ") || text.contains("vật lý đại cương") || text.contains("vật lí đại cương") || text.contains("dao động") || text.contains("sóng cơ") || (flags.contains(.ly) && !text.contains("quản lý") && !text.contains("quản lí") && !text.contains("xử lý") && !text.contains("xử lí") && !text.contains("tâm lý") && !text.contains("tâm lí") && !text.contains("pháp lý") && !text.contains("pháp lí") && !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("dia ly") && !text.contains("dia li") && !text.contains("triết lý") && !text.contains("triết lí") && !text.contains("lý thuyết") && !text.contains("lí thuyết") && !text.contains("lý luận") && !text.contains("lí luận") && !text.contains("lý do") && !text.contains("lí do")) {
                 return .physics
             } else if text.contains("hóa học") || text.contains("hoá học") || text.contains("môn hóa") || text.contains("môn hoá") || text.contains("hóa hữu cơ") || text.contains("hoá hữu cơ") || text.contains("hóa vô cơ") || text.contains("hoá vô cơ") || text.contains("hóa đại cương") || text.contains("hoá đại cương") || text.contains("hóa phân tích") || text.contains("hoá phân tích") || flags.contains(.chemistry) || (flags.contains(.hoa) && !text.contains("tự động hóa") && !text.contains("tự động hoá") && !text.contains("tiến hóa") && !text.contains("tiến hoá") && !text.contains("tiêu hóa") && !text.contains("tiêu hoá") && !text.contains("hóa đơn") && !text.contains("hoá đơn") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("tối ưu hóa") && !text.contains("tối ưu hoá") && !text.contains("chuẩn hóa") && !text.contains("chuẩn hoá") && !text.contains("công nghiệp hóa") && !text.contains("công nghiệp hoá") && !text.contains("hiện đại hóa") && !text.contains("hiện đại hoá") && !text.contains("ảo hóa") && !text.contains("ảo hoá") && !text.contains("số hóa") && !text.contains("số hoá")) {
                 return .chemistry
@@ -239,7 +256,7 @@ public struct SubjectArtHelper {
                 return .biology
             } else if text.contains("lịch sử") || flags.contains(.history) || (flags.contains(.su) && !text.contains("sử dụng") && !text.contains("lịch sự")) {
                 return .historyOrGeography
-            } else if text.contains("địa lý") || text.contains("địa lí") || flags.contains(.geography) || (flags.contains(.dia) && !text.contains("địa chỉ") && !text.contains("địa điểm")) {
+            } else if isGeography(courseName: text) {
                 return .historyOrGeography
             } else if text.contains("ngữ văn") || text.contains("tiếng việt") || flags.contains(.literature) || (flags.contains(.van) && !text.contains("văn phòng") && !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("văn minh") && !text.contains("văn bản") && !text.contains("luận văn")) {
                 return .literature
@@ -518,8 +535,9 @@ public struct WidgetAppleGlassBackground: View {
 
     public var body: some View {
         #if (os(macOS) || os(iOS)) && compiler(>=6.4)
-        if #available(iOS 26.0, macOS 27.0, *) {
-            Color.clear
+        if #available(iOS 26.0, macOS 26.0, *) {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(.ultraThinMaterial)
                 .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
         } else {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

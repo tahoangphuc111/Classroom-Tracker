@@ -20,8 +20,141 @@ struct SettingsSheetView: View {
     let onStartGoogleLogin: () -> Void
 
     var body: some View {
+        #if os(macOS)
+        VStack(spacing: 0) {
+            headerBar
+            Divider()
+            formContent
+            Divider()
+            footerBar
+        }
+        .frame(minWidth: 540, idealWidth: 580, maxWidth: 640, minHeight: 520, idealHeight: 600, maxHeight: 720)
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .appleLiquidGlassSurface(style: .regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous)) {
+                    Color.platformWindowBackground
+                }
+        }
+        .confirmationDialog(
+            "Đăng xuất khỏi Google?",
+            isPresented: $showLogoutConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Đăng xuất và xóa cache", role: .destructive) {
+                authService.signOut(includePersonalNotes: false)
+                ClassroomStorage.shared.clearAllData(includePersonalNotes: false)
+                isDemoMode = false
+                onRefreshData()
+                onAutoSelectFirstItem()
+                isPresented = false
+            }
+            Button("Hủy", role: .cancel) {}
+        } message: {
+            Text("Bạn có chắc chắn muốn đăng xuất tài khoản Google? Dữ liệu bài tập offline trên thiết bị sẽ được xóa.")
+        }
+        #else
         NavigationStack {
-            Form {
+            formContent
+                .formStyle(.grouped)
+                .navigationTitle("Cài đặt")
+                .confirmationDialog(
+                    "Đăng xuất khỏi Google?",
+                    isPresented: $showLogoutConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Đăng xuất và xóa cache", role: .destructive) {
+                        authService.signOut(includePersonalNotes: false)
+                        ClassroomStorage.shared.clearAllData(includePersonalNotes: false)
+                        isDemoMode = false
+                        onRefreshData()
+                        onAutoSelectFirstItem()
+                        isPresented = false
+                    }
+                    Button("Hủy", role: .cancel) {}
+                } message: {
+                    Text("Bạn có chắc chắn muốn đăng xuất tài khoản Google? Dữ liệu bài tập offline trên thiết bị sẽ được xóa.")
+                }
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Xong") {
+                            isPresented = false
+                        }
+                        .keyboardShortcut(.defaultAction)
+                        .fontWeight(.semibold)
+                    }
+                }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        #endif
+    }
+
+    #if os(macOS)
+    private var headerBar: some View {
+        HStack(alignment: .center) {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.blue.opacity(0.12))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(Color.blue)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Cài đặt")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.platformTextPrimary)
+                    Text("Tài khoản, báo bài buổi tối và cấu hình hệ thống")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.platformTextSecondary)
+                }
+            }
+
+            Spacer()
+
+            Button {
+                isPresented = false
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(Color.secondary.opacity(0.75))
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.cancelAction)
+            .help("Đóng cửa sổ cài đặt (Esc)")
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 18)
+        .padding(.bottom, 12)
+        .background(Color.platformSubtleFill.opacity(0.15))
+    }
+
+    private var footerBar: some View {
+        HStack {
+            Text("Nhấn phím Esc để đóng nhanh")
+                .font(.system(size: 11.5))
+                .foregroundStyle(Color.secondary)
+
+            Spacer()
+
+            Button("Xong") {
+                isPresented = false
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.regular)
+            .keyboardShortcut(.defaultAction)
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 12)
+        .background(Color.platformSubtleFill.opacity(0.2))
+    }
+    #endif
+
+    private var formContent: some View {
+        Form {
                 Section {
                     if authService.isAuthenticated {
                         HStack(spacing: 12) {
@@ -148,6 +281,9 @@ struct SettingsSheetView: View {
                             ),
                             displayedComponents: .hourAndMinute
                         )
+                        #if os(macOS)
+                        .datePickerStyle(.stepperField)
+                        #endif
 
                         VStack(alignment: .leading, spacing: 5) {
                             Text("Xem trước thông báo:")
@@ -355,48 +491,22 @@ struct SettingsSheetView: View {
                     HStack {
                         Label("Giao diện Liquid Glass", systemImage: "sparkles")
                         Spacer()
-                        Text(AppleOSDetector.supportsLiquidGlass ? "Hoạt động" : "Tương thích")
-                            .foregroundStyle(AppleOSDetector.supportsLiquidGlass ? Color.green : Color.secondary)
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(AppleOSDetector.supportsLiquidGlass ? Color.green : Color.orange)
+                                .frame(width: 8, height: 8)
+                            Text(AppleOSDetector.supportsLiquidGlass ? "Hoạt động" : "Tương thích")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(AppleOSDetector.supportsLiquidGlass ? Color.green : Color.secondary)
+                        }
                     }
                 } header: {
-                    Text("Thiết bị & Hệ thống")
+                    Label("Thiết bị & Hệ thống", systemImage: "cpu")
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Cài đặt")
-            .confirmationDialog(
-                "Đăng xuất khỏi Google?",
-                isPresented: $showLogoutConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Đăng xuất và xóa cache", role: .destructive) {
-                    authService.signOut(includePersonalNotes: false)
-                    ClassroomStorage.shared.clearAllData(includePersonalNotes: false)
-                    isDemoMode = false
-                    onRefreshData()
-                    onAutoSelectFirstItem()
-                    isPresented = false
-                }
-                Button("Hủy", role: .cancel) {}
-            } message: {
-                Text("Bạn có chắc chắn muốn đăng xuất tài khoản Google? Dữ liệu bài tập offline trên thiết bị sẽ được xóa.")
-            }
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Xong") {
-                        isPresented = false
-                    }
-                    .keyboardShortcut(.defaultAction)
-                    .keyboardShortcut(.cancelAction)
-                    .fontWeight(.semibold)
-                }
-            }
             #if os(macOS)
-            .frame(minWidth: 460, minHeight: 400)
-            #elseif os(iOS)
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
+            .scrollContentBackground(.hidden)
             #endif
         }
     }
-}

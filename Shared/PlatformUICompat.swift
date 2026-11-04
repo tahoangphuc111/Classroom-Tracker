@@ -91,9 +91,11 @@ public enum AppleOSDetector {
         #endif
     }
 
+    /// Determines whether the runtime OS and compiler support Apple Liquid Glass (`glassEffect` & `GlassEffectContainer`).
+    /// In Swift availability, `macOS 26.0, *` acts as the minimum floor and covers macOS 26.x, macOS 27.x, and future releases.
     public static var supportsLiquidGlass: Bool {
         #if (os(macOS) || os(iOS)) && compiler(>=6.4)
-        if #available(iOS 26.0, macOS 27.0, *) {
+        if #available(iOS 26.0, macOS 26.0, *) {
             return true
         } else {
             return false

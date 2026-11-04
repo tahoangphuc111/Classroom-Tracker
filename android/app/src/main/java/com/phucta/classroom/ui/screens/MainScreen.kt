@@ -989,7 +989,7 @@ fun MainScreen() {
                 isDemoMode = false
                 scope.launch {
                     try {
-                        repository.clearAllData()
+                        repository.clearAllData(includePersonalNotes = false)
                     } catch (e: Exception) {
                         snackbarHostState.showSnackbar("Không thể đăng xuất: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
                     }

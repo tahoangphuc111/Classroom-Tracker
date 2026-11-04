@@ -568,10 +568,10 @@ struct HomeworkReaderPane: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .appleLiquidGlassSurface(style: .interactive, in: RoundedRectangle(cornerRadius: 8, style: .continuous)) {
+            .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(Color.platformControlBackground)
-            }
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(Color.platformCardBorder, lineWidth: 1)
@@ -604,10 +604,10 @@ struct HomeworkReaderPane: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .appleLiquidGlassSurface(style: .interactive, in: RoundedRectangle(cornerRadius: 8, style: .continuous)) {
+            .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(Color.platformControlBackground)
-            }
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(Color.platformCardBorder, lineWidth: 1)
@@ -620,37 +620,35 @@ struct HomeworkReaderPane: View {
 
     @ViewBuilder
     private func readerActionButtons(for item: Coursework) -> some View {
-        AdaptiveGlassContainer(spacing: 8) {
-            HStack(spacing: 8) {
-                readerToggleCompletionButton(for: item)
-                if item.id.hasPrefix("note_") {
-                    let noteId = String(item.id.dropFirst(5))
-                    Button {
-                        onTriggerHaptic()
-                        onEditNote?(noteId)
-                    } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: "pencil")
-                                .font(.system(size: 12, weight: .bold))
-                            Text("Chỉnh sửa")
-                                .font(.system(size: 13, weight: .semibold))
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .appleLiquidGlassSurface(style: .interactive, in: RoundedRectangle(cornerRadius: 8, style: .continuous)) {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Color.platformControlBackground)
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(Color.platformCardBorder, lineWidth: 1)
-                        )
+        HStack(spacing: 8) {
+            readerToggleCompletionButton(for: item)
+            if item.id.hasPrefix("note_") {
+                let noteId = String(item.id.dropFirst(5))
+                Button {
+                    onTriggerHaptic()
+                    onEditNote?(noteId)
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 12, weight: .bold))
+                        Text("Chỉnh sửa")
+                            .font(.system(size: 13, weight: .semibold))
                     }
-                    .buttonStyle(SpringPressButtonStyle(scale: 0.96))
-                    .help("Chỉnh sửa việc cần làm này")
-                } else if let desc = item.description, !desc.isEmpty {
-                    readerCopyPromptButton(for: item, desc: desc)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color.platformControlBackground)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.platformCardBorder, lineWidth: 1)
+                    )
                 }
+                .buttonStyle(SpringPressButtonStyle(scale: 0.96))
+                .help("Chỉnh sửa việc cần làm này")
+            } else if let desc = item.description, !desc.isEmpty {
+                readerCopyPromptButton(for: item, desc: desc)
             }
         }
     }
@@ -697,13 +695,10 @@ struct MetaInfoCard: View {
         .padding(.horizontal, 13)
         .padding(.vertical, 11)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .appleLiquidGlassSurface(
-            style: isHovered ? .interactiveTint(tint.opacity(0.10)) : .regular,
-            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-        ) {
+        .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color.platformControlBackground)
-        }
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(isHovered ? tint.opacity(0.24) : Color.platformCardBorder, lineWidth: 1)
@@ -881,55 +876,45 @@ struct HomeworkReaderEmptyStateView: View {
     @ViewBuilder
     private var shortcutLegendView: some View {
         ViewThatFits(in: .horizontal) {
-            AdaptiveGlassContainer(spacing: 8) {
+            HStack(spacing: 8) {
+                KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
+                KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
+                KeyboardShortcutPill(shortcut: "⌘O", label: "Mở Classroom")
+                KeyboardShortcutPill(shortcut: "⌘F", label: "Tìm kiếm")
+                KeyboardShortcutPill(shortcut: "⌘R", label: "Đồng bộ")
+            }
+
+            VStack(spacing: 6) {
                 HStack(spacing: 8) {
                     KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
                     KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
-                    KeyboardShortcutPill(shortcut: "⌘O", label: "Mở Classroom")
+                    KeyboardShortcutPill(shortcut: "⌘O", label: "Mở bài")
+                }
+                HStack(spacing: 8) {
                     KeyboardShortcutPill(shortcut: "⌘F", label: "Tìm kiếm")
                     KeyboardShortcutPill(shortcut: "⌘R", label: "Đồng bộ")
                 }
             }
 
-            AdaptiveGlassContainer(spacing: 6) {
-                VStack(spacing: 6) {
-                    HStack(spacing: 8) {
-                        KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
-                        KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
-                        KeyboardShortcutPill(shortcut: "⌘O", label: "Mở bài")
-                    }
-                    HStack(spacing: 8) {
-                        KeyboardShortcutPill(shortcut: "⌘F", label: "Tìm kiếm")
-                        KeyboardShortcutPill(shortcut: "⌘R", label: "Đồng bộ")
-                    }
-                }
-            }
-
-            AdaptiveGlassContainer(spacing: 6) {
-                VStack(spacing: 6) {
-                    HStack(spacing: 8) {
-                        KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
-                        KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
-                    }
-                    HStack(spacing: 8) {
-                        KeyboardShortcutPill(shortcut: "⌘O", label: "Mở bài")
-                        KeyboardShortcutPill(shortcut: "⌘F", label: "Tìm")
-                    }
-                }
-            }
-
-            AdaptiveGlassContainer(spacing: 8) {
+            VStack(spacing: 6) {
                 HStack(spacing: 8) {
                     KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
                     KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
                 }
+                HStack(spacing: 8) {
+                    KeyboardShortcutPill(shortcut: "⌘O", label: "Mở bài")
+                    KeyboardShortcutPill(shortcut: "⌘F", label: "Tìm")
+                }
             }
 
-            AdaptiveGlassContainer(spacing: 4) {
-                VStack(spacing: 4) {
-                    KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
-                    KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
-                }
+            HStack(spacing: 8) {
+                KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
+                KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
+            }
+
+            VStack(spacing: 4) {
+                KeyboardShortcutPill(shortcut: "↑ / ↓", label: "Chuyển bài")
+                KeyboardShortcutPill(shortcut: "Space", label: "Đánh dấu nộp")
             }
         }
     }
@@ -949,13 +934,10 @@ struct KeyboardShortcutPill: View {
                 .fixedSize(horizontal: true, vertical: true)
                 .padding(.horizontal, 5.5)
                 .padding(.vertical, 2.5)
-                .appleLiquidGlassSurface(
-                    style: .interactive,
-                    in: RoundedRectangle(cornerRadius: 4, style: .continuous)
-                ) {
+                .background(
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .fill(Color.platformControlBackground)
-                }
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .stroke(Color.platformCardBorder, lineWidth: 1)

@@ -1284,25 +1284,20 @@ public struct ContentView: View {
                     Text("Lớp hiển thị (\(courses.filter(\.isSelectedForWidget).count)/\(courses.count))")
                     Spacer()
                     let allSelected = courses.allSatisfy(\.isSelectedForWidget)
-                    AdaptiveGlassContainer(spacing: 6) {
-                        Button(allSelected ? "Bỏ chọn hết" : "Tất cả") {
-                            toggleAllCourses()
-                        }
-                        .buttonStyle(.plain)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(allSelected ? Color.secondary : Color.blue)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3.5)
-                        .appleLiquidGlassSurface(
-                            style: .interactiveTint(allSelected ? Color.secondary.opacity(0.12) : Color.blue.opacity(0.12)),
-                            in: Capsule()
-                        ) {
-                            Capsule().fill(allSelected ? Color.platformControlBackground : Color.blue.opacity(0.10))
-                        }
-                        .overlay(
-                            Capsule().stroke(allSelected ? Color.platformCardBorder : Color.blue.opacity(0.24), lineWidth: 1)
-                        )
+                    Button(allSelected ? "Bỏ chọn hết" : "Tất cả") {
+                        toggleAllCourses()
                     }
+                    .buttonStyle(.plain)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(allSelected ? Color.secondary : Color.blue)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3.5)
+                    .background(
+                        Capsule().fill(allSelected ? Color.platformControlBackground : Color.blue.opacity(0.10))
+                    )
+                    .overlay(
+                        Capsule().stroke(allSelected ? Color.platformCardBorder : Color.blue.opacity(0.24), lineWidth: 1)
+                    )
                 }
             }
         }
@@ -1776,8 +1771,7 @@ public struct ContentView: View {
 
             Spacer(minLength: 4)
 
-            AdaptiveGlassContainer(spacing: 6) {
-                HStack(spacing: 6) {
+            HStack(spacing: 6) {
                     Button {
                         showCompactCourseFilterSheet = true
                     } label: {
@@ -1791,9 +1785,12 @@ public struct ContentView: View {
                         .foregroundStyle(Color.platformTextSecondary)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 4.5)
-                        .appleLiquidGlassSurface(style: .interactive, in: Capsule()) {
+                        .background(
                             Capsule().fill(Color.platformControlBackground)
-                        }
+                        )
+                        .overlay(
+                            Capsule().stroke(Color.platformCardBorder, lineWidth: 0.8)
+                        )
                     }
                     .buttonStyle(.plain)
                     .fixedSize()
@@ -1809,9 +1806,9 @@ public struct ContentView: View {
                         .foregroundStyle(.purple)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 4.5)
-                        .appleLiquidGlassSurface(style: .tint(Color.purple.opacity(0.12)), in: Capsule()) {
-                            Capsule().fill(Color.purple.opacity(0.08))
-                        }
+                        .background(
+                            Capsule().fill(Color.purple.opacity(0.10))
+                        )
                         .fixedSize()
                     } else if category == .notes {
                         if pendingNotesCount == 0 && totalIndependentNotesCount > 0 {
@@ -1826,9 +1823,9 @@ public struct ContentView: View {
                             }
                             .padding(.horizontal, 9)
                             .padding(.vertical, 4.5)
-                            .appleLiquidGlassSurface(style: .tint(Color.green.opacity(0.14)), in: Capsule()) {
+                            .background(
                                 Capsule().fill(Color.green.opacity(0.12))
-                            }
+                            )
                             .fixedSize()
                         } else {
                             HStack(spacing: 5) {
@@ -1842,9 +1839,9 @@ public struct ContentView: View {
                             }
                             .padding(.horizontal, 9)
                             .padding(.vertical, 4.5)
-                            .appleLiquidGlassSurface(style: .tint(categoryIconColor(category).opacity(0.12)), in: Capsule()) {
-                                Capsule().fill(categoryIconColor(category).opacity(0.09))
-                            }
+                            .background(
+                                Capsule().fill(categoryIconColor(category).opacity(0.10))
+                            )
                             .fixedSize()
                         }
                     } else {
@@ -1861,9 +1858,9 @@ public struct ContentView: View {
                             }
                             .padding(.horizontal, 9)
                             .padding(.vertical, 4.5)
-                            .appleLiquidGlassSurface(style: .tint(categoryIconColor(category).opacity(0.12)), in: Capsule()) {
-                                Capsule().fill(categoryIconColor(category).opacity(0.09))
-                            }
+                            .background(
+                                Capsule().fill(categoryIconColor(category).opacity(0.10))
+                            )
                             .fixedSize()
                         } else if categoryHasItems(category) {
                             HStack(spacing: 4) {
@@ -1876,9 +1873,9 @@ public struct ContentView: View {
                             .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
                             .padding(.horizontal, 9)
                             .padding(.vertical, 4.5)
-                            .appleLiquidGlassSurface(style: .tint(Color(red: 0.12, green: 0.62, blue: 0.35).opacity(0.12)), in: Capsule()) {
-                                Capsule().fill(Color(red: 0.12, green: 0.62, blue: 0.35).opacity(0.10))
-                            }
+                            .background(
+                                Capsule().fill(Color(red: 0.12, green: 0.62, blue: 0.35).opacity(0.12))
+                            )
                             .fixedSize()
                         }
                     }
@@ -1900,9 +1897,12 @@ public struct ContentView: View {
                                 .font(.system(size: 12.5, weight: .semibold))
                                 .foregroundStyle(Color.platformTextSecondary)
                                 .padding(5.5)
-                                .appleLiquidGlassSurface(style: .interactive, in: Circle()) {
+                                .background(
                                     Circle().fill(Color.platformControlBackground)
-                                }
+                                )
+                                .overlay(
+                                    Circle().stroke(Color.platformCardBorder, lineWidth: 0.8)
+                                )
                         }
                         .buttonStyle(.plain)
                         .fixedSize()
@@ -1917,15 +1917,17 @@ public struct ContentView: View {
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(Color.platformTextSecondary)
                             .padding(5.5)
-                            .appleLiquidGlassSurface(style: .interactive, in: Circle()) {
+                            .background(
                                 Circle().fill(Color.platformControlBackground)
-                            }
+                            )
+                            .overlay(
+                                Circle().stroke(Color.platformCardBorder, lineWidth: 0.8)
+                            )
                     }
                     .buttonStyle(.plain)
                     .fixedSize()
                 }
             }
-        }
         .padding(.horizontal, 16)
         .padding(.vertical, isLandscapePhone ? 4 : 8)
         .background(Color.platformWindowBackground)
@@ -1963,114 +1965,112 @@ public struct ContentView: View {
 
             Spacer()
 
-            AdaptiveGlassContainer(spacing: 8) {
-                HStack(spacing: 8) {
-                    if category == .widgetPreview {
-                        HStack(spacing: 6) {
-                            Image(systemName: "macwindow.on.rectangle")
-                                .font(.system(size: 11.5, weight: .semibold))
-                            Text("Cấu hình & Xem trước Widget")
-                                .font(.system(size: 11.5, weight: .medium))
-                                .foregroundStyle(.purple)
-                                .lineLimit(1)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4.5)
-                        .appleLiquidGlassSurface(style: .tint(Color.purple.opacity(0.12)), in: Capsule()) {
-                            Capsule().fill(Color.purple.opacity(0.08))
-                        }
-                        .fixedSize()
-                    } else if category == .notes {
-                        if pendingNotesCount == 0 && totalIndependentNotesCount > 0 {
-                            HStack(spacing: 5) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundStyle(.green)
-                                Text("Đã xong hết")
-                                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(.green)
-                                    .lineLimit(1)
-                            }
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 4)
-                            .appleLiquidGlassSurface(style: .tint(Color.green.opacity(0.14)), in: Capsule()) {
-                                Capsule().fill(Color.green.opacity(0.12))
-                            }
-                            .fixedSize()
-                        } else {
-                            HStack(spacing: 5) {
-                                Circle()
-                                    .fill(categoryIconColor(category))
-                                    .frame(width: 6, height: 6)
-                                Text("\(pendingNotesCount) việc cần làm")
-                                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(categoryIconColor(category))
-                                    .lineLimit(1)
-                            }
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 4)
-                            .appleLiquidGlassSurface(style: .tint(categoryIconColor(category).opacity(0.12)), in: Capsule()) {
-                                Capsule().fill(categoryIconColor(category).opacity(0.09))
-                            }
-                            .fixedSize()
-                        }
-                    } else {
-                        let pendingCount = categoryPendingCount(category)
-                        if pendingCount > 0 {
-                            HStack(spacing: 5) {
-                                Circle()
-                                    .fill(categoryIconColor(category))
-                                    .frame(width: 6, height: 6)
-                                Text("\(pendingCount) bài cần nộp")
-                                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(categoryIconColor(category))
-                                    .lineLimit(1)
-                            }
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 4)
-                            .appleLiquidGlassSurface(style: .tint(categoryIconColor(category).opacity(0.12)), in: Capsule()) {
-                                Capsule().fill(categoryIconColor(category).opacity(0.09))
-                            }
-                            .fixedSize()
-                        } else if categoryHasItems(category) {
-                            HStack(spacing: 5) {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 9.5, weight: .bold))
-                                Text("Đã nộp tất cả")
-                                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                                    .lineLimit(1)
-                            }
-                            .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 4)
-                            .appleLiquidGlassSurface(style: .tint(Color(red: 0.12, green: 0.62, blue: 0.35).opacity(0.12)), in: Capsule()) {
-                                Capsule().fill(Color(red: 0.12, green: 0.62, blue: 0.35).opacity(0.10))
-                            }
-                            .fixedSize()
-                        }
+            HStack(spacing: 8) {
+                if category == .widgetPreview {
+                    HStack(spacing: 6) {
+                        Image(systemName: "macwindow.on.rectangle")
+                            .font(.system(size: 11.5, weight: .semibold))
+                        Text("Cấu hình & Xem trước Widget")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(.purple)
+                            .lineLimit(1)
                     }
-
-                    if authService.isAuthenticated {
-                        HStack(spacing: 6) {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(Color.blue)
-                            Text(authService.currentUserEmail ?? "Đã kết nối")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(Color.platformTextSecondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4.5)
+                    .background(
+                        Capsule().fill(Color.purple.opacity(0.10))
+                    )
+                    .fixedSize()
+                } else if category == .notes {
+                    if pendingNotesCount == 0 && totalIndependentNotesCount > 0 {
+                        HStack(spacing: 5) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.green)
+                            Text("Đã xong hết")
+                                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.green)
                                 .lineLimit(1)
                         }
                         .padding(.horizontal, 9)
-                        .padding(.vertical, 4.5)
-                        .appleLiquidGlassSurface(style: .regular, in: Capsule()) {
-                            Capsule().fill(Color.platformControlBackground)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule().fill(Color.green.opacity(0.12))
+                        )
+                        .fixedSize()
+                    } else {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(categoryIconColor(category))
+                                .frame(width: 6, height: 6)
+                            Text("\(pendingNotesCount) việc cần làm")
+                                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                                .foregroundStyle(categoryIconColor(category))
+                                .lineLimit(1)
                         }
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.platformCardBorder, lineWidth: 1)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule().fill(categoryIconColor(category).opacity(0.10))
                         )
                         .fixedSize()
                     }
+                } else {
+                    let pendingCount = categoryPendingCount(category)
+                    if pendingCount > 0 {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(categoryIconColor(category))
+                                .frame(width: 6, height: 6)
+                            Text("\(pendingCount) bài cần nộp")
+                                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                                .foregroundStyle(categoryIconColor(category))
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule().fill(categoryIconColor(category).opacity(0.10))
+                        )
+                        .fixedSize()
+                    } else if categoryHasItems(category) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 9.5, weight: .bold))
+                            Text("Đã nộp tất cả")
+                                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule().fill(Color(red: 0.12, green: 0.62, blue: 0.35).opacity(0.12))
+                        )
+                        .fixedSize()
+                    }
+                }
+
+                if authService.isAuthenticated {
+                    HStack(spacing: 6) {
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Color.blue)
+                        Text(authService.currentUserEmail ?? "Đã kết nối")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(Color.platformTextSecondary)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4.5)
+                    .background(
+                        Capsule().fill(Color.platformControlBackground)
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.platformCardBorder, lineWidth: 1)
+                    )
+                    .fixedSize()
                 }
             }
         }
@@ -2191,13 +2191,10 @@ public struct ContentView: View {
             #else
             .padding(.vertical, 8.5)
             #endif
-            .appleLiquidGlassSurface(
-                style: isSearchFocused ? .interactiveTint(Color.blue.opacity(0.12)) : .interactive,
-                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-            ) {
+            .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(.ultraThinMaterial)
-            }
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .stroke(isSearchFocused ? Color.blue.opacity(0.55) : Color.platformCardBorder.opacity(0.8), lineWidth: 1)
@@ -2242,7 +2239,6 @@ public struct ContentView: View {
 
             if (activeCategory == .allUpcoming || activeCategory == .completed) && availableSubjectPills.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    AdaptiveGlassContainer(spacing: 6) {
                         HStack(spacing: 6) {
                             ForEach(availableSubjectPills, id: \.self) { pill in
                                 let isSelected = (selectedSubjectFilter == pill)
@@ -2261,13 +2257,10 @@ public struct ContentView: View {
                                         .foregroundStyle(isSelected ? Color.white : Color.platformTextSecondary)
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 4.5)
-                                        .appleLiquidGlassSurface(
-                                            style: isSelected ? .interactiveTint(Color.blue) : .interactive,
-                                            in: Capsule()
-                                        ) {
+                                        .background(
                                             Capsule()
                                                 .fill(isSelected ? Color.blue : Color.platformControlBackground)
-                                        }
+                                        )
                                         .overlay(
                                             Capsule()
                                                 .stroke(isSelected ? Color.clear : Color.platformCardBorder, lineWidth: 1)
@@ -2276,7 +2269,6 @@ public struct ContentView: View {
                                 .buttonStyle(.plain)
                             }
                         }
-                    }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 4)
                 }
@@ -2305,7 +2297,7 @@ public struct ContentView: View {
 
                     Spacer()
 
-                    AdaptiveGlassContainer(spacing: 6) {
+                    HStack(spacing: 6) {
                         Button {
                             batchToggleCompletion(for: selectedCourseworkIds)
                         } label: {
@@ -2317,12 +2309,9 @@ public struct ContentView: View {
                             .foregroundStyle(Color.white)
                             .padding(.horizontal, 9)
                             .padding(.vertical, 4)
-                            .appleLiquidGlassSurface(
-                                style: .interactiveTint(allSelectedDone ? Color.orange : Color(red: 0.12, green: 0.62, blue: 0.35)),
-                                in: Capsule()
-                            ) {
+                            .background(
                                 Capsule().fill(allSelectedDone ? Color.orange : Color(red: 0.12, green: 0.62, blue: 0.35))
-                            }
+                            )
                         }
                         .buttonStyle(.plain)
 
@@ -2334,12 +2323,9 @@ public struct ContentView: View {
                         .foregroundStyle(Color.platformTextSecondary)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 4)
-                        .appleLiquidGlassSurface(
-                            style: .interactive,
-                            in: Capsule()
-                        ) {
+                        .background(
                             Capsule().fill(Color.platformControlBackground)
-                        }
+                        )
                         .overlay(
                             Capsule().stroke(Color.platformCardBorder, lineWidth: 1)
                         )
@@ -2347,13 +2333,10 @@ public struct ContentView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .appleLiquidGlassSurface(
-                    style: .regular,
-                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                ) {
+                .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(Color.platformControlBackground)
-                }
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(Color.platformCardBorder, lineWidth: 1)
@@ -2560,7 +2543,6 @@ public struct ContentView: View {
 
                 Spacer(minLength: 4)
 
-                AdaptiveGlassContainer(spacing: 4) {
                     ShareLink(item: formattedBaoBaiShareText) {
                         HStack(spacing: 4) {
                             Image(systemName: "square.and.arrow.up")
@@ -2571,16 +2553,15 @@ public struct ContentView: View {
                         .foregroundStyle(Color.white)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
-                        .appleLiquidGlassSurface(style: .interactiveTint(Color.white.opacity(0.3)), in: Capsule()) {
+                        .background(
                             Capsule().fill(Color.white.opacity(0.22))
-                        }
+                        )
                         .overlay(
                             Capsule()
                                 .stroke(Color.white.opacity(0.4), lineWidth: 0.8)
                         )
                     }
                     .buttonStyle(.plain)
-                }
             }
 
             VStack(spacing: 5) {
@@ -2612,13 +2593,10 @@ public struct ContentView: View {
             }
         }
         .padding(13)
-        .appleLiquidGlassSurface(
-            style: .tint(Color.blue.opacity(0.35)),
-            in: RoundedRectangle(cornerRadius: 13, style: .continuous)
-        ) {
+        .background(
             RoundedRectangle(cornerRadius: 13, style: .continuous)
                 .fill(ChunkyTheme.skyGradient)
-        }
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 13, style: .continuous)
                 .stroke(Color.white.opacity(0.22), lineWidth: 1)
@@ -2802,29 +2780,23 @@ public struct ContentView: View {
 
                 #if os(iOS)
                 if horizontalSizeClass == .compact {
-                    AdaptiveGlassContainer(spacing: 10) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Picker("Kích thước", selection: $selectedPreviewFamily) {
-                                ForEach(WidgetPreviewFamily.allCases) { family in
-                                    Text(family.rawValue).tag(family)
-                                }
+                    VStack(alignment: .leading, spacing: 10) {
+                        Picker("Kích thước", selection: $selectedPreviewFamily) {
+                            ForEach(WidgetPreviewFamily.allCases) { family in
+                                Text(family.rawValue).tag(family)
                             }
-                            .pickerStyle(.segmented)
-
-                            Toggle("Dùng dữ liệu mẫu", isOn: $useSampleDataForPreview)
-                                .toggleStyle(.switch)
-                                .font(.system(size: 13, weight: .medium))
                         }
+                        .pickerStyle(.segmented)
+
+                        Toggle("Dùng dữ liệu mẫu", isOn: $useSampleDataForPreview)
+                            .toggleStyle(.switch)
+                            .font(.system(size: 13, weight: .medium))
                     }
                 } else {
-                    AdaptiveGlassContainer(spacing: 12) {
-                        regularPreviewControls
-                    }
-                }
-                #else
-                AdaptiveGlassContainer(spacing: 12) {
                     regularPreviewControls
                 }
+                #else
+                regularPreviewControls
                 #endif
 
                 if !useSampleDataForPreview && !ClassroomStorage.shared.hasUserLoggedIn && ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true).isEmpty {
@@ -2884,13 +2856,10 @@ public struct ContentView: View {
             #else
             .padding(20)
             #endif
-            .appleLiquidGlassSurface(
-                style: .regular,
-                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-            ) {
+            .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color.platformControlBackground)
-            }
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(Color.platformCardBorder, lineWidth: 1)
@@ -2965,13 +2934,10 @@ public struct ContentView: View {
             #endif
         }
         .padding(20)
-        .appleLiquidGlassSurface(
-            style: .regular,
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        ) {
+        .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.platformControlBackground)
-        }
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(Color.platformCardBorder, lineWidth: 1)

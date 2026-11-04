@@ -24,18 +24,23 @@ public extension View {
     ) -> some View {
         #if (os(macOS) || os(iOS)) && compiler(>=6.4)
         if isEnabled && AppleOSDetector.supportsLiquidGlass {
-            if #available(iOS 26.0, macOS 27.0, *) {
+            if #available(iOS 26.0, macOS 26.0, *) {
                 switch style {
                 case .regular:
-                    self.glassEffect(.regular, in: shape)
+                    self.background(fallback())
+                        .glassEffect(.regular, in: shape)
                 case .clear:
-                    self.glassEffect(.clear, in: shape)
+                    self.background(fallback())
+                        .glassEffect(.clear, in: shape)
                 case .tint(let color):
-                    self.glassEffect(.regular.tint(color), in: shape)
+                    self.background(fallback())
+                        .glassEffect(.regular.tint(color), in: shape)
                 case .interactive:
-                    self.glassEffect(.regular.interactive(), in: shape)
+                    self.background(fallback())
+                        .glassEffect(.regular.interactive(), in: shape)
                 case .interactiveTint(let color):
-                    self.glassEffect(.regular.tint(color).interactive(), in: shape)
+                    self.background(fallback())
+                        .glassEffect(.regular.tint(color).interactive(), in: shape)
                 }
             } else {
                 self.background(fallback())
@@ -79,9 +84,17 @@ public extension View {
 
         appleLiquidGlassSurface(style: resolvedStyle, in: shape, isEnabled: isEnabled) {
             #if os(macOS)
-            shape.fill(isSelected ? Color(nsColor: .selectedContentBackgroundColor).opacity(0.12) : Color(nsColor: .controlBackgroundColor))
+            if isSelected {
+                shape.fill(Color(nsColor: .selectedContentBackgroundColor).opacity(0.12))
+            } else {
+                shape.fill(.ultraThinMaterial)
+            }
             #elseif os(iOS)
-            shape.fill(isSelected ? Color(uiColor: .secondarySystemBackground) : Color(uiColor: .secondarySystemGroupedBackground))
+            if isSelected {
+                shape.fill(Color(uiColor: .secondarySystemBackground))
+            } else {
+                shape.fill(.ultraThinMaterial)
+            }
             #else
             shape.fill(Color.white)
             #endif
@@ -105,9 +118,17 @@ public extension View {
 
         appleLiquidGlassSurface(style: resolvedStyle, in: Capsule(), isEnabled: isEnabled) {
             #if os(macOS)
-            Capsule().fill(isSelected ? selectedTint : Color(nsColor: .controlBackgroundColor))
+            if isSelected {
+                Capsule().fill(selectedTint)
+            } else {
+                Capsule().fill(.ultraThinMaterial)
+            }
             #elseif os(iOS)
-            Capsule().fill(isSelected ? selectedTint : Color(uiColor: .secondarySystemGroupedBackground))
+            if isSelected {
+                Capsule().fill(selectedTint)
+            } else {
+                Capsule().fill(.ultraThinMaterial)
+            }
             #else
             Capsule().fill(isSelected ? selectedTint : Color.white)
             #endif
@@ -127,7 +148,7 @@ public struct AdaptiveGlassContainer<Content: View>: View {
     public var body: some View {
         #if (os(macOS) || os(iOS)) && compiler(>=6.4)
         if AppleOSDetector.supportsLiquidGlass {
-            if #available(iOS 26.0, macOS 27.0, *) {
+            if #available(iOS 26.0, macOS 26.0, *) {
                 if let spacing = spacing {
                     GlassEffectContainer(spacing: spacing) {
                         content()

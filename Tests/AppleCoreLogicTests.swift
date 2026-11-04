@@ -701,6 +701,49 @@ struct TestRunner {
                     "designEngineStatus must indicate Apple Liquid Glass SDK when supported"
                 )
             }
+            #if os(macOS) && compiler(>=6.4)
+            let osVersion = ProcessInfo.processInfo.operatingSystemVersion
+            if osVersion.majorVersion >= 26 {
+                assertCondition(
+                    AppleOSDetector.supportsLiquidGlass == true,
+                    "AppleOSDetector.supportsLiquidGlass must evaluate to true on macOS 26+ with compiler >= 6.4"
+                )
+                assertCondition(
+                    AppleOSDetector.designEngineStatus == "Apple Liquid Glass SDK",
+                    "designEngineStatus must be Apple Liquid Glass SDK on macOS 26+"
+                )
+            }
+            if osVersion.majorVersion >= 27 {
+                assertCondition(
+                    AppleOSDetector.isAppleOS27OrNewer == true,
+                    "AppleOSDetector.isAppleOS27OrNewer must evaluate to true on macOS 27+"
+                )
+                assertCondition(
+                    AppleOSDetector.supportsLiquidGlass == true,
+                    "AppleOSDetector.supportsLiquidGlass must evaluate to true on macOS 27+"
+                )
+            }
+            #endif
+        }
+
+        do {
+            let courseHistoryWithLocation = "Lịch sử 12 - Địa điểm P.301"
+            assertCondition(SubjectArtHelper.category(for: courseHistoryWithLocation) == .historyOrGeography, "History with location must be .historyOrGeography")
+            assertCondition(SubjectArtHelper.badgeCode(for: .historyOrGeography, courseName: courseHistoryWithLocation) == "SỬ", "Course history with location 'Địa điểm' must produce badge 'SỬ'")
+
+            let courseHistoryWithAddress = "Lịch sử Đảng - Địa chỉ học: Tầng 3"
+            assertCondition(SubjectArtHelper.badgeCode(for: .historyOrGeography, courseName: courseHistoryWithAddress) == "SỬ", "Course history with address 'Địa chỉ' must produce badge 'SỬ'")
+
+            assertCondition(SubjectArtHelper.badgeCode(for: "Địa lý 12") == "ĐỊA", "Địa lý 12 must produce badge 'ĐỊA'")
+            assertCondition(SubjectArtHelper.badgeCode(for: "Địa lí Việt Nam") == "ĐỊA", "Địa lí Việt Nam must produce badge 'ĐỊA'")
+            assertCondition(SubjectArtHelper.badgeCode(for: "Dia ly lop 11") == "ĐỊA", "Dia ly lop 11 must produce badge 'ĐỊA'")
+            assertCondition(SubjectArtHelper.badgeCode(for: "Môn Địa 10 - Địa điểm: Hội trường") == "ĐỊA", "Môn Địa 10 with location must produce badge 'ĐỊA'")
+
+            let historyWithMedia = "Lịch sử truyền thông và media"
+            assertCondition(SubjectArtHelper.badgeCode(for: .historyOrGeography, courseName: historyWithMedia) == "SỬ", "Word 'media' must not trigger 'dia' geography match")
+
+            assertCondition(SubjectArtHelper.category(for: "Địa điểm họp phụ huynh học sinh") != .historyOrGeography, "Pure location text must not be classified as historyOrGeography")
+            assertCondition(SubjectArtHelper.category(for: "Địa chỉ nhận bằng tốt nghiệp") != .historyOrGeography, "Pure address text must not be classified as historyOrGeography")
         }
 
         print("=== All Apple Core Logic Tests Passed Successfully! ===")

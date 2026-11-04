@@ -52,12 +52,10 @@ struct CourseSelectionRow: View, Equatable {
             .contentShape(Rectangle())
         }
         .buttonStyle(SpringPressButtonStyle(scale: 0.98))
-        .appleLiquidGlassSurface(
-            style: course.isSelectedForWidget ? .interactiveTint(Color.blue.opacity(0.08)) : .interactive,
-            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-        ) {
-            Color.clear
-        }
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isHovered ? Color.primary.opacity(0.04) : Color.clear)
+        )
         .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isHovered)
         .onHover { hovering in
             isHovered = hovering

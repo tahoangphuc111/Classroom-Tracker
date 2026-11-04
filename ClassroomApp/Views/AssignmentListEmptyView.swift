@@ -10,10 +10,7 @@ struct GuideStepRow: View {
                 .font(.system(size: 10.5, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .frame(width: 20, height: 20)
-                .appleLiquidGlassSurface(
-                    style: .interactiveTint(Color.blue.opacity(0.85)),
-                    in: RoundedRectangle(cornerRadius: 6, style: .continuous)
-                ) {
+                .background(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .fill(
                             LinearGradient(
@@ -22,7 +19,7 @@ struct GuideStepRow: View {
                                 endPoint: .bottom
                             )
                         )
-                }
+                )
 
             Text(text)
                 .font(.subheadline)
@@ -104,52 +101,42 @@ struct AssignmentListEmptyView: View {
             }
 
             if isSearching {
-                AdaptiveGlassContainer(spacing: 4) {
-                    Button("Xóa tìm kiếm") {
-                        onClearSearch()
-                    }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.blue)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .appleLiquidGlassSurface(
-                        style: .interactiveTint(Color.blue.opacity(0.12)),
-                        in: Capsule()
-                    ) {
-                        Capsule().fill(Color.blue.opacity(0.10))
-                    }
-                    .overlay(
-                        Capsule().stroke(Color.blue.opacity(0.25), lineWidth: 1)
-                    )
+                Button("Xóa tìm kiếm") {
+                    onClearSearch()
                 }
+                .buttonStyle(.plain)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.blue)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule().fill(Color.blue.opacity(0.10))
+                )
+                .overlay(
+                    Capsule().stroke(Color.blue.opacity(0.25), lineWidth: 1)
+                )
                 .padding(.top, 4)
             } else if (filter == .tomorrow || filter == .todayAndTomorrow), let onSwitchToUpcoming {
-                AdaptiveGlassContainer(spacing: 4) {
-                    Button {
-                        onSwitchToUpcoming()
-                    } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: "tray")
-                                .font(.system(size: 12))
-                            Text("Xem tất cả bài tập sắp tới")
-                                .font(.system(size: 13.5, weight: .semibold))
-                        }
+                Button {
+                    onSwitchToUpcoming()
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "tray")
+                            .font(.system(size: 12))
+                        Text("Xem tất cả bài tập sắp tới")
+                            .font(.system(size: 13.5, weight: .semibold))
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.blue)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .appleLiquidGlassSurface(
-                        style: .interactiveTint(Color.blue.opacity(0.12)),
-                        in: Capsule()
-                    ) {
-                        Capsule().fill(Color.blue.opacity(0.10))
-                    }
-                    .overlay(
-                        Capsule().stroke(Color.blue.opacity(0.25), lineWidth: 1)
-                    )
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.blue)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule().fill(Color.blue.opacity(0.10))
+                )
+                .overlay(
+                    Capsule().stroke(Color.blue.opacity(0.25), lineWidth: 1)
+                )
                 .padding(.top, 4)
             }
 

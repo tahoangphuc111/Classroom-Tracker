@@ -273,13 +273,10 @@ public struct PersonalNotesView: View {
                     .foregroundStyle(selectedCourseId != nil ? Color.blue : Color.platformTextPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .appleLiquidGlassSurface(
-                        style: selectedCourseId != nil ? .interactiveTint(Color.blue.opacity(0.18)) : .interactive,
-                        in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    ) {
+                    .background(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .fill(selectedCourseId != nil ? Color.blue.opacity(0.12) : Color.platformControlBackground)
-                    }
+                    )
                     .overlay(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .stroke(selectedCourseId != nil ? Color.blue.opacity(0.4) : Color.platformCardBorder, lineWidth: 1)
@@ -323,35 +320,31 @@ public struct PersonalNotesView: View {
     }
 
     private var wideFilterBar: some View {
-        AdaptiveGlassContainer(spacing: 12) {
-            HStack(spacing: 12) {
-                statusPicker
-                    .frame(width: 230)
+        HStack(spacing: 12) {
+            statusPicker
+                .frame(width: 230)
 
-                courseFilterMenu
+            courseFilterMenu
 
-                Spacer()
+            Spacer()
 
-                addNoteButton()
-            }
+            addNoteButton()
         }
     }
 
     private var compactFilterBar: some View {
-        AdaptiveGlassContainer(spacing: 8) {
-            VStack(spacing: 8) {
-                statusPicker
-                    .frame(maxWidth: .infinity)
+        VStack(spacing: 8) {
+            statusPicker
+                .frame(maxWidth: .infinity)
 
-                HStack(spacing: 8) {
-                    courseFilterMenu
+            HStack(spacing: 8) {
+                courseFilterMenu
 
-                    Spacer()
+                Spacer()
 
-                    ViewThatFits(in: .horizontal) {
-                        addNoteButton(compact: false)
-                        addNoteButton(compact: true)
-                    }
+                ViewThatFits(in: .horizontal) {
+                    addNoteButton(compact: false)
+                    addNoteButton(compact: true)
                 }
             }
         }
@@ -394,10 +387,10 @@ public struct PersonalNotesView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .appleLiquidGlassSurface(style: .interactive, in: RoundedRectangle(cornerRadius: 10, style: .continuous)) {
+        .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color.platformControlBackground)
-        }
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(Color.platformCardBorder, lineWidth: 1)
@@ -435,10 +428,10 @@ public struct PersonalNotesView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .appleLiquidGlassSurface(style: .interactive, in: RoundedRectangle(cornerRadius: 10, style: .continuous)) {
+        .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color.platformControlBackground)
-        }
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(Color.platformCardBorder, lineWidth: 1)
@@ -1007,13 +1000,10 @@ private struct PersonalNoteRowCard: View, Equatable {
             .buttonStyle(.plain)
         }
         .padding(12)
-        .appleLiquidGlassSurface(
-            style: isHovered ? .interactiveTint(Color.blue.opacity(0.08)) : .interactive,
-            in: RoundedRectangle(cornerRadius: 11, style: .continuous)
-        ) {
+        .background(
             RoundedRectangle(cornerRadius: 11, style: .continuous)
                 .fill(Color.platformControlBackground)
-        }
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 11, style: .continuous)
                 .stroke(isHovered ? Color.platformCardHoverBorder : Color.platformCardBorder, lineWidth: 1)

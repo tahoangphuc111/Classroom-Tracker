@@ -271,13 +271,10 @@ struct AssignmentListRow: View, Equatable {
             }
         }
         .contentShape(Rectangle())
-        .appleLiquidGlassSurface(
-            style: isSelected ? .interactiveTint(Color.blue.opacity(0.14)) : .interactive,
-            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-        ) {
+        .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(isSelected ? Color.platformCardSelectedBackground : Color.platformControlBackground)
-        }
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(
