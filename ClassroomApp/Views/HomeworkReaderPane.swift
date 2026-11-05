@@ -178,6 +178,10 @@ struct HomeworkReaderPane: View {
                                         }
                                         .buttonStyle(SpringPressButtonStyle(scale: 0.98, pressedOpacity: 0.92))
                                     }
+
+                                    if !isPersonalNote && pNote.totalChecklistCount > 0 && pNote.completedChecklistCount == pNote.totalChecklistCount && !item.isCompleted {
+                                        attachedChecklistCompletionBanner(item: item)
+                                    }
                                 }
                                 .padding(14)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -415,6 +419,40 @@ struct HomeworkReaderPane: View {
                 }
             )
         }
+    }
+
+    @ViewBuilder
+    private func attachedChecklistCompletionBanner(item: Coursework) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.green)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Tất cả việc con đã hoàn thành!")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Color.platformTextPrimary)
+                Text("Bạn có muốn đánh dấu bài tập này đã làm xong?")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Color.platformTextSecondary)
+            }
+
+            Spacer()
+
+            Button {
+                onTriggerHaptic()
+                onToggleCompletion(item)
+            } label: {
+                Text("Xong bài tập")
+                    .font(.system(size: 12, weight: .bold))
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+            .controlSize(.small)
+        }
+        .padding(10)
+        .background(Color.green.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private func regularMetaCards(for item: Coursework) -> some View {

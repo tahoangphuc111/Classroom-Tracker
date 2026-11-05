@@ -138,4 +138,9 @@ public enum EmberEmotion: String, CaseIterable, Sendable {
     case stressed
     case sleeping
     case celebrating
+    case studying
+
+    public var assetName: String {
+        "ember_\(rawValue)"
+    }
 }

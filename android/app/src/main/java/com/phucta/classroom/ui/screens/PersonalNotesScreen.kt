@@ -1386,8 +1386,8 @@ private fun BottomQuickCaptureBar(
     val openDialogWithDraft = {
         val currentTitle = title.trim()
         val due = when (selectedDeadlineMode) {
-            1 -> ClassroomDateUtils.startOfTomorrow + 23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
-            2 -> ClassroomDateUtils.startOfToday + 23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
+            1 -> ClassroomDateUtils.startOfDayAfter - 1000L
+            2 -> ClassroomDateUtils.startOfTomorrow - 1000L
             else -> null
         }
         title = ""
@@ -1428,8 +1428,8 @@ private fun BottomQuickCaptureBar(
                         val trimmed = title.trim()
                         if (trimmed.isNotEmpty()) {
                             val due = when (selectedDeadlineMode) {
-                                1 -> ClassroomDateUtils.startOfTomorrow + 23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
-                                2 -> ClassroomDateUtils.startOfToday + 23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
+                                1 -> ClassroomDateUtils.startOfDayAfter - 1000L
+                                2 -> ClassroomDateUtils.startOfTomorrow - 1000L
                                 else -> null
                             }
                             onSaveQuickNote(trimmed, due, null, null)
@@ -1454,8 +1454,8 @@ private fun BottomQuickCaptureBar(
                         val trimmed = title.trim()
                         if (trimmed.isNotEmpty()) {
                             val due = when (selectedDeadlineMode) {
-                                1 -> ClassroomDateUtils.startOfTomorrow + 23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
-                                2 -> ClassroomDateUtils.startOfToday + 23 * 3600 * 1000L + 59 * 60 * 1000L + 59 * 1000L + 999L
+                                1 -> ClassroomDateUtils.startOfDayAfter - 1000L
+                                2 -> ClassroomDateUtils.startOfTomorrow - 1000L
                                 else -> null
                             }
                             onSaveQuickNote(trimmed, due, null, null)

@@ -1,5 +1,6 @@
 package com.phucta.classroom.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -16,8 +17,10 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.phucta.classroom.R
 import com.phucta.classroom.ui.theme.ChunkyColor
 
 enum class EmberEmotion {
@@ -97,6 +100,27 @@ private class FlamePathCache {
 
 @Composable
 fun EmberFlameCanvas(
+    modifier: Modifier = Modifier,
+    size: Dp = 80.dp,
+    emotion: EmberEmotion = EmberEmotion.NORMAL,
+    isUrgent: Boolean = false
+) {
+    val resId = when (emotion) {
+        EmberEmotion.NORMAL -> R.drawable.ember_normal
+        EmberEmotion.STRESSED -> R.drawable.ember_stressed
+        EmberEmotion.SLEEPING -> R.drawable.ember_sleeping
+        EmberEmotion.CELEBRATING -> R.drawable.ember_celebrating
+    }
+
+    Image(
+        painter = painterResource(id = resId),
+        contentDescription = "Ember mascot",
+        modifier = modifier.size(size)
+    )
+}
+
+@Composable
+fun ProceduralEmberFlameCanvas(
     modifier: Modifier = Modifier,
     size: Dp = 80.dp,
     emotion: EmberEmotion = EmberEmotion.NORMAL,

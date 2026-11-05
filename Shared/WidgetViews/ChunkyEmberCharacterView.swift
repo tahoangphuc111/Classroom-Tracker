@@ -1,5 +1,13 @@
 import SwiftUI
 
+#if canImport(AppKit)
+import AppKit
+#endif
+
+#if canImport(UIKit)
+import UIKit
+#endif
+
 public struct StandardEmberFlameOuter: Shape {
     let isUrgent: Bool
     let isSleeping: Bool
@@ -322,7 +330,30 @@ public struct ChunkyEmberCharacterView: View {
         self.size = size
     }
 
+    private var hasAssetImage: Bool {
+        #if os(macOS)
+        return NSImage(named: emotion.assetName) != nil
+        #elseif os(iOS)
+        return UIImage(named: emotion.assetName) != nil
+        #else
+        return false
+        #endif
+    }
+
     public var body: some View {
+        if hasAssetImage {
+            Image(emotion.assetName)
+                .resizable()
+                .interpolation(.high)
+                .antialiased(true)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: size, height: size)
+        } else {
+            proceduralVectorBody
+        }
+    }
+
+    private var proceduralVectorBody: some View {
         ZStack {
             Ellipse()
                 .fill(
@@ -428,7 +459,7 @@ public struct ChunkyEmberCharacterView: View {
     @ViewBuilder
     private var facialFeatures: some View {
         switch emotion {
-        case .normal:
+        case .normal, .studying:
             VStack(spacing: size * 0.035) {
                 HStack(spacing: size * 0.16) {
                     eyeView

@@ -70,7 +70,25 @@ object EmberWidgetBitmapHelper {
             if (secondCheck != null && !secondCheck.isRecycled) {
                 return secondCheck
             }
-            val bitmap = renderEmber(sizePx, emotion, isUrgent)
+
+            val resName = when (emotion) {
+                EmberEmotion.NORMAL -> "ember_normal"
+                EmberEmotion.STRESSED -> "ember_stressed"
+                EmberEmotion.SLEEPING -> "ember_sleeping"
+                EmberEmotion.CELEBRATING -> "ember_celebrating"
+            }
+            val resId = context.resources.getIdentifier(resName, "drawable", context.packageName)
+            val bitmap = if (resId != 0) {
+                val decoded = android.graphics.BitmapFactory.decodeResource(context.resources, resId)
+                if (decoded != null) {
+                    Bitmap.createScaledBitmap(decoded, sizePx, sizePx, true)
+                } else {
+                    renderEmber(sizePx, emotion, isUrgent)
+                }
+            } else {
+                renderEmber(sizePx, emotion, isUrgent)
+            }
+
             bitmapCache.put(cacheKey, bitmap)
             return bitmap
         }

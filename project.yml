@@ -51,6 +51,7 @@ targets:
       - path: Shared/WidgetViews
       - path: Shared/Fonts
       - path: Shared/PlatformUICompat.swift
+      - path: Shared/Assets/MascotAssets.xcassets
     settings:
       base:
         PRODUCT_NAME: "Classroom Deadlines"
@@ -99,6 +100,7 @@ targets:
       - path: Shared/WidgetViews
       - path: Shared/Fonts
       - path: Shared/PlatformUICompat.swift
+      - path: Shared/Assets/MascotAssets.xcassets
     settings:
       base:
         PRODUCT_NAME: "Classroom Deadlines"

@@ -326,6 +326,61 @@ fun HomeworkDetailBottomSheet(
                             )
                         }
                     }
+
+                    if (attachedNote.totalChecklistCount > 0 && attachedNote.isCompleted && !coursework.isCompleted) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(ChunkyColor.SuccessGreen.copy(alpha = 0.12f))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = ChunkyColor.SuccessGreen,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = "Tất cả việc con đã xong!",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = ChunkyColor.TextPrimary
+                                    )
+                                    Text(
+                                        text = "Đánh dấu bài tập này hoàn thành?",
+                                        fontSize = 11.sp,
+                                        color = ChunkyColor.TextMuted
+                                    )
+                                }
+                            }
+                            Button(
+                                onClick = {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    } else {
+                                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                    }
+                                    onToggleCompletion(coursework.id, true)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SuccessGreen),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Text("Xong bài", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
+                    }
                 }
             }
 
