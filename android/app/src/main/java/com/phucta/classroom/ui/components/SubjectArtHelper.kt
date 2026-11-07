@@ -6,19 +6,17 @@ import androidx.compose.ui.graphics.Color
 import com.phucta.classroom.R
 
 enum class SubjectCategory {
+    COMPUTER_SCIENCE,
     MATH,
+    ENGLISH,
+    LITERATURE,
     PHYSICS,
     CHEMISTRY,
     BIOLOGY,
-    HISTORY_OR_GEOGRAPHY,
-    LITERATURE,
-    ENGLISH,
-    CIVICS_OR_PHILOSOPHY,
-    ECONOMICS,
-    ART_AND_DESIGN,
-    COMPUTER_SCIENCE,
-    NETWORKING,
-    GENERAL_ASSIGNMENT,
+    HISTORY,
+    DEFENSE_EDUCATION,
+    LOCAL_EDUCATION,
+    EXPERIENTIAL_ACTIVITIES,
     OTHER
 }
 
@@ -27,41 +25,35 @@ data class SubjectTheme(
     val category: SubjectCategory,
     val color: Color,
     val badgeCode: String,
-    @DrawableRes val iconRes: Int = SubjectArtHelper.iconForCategory(category)
+    @DrawableRes val iconRes: Int = SubjectArtHelper.iconForCategory(category),
+    val textColor: Color = SubjectArtHelper.accessibleTextColor(category),
+    val backgroundColor: Color = color.copy(alpha = 0.12f),
+    val borderColor: Color = color.copy(alpha = 0.28f)
 )
 
 private const val FLAG_MATH = 1 shl 0
 private const val FLAG_CS = 1 shl 1
-private const val FLAG_NETWORKING = 1 shl 2
-private const val FLAG_BIO = 1 shl 3
-private const val FLAG_CHEM = 1 shl 4
-private const val FLAG_LIT = 1 shl 5
-private const val FLAG_ENG = 1 shl 6
-private const val FLAG_DESIGN = 1 shl 7
-private const val FLAG_ASSIGNMENT = 1 shl 8
-private const val FLAG_PHYSICS = 1 shl 9
-private const val FLAG_LY = 1 shl 10
-private const val FLAG_HOA = 1 shl 11
-private const val FLAG_SINH = 1 shl 12
-private const val FLAG_SU = 1 shl 13
-private const val FLAG_DIA = 1 shl 14
+private const val FLAG_BIO = 1 shl 2
+private const val FLAG_CHEM = 1 shl 3
+private const val FLAG_LIT = 1 shl 4
+private const val FLAG_ENG = 1 shl 5
+private const val FLAG_PHYSICS = 1 shl 6
+private const val FLAG_HISTORY = 1 shl 7
+private const val FLAG_DEFENSE = 1 shl 8
+private const val FLAG_LOCAL = 1 shl 9
+private const val FLAG_EXPERIENTIAL = 1 shl 10
+
+private const val FLAG_LY = 1 shl 11
+private const val FLAG_HOA = 1 shl 12
+private const val FLAG_SINH = 1 shl 13
+private const val FLAG_SU = 1 shl 14
 private const val FLAG_VAN = 1 shl 15
 private const val FLAG_ANH = 1 shl 16
-private const val FLAG_GDCD = 1 shl 17
-private const val FLAG_LAW = 1 shl 18
-private const val FLAG_TRIET = 1 shl 19
-private const val FLAG_MANG = 1 shl 20
-private const val FLAG_CLOUD = 1 shl 21
-private const val FLAG_SOUNDCLOUD = 1 shl 22
-private const val FLAG_ECON = 1 shl 23
-private const val FLAG_VE = 1 shl 24
-private const val FLAG_TIN = 1 shl 25
-private const val FLAG_TU = 1 shl 26
-private const val FLAG_HISTORY = 1 shl 27
-private const val FLAG_GEOGRAPHY = 1 shl 28
+private const val FLAG_TIN = 1 shl 17
+private const val FLAG_TU = 1 shl 18
 
 private val TOKEN_FLAG_MAP: Map<String, Int> = run {
-    val map = HashMap<String, Int>(128)
+    val map = HashMap<String, Int>(64)
     fun add(words: Array<String>, flag: Int) {
         for (w in words) {
             map[w] = (map[w] ?: 0) or flag
@@ -72,33 +64,23 @@ private val TOKEN_FLAG_MAP: Map<String, Int> = run {
     }
     add(arrayOf("toan", "toán", "math", "maths", "calculus", "algebra", "geometry", "trigonometry", "statistics", "discrete"), FLAG_MATH)
     add(arrayOf("android", "ios", "swift", "python", "java", "cntt", "it", "ctdl", "cpp", "kotlin", "javascript", "typescript"), FLAG_CS)
-    add(arrayOf("network", "networking", "tcp", "socket", "cybersecurity"), FLAG_NETWORKING)
     add(arrayOf("biology", "bio", "genetics", "ecology"), FLAG_BIO)
     add(arrayOf("chemistry", "chem", "biochemistry"), FLAG_CHEM)
     add(arrayOf("literature", "writing", "essay"), FLAG_LIT)
     add(arrayOf("english", "ielts", "toeic", "toefl"), FLAG_ENG)
-    add(arrayOf("design", "ui", "ux", "art"), FLAG_DESIGN)
-    add(arrayOf("lab", "project"), FLAG_ASSIGNMENT)
     add(arrayOf("physics", "mechanics", "thermodynamics", "optics"), FLAG_PHYSICS)
     add("history", FLAG_HISTORY)
-    add("geography", FLAG_GEOGRAPHY)
-    add("gdcd", FLAG_GDCD)
-    add("law", FLAG_LAW)
-    add(arrayOf("business", "economics"), FLAG_ECON)
     add(arrayOf("ly", "lý", "lí"), FLAG_LY)
     add(arrayOf("hoa", "hóa", "hoá"), FLAG_HOA)
     add("sinh", FLAG_SINH)
     add(arrayOf("su", "sử"), FLAG_SU)
-    add(arrayOf("dia", "địa"), FLAG_DIA)
     add(arrayOf("van", "văn"), FLAG_VAN)
     add("anh", FLAG_ANH)
-    add(arrayOf("triết", "triet"), FLAG_TRIET)
-    add(arrayOf("mạng", "mang"), FLAG_MANG)
-    add("cloud", FLAG_CLOUD)
-    add("soundcloud", FLAG_SOUNDCLOUD)
     add("tin", FLAG_TIN)
     add(arrayOf("tự", "tu"), FLAG_TU)
-    add("vẽ", FLAG_VE)
+    add("gdqp", FLAG_DEFENSE)
+    add(arrayOf("gddp", "gdđp"), FLAG_LOCAL)
+    add(arrayOf("hdtn", "hđtn"), FLAG_EXPERIENTIAL)
     map
 }
 
@@ -197,43 +179,31 @@ object SubjectArtHelper {
     }
 
     fun category(courseName: String, title: String? = null): SubjectCategory {
-        val courseCat = courseCategoryCache[courseName]
-        if (courseCat != null) {
-            if (title == null || courseCat != SubjectCategory.OTHER || title.isBlank()) {
-                return courseCat
-            }
+        if (!title.isNullOrBlank()) {
             val key = "$courseName|$title"
-            return compoundCategoryCache[key] ?: run {
-                val computed = computeCategory(courseName, title)
-                if (compoundCategoryCache.size >= MAX_CACHE_SIZE) {
-                    compoundCategoryCache.clear()
-                }
-                compoundCategoryCache[key] = computed
-                computed
+            val cached = compoundCategoryCache[key]
+            if (cached != null) return cached
+            val computed = computeCategory(courseName, title)
+            if (compoundCategoryCache.size >= MAX_CACHE_SIZE) {
+                compoundCategoryCache.clear()
             }
+            compoundCategoryCache[key] = computed
+            return computed
         }
+
+        val cached = courseCategoryCache[courseName]
+        if (cached != null) return cached
         val computed = computeCategory(courseName, null)
         if (courseCategoryCache.size >= MAX_CACHE_SIZE) {
             courseCategoryCache.clear()
         }
         courseCategoryCache[courseName] = computed
-        if (title == null || computed != SubjectCategory.OTHER || title.isBlank()) {
-            return computed
-        }
-        val key = "$courseName|$title"
-        return compoundCategoryCache[key] ?: run {
-            val compoundComputed = computeCategory(courseName, title)
-            if (compoundCategoryCache.size >= MAX_CACHE_SIZE) {
-                compoundCategoryCache.clear()
-            }
-            compoundCategoryCache[key] = compoundComputed
-            compoundComputed
-        }
+        return computed
     }
 
     fun theme(courseName: String, title: String? = null): SubjectTheme {
         val cat = category(courseName, title)
-        if (cat != SubjectCategory.HISTORY_OR_GEOGRAPHY && cat != SubjectCategory.OTHER) {
+        if (cat != SubjectCategory.OTHER) {
             return STANDARD_THEMES[cat.ordinal]
         }
         val hasTitle = !title.isNullOrBlank()
@@ -252,18 +222,6 @@ object SubjectArtHelper {
         }
         themeCache[key] = theme
         return theme
-    }
-
-    private val GEOGRAPHY_EXCLUDE_REGEX = Regex("""(?Ui)\b(địa\s+điểm|dia\s+diem|địa\s+chỉ|dia\s+chi)\b""")
-    private val GEOGRAPHY_MATCH_REGEX = Regex("""(?Ui)\b(địa\s+lý|địa\s+lí|dia\s+ly|dia\s+li|địa|dia)\b""")
-
-    fun isGeography(courseName: String?, title: String? = null): Boolean {
-        fun check(s: String?): Boolean {
-            if (s.isNullOrBlank()) return false
-            val stripped = GEOGRAPHY_EXCLUDE_REGEX.replace(s, " ")
-            return GEOGRAPHY_MATCH_REGEX.containsMatchIn(stripped)
-        }
-        return check(courseName) || check(title)
     }
 
     private fun computeCategory(courseName: String, title: String? = null): SubjectCategory {
@@ -348,14 +306,14 @@ object SubjectArtHelper {
                                 !text.contains("sinh hoạt") && !text.contains("sinh hoat")) -> SubjectCategory.BIOLOGY
 
                 text.contains("lịch sử") || (text.contains("lich su") && !text.contains("lịch sự") && !text.contains("lich su trong") && !text.contains("giao tiep") && !text.contains("ung xu")) || (flags and FLAG_HISTORY != 0) ||
+                        text.contains("môn sử") || text.contains("mon su") ||
                         (((flags and FLAG_SU != 0)) &&
                                 !text.contains("sử dụng") && !text.contains("su dung") &&
                                 !text.contains("lịch sự") && !text.contains("lich su trong") &&
-                                !text.contains("giao tiep") && !text.contains("ung xu")) ||
-                        (flags and FLAG_GEOGRAPHY != 0) ||
-                        isGeography(text) -> SubjectCategory.HISTORY_OR_GEOGRAPHY
+                                !text.contains("giao tiep") && !text.contains("ung xu")) -> SubjectCategory.HISTORY
 
                 text.contains("ngữ văn") || text.contains("ngu van") || text.contains("tiếng việt") || text.contains("tieng viet") || (flags and FLAG_LIT != 0) ||
+                        text.contains("môn văn") || text.contains("mon van") ||
                         (((flags and FLAG_VAN != 0)) &&
                                 !text.contains("văn phòng") && !text.contains("van phong") &&
                                 !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("van hoa") &&
@@ -364,6 +322,7 @@ object SubjectArtHelper {
                                 !text.contains("luận văn") && !text.contains("luan van")) -> SubjectCategory.LITERATURE
 
                 text.contains("tiếng anh") || text.contains("tieng anh") || (flags and FLAG_ENG != 0) ||
+                        text.contains("môn anh") || text.contains("mon anh") ||
                         ((flags and FLAG_ANH != 0) &&
                                 !text.contains("hình ảnh") && !text.contains("hinh anh") &&
                                 !text.contains("âm thanh") && !text.contains("am thanh") &&
@@ -371,40 +330,9 @@ object SubjectArtHelper {
                                 !text.contains("cô") && !text.contains("co ") &&
                                 !text.contains("gv")) -> SubjectCategory.ENGLISH
 
-                (flags and FLAG_GDCD != 0) || text.contains("triết học") || text.contains("triet hoc") ||
-                        text.contains("chính trị") || text.contains("chinh tri") ||
-                        text.contains("pháp luật") || text.contains("phap luat") ||
-                        text.contains("kinh tế và pháp luật") || text.contains("kinh te va phap luat") ||
-                        (flags and FLAG_LAW != 0) ||
-                        text.contains("tư tưởng") || text.contains("tu tuong") ||
-                        text.contains("mác - lênin") || text.contains("mác lênin") || text.contains("mac - lenin") || text.contains("mac lenin") ||
-                        text.contains("tư tưởng hồ chí minh") || text.contains("tu tuong ho chi minh") ||
-                        text.contains("pháp luật đại cương") || text.contains("phap luat dai cuong") ||
-                        ((flags and FLAG_TRIET != 0) && !text.contains("triết lý") && !text.contains("triet ly")) -> SubjectCategory.CIVICS_OR_PHILOSOPHY
-
-                text.contains("an ninh mạng") || text.contains("an ninh mang") ||
-                        text.contains("mạng máy tính") || text.contains("mang may tinh") ||
-                        text.contains("an toàn thông tin") || text.contains("an toan thong tin") ||
-                        text.contains("hệ thống phân tán") || text.contains("he thong phan tan") ||
-                        text.contains("quản trị mạng") || text.contains("quan tri mang") ||
-                        (flags and FLAG_NETWORKING != 0) ||
-                        ((flags and FLAG_MANG != 0) && !text.contains("mạng xã hội") && !text.contains("mang xa hoi")) ||
-                        ((flags and FLAG_CLOUD != 0) && (flags and FLAG_SOUNDCLOUD == 0)) -> SubjectCategory.NETWORKING
-
-                ((flags and FLAG_ECON != 0) || text.contains("kinh tế") || text.contains("kinh te") ||
-                        text.contains("quản trị") || text.contains("quan tri") ||
-                        text.contains("tài chính") || text.contains("tai chinh") ||
-                        text.contains("marketing") || text.contains("kế toán") || text.contains("ke toan")) &&
-                        !text.contains("quản trị mạng") && !text.contains("quan tri mang") -> SubjectCategory.ECONOMICS
-
-                text.contains("đồ họa") || text.contains("do hoa") ||
-                        text.contains("thiết kế") || text.contains("thiet ke") ||
-                        text.contains("mỹ thuật") || text.contains("my thuat") ||
-                        (flags and FLAG_DESIGN != 0) ||
-                        ((flags and FLAG_VE != 0) && !text.contains("bản vẽ kỹ thuật") && !text.contains("ban ve ky thuat")) -> SubjectCategory.ART_AND_DESIGN
-
-                text.contains("lập trình") || text.contains("lap trinh") ||
-                        text.contains("tin học") || text.contains("tin hoc") ||
+                text.contains("tin học") || text.contains("tin hoc") ||
+                        text.contains("môn tin") || text.contains("mon tin") ||
+                        text.contains("lập trình") || text.contains("lap trinh") ||
                         text.contains("di động") || text.contains("di dong") ||
                         (flags and FLAG_CS != 0) ||
                         text.contains("công nghệ thông tin") || text.contains("cong nghe thong tin") ||
@@ -423,19 +351,28 @@ object SubjectArtHelper {
                                 !text.contains("niềm tin") && !text.contains("niem tin") &&
                                 (flags and FLAG_TU == 0)) -> SubjectCategory.COMPUTER_SCIENCE
 
-                text.contains("nhiệm vụ") || text.contains("nhiem vu") ||
-                        (flags and FLAG_ASSIGNMENT != 0) ||
-                        text.contains("thực hành") || text.contains("thuc hanh") ||
-                        text.contains("bài tập") || text.contains("bai tap") ||
-                        text.contains("dự án") || text.contains("du an") -> SubjectCategory.GENERAL_ASSIGNMENT
+                (flags and FLAG_DEFENSE != 0) ||
+                        text.contains("giáo dục quốc phòng") || text.contains("giao duc quoc phong") ||
+                        text.contains("quốc phòng an ninh") || text.contains("quoc phong an ninh") ||
+                        text.contains("an ninh quốc phòng") || text.contains("an ninh quoc phong") ||
+                        text.contains("quân sự") || text.contains("quan su") ||
+                        text.contains("giáo dục qp") || text.contains("giao duc qp") -> SubjectCategory.DEFENSE_EDUCATION
+
+                (flags and FLAG_LOCAL != 0) ||
+                        text.contains("giáo dục địa phương") || text.contains("giao duc dia phuong") ||
+                        text.contains("giáo dục đp") || text.contains("giao duc dp") -> SubjectCategory.LOCAL_EDUCATION
+
+                (flags and FLAG_EXPERIENTIAL != 0) ||
+                        text.contains("hoạt động trải nghiệm") || text.contains("hoat dong trai nghiem") ||
+                        text.contains("hướng nghiệp") || text.contains("huong nghiep") ||
+                        text.contains("sinh hoạt dưới cờ") || text.contains("sinh hoat duoi co") ||
+                        text.contains("sinh hoạt lớp") || text.contains("sinh hoat lop") -> SubjectCategory.EXPERIENTIAL_ACTIVITIES
 
                 else -> null
             }
         }
 
-        match(courseLower, courseFlags)?.let { return it }
-
-        if (!title.isNullOrBlank()) {
+        val titleCategory = if (!title.isNullOrBlank()) {
             val titleNormalized = if (java.text.Normalizer.isNormalized(title, java.text.Normalizer.Form.NFC)) {
                 title
             } else {
@@ -443,66 +380,85 @@ object SubjectArtHelper {
             }
             val titleLower = titleNormalized.lowercase()
             val titleFlags = scanTokenFlags(titleLower)
-            match(titleLower, titleFlags)?.let { return it }
+            match(titleLower, titleFlags)
+        } else {
+            null
         }
+
+        if (titleCategory != null) {
+            return titleCategory
+        }
+
+        match(courseLower, courseFlags)?.let { return it }
 
         return SubjectCategory.OTHER
     }
 
     fun themeColor(category: SubjectCategory): Color {
         return when (category) {
+            SubjectCategory.COMPUTER_SCIENCE -> Color(0xFF14AD8A)
             SubjectCategory.MATH -> Color(0xFFF2991A)
-            SubjectCategory.LITERATURE -> Color(0xFFEB6138)
             SubjectCategory.ENGLISH -> Color(0xFF2694EB)
+            SubjectCategory.LITERATURE -> Color(0xFFEB6138)
             SubjectCategory.PHYSICS -> Color(0xFF7361E0)
             SubjectCategory.CHEMISTRY -> Color(0xFFDC47AD)
             SubjectCategory.BIOLOGY -> Color(0xFF33B866)
-            SubjectCategory.HISTORY_OR_GEOGRAPHY -> Color(0xFFD98529)
-            SubjectCategory.COMPUTER_SCIENCE -> Color(0xFF14AD8A)
-            SubjectCategory.NETWORKING -> Color(0xFF8C66EB)
-            SubjectCategory.CIVICS_OR_PHILOSOPHY -> Color(0xFFE04752)
-            SubjectCategory.ECONOMICS -> Color(0xFFE6A61F)
-            SubjectCategory.ART_AND_DESIGN -> Color(0xFFE6408C)
-            SubjectCategory.GENERAL_ASSIGNMENT -> Color(0xFF7A6BD6)
+            SubjectCategory.HISTORY -> Color(0xFFD98529)
+            SubjectCategory.DEFENSE_EDUCATION -> Color(0xFF299447)
+            SubjectCategory.LOCAL_EDUCATION -> Color(0xFF0D9488)
+            SubjectCategory.EXPERIENTIAL_ACTIVITIES -> Color(0xFFF26C1F)
             SubjectCategory.OTHER -> Color(0xFF6685A3)
+        }
+    }
+
+    fun accessibleTextColor(category: SubjectCategory): Color {
+        return when (category) {
+            SubjectCategory.COMPUTER_SCIENCE -> Color(0xFF0F766E)
+            SubjectCategory.MATH -> Color(0xFFB45309)
+            SubjectCategory.ENGLISH -> Color(0xFF0369A1)
+            SubjectCategory.LITERATURE -> Color(0xFFC2410C)
+            SubjectCategory.PHYSICS -> Color(0xFF5B45D6)
+            SubjectCategory.CHEMISTRY -> Color(0xFF9D174D)
+            SubjectCategory.BIOLOGY -> Color(0xFF15803D)
+            SubjectCategory.HISTORY -> Color(0xFF9A3412)
+            SubjectCategory.DEFENSE_EDUCATION -> Color(0xFF166534)
+            SubjectCategory.LOCAL_EDUCATION -> Color(0xFF115E59)
+            SubjectCategory.EXPERIENTIAL_ACTIVITIES -> Color(0xFFC2410C)
+            SubjectCategory.OTHER -> Color(0xFF334155)
         }
     }
 
     @DrawableRes
     fun iconForCategory(category: SubjectCategory): Int {
         return when (category) {
+            SubjectCategory.COMPUTER_SCIENCE -> R.drawable.ic_subject_cs
             SubjectCategory.MATH -> R.drawable.ic_subject_math
+            SubjectCategory.ENGLISH -> R.drawable.ic_subject_english
+            SubjectCategory.LITERATURE -> R.drawable.ic_subject_literature
             SubjectCategory.PHYSICS -> R.drawable.ic_subject_physics
             SubjectCategory.CHEMISTRY -> R.drawable.ic_subject_chemistry
             SubjectCategory.BIOLOGY -> R.drawable.ic_subject_biology
-            SubjectCategory.HISTORY_OR_GEOGRAPHY -> R.drawable.ic_subject_history
-            SubjectCategory.LITERATURE -> R.drawable.ic_subject_literature
-            SubjectCategory.ENGLISH -> R.drawable.ic_subject_english
-            SubjectCategory.CIVICS_OR_PHILOSOPHY -> R.drawable.ic_subject_civics
-            SubjectCategory.ECONOMICS -> R.drawable.ic_subject_economics
-            SubjectCategory.ART_AND_DESIGN -> R.drawable.ic_subject_art
-            SubjectCategory.COMPUTER_SCIENCE -> R.drawable.ic_subject_cs
-            SubjectCategory.NETWORKING -> R.drawable.ic_subject_networking
-            SubjectCategory.GENERAL_ASSIGNMENT -> R.drawable.ic_subject_assignment
+            SubjectCategory.HISTORY -> R.drawable.ic_subject_history
+            SubjectCategory.DEFENSE_EDUCATION -> R.drawable.ic_subject_defense
+            SubjectCategory.LOCAL_EDUCATION -> R.drawable.ic_subject_local_edu
+            SubjectCategory.EXPERIENTIAL_ACTIVITIES -> R.drawable.ic_subject_experiential
             SubjectCategory.OTHER -> R.drawable.ic_subject_other
         }
     }
 
     fun badgeCode(category: SubjectCategory, courseName: String = "", title: String? = null): String {
         return when (category) {
+            SubjectCategory.COMPUTER_SCIENCE -> "TIN"
             SubjectCategory.MATH -> "TOÁ"
+            SubjectCategory.ENGLISH -> "ANH"
+            SubjectCategory.LITERATURE -> "VĂN"
             SubjectCategory.PHYSICS -> "LÝ"
             SubjectCategory.CHEMISTRY -> "HOÁ"
             SubjectCategory.BIOLOGY -> "SINH"
-            SubjectCategory.HISTORY_OR_GEOGRAPHY -> if (isGeography(courseName, title)) "ĐỊA" else "SỬ"
-            SubjectCategory.LITERATURE -> "VĂN"
-            SubjectCategory.ENGLISH -> "ANH"
-            SubjectCategory.CIVICS_OR_PHILOSOPHY -> "GDCD"
-            SubjectCategory.ECONOMICS -> "KTẾ"
-            SubjectCategory.ART_AND_DESIGN -> "TKẾ"
-            SubjectCategory.COMPUTER_SCIENCE -> "TIN"
-            SubjectCategory.NETWORKING -> "MẠNG"
-            SubjectCategory.GENERAL_ASSIGNMENT -> "BTH"
+            SubjectCategory.HISTORY -> "SỬ"
+            SubjectCategory.DEFENSE_EDUCATION -> "GDQP"
+            SubjectCategory.LOCAL_EDUCATION -> "GDĐP"
+            SubjectCategory.EXPERIENTIAL_ACTIVITIES -> "HĐTN"
             SubjectCategory.OTHER -> {
                 val cleaned = courseName.trim()
                 if (cleaned.length >= 3) {

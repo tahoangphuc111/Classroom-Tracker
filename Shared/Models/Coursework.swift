@@ -73,7 +73,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
 
         let normTitle = title.normalizedForVietnameseSearch()
         let normCourse = courseName.normalizedForVietnameseSearch()
-        let normDesc = (description?.isEmpty ?? true) ? "" : description!.normalizedForVietnameseSearch()
+        let normDesc = description?.normalizedForVietnameseSearch() ?? ""
         self.normalizedTitle = normTitle
         self.normalizedCourseName = normCourse
         self.normalizedDescription = normDesc
@@ -108,7 +108,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
 
         let normTitle = title.normalizedForVietnameseSearch()
         let normCourse = courseName.normalizedForVietnameseSearch()
-        let normDesc = (description?.isEmpty ?? true) ? "" : description!.normalizedForVietnameseSearch()
+        let normDesc = description?.normalizedForVietnameseSearch() ?? ""
         self.normalizedTitle = normTitle
         self.normalizedCourseName = normCourse
         self.normalizedDescription = normDesc
@@ -289,7 +289,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     public static func buildSearchIndex(title: String, courseName: String, description: String?) -> String {
         let normTitle = title.normalizedForVietnameseSearch()
         let normCourse = courseName.normalizedForVietnameseSearch()
-        let normDesc = (description?.isEmpty ?? true) ? "" : description!.normalizedForVietnameseSearch()
+        let normDesc = description?.normalizedForVietnameseSearch() ?? ""
         return buildNormalizedSearchIndex(normTitle: normTitle, normCourse: normCourse, normDescription: normDesc)
     }
 
@@ -314,7 +314,11 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         if hour == 23 && minute >= 55 {
             return "Cuối ngày"
         }
-        return ClassroomDateFormatters.timeOnly.string(from: dueDate)
+        let h1 = UInt8((hour / 10) + 48)
+        let h2 = UInt8((hour % 10) + 48)
+        let m1 = UInt8((minute / 10) + 48)
+        let m2 = UInt8((minute % 10) + 48)
+        return String(decoding: [h1, h2, UInt8(ascii: ":"), m1, m2], as: UTF8.self)
     }
 
     private static func buildFormattedFullDueDate(from dueDate: Date?) -> String {
@@ -331,6 +335,11 @@ private let vietnameseLut1: [UInt8] = [
 private let vietnameseLut2: [UInt8] = [
     97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 101, 105, 105, 105, 105, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 121, 121, 121, 121, 121, 121, 121, 121
 ]
+
+@inline(__always)
+fileprivate func isSearchDelimiterByte(_ b: UInt8) -> Bool {
+    return b <= 32 || b == 44 || b == 59 || b == 58 || b == 45 || b == 47 || b == 40 || b == 41 || b == 91 || b == 93 || b == 123 || b == 125 || b == 124 || b == 34 || b == 39 || b == 63 || b == 33
+}
 
 public extension String {
     func normalizedForVietnameseSearch() -> String {
@@ -392,29 +401,234 @@ public extension String {
         let cleanQuery = self.normalizedForVietnameseSearch()
         guard !cleanQuery.isEmpty else { return [] }
 
-        var tokens: [String] = []
-        tokens.reserveCapacity(4)
-        var start: String.Index? = nil
-
-        for i in cleanQuery.indices {
-            let b = cleanQuery.utf8[i]
-            if b == 32 || b == 9 || b == 10 || b == 13 {
-                if let s = start {
-                    tokens.append(String(cleanQuery[s..<i]))
-                    start = nil
+        return cleanQuery.utf8.withContiguousStorageIfAvailable { buf -> [String] in
+            let count = buf.count
+            guard count > 0, let base = buf.baseAddress else { return [] }
+            var tokens: [String] = []
+            tokens.reserveCapacity(4)
+            var start = -1
+            for i in 0..<count {
+                let b = base[i]
+                if isSearchDelimiterByte(b) {
+                    if start != -1 {
+                        tokens.append(String(decoding: UnsafeBufferPointer(start: base + start, count: i - start), as: UTF8.self))
+                        start = -1
+                    }
+                } else if start == -1 {
+                    start = i
                 }
-            } else if start == nil {
-                start = i
+            }
+            if start != -1 {
+                tokens.append(String(decoding: UnsafeBufferPointer(start: base + start, count: count - start), as: UTF8.self))
+            }
+            return tokens
+        } ?? {
+            var tokens: [String] = []
+            tokens.reserveCapacity(4)
+            var start: String.Index? = nil
+
+            for i in cleanQuery.indices {
+                let b = cleanQuery.utf8[i]
+                if isSearchDelimiterByte(b) {
+                    if let s = start {
+                        tokens.append(String(cleanQuery[s..<i]))
+                        start = nil
+                    }
+                } else if start == nil {
+                    start = i
+                }
+            }
+            if let s = start {
+                tokens.append(String(cleanQuery[s...]))
+            }
+            return tokens
+        }()
+    }
+}
+
+private struct FastSearchBuffer {
+    let ptr: UnsafePointer<UInt8>
+    let count: Int
+
+    @inline(__always)
+    func find(_ sub: FastSearchBuffer) -> Int {
+        let sCount = sub.count
+        guard sCount <= count, sCount > 0 else { return -1 }
+        if sCount == 1 {
+            if let p = memchr(ptr, Int32(sub.ptr.pointee), count) {
+                return UnsafeRawPointer(p) - UnsafeRawPointer(ptr)
+            }
+            return -1
+        }
+        if let p = memmem(ptr, count, sub.ptr, sCount) {
+            return UnsafeRawPointer(p) - UnsafeRawPointer(ptr)
+        }
+        return -1
+    }
+
+    @inline(__always)
+    private static func isWordBoundaryByte(_ b: UInt8) -> Bool {
+        // Alphanumeric ASCII in normalized text are 'a'...'z' (97...122) and '0'...'9' (48...57).
+        // Any other character (space, tab, newline, bracket, dash, colon, punctuation, etc.) is a word boundary.
+        return !((b >= 97 && b <= 122) || (b >= 48 && b <= 57))
+    }
+
+    @inline(__always)
+    func findWordBoundary(_ sub: FastSearchBuffer, firstMatchOffset: Int) -> Bool {
+        if firstMatchOffset == 0 || Self.isWordBoundaryByte(ptr[firstMatchOffset - 1]) {
+            return true
+        }
+        var nextOffset = firstMatchOffset + 1
+        var remaining = count - nextOffset
+        let subLen = sub.count
+        while remaining >= subLen {
+            if let p = memmem(ptr + nextOffset, remaining, sub.ptr, subLen) {
+                let matchOffset = UnsafeRawPointer(p) - UnsafeRawPointer(ptr)
+                if Self.isWordBoundaryByte(ptr[matchOffset - 1]) {
+                    return true
+                }
+                nextOffset = matchOffset + 1
+                remaining = count - nextOffset
+            } else {
+                break
             }
         }
-        if let s = start {
-            tokens.append(String(cleanQuery[s...]))
-        }
-        return tokens
+        return false
+    }
+
+    @inline(__always)
+    func equals(_ other: FastSearchBuffer) -> Bool {
+        return count == other.count && (count == 0 || memcmp(ptr, other.ptr, count) == 0)
+    }
+
+    @inline(__always)
+    func hasPrefix(_ other: FastSearchBuffer) -> Bool {
+        return count >= other.count && (other.count == 0 || memcmp(ptr, other.ptr, other.count) == 0)
     }
 }
 
 public enum VietnameseSearchScorer {
+    private static func scoreWithBuffers(
+        tBuf: FastSearchBuffer,
+        cBuf: FastSearchBuffer,
+        dBuf: FastSearchBuffer,
+        qBuf: FastSearchBuffer,
+        tokens: [String],
+        rawNormalizedQuery: String,
+        checklistTitles: [String]
+    ) -> Int {
+        var score = 0
+        let rawQueryLen = qBuf.count
+        var titleFirstMatchOffset = -1
+        var courseMatched = false
+
+        if rawQueryLen > 0 {
+            if tBuf.equals(qBuf) {
+                score += 200
+                titleFirstMatchOffset = 0
+            } else if tBuf.hasPrefix(qBuf) {
+                score += 120
+                titleFirstMatchOffset = 0
+            } else if tBuf.count >= rawQueryLen {
+                let idx = tBuf.find(qBuf)
+                if idx >= 0 {
+                    score += 80
+                    titleFirstMatchOffset = idx
+                }
+            }
+
+            if cBuf.equals(qBuf) {
+                score += 100
+                courseMatched = true
+            } else if cBuf.hasPrefix(qBuf) {
+                score += 60
+                courseMatched = true
+            } else if cBuf.count >= rawQueryLen && cBuf.find(qBuf) >= 0 {
+                score += 40
+                courseMatched = true
+            }
+        }
+
+        if tokens.count == 1 && rawQueryLen > 0 && tokens[0] == rawNormalizedQuery {
+            if titleFirstMatchOffset >= 0 {
+                score += 30
+                if tBuf.findWordBoundary(qBuf, firstMatchOffset: titleFirstMatchOffset) {
+                    score += 15
+                }
+            }
+            if courseMatched {
+                score += 15
+            }
+            if dBuf.count >= rawQueryLen && dBuf.find(qBuf) >= 0 {
+                score += 5
+            }
+            if !checklistTitles.isEmpty {
+                for rawTitle in checklistTitles {
+                    let normItem = rawTitle.normalizedForVietnameseSearch()
+                    _ = normItem.utf8.withContiguousStorageIfAvailable { itemBuf in
+                        guard let base = itemBuf.baseAddress, itemBuf.count >= rawQueryLen else { return }
+                        let iBuf = FastSearchBuffer(ptr: base, count: itemBuf.count)
+                        if iBuf.find(qBuf) >= 0 {
+                            score += 5
+                        }
+                    }
+                }
+            }
+            return score
+        }
+
+        for token in tokens {
+            token.withCString { tokPtr in
+                let tkBuf = FastSearchBuffer(ptr: UnsafeRawPointer(tokPtr).assumingMemoryBound(to: UInt8.self), count: token.utf8.count)
+                let tokenLen = tkBuf.count
+                if tokenLen == 0 { return }
+                if tBuf.count >= tokenLen {
+                    let matchIdx = tBuf.find(tkBuf)
+                    if matchIdx >= 0 {
+                        score += 30
+                        if tBuf.findWordBoundary(tkBuf, firstMatchOffset: matchIdx) {
+                            score += 15
+                        }
+                    }
+                }
+                if cBuf.count >= tokenLen && cBuf.find(tkBuf) >= 0 {
+                    score += 15
+                }
+                if dBuf.count >= tokenLen && dBuf.find(tkBuf) >= 0 {
+                    score += 5
+                }
+            }
+        }
+
+        if !checklistTitles.isEmpty {
+            for rawTitle in checklistTitles {
+                let normItem = rawTitle.normalizedForVietnameseSearch()
+                normItem.withCString { itemPtr in
+                    let iBuf = FastSearchBuffer(ptr: UnsafeRawPointer(itemPtr).assumingMemoryBound(to: UInt8.self), count: normItem.utf8.count)
+                    let normItemLen = iBuf.count
+                    if rawQueryLen > 0 && normItemLen >= rawQueryLen {
+                        if iBuf.equals(qBuf) {
+                            score += 60
+                        } else if iBuf.find(qBuf) >= 0 {
+                            score += 30
+                        }
+                    }
+                    for token in tokens {
+                        token.withCString { tokPtr in
+                            let tkBuf = FastSearchBuffer(ptr: UnsafeRawPointer(tokPtr).assumingMemoryBound(to: UInt8.self), count: token.utf8.count)
+                            let tokenLen = tkBuf.count
+                            if tokenLen > 0 && normItemLen >= tokenLen && iBuf.find(tkBuf) >= 0 {
+                                score += 8
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return score
+    }
+
     public static func calculateScore(
         tokens: [String],
         rawNormalizedQuery: String,
@@ -424,121 +638,29 @@ public enum VietnameseSearchScorer {
         checklistTitles: [String] = []
     ) -> Int {
         guard !tokens.isEmpty else { return 0 }
-        var score = 0
-        let rawQueryLen = rawNormalizedQuery.utf8.count
-        var titleMatchRange: Range<String.Index>? = nil
-        var courseMatched = false
-        if rawQueryLen > 0 {
-            if normTitle == rawNormalizedQuery {
-                score += 200
-                titleMatchRange = normTitle.startIndex..<normTitle.endIndex
-            } else if normTitle.hasPrefix(rawNormalizedQuery) {
-                score += 120
-                titleMatchRange = normTitle.startIndex..<normTitle.index(normTitle.startIndex, offsetBy: rawQueryLen)
-            } else if normTitle.utf8.count >= rawQueryLen, let r = normTitle.range(of: rawNormalizedQuery, options: .literal) {
-                score += 80
-                titleMatchRange = r
-            }
 
-            if normCourse == rawNormalizedQuery {
-                score += 100
-                courseMatched = true
-            } else if normCourse.hasPrefix(rawNormalizedQuery) {
-                score += 60
-                courseMatched = true
-            } else if normCourse.utf8.count >= rawQueryLen && normCourse.range(of: rawNormalizedQuery, options: .literal) != nil {
-                score += 40
-                courseMatched = true
-            }
-        }
+        return normTitle.withCString { tPtr in
+            normCourse.withCString { cPtr in
+                normContentOrDesc.withCString { dPtr in
+                    rawNormalizedQuery.withCString { qPtr in
+                        let tBuf = FastSearchBuffer(ptr: UnsafeRawPointer(tPtr).assumingMemoryBound(to: UInt8.self), count: normTitle.utf8.count)
+                        let cBuf = FastSearchBuffer(ptr: UnsafeRawPointer(cPtr).assumingMemoryBound(to: UInt8.self), count: normCourse.utf8.count)
+                        let dBuf = FastSearchBuffer(ptr: UnsafeRawPointer(dPtr).assumingMemoryBound(to: UInt8.self), count: normContentOrDesc.utf8.count)
+                        let qBuf = FastSearchBuffer(ptr: UnsafeRawPointer(qPtr).assumingMemoryBound(to: UInt8.self), count: rawNormalizedQuery.utf8.count)
 
-        if tokens.count == 1 && rawQueryLen > 0 && tokens[0] == rawNormalizedQuery {
-            let token = rawNormalizedQuery
-            if let matchRange = titleMatchRange {
-                score += 30
-                var isWordBoundary = (matchRange.lowerBound == normTitle.startIndex) ||
-                    (normTitle[normTitle.index(before: matchRange.lowerBound)] == " ")
-                if !isWordBoundary {
-                    var searchRange = matchRange.upperBound..<normTitle.endIndex
-                    while let nextRange = normTitle.range(of: token, options: .literal, range: searchRange) {
-                        if normTitle[normTitle.index(before: nextRange.lowerBound)] == " " {
-                            isWordBoundary = true
-                            break
-                        }
-                        searchRange = nextRange.upperBound..<normTitle.endIndex
-                    }
-                }
-                if isWordBoundary {
-                    score += 15
-                }
-            }
-            if courseMatched {
-                score += 15
-            }
-            if !normContentOrDesc.isEmpty && normContentOrDesc.utf8.count >= rawQueryLen && normContentOrDesc.range(of: token, options: .literal) != nil {
-                score += 5
-            }
-            if !checklistTitles.isEmpty {
-                for rawTitle in checklistTitles {
-                    let normItem = rawTitle.normalizedForVietnameseSearch()
-                    if normItem.utf8.count >= rawQueryLen && normItem.range(of: token, options: .literal) != nil {
-                        score += 5
-                    }
-                }
-            }
-            return score
-        }
-
-        for token in tokens {
-            let tokenLen = token.utf8.count
-            if tokenLen == 0 { continue }
-            if normTitle.utf8.count >= tokenLen, let matchRange = normTitle.range(of: token, options: .literal) {
-                score += 30
-                var isWordBoundary = (matchRange.lowerBound == normTitle.startIndex) ||
-                    (normTitle[normTitle.index(before: matchRange.lowerBound)] == " ")
-                if !isWordBoundary {
-                    var searchRange = matchRange.upperBound..<normTitle.endIndex
-                    while let nextRange = normTitle.range(of: token, options: .literal, range: searchRange) {
-                        if normTitle[normTitle.index(before: nextRange.lowerBound)] == " " {
-                            isWordBoundary = true
-                            break
-                        }
-                        searchRange = nextRange.upperBound..<normTitle.endIndex
-                    }
-                }
-                if isWordBoundary {
-                    score += 15
-                }
-            }
-            if normCourse.utf8.count >= tokenLen && normCourse.range(of: token, options: .literal) != nil {
-                score += 15
-            }
-            if !normContentOrDesc.isEmpty && normContentOrDesc.utf8.count >= tokenLen && normContentOrDesc.range(of: token, options: .literal) != nil {
-                score += 5
-            }
-        }
-
-        if !checklistTitles.isEmpty {
-            for rawTitle in checklistTitles {
-                let normItem = rawTitle.normalizedForVietnameseSearch()
-                let normItemLen = normItem.utf8.count
-                if rawQueryLen > 0 && normItemLen >= rawQueryLen {
-                    if normItem == rawNormalizedQuery {
-                        score += 60
-                    } else if normItem.range(of: rawNormalizedQuery, options: .literal) != nil {
-                        score += 30
-                    }
-                }
-                for token in tokens {
-                    let tokenLen = token.utf8.count
-                    if tokenLen > 0 && normItemLen >= tokenLen && normItem.range(of: token, options: .literal) != nil {
-                        score += 8
+                        return scoreWithBuffers(
+                            tBuf: tBuf,
+                            cBuf: cBuf,
+                            dBuf: dBuf,
+                            qBuf: qBuf,
+                            tokens: tokens,
+                            rawNormalizedQuery: rawNormalizedQuery,
+                            checklistTitles: checklistTitles
+                        )
                     }
                 }
             }
         }
-
-        return score
     }
 }
 
@@ -562,6 +684,9 @@ extension Coursework: Comparable {
         switch (first.dueDate, second.dueDate) {
         case let (d1?, d2?):
             if d1 != d2 { return d1 < d2 }
+            if first.normalizedTitle != second.normalizedTitle {
+                return first.normalizedTitle < second.normalizedTitle
+            }
             let titleOrder = first.title.localizedStandardCompare(second.title)
             if titleOrder != .orderedSame {
                 return titleOrder == .orderedAscending
@@ -572,12 +697,51 @@ extension Coursework: Comparable {
         case (nil, _?):
             return false
         case (nil, nil):
+            if first.normalizedTitle != second.normalizedTitle {
+                return first.normalizedTitle < second.normalizedTitle
+            }
             let titleOrder = first.title.localizedStandardCompare(second.title)
             if titleOrder != .orderedSame {
                 return titleOrder == .orderedAscending
             }
             return first.id < second.id
         }
+    }
+
+    public static func compareByDueDateAscending(_ first: Coursework, _ second: Coursework) -> Bool {
+        switch (first.dueDate, second.dueDate) {
+        case let (d1?, d2?):
+            if d1 != d2 { return d1 < d2 }
+        case (_?, nil):
+            return true
+        case (nil, _?):
+            return false
+        case (nil, nil):
+            break
+        }
+        let titleOrder = first.title.localizedStandardCompare(second.title)
+        if titleOrder != .orderedSame {
+            return titleOrder == .orderedAscending
+        }
+        return first.id < second.id
+    }
+
+    public static func compareByDueDateDescending(_ first: Coursework, _ second: Coursework) -> Bool {
+        switch (first.dueDate, second.dueDate) {
+        case let (d1?, d2?):
+            if d1 != d2 { return d1 > d2 }
+        case (_?, nil):
+            return true
+        case (nil, _?):
+            return false
+        case (nil, nil):
+            break
+        }
+        let titleOrder = first.title.localizedStandardCompare(second.title)
+        if titleOrder != .orderedSame {
+            return titleOrder == .orderedAscending
+        }
+        return first.id < second.id
     }
 }
 

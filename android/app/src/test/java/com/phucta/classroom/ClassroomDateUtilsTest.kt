@@ -396,8 +396,10 @@ class ClassroomDateUtilsTest {
             ClassroomDateUtils.ensureDayBoundaries()
             val startOfTodayTokyo = ClassroomDateUtils.startOfToday
 
-            // Tokyo is 2 hours ahead of VN, so startOfToday in Tokyo is 2 hours earlier in epoch millis
-            assertEquals(2 * 3600 * 1000L, startOfTodayVn - startOfTodayTokyo)
+            // Tokyo is 2 hours ahead of VN. When run between 22:00-24:00 VN, Tokyo has crossed midnight into the next day (-22h).
+            val diff = startOfTodayVn - startOfTodayTokyo
+            val expectedDiff = if (diff < 0) -22 * 3600 * 1000L else 2 * 3600 * 1000L
+            assertEquals(expectedDiff, diff)
         } finally {
             java.util.TimeZone.setDefault(originalTz)
             ClassroomDateUtils.ensureDayBoundaries()

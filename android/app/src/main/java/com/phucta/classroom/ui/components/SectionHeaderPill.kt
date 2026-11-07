@@ -22,7 +22,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.phucta.classroom.ui.theme.OutfitFontFamily
+import com.phucta.classroom.ui.theme.BeVietnamProFontFamily
+
+private val SectionPillShape = RoundedCornerShape(8.dp)
 
 @Composable
 fun SectionHeaderPill(
@@ -35,9 +37,9 @@ fun SectionHeaderPill(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(SectionPillShape)
             .background(color.copy(alpha = 0.08f))
-            .border(1.dp, color.copy(alpha = 0.18f), RoundedCornerShape(8.dp))
+            .border(1.dp, color.copy(alpha = 0.18f), SectionPillShape)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -51,6 +53,7 @@ fun SectionHeaderPill(
         Text(
             text = title,
             color = color,
+            fontFamily = BeVietnamProFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 13.sp,
             letterSpacing = 0.5.sp
@@ -66,7 +69,7 @@ fun SectionHeaderPill(
             Text(
                 text = "$count bài",
                 color = color,
-                fontFamily = OutfitFontFamily,
+                fontFamily = BeVietnamProFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp
             )

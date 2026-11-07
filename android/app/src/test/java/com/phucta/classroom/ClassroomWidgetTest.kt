@@ -7,6 +7,9 @@ import com.phucta.classroom.ui.components.EmberEmotion
 import com.phucta.classroom.ui.components.SubjectArtHelper
 import com.phucta.classroom.widget.ClassroomGlanceWidget
 import com.phucta.classroom.widget.ClassroomGlanceWidgetReceiver
+import com.phucta.classroom.widget.ClassroomSmallWidgetReceiver
+import com.phucta.classroom.widget.ClassroomMediumWidgetReceiver
+import com.phucta.classroom.widget.ClassroomLargeWidgetReceiver
 import android.content.Intent
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -29,6 +32,13 @@ class ClassroomWidgetTest {
         assertEquals(EmberEmotion.NORMAL, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 3, hasCompleted = false, isSmall = false))
         assertEquals(EmberEmotion.STRESSED, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 4, hasCompleted = false, isSmall = false))
         assertEquals(EmberEmotion.STRESSED, ClassroomGlanceWidget.getCharacterEmotion(activeCount = 5, hasCompleted = true, isSmall = false))
+    }
+
+    @Test
+    fun testEmberEmotionAllStatesSupported() {
+        val expectedStates = setOf("NORMAL", "STRESSED", "SLEEPING", "CELEBRATING", "STUDYING")
+        val actualStates = EmberEmotion.values().map { it.name }.toSet()
+        assertEquals(expectedStates, actualStates)
     }
 
     @Test
@@ -72,6 +82,15 @@ class ClassroomWidgetTest {
         assertEquals("Sắp tới", ClassroomGlanceWidget.getSectionCapsuleLabel("SẮP TỚI"))
         assertEquals("Ngày mai", ClassroomGlanceWidget.getSectionCapsuleLabel("NGÀY MAI"))
         assertEquals("Ngày mai", ClassroomGlanceWidget.getSectionCapsuleLabel("UNKNOWN"))
+    }
+
+    @Test
+    fun testCompactHeaderTitle() {
+        assertEquals("CẦN NỘP", ClassroomGlanceWidget.getCompactHeaderTitle("HÔM NAY & MAI"))
+        assertEquals("HÔM NAY", ClassroomGlanceWidget.getCompactHeaderTitle("HÔM NAY"))
+        assertEquals("QUÁ HẠN", ClassroomGlanceWidget.getCompactHeaderTitle("QUÁ HẠN"))
+        assertEquals("SẮP TỚI", ClassroomGlanceWidget.getCompactHeaderTitle("SẮP TỚI"))
+        assertEquals("NGÀY MAI", ClassroomGlanceWidget.getCompactHeaderTitle("NGÀY MAI"))
     }
 
     @Test
@@ -256,5 +275,14 @@ class ClassroomWidgetTest {
         // 5. Unrelated action should not be handled
         val handledUnrelated = receiver.processAction("android.intent.action.BATTERY_LOW")
         org.junit.Assert.assertFalse("Unrelated intent must not be handled", handledUnrelated)
+
+        // 6. Test all 3 specialized receivers (Small, Medium, Large)
+        val smallReceiver = ClassroomSmallWidgetReceiver()
+        val mediumReceiver = ClassroomMediumWidgetReceiver()
+        val largeReceiver = ClassroomLargeWidgetReceiver()
+
+        org.junit.Assert.assertTrue(smallReceiver.processAction("com.phucta.classroom.action.UPDATE_WIDGET"))
+        org.junit.Assert.assertTrue(mediumReceiver.processAction("com.phucta.classroom.action.UPDATE_WIDGET"))
+        org.junit.Assert.assertTrue(largeReceiver.processAction("com.phucta.classroom.action.UPDATE_WIDGET"))
     }
 }

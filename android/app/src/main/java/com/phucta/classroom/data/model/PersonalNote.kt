@@ -45,6 +45,17 @@ data class PersonalNote(
     val checklistProgress: Float
         get() = if (checklist.isEmpty()) 0f else completedChecklistCount.toFloat() / totalChecklistCount.toFloat()
 
+    fun searchRelevanceScore(tokens: List<String>, rawNormalizedQuery: String): Int {
+        return calculateSearchRelevance(
+            queryTokens = tokens,
+            rawNormalizedQuery = rawNormalizedQuery,
+            title = title,
+            courseName = courseName,
+            content = content,
+            checklistTitles = checklist.map { it.title }
+        )
+    }
+
     companion object {
         fun buildSearchIndex(
             title: String,

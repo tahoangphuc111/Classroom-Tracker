@@ -21,7 +21,7 @@ public struct MediumWidgetView: View {
             return "HÔM NAY"
         } else if hasTomorrow {
             return "NGÀY MAI"
-        } else if pending.contains(where: { $0.dueDate != nil && $0.dueDate! < Date() }) {
+        } else if pending.contains(where: { ($0.dueDate ?? .distantFuture) < Date() }) {
             return "QUÁ HẠN"
         } else if !pending.isEmpty {
             return "SẮP TỚI"
@@ -242,11 +242,11 @@ public struct MediumWidgetView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(sectionHeaderTitle == "HÔM NAY" ? "Hôm nay rảnh rồi!" : (sectionHeaderTitle == "SẮP TỚI" ? "Tạm thời rảnh rồi!" : "Ngày mai rảnh rồi!"))
+                Text(sectionHeaderTitle == "HÔM NAY" ? "Hôm nay hết bài rồi!" : (sectionHeaderTitle == "SẮP TỚI" ? "Chưa có bài sắp tới" : "Ngày mai không có bài!"))
                     .font(.system(size: 14, weight: .heavy, design: .rounded))
                     .foregroundStyle(ChunkyTheme.textPrimary)
 
-                Text("Tất cả môn học đã hoàn thành.\nNghỉ ngơi và thư giãn nhé.")
+                Text("Tất cả bài tập đều đã làm xong.")
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .lineSpacing(2)
                     .foregroundStyle(ChunkyTheme.textMuted)

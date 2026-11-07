@@ -2,7 +2,6 @@ package com.phucta.classroom.widget
 
 import android.content.Context
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -41,6 +40,8 @@ import com.phucta.classroom.data.local.TokenStorage
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.domain.BaoBaiBucketingUtils
 import com.phucta.classroom.ui.MainActivity
+import com.phucta.classroom.ui.components.DueDateBadgeColors
+import com.phucta.classroom.ui.components.DueDateBadgeDefaults
 import com.phucta.classroom.ui.components.EmberEmotion
 import com.phucta.classroom.ui.components.SubjectArtHelper
 import com.phucta.classroom.ui.theme.ChunkyColor
@@ -50,7 +51,11 @@ import kotlinx.coroutines.withContext
 
 private val WidgetRoundedFamily = FontFamily("sans-serif-rounded")
 
-class ClassroomGlanceWidget : GlanceAppWidget() {
+enum class WidgetSizeOverride {
+    AUTO, SMALL, MEDIUM, LARGE
+}
+
+open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = WidgetSizeOverride.AUTO) : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -96,8 +101,9 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
 
                 val activeCount = items.count { !it.isCompleted }
                 val hasCompleted = items.any { it.isCompleted }
-                listOf(44, 76, 78).forEach { sizeDp ->
-                    val emotion = getCharacterEmotion(activeCount, hasCompleted, isSmall = sizeDp <= 44)
+                val hasUrgent = items.any { it.isUrgent }
+                listOf(56, 88, 96).forEach { sizeDp ->
+                    val emotion = getCharacterEmotion(activeCount, hasCompleted, hasUrgent = hasUrgent, isSmall = sizeDp <= 56)
                     EmberWidgetBitmapHelper.getEmberBitmap(context, sizeDp, if (authed) emotion else EmberEmotion.NORMAL)
                 }
 
@@ -110,8 +116,18 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         provideContent {
             GlanceTheme {
                 val currentSize = androidx.glance.LocalSize.current
-                val isSmall = currentSize.width < 200.dp
-                val isLarge = currentSize.height >= 240.dp && !isSmall
+                val isSmall = when (sizeOverride) {
+                    WidgetSizeOverride.SMALL -> true
+                    WidgetSizeOverride.MEDIUM -> false
+                    WidgetSizeOverride.LARGE -> false
+                    WidgetSizeOverride.AUTO -> currentSize.width < 200.dp
+                }
+                val isLarge = when (sizeOverride) {
+                    WidgetSizeOverride.SMALL -> false
+                    WidgetSizeOverride.MEDIUM -> false
+                    WidgetSizeOverride.LARGE -> true
+                    WidgetSizeOverride.AUTO -> currentSize.height >= 240.dp && !isSmall
+                }
 
                 val skyBg = when {
                     isSmall -> R.drawable.bg_widget_sky
@@ -122,16 +138,17 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                 Box(
                     modifier = GlanceModifier
                         .fillMaxSize()
-                        .cornerRadius(18.dp)
+                        .cornerRadius(22.dp)
                         .background(ImageProvider(skyBg))
                         .clickable(actionStartActivity<MainActivity>())
-                        .padding(if (isSmall) 7.dp else 9.dp)
+                        .padding(if (isSmall) 8.dp else 10.dp)
                 ) {
                     when {
                         !isAuthenticated -> {
                             UnauthenticatedWidgetView(
                                 context = context,
-                                currentSize = currentSize
+                                isSmall = isSmall,
+                                isLarge = isLarge
                             )
                         }
                         isSmall -> {
@@ -161,11 +178,9 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
     @androidx.compose.runtime.Composable
     private fun UnauthenticatedWidgetView(
         context: Context,
-        currentSize: DpSize
+        isSmall: Boolean,
+        isLarge: Boolean
     ) {
-        val isSmall = currentSize.width < 200.dp
-        val isLarge = currentSize.height >= 240.dp && !isSmall
-
         when {
             isSmall -> {
                 Column(
@@ -173,23 +188,22 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 44, EmberEmotion.NORMAL)
+                    val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 56, EmberEmotion.NORMAL)
                     Image(
                         provider = ImageProvider(emberBitmap),
                         contentDescription = "Ember mascot",
-                        modifier = GlanceModifier.size(44.dp)
+                        modifier = GlanceModifier.size(56.dp)
                     )
-                    Spacer(modifier = GlanceModifier.height(5.dp))
+                    Spacer(modifier = GlanceModifier.height(6.dp))
                     Box(
                         modifier = GlanceModifier
                             .fillMaxWidth()
                             .background(ImageProvider(R.drawable.bg_widget_card))
-                            .padding(horizontal = 6.dp, vertical = 6.dp)
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Column(
-                            modifier = GlanceModifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalAlignment = Alignment.CenterVertically
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
                                 text = "Chưa đăng nhập",
@@ -197,17 +211,18 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextPrimary),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 10.5.sp
+                                    fontSize = 13.5.sp,
+                                    fontFamily = WidgetRoundedFamily
                                 )
                             )
                             Spacer(modifier = GlanceModifier.height(2.dp))
                             Text(
-                                text = "Chạm để đăng nhập",
+                                text = "Chạm để mở",
                                 maxLines = 1,
                                 style = TextStyle(
-                                    color = ColorProvider(ChunkyColor.PillBlue),
+                                    color = ColorProvider(ChunkyColor.ActionBlue),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 8.5.sp
+                                    fontSize = 11.5.sp
                                 )
                             )
                         }
@@ -217,82 +232,35 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
 
             isLarge -> {
                 Column(
-                    modifier = GlanceModifier.fillMaxSize()
+                    modifier = GlanceModifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = GlanceModifier.fillMaxWidth().height(90.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Spacer(modifier = GlanceModifier.width(18.dp))
-                        val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 78, EmberEmotion.NORMAL)
-                        Image(
-                            provider = ImageProvider(emberBitmap),
-                            contentDescription = "Ember mascot",
-                            modifier = GlanceModifier.size(78.dp)
+                    val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 88, EmberEmotion.NORMAL)
+                    Image(
+                        provider = ImageProvider(emberBitmap),
+                        contentDescription = "Ember mascot",
+                        modifier = GlanceModifier.size(88.dp)
+                    )
+                    Spacer(modifier = GlanceModifier.height(10.dp))
+                    Text(
+                        text = "Chưa đăng nhập",
+                        style = TextStyle(
+                            color = ColorProvider(Color.White),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 22.sp,
+                            fontFamily = WidgetRoundedFamily
                         )
-                        Spacer(modifier = GlanceModifier.width(14.dp))
-                        Column {
-                            Text(
-                                text = "BÁO BÀI NGÀY MAI",
-                                style = TextStyle(
-                                    color = ColorProvider(ChunkyColor.ButterYellow),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
-                                )
-                            )
-                            Spacer(modifier = GlanceModifier.height(4.dp))
-                            Text(
-                                text = "Chưa đăng nhập",
-                                style = TextStyle(
-                                    color = ColorProvider(Color.White),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 24.sp
-                                )
-                            )
-                        }
-                        Spacer(modifier = GlanceModifier.defaultWeight())
-                    }
-
-                    Spacer(modifier = GlanceModifier.height(6.dp))
-
-                    Box(
-                        modifier = GlanceModifier
-                            .defaultWeight()
-                            .fillMaxWidth()
-                            .background(ImageProvider(R.drawable.bg_widget_card_large))
-                            .padding(horizontal = 14.dp, vertical = 10.dp)
-                    ) {
-                        Column(
-                            modifier = GlanceModifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Image(
-                                provider = ImageProvider(R.drawable.ic_widget_person),
-                                contentDescription = "Sign in",
-                                modifier = GlanceModifier.size(42.dp)
-                            )
-                            Spacer(modifier = GlanceModifier.height(8.dp))
-                            Text(
-                                text = "Chạm để đăng nhập",
-                                style = TextStyle(
-                                    color = ColorProvider(ChunkyColor.TextPrimary),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp
-                                )
-                            )
-                            Spacer(modifier = GlanceModifier.height(4.dp))
-                            Text(
-                                text = "Đăng nhập tài khoản Google Classroom để theo dõi bài tập cần hoàn thành cho ngày mai.",
-                                maxLines = 3,
-                                style = TextStyle(
-                                    color = ColorProvider(ChunkyColor.TextMuted),
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 11.5.sp
-                                )
-                            )
-                        }
-                    }
+                    )
+                    Spacer(modifier = GlanceModifier.height(4.dp))
+                    Text(
+                        text = "Chạm để kết nối Classroom",
+                        style = TextStyle(
+                            color = ColorProvider(ChunkyColor.ButterYellow),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    )
                 }
             }
 
@@ -302,24 +270,15 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
-                        modifier = GlanceModifier.width(98.dp).fillMaxHeight(),
+                        modifier = GlanceModifier.width(108.dp).fillMaxHeight(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 76, EmberEmotion.NORMAL)
+                        val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 96, EmberEmotion.NORMAL)
                         Image(
                             provider = ImageProvider(emberBitmap),
                             contentDescription = "Ember mascot",
-                            modifier = GlanceModifier.size(76.dp)
-                        )
-                        Spacer(modifier = GlanceModifier.height(4.dp))
-                        Text(
-                            text = "Báo bài",
-                            style = TextStyle(
-                                color = ColorProvider(ChunkyColor.ButterYellow),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp
-                            )
+                            modifier = GlanceModifier.size(96.dp)
                         )
                     }
 
@@ -330,7 +289,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             .defaultWeight()
                             .fillMaxHeight()
                             .background(ImageProvider(R.drawable.bg_widget_card))
-                            .padding(horizontal = 10.dp, vertical = 8.dp)
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
                     ) {
                         Column(
                             modifier = GlanceModifier.fillMaxSize(),
@@ -340,25 +299,26 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             Image(
                                 provider = ImageProvider(R.drawable.ic_widget_person),
                                 contentDescription = "Sign in",
-                                modifier = GlanceModifier.size(26.dp)
+                                modifier = GlanceModifier.size(36.dp)
                             )
-                            Spacer(modifier = GlanceModifier.height(4.dp))
+                            Spacer(modifier = GlanceModifier.height(6.dp))
                             Text(
                                 text = "Chưa đăng nhập",
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextPrimary),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
+                                    fontSize = 18.sp,
+                                    fontFamily = WidgetRoundedFamily
                                 )
                             )
-                            Spacer(modifier = GlanceModifier.height(2.dp))
+                            Spacer(modifier = GlanceModifier.height(3.dp))
                             Text(
-                                text = "Chạm để đăng nhập Google Classroom",
-                                maxLines = 2,
+                                text = "Chạm để kết nối Classroom",
+                                maxLines = 1,
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextMuted),
                                     fontWeight = FontWeight.Medium,
-                                    fontSize = 10.sp
+                                    fontSize = 13.sp
                                 )
                             )
                         }
@@ -376,16 +336,14 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         val activeItems = courseworkList.filter { !it.isCompleted }
         val displayItems = if (activeItems.isEmpty()) courseworkList else activeItems
         val sectionTitle = getSectionHeaderTitle(courseworkList)
-        val shownCount = if (displayItems.size == 1) 1 else 2
-        val extraCount = maxOf(0, activeItems.size - shownCount)
-
-        val emotion = getCharacterEmotion(activeItems.size, courseworkList.any { it.isCompleted }, isSmall = true)
+        val compactHeader = getCompactHeaderTitle(sectionTitle)
+        val emotion = getCharacterEmotion(activeItems.size, courseworkList.any { it.isCompleted }, hasUrgent = activeItems.any { it.isUrgent }, isSmall = true)
 
         Column(
             modifier = GlanceModifier.fillMaxSize()
         ) {
             Row(
-                modifier = GlanceModifier.fillMaxWidth(),
+                modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
@@ -397,57 +355,37 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         style = TextStyle(
                             color = ColorProvider(Color.White),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 26.sp,
+                            fontSize = 34.sp,
                             fontFamily = WidgetRoundedFamily
                         )
                     )
-                    Spacer(modifier = GlanceModifier.width(3.dp))
+                    Spacer(modifier = GlanceModifier.width(5.dp))
 
                     if (activeItems.isEmpty() && courseworkList.isNotEmpty()) {
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_seal_check),
                             contentDescription = "Completed",
-                            modifier = GlanceModifier.size(13.dp)
+                            modifier = GlanceModifier.size(20.dp)
                         )
                     } else {
                         Text(
-                            text = if (extraCount > 0 && sectionTitle.length > 11) "BÁO BÀI" else sectionTitle,
+                            text = compactHeader,
                             maxLines = 1,
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 9.sp,
+                                fontSize = 12.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
                     }
-
-                    if (extraCount > 0) {
-                        Spacer(modifier = GlanceModifier.width(3.dp))
-                        Box(
-                            modifier = GlanceModifier
-                                .cornerRadius(8.dp)
-                                .background(ChunkyColor.UrgentAccent)
-                                .padding(horizontal = 4.dp, vertical = 1.dp)
-                        ) {
-                            Text(
-                                text = "+$extraCount",
-                                style = TextStyle(
-                                    color = ColorProvider(Color.White),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 8.5.sp,
-                                    fontFamily = WidgetRoundedFamily
-                                )
-                            )
-                        }
-                    }
                 }
 
-                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 44, emotion)
+                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 56, emotion)
                 Image(
                     provider = ImageProvider(emberBitmap),
                     contentDescription = "Ember mascot",
-                    modifier = GlanceModifier.size(44.dp)
+                    modifier = GlanceModifier.size(56.dp)
                 )
             }
 
@@ -458,7 +396,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     .defaultWeight()
                     .fillMaxWidth()
                     .background(ImageProvider(R.drawable.bg_widget_card))
-                    .padding(horizontal = 7.dp, vertical = 6.dp)
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
             ) {
                 if (displayItems.isEmpty()) {
                     Column(
@@ -466,30 +404,20 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Image(
-                                provider = ImageProvider(R.drawable.ic_widget_sparkles),
-                                contentDescription = "Done",
-                                modifier = GlanceModifier.size(11.dp)
-                            )
-                            Spacer(modifier = GlanceModifier.width(3.dp))
-                            Text(
-                                text = "Ngày mai rảnh rồi!",
-                                maxLines = 1,
-                                style = TextStyle(
-                                    color = ColorProvider(ChunkyColor.TextPrimary),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp
-                                )
-                            )
-                        }
-                        Spacer(modifier = GlanceModifier.height(2.dp))
+                        Image(
+                            provider = ImageProvider(R.drawable.ic_widget_sparkles),
+                            contentDescription = "Done",
+                            modifier = GlanceModifier.size(24.dp)
+                        )
+                        Spacer(modifier = GlanceModifier.height(4.dp))
                         Text(
-                            text = "Nghỉ ngơi nhé",
+                            text = "Hết bài rồi!",
+                            maxLines = 1,
                             style = TextStyle(
-                                color = ColorProvider(ChunkyColor.TextMuted),
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 10.sp
+                                color = ColorProvider(ChunkyColor.TextPrimary),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                fontFamily = WidgetRoundedFamily
                             )
                         )
                     }
@@ -498,7 +426,8 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     val theme = SubjectArtHelper.theme(item.courseName, item.title)
 
                     Column(
-                        modifier = GlanceModifier.fillMaxSize()
+                        modifier = GlanceModifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
                             modifier = GlanceModifier.fillMaxWidth(),
@@ -506,59 +435,58 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         ) {
                             Box(
                                 modifier = GlanceModifier
-                                    .size(22.dp)
-                                    .cornerRadius(6.dp)
-                                    .background(theme.color),
+                                    .size(26.dp)
+                                    .cornerRadius(7.dp)
+                                    .background(theme.color.copy(alpha = 0.16f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Image(
                                     provider = ImageProvider(theme.iconRes),
                                     contentDescription = null,
-                                    modifier = GlanceModifier.size(12.dp)
+                                    modifier = GlanceModifier.size(15.dp)
                                 )
                             }
-                            Spacer(modifier = GlanceModifier.width(5.dp))
+                            Spacer(modifier = GlanceModifier.width(6.dp))
                             Text(
                                 text = item.courseName,
                                 maxLines = 1,
                                 modifier = GlanceModifier.defaultWeight(),
                                 style = TextStyle(
-                                    color = ColorProvider(theme.color),
+                                    color = ColorProvider(theme.textColor),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.5.sp
+                                    fontSize = 13.5.sp
                                 )
                             )
-                            Spacer(modifier = GlanceModifier.width(3.dp))
+                            Spacer(modifier = GlanceModifier.width(4.dp))
                             if (item.isCompleted) {
                                 Image(
                                     provider = ImageProvider(R.drawable.ic_widget_check_circle),
-                                    contentDescription = "Turned in",
-                                    modifier = GlanceModifier.size(12.dp)
+                                    contentDescription = "Done",
+                                    modifier = GlanceModifier.size(16.dp)
                                 )
                             } else {
                                 val labelText = formatDeadlinePill(item)
+                                val badgeColors = getWidgetBadgeColors(item)
                                 Box(
                                     modifier = GlanceModifier
                                         .cornerRadius(6.dp)
-                                        .background(if (item.isUrgent) ChunkyColor.UrgentAccent.copy(alpha = 0.12f) else Color(0x0F000000))
-                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                        .background(badgeColors.background)
+                                        .padding(horizontal = 6.dp, vertical = 2.5.dp)
                                 ) {
                                     Text(
                                         text = labelText,
                                         maxLines = 1,
                                         style = TextStyle(
-                                            color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else ChunkyColor.TextMuted),
+                                            color = ColorProvider(badgeColors.text),
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 8.5.sp
+                                            fontSize = 11.sp
                                         )
                                     )
                                 }
                             }
                         }
 
-                        Spacer(modifier = GlanceModifier.height(3.dp))
-                        Box(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ChunkyColor.Hairline)) {}
-                        Spacer(modifier = GlanceModifier.height(3.dp))
+                        Spacer(modifier = GlanceModifier.height(6.dp))
 
                         Text(
                             text = item.title.ifEmpty { item.courseName },
@@ -566,34 +494,10 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             style = TextStyle(
                                 color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
+                                fontSize = 17.5.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
-
-                        Spacer(modifier = GlanceModifier.height(5.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Image(
-                                provider = ImageProvider(R.drawable.ic_widget_clock),
-                                contentDescription = "Due time",
-                                modifier = GlanceModifier.size(10.dp)
-                            )
-                            Spacer(modifier = GlanceModifier.width(4.dp))
-                            Text(
-                                text = dueLabel(item),
-                                style = TextStyle(
-                                    color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else if (item.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted),
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 10.sp,
-                                    fontFamily = WidgetRoundedFamily
-                                )
-                            )
-                        }
-
-                        Spacer(modifier = GlanceModifier.defaultWeight())
                     }
                 } else {
                     val itemsToShow = displayItems.take(2)
@@ -608,64 +512,54 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                             ) {
                                 Box(
                                     modifier = GlanceModifier
-                                        .size(21.dp)
-                                        .cornerRadius(5.5.dp)
-                                        .background(theme.color),
+                                        .size(26.dp)
+                                        .cornerRadius(7.dp)
+                                        .background(theme.color.copy(alpha = 0.16f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Image(
                                         provider = ImageProvider(theme.iconRes),
                                         contentDescription = null,
-                                        modifier = GlanceModifier.size(11.dp)
+                                        modifier = GlanceModifier.size(15.dp)
                                     )
                                 }
-                                Spacer(modifier = GlanceModifier.width(6.dp))
-                                Column(
-                                    modifier = GlanceModifier.defaultWeight()
-                                ) {
-                                    Text(
-                                        text = item.title.ifEmpty { item.courseName },
-                                        maxLines = 1,
-                                        style = TextStyle(
-                                            color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 12.sp
-                                        )
+                                Spacer(modifier = GlanceModifier.width(7.dp))
+                                Text(
+                                    text = item.title.ifEmpty { item.courseName },
+                                    maxLines = 1,
+                                    modifier = GlanceModifier.defaultWeight(),
+                                    style = TextStyle(
+                                        color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        fontFamily = WidgetRoundedFamily
                                     )
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = item.courseName,
-                                            maxLines = 1,
-                                            style = TextStyle(
-                                                color = ColorProvider(ChunkyColor.TextMuted),
-                                                fontSize = 9.5.sp
-                                            )
-                                        )
-                                        Text(
-                                            text = " • ",
-                                            style = TextStyle(
-                                                color = ColorProvider(ChunkyColor.TextMuted),
-                                                fontSize = 7.5.sp
-                                            )
-                                        )
-                                        Text(
-                                            text = dueLabel(item),
-                                            maxLines = 1,
-                                            style = TextStyle(
-                                                color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else if (item.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted),
-                                                fontWeight = FontWeight.Medium,
-                                                fontSize = 9.5.sp
-                                            )
-                                        )
-                                    }
-                                }
+                                )
+                                Spacer(modifier = GlanceModifier.width(4.dp))
                                 if (item.isCompleted) {
-                                    Spacer(modifier = GlanceModifier.width(3.dp))
                                     Image(
                                         provider = ImageProvider(R.drawable.ic_widget_check_circle),
                                         contentDescription = "Done",
-                                        modifier = GlanceModifier.size(12.dp)
+                                        modifier = GlanceModifier.size(15.dp)
                                     )
+                                } else {
+                                    val badgeColors = getWidgetBadgeColors(item)
+                                    Box(
+                                        modifier = GlanceModifier
+                                            .cornerRadius(6.dp)
+                                            .background(badgeColors.background)
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = formatDeadlinePill(item),
+                                            maxLines = 1,
+                                            style = TextStyle(
+                                                color = ColorProvider(badgeColors.text),
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 10.5.sp
+                                            )
+                                        )
+                                    }
                                 }
                             }
                             if (index < itemsToShow.size - 1) {
@@ -687,19 +581,20 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         val completedItems = courseworkList.filter { it.isCompleted }
         val displayItems = if (activeItems.isEmpty()) courseworkList else (activeItems + completedItems)
         val sectionTitle = getSectionHeaderTitle(courseworkList)
+        val compactHeader = getCompactHeaderTitle(sectionTitle)
 
-        val emotion = getCharacterEmotion(activeItems.size, completedItems.isNotEmpty(), isSmall = false)
+        val emotion = getCharacterEmotion(activeItems.size, completedItems.isNotEmpty(), hasUrgent = activeItems.any { it.isUrgent }, isSmall = false)
 
         Row(
             modifier = GlanceModifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
-                modifier = GlanceModifier.width(98.dp).fillMaxHeight(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = GlanceModifier.width(110.dp).fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    modifier = GlanceModifier.padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -707,25 +602,25 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                         style = TextStyle(
                             color = ColorProvider(Color.White),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 32.sp,
+                            fontSize = 44.sp,
                             fontFamily = WidgetRoundedFamily
                         )
                     )
-                    Spacer(modifier = GlanceModifier.width(4.dp))
+                    Spacer(modifier = GlanceModifier.width(6.dp))
                     if (activeItems.isEmpty() && courseworkList.isNotEmpty()) {
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_seal_check),
-                            contentDescription = "Completed",
-                            modifier = GlanceModifier.size(16.dp)
+                            contentDescription = "Done",
+                            modifier = GlanceModifier.size(24.dp)
                         )
                     } else {
                         Text(
-                            text = sectionTitle,
+                            text = compactHeader,
                             maxLines = 1,
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 9.sp,
+                                fontSize = 13.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
@@ -734,11 +629,11 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
 
                 Spacer(modifier = GlanceModifier.defaultWeight())
 
-                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 76, emotion)
+                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 96, emotion)
                 Image(
                     provider = ImageProvider(emberBitmap),
                     contentDescription = "Ember mascot",
-                    modifier = GlanceModifier.size(76.dp).padding(bottom = 6.dp)
+                    modifier = GlanceModifier.size(96.dp)
                 )
             }
 
@@ -749,304 +644,215 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
                     .defaultWeight()
                     .fillMaxHeight()
                     .background(ImageProvider(R.drawable.bg_widget_card))
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
-                Column(
-                    modifier = GlanceModifier.fillMaxSize()
-                ) {
-                    Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
+                if (displayItems.isEmpty()) {
+                    Column(
+                        modifier = GlanceModifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Image(
+                            provider = ImageProvider(R.drawable.ic_widget_sparkles),
+                            contentDescription = "Free day",
+                            modifier = GlanceModifier.size(38.dp)
+                        )
+                        Spacer(modifier = GlanceModifier.height(6.dp))
+                        val emptyTitle = if (sectionTitle == "HÔM NAY") "Hôm nay hết bài rồi!" else "Ngày mai không có bài!"
                         Text(
-                            text = sectionTitle,
+                            text = emptyTitle,
+                            maxLines = 1,
                             style = TextStyle(
-                                color = ColorProvider(ChunkyColor.TextMuted),
+                                color = ColorProvider(ChunkyColor.TextPrimary),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp
+                                fontSize = 21.sp,
+                                fontFamily = WidgetRoundedFamily
                             )
                         )
-
-                        Spacer(modifier = GlanceModifier.defaultWeight())
-
-                        if (activeItems.size > 3) {
-                            Box(
-                                modifier = GlanceModifier
-                                    .cornerRadius(8.dp)
-                                    .background(ChunkyColor.UrgentAccent.copy(alpha = 0.12f))
-                                    .padding(horizontal = 6.dp, vertical = 1.5.dp)
-                            ) {
-                                Text(
-                                    text = "+${activeItems.size - 3}",
-                                    style = TextStyle(
-                                        color = ColorProvider(ChunkyColor.UrgentAccent),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 8.5.sp
-                                    )
-                                )
-                            }
-                        } else if (activeItems.isNotEmpty()) {
-                            Text(
-                                text = "${activeItems.size}",
-                                style = TextStyle(
-                                    color = ColorProvider(ChunkyColor.TextMuted),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 9.sp
-                                )
+                        Spacer(modifier = GlanceModifier.height(2.dp))
+                        Text(
+                            text = "Không còn bài tập cần nộp",
+                            maxLines = 1,
+                            style = TextStyle(
+                                color = ColorProvider(ChunkyColor.TextMuted),
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 13.5.sp
                             )
-                        } else if (courseworkList.isNotEmpty()) {
-                            Image(
-                                provider = ImageProvider(R.drawable.ic_widget_check_circle),
-                                contentDescription = "All done",
-                                modifier = GlanceModifier.size(11.dp)
-                            )
-                        }
+                        )
                     }
+                } else if (displayItems.size == 1) {
+                    val item = displayItems.first()
+                    val theme = SubjectArtHelper.theme(item.courseName, item.title)
 
-                    Spacer(modifier = GlanceModifier.height(3.dp))
-                    Box(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ChunkyColor.Hairline)) {}
-                    Spacer(modifier = GlanceModifier.height(3.dp))
-
-                    if (displayItems.isEmpty()) {
+                    Column(
+                        modifier = GlanceModifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Row(
-                            modifier = GlanceModifier.defaultWeight().fillMaxWidth(),
+                            modifier = GlanceModifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
                                 modifier = GlanceModifier
-                                    .cornerRadius(15.dp)
-                                    .background(ChunkyColor.ButterYellow.copy(alpha = 0.35f))
-                                    .padding(6.dp)
+                                    .size(42.dp)
+                                    .cornerRadius(12.dp)
+                                    .background(theme.color.copy(alpha = 0.16f)),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Image(
-                                    provider = ImageProvider(R.drawable.ic_widget_sparkles),
-                                    contentDescription = "Free day",
-                                    modifier = GlanceModifier.size(18.dp)
+                                    provider = ImageProvider(theme.iconRes),
+                                    contentDescription = null,
+                                    modifier = GlanceModifier.size(24.dp)
                                 )
                             }
-                            Spacer(modifier = GlanceModifier.width(8.dp))
-                            Column {
-                                val emptyTitle = if (sectionTitle == "HÔM NAY") "Hôm nay rảnh rồi!" else if (sectionTitle == "SẮP TỚI") "Tạm thời rảnh rồi!" else "Ngày mai rảnh rồi!"
-                                Text(
-                                    text = emptyTitle,
-                                    style = TextStyle(
-                                        color = ColorProvider(ChunkyColor.TextPrimary),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.5.sp
-                                    )
+                            Spacer(modifier = GlanceModifier.width(10.dp))
+                            Text(
+                                text = item.courseName,
+                                maxLines = 1,
+                                modifier = GlanceModifier.defaultWeight(),
+                                style = TextStyle(
+                                    color = ColorProvider(theme.textColor),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 17.sp,
+                                    fontFamily = WidgetRoundedFamily
                                 )
-                                Spacer(modifier = GlanceModifier.height(2.dp))
-                                Text(
-                                    text = "Tất cả môn học đã hoàn thành.\nNghỉ ngơi và thư giãn nhé.",
-                                    maxLines = 2,
-                                    style = TextStyle(
-                                        color = ColorProvider(ChunkyColor.TextMuted),
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 10.sp
+                            )
+                            Spacer(modifier = GlanceModifier.width(6.dp))
+                            if (item.isCompleted) {
+                                Box(
+                                    modifier = GlanceModifier
+                                        .cornerRadius(8.dp)
+                                        .background(ChunkyColor.CompletedBadgeBackground)
+                                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                                ) {
+                                    Text(
+                                        text = "Đã xong",
+                                        style = TextStyle(
+                                            color = ColorProvider(ChunkyColor.CompletedBadgeText),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            fontFamily = WidgetRoundedFamily
+                                        )
                                     )
-                                )
+                                }
+                            } else {
+                                val badgeColors = getWidgetBadgeColors(item)
+                                Box(
+                                    modifier = GlanceModifier
+                                        .cornerRadius(8.dp)
+                                        .background(badgeColors.background)
+                                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                                ) {
+                                    Text(
+                                        text = formatDeadlinePill(item),
+                                        style = TextStyle(
+                                            color = ColorProvider(badgeColors.text),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            fontFamily = WidgetRoundedFamily
+                                        )
+                                    )
+                                }
                             }
                         }
-                    } else if (displayItems.size == 1) {
-                        val item = displayItems.first()
-                        val theme = SubjectArtHelper.theme(item.courseName, item.title)
 
-                        Column(
-                            modifier = GlanceModifier.defaultWeight().fillMaxWidth()
-                        ) {
+                        Spacer(modifier = GlanceModifier.height(8.dp))
+
+                        Text(
+                            text = item.title.ifEmpty { item.courseName },
+                            maxLines = 2,
+                            style = TextStyle(
+                                color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 24.sp,
+                                fontFamily = WidgetRoundedFamily
+                            )
+                        )
+                    }
+                } else {
+                    val itemsToShow = displayItems.take(3)
+                    val isTwoItems = itemsToShow.size <= 2
+                    val badgeSize = if (isTwoItems) 38 else 32
+                    val iconSize = if (isTwoItems) 22 else 18
+                    val titleFontSize = if (isTwoItems) 18.0 else 16.0
+                    val subFontSize = if (isTwoItems) 13.5 else 12.0
+                    val tagFontSize = if (isTwoItems) 12.5 else 11.5
+
+                    Column(
+                        modifier = GlanceModifier.fillMaxSize()
+                    ) {
+                        itemsToShow.forEachIndexed { index, item ->
+                            val theme = SubjectArtHelper.theme(item.courseName, item.title)
                             Row(
-                                modifier = GlanceModifier.fillMaxWidth(),
+                                modifier = GlanceModifier.defaultWeight().fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
                                     modifier = GlanceModifier
-                                        .size(30.dp)
-                                        .cornerRadius(8.dp)
-                                        .background(theme.color),
+                                        .size(badgeSize.dp)
+                                        .cornerRadius(if (isTwoItems) 10.dp else 8.dp)
+                                        .background(theme.color.copy(alpha = 0.16f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Image(
                                         provider = ImageProvider(theme.iconRes),
                                         contentDescription = null,
-                                        modifier = GlanceModifier.size(16.dp)
+                                        modifier = GlanceModifier.size(iconSize.dp)
                                     )
                                 }
-                                Spacer(modifier = GlanceModifier.width(8.dp))
-                                Text(
-                                    text = item.courseName,
-                                    maxLines = 1,
-                                    modifier = GlanceModifier.defaultWeight(),
-                                    style = TextStyle(
-                                        color = ColorProvider(theme.color),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.5.sp
-                                    )
-                                )
-                                Spacer(modifier = GlanceModifier.width(4.dp))
-                                if (item.isCompleted) {
-                                    Box(
-                                        modifier = GlanceModifier
-                                            .cornerRadius(8.dp)
-                                            .background(ChunkyColor.SuccessGreen.copy(alpha = 0.12f))
-                                            .padding(horizontal = 7.dp, vertical = 3.dp)
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Image(
-                                                provider = ImageProvider(R.drawable.ic_widget_check_circle),
-                                                contentDescription = "Done",
-                                                modifier = GlanceModifier.size(11.dp)
-                                            )
-                                            Spacer(modifier = GlanceModifier.width(3.dp))
-                                            Text(
-                                                text = "Đã xong",
-                                                style = TextStyle(
-                                                    color = ColorProvider(ChunkyColor.SuccessGreen),
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 9.5.sp
-                                                )
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    Box(
-                                        modifier = GlanceModifier
-                                            .cornerRadius(8.dp)
-                                            .background(if (item.isUrgent) ChunkyColor.UrgentAccent.copy(alpha = 0.12f) else Color(0x0F000000))
-                                            .padding(horizontal = 7.dp, vertical = 3.dp)
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Image(
-                                                provider = ImageProvider(R.drawable.ic_widget_clock),
-                                                contentDescription = "Clock",
-                                                modifier = GlanceModifier.size(9.dp)
-                                            )
-                                            Spacer(modifier = GlanceModifier.width(3.dp))
-                                            Text(
-                                                text = formatDeadlinePill(item),
-                                                style = TextStyle(
-                                                    color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else ChunkyColor.TextMuted),
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 9.5.sp
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = GlanceModifier.height(4.dp))
-
-                            Text(
-                                text = item.title.ifEmpty { item.courseName },
-                                maxLines = 2,
-                                style = TextStyle(
-                                    color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp
-                                )
-                            )
-
-                            Spacer(modifier = GlanceModifier.height(3.dp))
-
-                            val descSnippet = item.description?.lines()?.firstOrNull { it.isNotBlank() }?.trim().orEmpty()
-                            val subtitleText = descSnippet.ifEmpty {
-                                if (item.isCompleted) "Bài tập đã được đánh dấu hoàn thành"
-                                else if (item.isUrgent) "Hạn nộp sắp tới, hãy hoàn thành sớm"
-                                else "Chạm để xem chi tiết bài tập"
-                            }
-                            Text(
-                                text = subtitleText,
-                                maxLines = 2,
-                                style = TextStyle(
-                                    color = ColorProvider(ChunkyColor.TextMuted),
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 11.sp
-                                )
-                            )
-                        }
-                    } else {
-                        val itemsToShow = displayItems.take(3)
-                        val isTwoItems = displayItems.size <= 2
-                        val badgeSize = if (isTwoItems) 28 else 25
-                        val cornerRad = if (isTwoItems) 6.5f else 6f
-                        val iconSize = if (isTwoItems) 13 else 12
-                        val titleFontSize = if (isTwoItems) 13.5 else 12.5
-                        val subFontSize = if (isTwoItems) 10.5 else 9.5
-                        val tagFontSize = if (isTwoItems) 10.0 else 9.0
-
-                        Column(
-                            modifier = GlanceModifier.defaultWeight().fillMaxWidth()
-                        ) {
-                            itemsToShow.forEachIndexed { index, item ->
-                                val theme = SubjectArtHelper.theme(item.courseName, item.title)
-                                Row(
-                                    modifier = GlanceModifier.defaultWeight().fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
+                                Spacer(modifier = GlanceModifier.width(10.dp))
+                                Column(
+                                    modifier = GlanceModifier.defaultWeight()
                                 ) {
+                                    Text(
+                                        text = item.title.ifEmpty { item.courseName },
+                                        maxLines = 1,
+                                        style = TextStyle(
+                                            color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = titleFontSize.sp,
+                                            fontFamily = WidgetRoundedFamily
+                                        )
+                                    )
+                                    Text(
+                                        text = item.courseName,
+                                        maxLines = 1,
+                                        style = TextStyle(
+                                            color = ColorProvider(ChunkyColor.TextMuted),
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = subFontSize.sp
+                                        )
+                                    )
+                                }
+                                Spacer(modifier = GlanceModifier.width(6.dp))
+                                if (item.isCompleted) {
+                                    Image(
+                                        provider = ImageProvider(R.drawable.ic_widget_check_circle),
+                                        contentDescription = "Done",
+                                        modifier = GlanceModifier.size(18.dp)
+                                    )
+                                } else {
+                                    val timeText = formatDeadlinePill(item)
+                                    val badgeColors = getWidgetBadgeColors(item)
                                     Box(
                                         modifier = GlanceModifier
-                                            .size(badgeSize.dp)
-                                            .cornerRadius(cornerRad.dp)
-                                            .background(theme.color),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Image(
-                                            provider = ImageProvider(theme.iconRes),
-                                            contentDescription = null,
-                                            modifier = GlanceModifier.size(iconSize.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = GlanceModifier.width(9.dp))
-                                    Column(
-                                        modifier = GlanceModifier.defaultWeight()
+                                            .cornerRadius(7.dp)
+                                            .background(badgeColors.background)
+                                            .padding(horizontal = 8.dp, vertical = 3.5.dp)
                                     ) {
                                         Text(
-                                            text = item.title.ifEmpty { item.courseName },
-                                            maxLines = 1,
+                                            text = timeText,
                                             style = TextStyle(
-                                                color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
+                                                color = ColorProvider(badgeColors.text),
                                                 fontWeight = FontWeight.Bold,
-                                                fontSize = titleFontSize.sp
-                                            )
-                                        )
-                                        Text(
-                                            text = item.courseName,
-                                            maxLines = 1,
-                                            style = TextStyle(
-                                                color = ColorProvider(ChunkyColor.TextMuted),
-                                                fontSize = subFontSize.sp
+                                                fontSize = tagFontSize.sp
                                             )
                                         )
                                     }
-                                    Spacer(modifier = GlanceModifier.width(4.dp))
-                                    if (item.isCompleted) {
-                                        Image(
-                                            provider = ImageProvider(R.drawable.ic_widget_check_circle),
-                                            contentDescription = "Done",
-                                            modifier = GlanceModifier.size(13.dp)
-                                        )
-                                    } else {
-                                        val timeText = formatDeadlinePill(item)
-                                        Box(
-                                            modifier = GlanceModifier
-                                                .cornerRadius(7.dp)
-                                                .background(if (item.isUrgent) ChunkyColor.UrgentAccent.copy(alpha = 0.12f) else Color(0x0F000000))
-                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                        ) {
-                                            Text(
-                                                text = timeText,
-                                                style = TextStyle(
-                                                    color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else ChunkyColor.TextMuted),
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = tagFontSize.sp
-                                                )
-                                            )
-                                        }
-                                    }
                                 }
-                                if (index < itemsToShow.size - 1) {
-                                    Box(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ChunkyColor.Hairline)) {}
-                                }
+                            }
+                            if (index < itemsToShow.size - 1) {
+                                Box(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ChunkyColor.Hairline)) {}
                             }
                         }
                     }
@@ -1066,46 +872,45 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         val sectionTitle = getSectionHeaderTitle(courseworkList)
         val sectionCapsule = getSectionCapsuleLabel(sectionTitle)
 
-        val emotion = getCharacterEmotion(activeItems.size, completedItems.isNotEmpty(), isSmall = false)
+        val emotion = getCharacterEmotion(activeItems.size, completedItems.isNotEmpty(), hasUrgent = activeItems.any { it.isUrgent }, isSmall = false)
 
         Column(
             modifier = GlanceModifier.fillMaxSize()
         ) {
+            // Header sitting on sky gradient
             Row(
-                modifier = GlanceModifier.fillMaxWidth().height(90.dp),
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Spacer(modifier = GlanceModifier.width(18.dp))
-
-                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 78, emotion)
+                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 88, emotion)
                 Image(
                     provider = ImageProvider(emberBitmap),
                     contentDescription = "Ember mascot",
-                    modifier = GlanceModifier.size(78.dp)
+                    modifier = GlanceModifier.size(88.dp)
                 )
 
                 Spacer(modifier = GlanceModifier.width(14.dp))
 
                 Column {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "${activeItems.size}",
                             style = TextStyle(
                                 color = ColorProvider(Color.White),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 40.sp,
+                                fontSize = 46.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
-                        Spacer(modifier = GlanceModifier.width(7.dp))
+                        Spacer(modifier = GlanceModifier.width(8.dp))
                         Text(
-                            text = if (activeItems.isEmpty()) "HOÀN TẤT" else "CẦN NỘP",
+                            text = if (activeItems.isEmpty()) "HOÀN TẤT" else getCompactHeaderTitle(sectionTitle),
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
+                                fontSize = 16.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
@@ -1113,51 +918,26 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
 
                     Spacer(modifier = GlanceModifier.height(4.dp))
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val isUrgentGroup = activeItems.any { it.isUrgent }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = GlanceModifier
                                 .cornerRadius(8.dp)
-                                .background(if (isUrgentGroup) ChunkyColor.UrgentAccent else Color(0x38FFFFFF))
-                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                                .background(Color.White.copy(alpha = 0.24f))
+                                .padding(horizontal = 9.dp, vertical = 3.5.dp)
                         ) {
+                            val summaryText = if (completedItems.isNotEmpty()) {
+                                "$sectionCapsule • Đã xong ${completedItems.size}"
+                            } else {
+                                "$sectionCapsule: ${activeItems.size} bài"
+                            }
                             Text(
-                                text = "$sectionCapsule: ${activeItems.size}",
+                                text = summaryText,
                                 style = TextStyle(
                                     color = ColorProvider(Color.White),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 9.sp
+                                    fontSize = 12.sp
                                 )
                             )
-                        }
-
-                        if (completedItems.isNotEmpty()) {
-                            Spacer(modifier = GlanceModifier.width(5.dp))
-                            Box(
-                                modifier = GlanceModifier
-                                    .cornerRadius(8.dp)
-                                    .background(Color(0xD92E7D32))
-                                    .padding(horizontal = 7.dp, vertical = 2.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Image(
-                                        provider = ImageProvider(R.drawable.ic_widget_seal_check),
-                                        contentDescription = "Done count",
-                                        modifier = GlanceModifier.size(9.dp)
-                                    )
-                                    Spacer(modifier = GlanceModifier.width(3.dp))
-                                    Text(
-                                        text = "Đã xong: ${completedItems.size}",
-                                        style = TextStyle(
-                                            color = ColorProvider(Color.White),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 9.sp
-                                        )
-                                    )
-                                }
-                            }
                         }
                     }
                 }
@@ -1165,314 +945,217 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.height(6.dp))
 
+            // White Card Content
             Box(
                 modifier = GlanceModifier
                     .defaultWeight()
                     .fillMaxWidth()
                     .background(ImageProvider(R.drawable.bg_widget_card_large))
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                Column(
-                    modifier = GlanceModifier.fillMaxSize()
-                ) {
-                    Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
+                if (displayItems.isEmpty()) {
+                    Column(
+                        modifier = GlanceModifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Image(
+                            provider = ImageProvider(R.drawable.ic_widget_sparkles),
+                            contentDescription = "Great",
+                            modifier = GlanceModifier.size(44.dp)
+                        )
+                        Spacer(modifier = GlanceModifier.height(8.dp))
+                        val emptyTitle = if (sectionTitle == "HÔM NAY") "Hôm nay hết bài rồi!" else "Ngày mai không có bài!"
                         Text(
-                            text = sectionTitle,
+                            text = emptyTitle,
                             style = TextStyle(
-                                color = ColorProvider(ChunkyColor.TextMuted),
+                                color = ColorProvider(ChunkyColor.TextPrimary),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 10.5.sp
+                                fontSize = 22.sp,
+                                fontFamily = WidgetRoundedFamily
                             )
                         )
-
-                        Spacer(modifier = GlanceModifier.defaultWeight())
-
-                        if (activeItems.isNotEmpty()) {
-                            Box(
-                                modifier = GlanceModifier
-                                    .cornerRadius(8.dp)
-                                    .background(ChunkyColor.UrgentAccent.copy(alpha = 0.12f))
-                                    .padding(horizontal = 7.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "${activeItems.size}",
-                                    style = TextStyle(
-                                        color = ColorProvider(ChunkyColor.UrgentAccent),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp
-                                    )
-                                )
-                            }
-                        } else if (courseworkList.isNotEmpty()) {
-                            Image(
-                                provider = ImageProvider(R.drawable.ic_widget_check_circle),
-                                contentDescription = "Done",
-                                modifier = GlanceModifier.size(12.dp)
+                        Spacer(modifier = GlanceModifier.height(4.dp))
+                        Text(
+                            text = "Tất cả bài tập đều đã làm xong",
+                            style = TextStyle(
+                                color = ColorProvider(ChunkyColor.TextMuted),
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.5.sp
                             )
-                        }
+                        )
                     }
+                } else if (displayItems.size == 1) {
+                    val item = displayItems.first()
+                    val theme = SubjectArtHelper.theme(item.courseName, item.title)
 
-                    Spacer(modifier = GlanceModifier.height(3.dp))
-                    Box(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ChunkyColor.Hairline)) {}
-                    Spacer(modifier = GlanceModifier.height(3.dp))
-
-                    if (displayItems.isEmpty()) {
-                        Column(
-                            modifier = GlanceModifier.defaultWeight().fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                    Column(
+                        modifier = GlanceModifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = GlanceModifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = GlanceModifier
+                                    .size(48.dp)
+                                    .cornerRadius(14.dp)
+                                    .background(theme.color.copy(alpha = 0.16f)),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Image(
-                                    provider = ImageProvider(R.drawable.ic_widget_sparkles),
-                                    contentDescription = "Great",
-                                    modifier = GlanceModifier.size(16.dp)
-                                )
-                                Spacer(modifier = GlanceModifier.width(6.dp))
-                                Text(
-                                    text = "Ngày mai rảnh rồi!",
-                                    style = TextStyle(
-                                        color = ColorProvider(ChunkyColor.TextPrimary),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 17.sp
-                                    )
-                                )
-                                Spacer(modifier = GlanceModifier.width(6.dp))
-                                Image(
-                                    provider = ImageProvider(R.drawable.ic_widget_sparkles),
-                                    contentDescription = "Great",
-                                    modifier = GlanceModifier.size(16.dp)
+                                    provider = ImageProvider(theme.iconRes),
+                                    contentDescription = null,
+                                    modifier = GlanceModifier.size(26.dp)
                                 )
                             }
-                            Spacer(modifier = GlanceModifier.height(4.dp))
+                            Spacer(modifier = GlanceModifier.width(12.dp))
                             Text(
-                                text = "Tất cả môn học đã hoàn thành. Nghỉ ngơi nhé!",
+                                text = item.courseName,
+                                maxLines = 1,
+                                modifier = GlanceModifier.defaultWeight(),
                                 style = TextStyle(
-                                    color = ColorProvider(ChunkyColor.TextMuted),
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 12.sp
+                                    color = ColorProvider(theme.textColor),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.5.sp,
+                                    fontFamily = WidgetRoundedFamily
                                 )
                             )
+                            Spacer(modifier = GlanceModifier.width(8.dp))
+                            if (item.isCompleted) {
+                                Box(
+                                    modifier = GlanceModifier
+                                        .cornerRadius(8.dp)
+                                        .background(ChunkyColor.CompletedBadgeBackground)
+                                        .padding(horizontal = 12.dp, vertical = 5.dp)
+                                ) {
+                                    Text(
+                                        text = "Đã xong",
+                                        style = TextStyle(
+                                            color = ColorProvider(ChunkyColor.CompletedBadgeText),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.5.sp,
+                                            fontFamily = WidgetRoundedFamily
+                                        )
+                                    )
+                                }
+                            } else {
+                                val badgeColors = getWidgetBadgeColors(item)
+                                Box(
+                                    modifier = GlanceModifier
+                                        .cornerRadius(8.dp)
+                                        .background(badgeColors.background)
+                                        .padding(horizontal = 12.dp, vertical = 5.dp)
+                                ) {
+                                    Text(
+                                        text = formatDeadlinePill(item),
+                                        style = TextStyle(
+                                            color = ColorProvider(badgeColors.text),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.5.sp,
+                                            fontFamily = WidgetRoundedFamily
+                                        )
+                                    )
+                                }
+                            }
                         }
-                    } else if (displayItems.size == 1) {
-                        val item = displayItems.first()
-                        val theme = SubjectArtHelper.theme(item.courseName, item.title)
 
-                        Column(
-                            modifier = GlanceModifier.defaultWeight().fillMaxWidth()
-                        ) {
+                        Spacer(modifier = GlanceModifier.height(14.dp))
+
+                        Text(
+                            text = item.title.ifEmpty { item.courseName },
+                            maxLines = 3,
+                            style = TextStyle(
+                                color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 28.sp,
+                                fontFamily = WidgetRoundedFamily
+                            )
+                        )
+                    }
+                } else {
+                    val itemsToShow = displayItems.take(4)
+                    val isCompactList = itemsToShow.size <= 3
+                    val badgeSize = if (isCompactList) 42 else 36
+                    val iconSize = if (isCompactList) 22 else 20
+                    val titleFontSize = if (isCompactList) 18.5 else 17.0
+                    val subFontSize = if (isCompactList) 14.0 else 13.0
+                    val tagFontSize = if (isCompactList) 13.0 else 12.0
+
+                    Column(
+                        modifier = GlanceModifier.fillMaxSize()
+                    ) {
+                        itemsToShow.forEachIndexed { index, item ->
+                            val theme = SubjectArtHelper.theme(item.courseName, item.title)
                             Row(
-                                modifier = GlanceModifier.fillMaxWidth(),
+                                modifier = GlanceModifier.defaultWeight().fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
                                     modifier = GlanceModifier
-                                        .size(48.dp)
-                                        .cornerRadius(13.dp)
-                                        .background(theme.color),
+                                        .size(badgeSize.dp)
+                                        .cornerRadius(if (isCompactList) 12.dp else 10.dp)
+                                        .background(theme.color.copy(alpha = 0.16f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Image(
                                         provider = ImageProvider(theme.iconRes),
                                         contentDescription = null,
-                                        modifier = GlanceModifier.size(24.dp)
+                                        modifier = GlanceModifier.size(iconSize.dp)
                                     )
                                 }
                                 Spacer(modifier = GlanceModifier.width(12.dp))
-                                Column(
-                                    modifier = GlanceModifier.defaultWeight()
-                                ) {
+                                Column(modifier = GlanceModifier.defaultWeight()) {
+                                    Text(
+                                        text = item.title.ifEmpty { item.courseName },
+                                        maxLines = 1,
+                                        style = TextStyle(
+                                            color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = titleFontSize.sp,
+                                            fontFamily = WidgetRoundedFamily
+                                        )
+                                    )
                                     Text(
                                         text = item.courseName,
                                         maxLines = 1,
                                         style = TextStyle(
-                                            color = ColorProvider(theme.color),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 16.5.sp
-                                        )
-                                    )
-                                    Text(
-                                        text = item.formattedFullDueDate,
-                                        maxLines = 1,
-                                        style = TextStyle(
                                             color = ColorProvider(ChunkyColor.TextMuted),
-                                            fontSize = 11.sp
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = subFontSize.sp
                                         )
                                     )
                                 }
-                                Spacer(modifier = GlanceModifier.width(4.dp))
+                                Spacer(modifier = GlanceModifier.width(8.dp))
                                 if (item.isCompleted) {
-                                    Box(
-                                        modifier = GlanceModifier
-                                            .cornerRadius(8.dp)
-                                            .background(ChunkyColor.SuccessGreen.copy(alpha = 0.12f))
-                                            .padding(horizontal = 7.dp, vertical = 3.dp)
-                                    ) {
-                                        Text(
-                                            text = "Đã xong",
-                                            style = TextStyle(
-                                                color = ColorProvider(ChunkyColor.SuccessGreen),
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 10.sp
-                                            )
-                                        )
-                                    }
+                                    Image(
+                                        provider = ImageProvider(R.drawable.ic_widget_check_circle),
+                                        contentDescription = "Done",
+                                        modifier = GlanceModifier.size(20.dp)
+                                    )
                                 } else {
+                                    val timeText = formatDeadlinePill(item)
+                                    val badgeColors = getWidgetBadgeColors(item)
                                     Box(
                                         modifier = GlanceModifier
                                             .cornerRadius(8.dp)
-                                            .background(if (item.isUrgent) ChunkyColor.UrgentAccent.copy(alpha = 0.12f) else Color(0x0F000000))
-                                            .padding(horizontal = 7.dp, vertical = 3.dp)
+                                            .background(badgeColors.background)
+                                            .padding(horizontal = 9.dp, vertical = 4.dp)
                                     ) {
                                         Text(
-                                            text = formatDeadlinePill(item),
+                                            text = timeText,
                                             style = TextStyle(
-                                                color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else ChunkyColor.TextMuted),
+                                                color = ColorProvider(badgeColors.text),
                                                 fontWeight = FontWeight.Bold,
-                                                fontSize = 10.5.sp
+                                                fontSize = tagFontSize.sp
                                             )
                                         )
                                     }
                                 }
                             }
-
-                            Spacer(modifier = GlanceModifier.height(6.dp))
-                            Box(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ChunkyColor.Hairline)) {}
-                            Spacer(modifier = GlanceModifier.height(6.dp))
-
-                            Text(
-                                text = item.title.ifEmpty { item.courseName },
-                                maxLines = 3,
-                                style = TextStyle(
-                                    color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp
-                                )
-                            )
-
-                            Spacer(modifier = GlanceModifier.height(4.dp))
-
-                            val descSnippet = item.description?.lines()?.firstOrNull { it.isNotBlank() }?.trim().orEmpty()
-                            val subtitleText = descSnippet.ifEmpty {
-                                if (item.isCompleted) "Bài tập đã được đánh dấu hoàn thành"
-                                else "Chạm để xem chi tiết bài tập và nộp bài"
-                            }
-                            Text(
-                                text = subtitleText,
-                                maxLines = 2,
-                                style = TextStyle(
-                                    color = ColorProvider(ChunkyColor.TextMuted),
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 12.sp
-                                )
-                            )
-                        }
-                    } else {
-                        val itemsToShow = displayItems.take(4)
-                        val count = itemsToShow.count()
-                        val badgeSize = when (count) {
-                            2 -> 44
-                            3 -> 38
-                            else -> 32
-                        }
-                        val cornerRad = when (count) {
-                            2 -> 11f
-                            3 -> 9f
-                            else -> 8f
-                        }
-                        val iconSize = when (count) {
-                            2 -> 22
-                            3 -> 18
-                            else -> 15
-                        }
-                        val titleFontSize = when (count) {
-                            2 -> 17.5
-                            3 -> 15.5
-                            else -> 14.0
-                        }
-                        val tagFontSize = when (count) {
-                            2 -> 12.0
-                            3 -> 11.0
-                            else -> 10.0
-                        }
-                        val subFontSize = maxOf(9.5, titleFontSize - 3.5)
-
-                        Column(
-                            modifier = GlanceModifier.defaultWeight().fillMaxWidth()
-                        ) {
-                            itemsToShow.forEachIndexed { index, item ->
-                                val theme = SubjectArtHelper.theme(item.courseName, item.title)
-                                Row(
-                                    modifier = GlanceModifier.defaultWeight().fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = GlanceModifier
-                                            .size(badgeSize.dp)
-                                            .cornerRadius(cornerRad.dp)
-                                            .background(theme.color),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Image(
-                                            provider = ImageProvider(theme.iconRes),
-                                            contentDescription = null,
-                                            modifier = GlanceModifier.size(iconSize.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = GlanceModifier.width(14.dp))
-                                    Column(
-                                        modifier = GlanceModifier.defaultWeight()
-                                    ) {
-                                        Text(
-                                            text = item.title.ifEmpty { item.courseName },
-                                            maxLines = 1,
-                                            style = TextStyle(
-                                                color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = titleFontSize.sp
-                                            )
-                                        )
-                                        Text(
-                                            text = item.courseName,
-                                            maxLines = 1,
-                                            style = TextStyle(
-                                                color = ColorProvider(ChunkyColor.TextMuted),
-                                                fontSize = subFontSize.sp
-                                            )
-                                        )
-                                    }
-                                    Spacer(modifier = GlanceModifier.width(4.dp))
-                                    if (item.isCompleted) {
-                                        Image(
-                                            provider = ImageProvider(R.drawable.ic_widget_check_circle),
-                                            contentDescription = "Done",
-                                            modifier = GlanceModifier.size(13.dp)
-                                        )
-                                    } else {
-                                        val timeText = formatDeadlinePill(item)
-                                        Box(
-                                            modifier = GlanceModifier
-                                                .cornerRadius(7.dp)
-                                                .background(if (item.isUrgent) ChunkyColor.UrgentAccent.copy(alpha = 0.12f) else Color(0x0F000000))
-                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                        ) {
-                                            Text(
-                                                text = timeText,
-                                                style = TextStyle(
-                                                    color = ColorProvider(if (item.isUrgent) ChunkyColor.UrgentAccent else ChunkyColor.TextMuted),
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = tagFontSize.sp
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
-                                if (index < itemsToShow.size - 1) {
-                                    Box(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ChunkyColor.Hairline)) {}
-                                }
+                            if (index < itemsToShow.size - 1) {
+                                Box(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ChunkyColor.Hairline)) {}
                             }
                         }
                     }
@@ -1482,11 +1165,21 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
     }
 
     companion object {
-        fun getCharacterEmotion(activeCount: Int, hasCompleted: Boolean, isSmall: Boolean = false): EmberEmotion {
+        fun getWidgetBadgeColors(item: Coursework): DueDateBadgeColors {
+            return DueDateBadgeDefaults.colors(
+                isCompleted = item.isCompleted,
+                isOverdue = item.isOverdue || item.isPast,
+                isDueToday = item.isDueToday,
+                isDueTomorrow = item.isDueTomorrow,
+                isUrgent = item.isUrgent
+            )
+        }
+
+        fun getCharacterEmotion(activeCount: Int, hasCompleted: Boolean, hasUrgent: Boolean = false, isSmall: Boolean = false): EmberEmotion {
             val stressedThreshold = if (isSmall) 3 else 4
             return when {
                 activeCount == 0 -> if (hasCompleted) EmberEmotion.CELEBRATING else EmberEmotion.SLEEPING
-                activeCount >= stressedThreshold -> EmberEmotion.STRESSED
+                hasUrgent || activeCount >= stressedThreshold -> EmberEmotion.STRESSED
                 else -> EmberEmotion.NORMAL
             }
         }
@@ -1519,6 +1212,16 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
             }
         }
 
+        fun getCompactHeaderTitle(sectionTitle: String): String {
+            return when (sectionTitle) {
+                "HÔM NAY & MAI" -> "CẦN NỘP"
+                "HÔM NAY" -> "HÔM NAY"
+                "QUÁ HẠN" -> "QUÁ HẠN"
+                "SẮP TỚI" -> "SẮP TỚI"
+                else -> "NGÀY MAI"
+            }
+        }
+
         fun formatDeadlinePill(item: Coursework): String {
             return if (item.isDueTomorrow) {
                 if (item.timeOnlyString == "Cuối ngày") "Mai" else item.timeOnlyString
@@ -1540,3 +1243,7 @@ class ClassroomGlanceWidget : GlanceAppWidget() {
         }
     }
 }
+
+class ClassroomSmallGlanceWidget : ClassroomGlanceWidget(WidgetSizeOverride.SMALL)
+class ClassroomMediumGlanceWidget : ClassroomGlanceWidget(WidgetSizeOverride.MEDIUM)
+class ClassroomLargeGlanceWidget : ClassroomGlanceWidget(WidgetSizeOverride.LARGE)

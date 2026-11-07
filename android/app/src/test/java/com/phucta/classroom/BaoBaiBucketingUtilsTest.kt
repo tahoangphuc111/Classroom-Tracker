@@ -480,6 +480,36 @@ class BaoBaiBucketingUtilsTest {
     }
 
     @Test
+    fun testCourseworkBuckets_WidgetItems_CompletedTomorrowRemainsTier1() {
+        val dueTomorrow = ClassroomDateUtils.startOfTomorrow + 3600_000L
+        val dueLater = ClassroomDateUtils.startOfDayAfter + 86400_000L
+        val taskTomorrowDone = Coursework(
+            id = "tomorrow_done_task",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "Toán 12 Đã nộp",
+            dueEpochMillis = dueTomorrow,
+            status = SubmissionStatus.TURNED_IN
+        )
+        val taskLaterPending = Coursework(
+            id = "later_task",
+            courseId = "c1",
+            courseName = "Lý",
+            title = "Lý 12 Sắp tới",
+            dueEpochMillis = dueLater,
+            status = SubmissionStatus.PENDING
+        )
+
+        val buckets = BaoBaiBucketingUtils.computeBuckets(listOf(taskTomorrowDone, taskLaterPending))
+        assertEquals(1, buckets.widgetItems.size)
+        assertEquals("tomorrow_done_task", buckets.widgetItems.first().id)
+        assertEquals(
+            buckets.widgetItems,
+            BaoBaiBucketingUtils.getTomorrowCoursework(listOf(taskTomorrowDone, taskLaterPending), includeCompleted = true)
+        )
+    }
+
+    @Test
     fun testSorting_SearchFilter_PreFiltersUsingSearchIndex() {
         val item1 = Coursework(
             id = "1",

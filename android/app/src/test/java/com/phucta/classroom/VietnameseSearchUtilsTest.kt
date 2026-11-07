@@ -164,4 +164,34 @@ class VietnameseSearchUtilsTest {
         assertEquals("dai so tuyen tinh", item.normalizedTitle)
         assertEquals("toan cao cap", item.normalizedCourseName)
     }
+
+    @Test
+    fun testTokenizeSearchQuery_WithPunctuation() {
+        val tokensWithComma = com.phucta.classroom.data.model.tokenizeSearchQuery("Toán, Lý".normalizeForVietnameseSearch())
+        assertEquals(listOf("toan", "ly"), tokensWithComma)
+
+        val tokensWithDashAndBrackets = com.phucta.classroom.data.model.tokenizeSearchQuery("Toán - Đại số (chương 1)".normalizeForVietnameseSearch())
+        assertEquals(listOf("toan", "dai", "so", "chuong", "1"), tokensWithDashAndBrackets)
+    }
+
+    @Test
+    fun testCalculateSearchRelevance_ChecklistTitles() {
+        val note = com.phucta.classroom.data.model.PersonalNote(
+            id = "note_test",
+            title = "Chuẩn bị bài tập",
+            content = "Xem lại sách giáo khoa",
+            checklist = listOf(
+                com.phucta.classroom.data.model.ChecklistItem(id = "item1", title = "Làm đề thi thử"),
+                com.phucta.classroom.data.model.ChecklistItem(id = "item2", title = "Mang máy tính Casio")
+            )
+        )
+
+        val tokensExact = com.phucta.classroom.data.model.tokenizeSearchQuery("Làm đề thi thử")
+        val scoreExactChecklist = note.searchRelevanceScore(tokensExact, "lam de thi thu")
+        assertTrue("Checklist exact match must produce high score", scoreExactChecklist >= 60)
+
+        val tokensCasio = com.phucta.classroom.data.model.tokenizeSearchQuery("Casio")
+        val scoreCasio = note.searchRelevanceScore(tokensCasio, "casio")
+        assertTrue("Checklist token match must produce positive score", scoreCasio > 0)
+    }
 }

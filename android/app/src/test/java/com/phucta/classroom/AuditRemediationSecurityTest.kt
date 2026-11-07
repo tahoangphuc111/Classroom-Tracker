@@ -127,28 +127,28 @@ class AuditRemediationSecurityTest {
 
     @Test
     fun testUI04_GeographyRecognition_WordBoundariesAndCompoundExclusions() {
-        // Compound exclusions: "Địa điểm" and "Địa chỉ" must not trigger "ĐỊA"
+        // Compound exclusions: "Địa điểm" and "Địa chỉ" in history courses must retain "SỬ"
         val courseHistoryWithLocation = "Lịch sử 12 - Địa điểm P.301"
-        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category(courseHistoryWithLocation))
+        assertEquals(SubjectCategory.HISTORY, SubjectArtHelper.category(courseHistoryWithLocation))
         assertEquals("SỬ", SubjectArtHelper.badgeCode(courseHistoryWithLocation))
 
         val courseHistoryWithAddress = "Lịch sử Đảng - Địa chỉ học: Tầng 3"
-        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category(courseHistoryWithAddress))
+        assertEquals(SubjectCategory.HISTORY, SubjectArtHelper.category(courseHistoryWithAddress))
         assertEquals("SỬ", SubjectArtHelper.badgeCode(courseHistoryWithAddress))
 
-        // Legitimate Geography courses
+        // Geography courses outside core 11 fall back to OTHER with prefix
         assertEquals("ĐỊA", SubjectArtHelper.badgeCode("Địa lý 12"))
         assertEquals("ĐỊA", SubjectArtHelper.badgeCode("Địa lí Việt Nam"))
-        assertEquals("ĐỊA", SubjectArtHelper.badgeCode("Môn Địa 10 - Địa điểm: Hội trường"))
-        assertEquals("ĐỊA", SubjectArtHelper.badgeCode("Dia ly lop 11"))
+        assertEquals("MÔN", SubjectArtHelper.badgeCode("Môn Địa 10 - Địa điểm: Hội trường"))
+        assertEquals("DIA", SubjectArtHelper.badgeCode("Dia ly lop 11"))
 
-        // Pure location name without subject must not classify as HISTORY_OR_GEOGRAPHY
+        // Pure location name without subject must not classify as HISTORY
         assertNotEquals(
-            SubjectCategory.HISTORY_OR_GEOGRAPHY,
+            SubjectCategory.HISTORY,
             SubjectArtHelper.category("Địa điểm họp phụ huynh học sinh")
         )
         assertNotEquals(
-            SubjectCategory.HISTORY_OR_GEOGRAPHY,
+            SubjectCategory.HISTORY,
             SubjectArtHelper.category("Địa chỉ nhận bằng tốt nghiệp")
         )
     }

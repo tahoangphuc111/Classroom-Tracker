@@ -6,14 +6,16 @@ import androidx.compose.ui.graphics.Color
 object ChunkyColor {
     val SkyTop = Color(0xFF61C7FF)
     val SkyBottom = Color(0xFF249EFA)
+    val ActionBlue = Color(0xFF0284C7)
+    val TextLink = Color(0xFF0369A1)
 
     val EmberTop = Color(0xFFFF7A38)
     val EmberBottom = Color(0xFFF05226)
     val EmberCore = Color(0xFFFFDC61)
 
     val TextPrimary = Color(0xFF1F293D)
-    val TextMuted = Color(0xFF7587A3)
-    val TextTertiary = Color(0xFF9EABB8)
+    val TextMuted = Color(0xFF53647E)
+    val TextTertiary = Color(0xFF718096)
 
     val UrgentAccent = Color(0xFFF04047)
     val ButterYellow = Color(0xFFFFDC61)

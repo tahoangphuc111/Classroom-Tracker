@@ -185,7 +185,7 @@ struct AssignmentListEmptyView: View {
         case .tomorrow: return "Ngày mai không có bài tập"
         case .todayAndTomorrow: return "Không có bài tập hôm nay & mai"
         case .allUpcoming: return "Không có bài tập sắp tới"
-        case .past: return "Không có bài tập quá hạn!"
+        case .past: return "Không có bài tập quá hạn"
         case .completed: return "Chưa có bài tập hoàn thành"
         case .notes: return "Chưa có ghi chú nào"
         case .widgetPreview: return "Xem trước Widget"
@@ -198,13 +198,13 @@ struct AssignmentListEmptyView: View {
         }
         switch filter {
         case .tomorrow:
-            return "Tất cả bài tập ngày mai đã hoàn thành hoặc chưa có bài mới. Bạn có thể yên tâm nghỉ ngơi!"
+            return "Tất cả bài tập ngày mai đã hoàn thành hoặc chưa có bài mới."
         case .todayAndTomorrow:
-            return "Bạn đã làm xong mọi việc cần nộp hôm nay và ngày mai. Hãy nghỉ ngơi nhé!"
+            return "Tất cả bài tập cần nộp hôm nay và ngày mai đều đã hoàn thành."
         case .allUpcoming:
             return "Hiện không có bài tập nào trong danh sách theo dõi."
         case .past:
-            return "Tuyệt vời! Bạn đang duy trì tiến độ hoàn hảo, không có bài tập nào bị trễ."
+            return "Không có bài tập nào bị quá hạn."
         case .completed:
             return "Các bài tập bạn đã nộp hoặc đánh dấu hoàn thành sẽ xuất hiện tại đây."
         case .notes:

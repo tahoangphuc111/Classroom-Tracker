@@ -1,5 +1,8 @@
 <resources>
     <string name="app_name">Classroom Tracker</string>
-    <string name="widget_name">Báo bài Ngày mai</string>
+    <string name="widget_name">Báo bài (Vừa 4x2)</string>
+    <string name="widget_name_small">Báo bài (Nhỏ 2x2)</string>
+    <string name="widget_name_medium">Báo bài (Vừa 4x2)</string>
+    <string name="widget_name_large">Báo bài (Lớn 4x4)</string>
     <string name="widget_description">Theo dõi danh sách môn học và bài tập cần chuẩn bị cho ngày mai.</string>
 </resources>

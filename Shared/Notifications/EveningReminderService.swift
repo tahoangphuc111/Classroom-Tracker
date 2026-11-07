@@ -164,13 +164,13 @@ public final class EveningReminderService: ObservableObject {
         if pendingItems.isEmpty {
             if strictlyTomorrowItems.isEmpty {
                 return (
-                    title: "Ngày mai rảnh rồi!",
-                    body: "Không có bài tập nào cần nộp ngày mai. Nghỉ ngơi thật tốt nhé!"
+                    title: "Báo bài ngày mai",
+                    body: "Không có bài tập nào cần nộp ngày mai."
                 )
             } else {
                 return (
-                    title: "Đã xong hết bài ngày mai!",
-                    body: "Tất cả \(strictlyTomorrowItems.count) bài tập ngày mai đều đã hoàn thành. Nhớ kiểm tra cặp sách nhé!"
+                    title: "Báo bài ngày mai",
+                    body: "Tất cả \(strictlyTomorrowItems.count) bài tập ngày mai đều đã hoàn thành."
                 )
             }
         } else {

@@ -64,7 +64,7 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
         self.updatedAt = updatedAt
 
         let normTitle = title.normalizedForVietnameseSearch()
-        let normCourse = (courseName?.isEmpty ?? true) ? "" : courseName!.normalizedForVietnameseSearch()
+        let normCourse = courseName?.normalizedForVietnameseSearch() ?? ""
         let normContent = content.isEmpty ? "" : content.normalizedForVietnameseSearch()
         self.normalizedTitle = normTitle
         self.normalizedCourseName = normCourse
@@ -90,7 +90,7 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
         self.updatedAt = (try? container.decode(Date.self, forKey: .updatedAt)) ?? Date()
 
         let normTitle = title.normalizedForVietnameseSearch()
-        let normCourse = (self.courseName?.isEmpty ?? true) ? "" : self.courseName!.normalizedForVietnameseSearch()
+        let normCourse = self.courseName?.normalizedForVietnameseSearch() ?? ""
         let normContent = content.isEmpty ? "" : content.normalizedForVietnameseSearch()
         self.normalizedTitle = normTitle
         self.normalizedCourseName = normCourse
@@ -127,7 +127,11 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
     }
 
     public var completedChecklistCount: Int {
-        checklist.filter(\.isCompleted).count
+        var count = 0
+        for item in checklist {
+            if item.isCompleted { count += 1 }
+        }
+        return count
     }
 
     public var totalChecklistCount: Int {

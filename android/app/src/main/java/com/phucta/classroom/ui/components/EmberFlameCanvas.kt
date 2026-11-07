@@ -27,7 +27,8 @@ enum class EmberEmotion {
     NORMAL,
     STRESSED,
     SLEEPING,
-    CELEBRATING
+    CELEBRATING,
+    STUDYING
 }
 
 private val GlossColor = Color.White.copy(alpha = 0.45f)
@@ -110,6 +111,7 @@ fun EmberFlameCanvas(
         EmberEmotion.STRESSED -> R.drawable.ember_stressed
         EmberEmotion.SLEEPING -> R.drawable.ember_sleeping
         EmberEmotion.CELEBRATING -> R.drawable.ember_celebrating
+        EmberEmotion.STUDYING -> R.drawable.ember_studying
     }
 
     Image(
@@ -166,7 +168,7 @@ fun ProceduralEmberFlameCanvas(
                 var sparkle3Path: Path? = null
 
                 when (emotion) {
-                    EmberEmotion.NORMAL -> {
+                    EmberEmotion.NORMAL, EmberEmotion.STUDYING -> {
                         eyeStroke = Stroke(width = w * 0.035f, cap = StrokeCap.Round)
                         mouthPath = Path().apply {
                             moveTo(w * 0.46f, h * 0.66f)
@@ -322,6 +324,15 @@ fun ProceduralEmberFlameCanvas(
                             drawCircle(color = Color.White, radius = pupilRadius, center = leftPupilCenter)
                             drawCircle(color = EyeColor, radius = eyeRadius, center = rightEyeCenter)
                             drawCircle(color = Color.White, radius = pupilRadius, center = rightPupilCenter)
+                            mouthPath?.let { drawPath(path = it, color = EyeColor, style = mouthStroke) }
+                        }
+                        EmberEmotion.STUDYING -> {
+                            drawCircle(color = EyeColor, radius = eyeRadius, center = leftEyeCenter)
+                            drawCircle(color = Color.White, radius = pupilRadius, center = Offset(leftPupilCenter.x, leftPupilCenter.y + pupilRadius * 0.25f))
+                            drawCircle(color = EyeColor, radius = eyeRadius, center = rightEyeCenter)
+                            drawCircle(color = Color.White, radius = pupilRadius, center = Offset(rightPupilCenter.x, rightPupilCenter.y + pupilRadius * 0.25f))
+                            drawCircle(color = BlushColor, radius = blushRadiusSleeping * 0.8f, center = leftBlushCenterSleeping)
+                            drawCircle(color = BlushColor, radius = blushRadiusSleeping * 0.8f, center = rightBlushCenterSleeping)
                             mouthPath?.let { drawPath(path = it, color = EyeColor, style = mouthStroke) }
                         }
                         EmberEmotion.SLEEPING -> {

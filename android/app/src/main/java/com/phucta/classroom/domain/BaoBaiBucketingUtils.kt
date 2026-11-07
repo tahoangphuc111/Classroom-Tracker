@@ -129,6 +129,68 @@ object BaoBaiBucketingUtils {
         return copy
     }
 
+    private fun sortIndices(
+        indices: IntArray,
+        low: Int,
+        high: Int,
+        scores: IntArray,
+        items: List<Coursework>,
+        comparator: Comparator<Coursework>
+    ) {
+        if (high - low < 16) {
+            for (i in low + 1..high) {
+                val key = indices[i]
+                val keyScore = scores[key]
+                val keyItem = items[key]
+                var j = i - 1
+                while (j >= low) {
+                    val curr = indices[j]
+                    val currScore = scores[curr]
+                    val cmp = if (currScore != keyScore) keyScore.compareTo(currScore) else comparator.compare(items[curr], keyItem)
+                    if (cmp > 0) {
+                        indices[j + 1] = indices[j]
+                        j--
+                    } else {
+                        break
+                    }
+                }
+                indices[j + 1] = key
+            }
+            return
+        }
+
+        val mid = (low + high) ushr 1
+        val pivotIdx = indices[mid]
+        val pScore = scores[pivotIdx]
+        val pItem = items[pivotIdx]
+
+        var i = low
+        var j = high
+        while (i <= j) {
+            while (true) {
+                val curr = indices[i]
+                val s = scores[curr]
+                val cmp = if (s != pScore) pScore.compareTo(s) else comparator.compare(items[curr], pItem)
+                if (cmp < 0) i++ else break
+            }
+            while (true) {
+                val curr = indices[j]
+                val s = scores[curr]
+                val cmp = if (s != pScore) pScore.compareTo(s) else comparator.compare(items[curr], pItem)
+                if (cmp > 0) j-- else break
+            }
+            if (i <= j) {
+                val tmp = indices[i]
+                indices[i] = indices[j]
+                indices[j] = tmp
+                i++
+                j--
+            }
+        }
+        if (low < j) sortIndices(indices, low, j, scores, items, comparator)
+        if (i < high) sortIndices(indices, i, high, scores, items, comparator)
+    }
+
     private fun sortPreFiltered(
         items: List<Coursework>,
         searchTokens: List<String>,
@@ -151,11 +213,8 @@ object BaoBaiBucketingUtils {
                     normalizedCourseName = item.normalizedCourseName
                 )
             }
-            val indices = Array(count) { it }
-            indices.sortWith { i1, i2 ->
-                val diff = scores[i2].compareTo(scores[i1])
-                if (diff != 0) diff else comparator.compare(items[i1], items[i2])
-            }
+            val indices = IntArray(count) { it }
+            sortIndices(indices, 0, count - 1, scores, items, comparator)
             val result = ArrayList<Coursework>(count)
             for (i in 0 until count) {
                 result.add(items[indices[i]])
@@ -285,10 +344,10 @@ object BaoBaiBucketingUtils {
             if (due != null) {
                 if (due in startOfTomorrow until startOfDayAfter) {
                     tomorrowFiltered.add(item)
-                } else if (due in now until startOfTomorrow) {
+                } else if (due in ClassroomDateUtils.startOfToday until startOfTomorrow) {
                     if (item.isCompleted) {
                         if (includeCompleted) todayCompletedFiltered.add(item)
-                    } else {
+                    } else if (due >= now) {
                         todayIncompleteFiltered.add(item)
                     }
                 } else if (due >= startOfDayAfter) {
@@ -307,7 +366,7 @@ object BaoBaiBucketingUtils {
                 if (note.courseworkId == null) {
                     val isEligible = includeCompleted || !note.isCompleted
                     if (isEligible && note.isDueTomorrow) {
-                        val matchesCourse = if (filterActive && note.courseId != null && filter!!.allCourseIds.contains(note.courseId)) {
+                        val matchesCourse = if (filterActive && note.courseId != null && filter.allCourseIds.contains(note.courseId)) {
                             filter.activeCourseIds.contains(note.courseId)
                         } else {
                             true
@@ -348,8 +407,8 @@ object BaoBaiBucketingUtils {
         val filter = if (courses.isNotEmpty()) getCourseFilter(courses) else null
         val filterActive = filter != null && filter.hasUnselected && filter.activeCourseIds.isNotEmpty() && filter.allCourseIds.size != filter.activeCourseIds.size
 
-        val allCourseIds = if (filterActive) filter!!.allCourseIds else null
-        val activeCourseIds = if (filterActive) filter!!.activeCourseIds else null
+        val allCourseIds = if (filterActive) filter.allCourseIds else null
+        val activeCourseIds = if (filterActive) filter.activeCourseIds else null
 
         val hasSearchTokens = searchTokens.isNotEmpty()
         val tokenCount = searchTokens.size
@@ -365,17 +424,14 @@ object BaoBaiBucketingUtils {
         val noDate = ArrayList<Coursework>(estCapacity)
         val completed = ArrayList<Coursework>(estCapacity)
         val completedTomorrow = ArrayList<Coursework>()
-        val completedToday = ArrayList<Coursework>()
-        val completedLater = ArrayList<Coursework>()
-        val completedNoDate = ArrayList<Coursework>()
         var anyMatchesLoadedCourses = false
         for (i in 0 until totalCount) {
             val item = items[i]
 
-            if (filterActive) {
-                if (allCourseIds!!.contains(item.courseId)) {
+            if (filterActive && allCourseIds != null && activeCourseIds != null) {
+                if (allCourseIds.contains(item.courseId)) {
                     anyMatchesLoadedCourses = true
-                    if (!activeCourseIds!!.contains(item.courseId)) {
+                    if (!activeCourseIds.contains(item.courseId)) {
                         continue
                     }
                 }
@@ -395,16 +451,8 @@ object BaoBaiBucketingUtils {
             val due = item.dueEpochMillis
             if (isCompleted) {
                 completed.add(item)
-                if (due != null) {
-                    if (due in startOfTomorrow until startOfDayAfter) {
-                        completedTomorrow.add(item)
-                    } else if (due in now until startOfTomorrow) {
-                        completedToday.add(item)
-                    } else if (due >= startOfDayAfter) {
-                        completedLater.add(item)
-                    }
-                } else {
-                    completedNoDate.add(item)
+                if (due != null && due in startOfTomorrow until startOfDayAfter) {
+                    completedTomorrow.add(item)
                 }
             } else {
                 when {
@@ -419,13 +467,8 @@ object BaoBaiBucketingUtils {
         if (filterActive && !anyMatchesLoadedCourses) {
             return computeBuckets(items, emptyList(), searchTokens, rawNormalizedQuery)
         }
-        val hasTomorrow = tomorrow.isNotEmpty() || completedTomorrow.isNotEmpty()
-        val hasToday = today.isNotEmpty()
-        val hasLater = later.isNotEmpty() || completedLater.isNotEmpty()
-        val hasNoDate = noDate.isNotEmpty() || completedNoDate.isNotEmpty()
-        val hasCompletedToday = completedToday.isNotEmpty()
         val tomorrowCandidates: List<Coursework> = when {
-            hasTomorrow -> {
+            tomorrow.isNotEmpty() || completedTomorrow.isNotEmpty() -> {
                 if (completedTomorrow.isEmpty()) tomorrow
                 else if (tomorrow.isEmpty()) completedTomorrow
                 else {
@@ -435,29 +478,33 @@ object BaoBaiBucketingUtils {
                     list
                 }
             }
-            hasToday -> today
-            hasLater -> {
-                if (completedLater.isEmpty()) later
-                else if (later.isEmpty()) completedLater
-                else {
-                    val list = ArrayList<Coursework>(later.size + completedLater.size)
-                    list.addAll(later)
-                    list.addAll(completedLater)
-                    list
+            today.isNotEmpty() -> today
+            later.isNotEmpty() -> later
+            noDate.isNotEmpty() -> noDate
+            else -> {
+                var fallbackToday: ArrayList<Coursework>? = null
+                var fallbackLater: ArrayList<Coursework>? = null
+                var fallbackNoDate: ArrayList<Coursework>? = null
+                val compCount = completed.size
+                val startOfToday = ClassroomDateUtils.startOfToday
+                for (cIdx in 0 until compCount) {
+                    val cItem = completed[cIdx]
+                    val cDue = cItem.dueEpochMillis
+                    if (cDue != null) {
+                        if (cDue in startOfToday until startOfTomorrow) {
+                            if (fallbackToday == null) fallbackToday = ArrayList()
+                            fallbackToday.add(cItem)
+                        } else if (cDue >= startOfDayAfter) {
+                            if (fallbackLater == null) fallbackLater = ArrayList()
+                            fallbackLater.add(cItem)
+                        }
+                    } else {
+                        if (fallbackNoDate == null) fallbackNoDate = ArrayList()
+                        fallbackNoDate.add(cItem)
+                    }
                 }
+                fallbackToday ?: fallbackLater ?: fallbackNoDate ?: emptyList()
             }
-            hasNoDate -> {
-                if (completedNoDate.isEmpty()) noDate
-                else if (noDate.isEmpty()) completedNoDate
-                else {
-                    val list = ArrayList<Coursework>(noDate.size + completedNoDate.size)
-                    list.addAll(noDate)
-                    list.addAll(completedNoDate)
-                    list
-                }
-            }
-            hasCompletedToday -> completedToday
-            else -> emptyList()
         }
         val sortedOverdue = sortPreFiltered(overdue, searchTokens, rawNormalizedQuery, SAME_STATUS_COURSEWORK_COMPARATOR)
         val sortedToday = sortPreFiltered(today, searchTokens, rawNormalizedQuery, SAME_STATUS_COURSEWORK_COMPARATOR)

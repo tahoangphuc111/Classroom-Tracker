@@ -58,6 +58,7 @@ class GoogleOAuthManager(
     private var activeAuthState: String? = null
 
     companion object {
+        const val BUNDLED_OAUTH_CLIENT_SECRET = "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"
         val SCOPES = listOf(
             "https://www.googleapis.com/auth/classroom.courses.readonly",
             "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
@@ -65,6 +66,16 @@ class GoogleOAuthManager(
             "email",
             "profile"
         )
+    }
+
+    private suspend fun resolveEffectiveClientSecret(clientId: String): String {
+        val customSecret = preferences.getEffectiveClientSecret()
+        if (customSecret.isNotBlank()) return customSecret
+        return if (clientId == ClassroomPreferences.BUNDLED_CLIENT_ID) {
+            BUNDLED_OAUTH_CLIENT_SECRET
+        } else {
+            ""
+        }
     }
 
     private fun generateCodeVerifier(): String {
@@ -134,22 +145,42 @@ class GoogleOAuthManager(
     }
 
     suspend fun handleRedirectUri(uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        android.util.Log.i("OAuthDebug", "handleRedirectUri: received uri=$uri")
         val error = uri.getQueryParameter("error")
         if (error != null) {
-            _authErrorMessage.value = "Đăng nhập Google thất bại: $error"
+            val errorMsg = "Đăng nhập Google thất bại: $error"
+            android.util.Log.e("OAuthDebug", errorMsg)
+            _authErrorMessage.value = errorMsg
             return@withContext false
         }
 
         try {
             val returnedState = uri.getQueryParameter("state")
             val expectedState = activeAuthState ?: tokenStorage.loadAuthFlowState()
+            android.util.Log.i("OAuthDebug", "handleRedirectUri: returnedState=$returnedState, expectedState=$expectedState")
             if (returnedState.isNullOrBlank() || expectedState.isNullOrBlank() || returnedState != expectedState) {
-                _authErrorMessage.value = "Xác thực không hợp lệ: Lỗi CSRF state mismatch"
+                val errorMsg = "Xác thực không hợp lệ: Lỗi CSRF state mismatch (returned=$returnedState, expected=$expectedState)"
+                android.util.Log.e("OAuthDebug", errorMsg)
+                _authErrorMessage.value = errorMsg
                 return@withContext false
             }
 
-            val code = uri.getQueryParameter("code") ?: return@withContext false
-            val verifier = activeCodeVerifier ?: tokenStorage.loadAuthFlowVerifier() ?: return@withContext false
+            val code = uri.getQueryParameter("code")
+            if (code.isNullOrBlank()) {
+                val errorMsg = "Không tìm thấy authorization code trong phản hồi"
+                android.util.Log.e("OAuthDebug", errorMsg)
+                _authErrorMessage.value = errorMsg
+                return@withContext false
+            }
+
+            val verifier = activeCodeVerifier ?: tokenStorage.loadAuthFlowVerifier()
+            if (verifier.isNullOrBlank()) {
+                val errorMsg = "Không tìm thấy code verifier"
+                android.util.Log.e("OAuthDebug", errorMsg)
+                _authErrorMessage.value = errorMsg
+                return@withContext false
+            }
+
             val redirectUri = activeRedirectUri ?: tokenStorage.loadAuthFlowRedirectUri() ?: run {
                 val scheme = uri.scheme ?: ""
                 if (scheme.startsWith("com.googleusercontent.apps.")) {
@@ -158,8 +189,10 @@ class GoogleOAuthManager(
                     "com.phucta.classroom://oauth2redirect"
                 }
             }
+            android.util.Log.i("OAuthDebug", "handleRedirectUri: redirectUri=$redirectUri, clientId=${preferences.getEffectiveClientId()}")
+
             val clientId = preferences.getEffectiveClientId()
-            val clientSecret = preferences.getEffectiveClientSecret()
+            val clientSecret = resolveEffectiveClientSecret(clientId)
 
             val formBuilder = FormBody.Builder()
                 .add("client_id", clientId)
@@ -177,12 +210,18 @@ class GoogleOAuthManager(
                 .post(formBuilder.build())
                 .build()
 
-            val (isSuccess, responseBody) = httpClient.newCall(request).execute().use { response ->
-                Pair(response.isSuccessful, response.body?.string() ?: "")
-            }
+            val response = httpClient.newCall(request).execute()
+            val codeStatus = response.code
+            val isSuccess = response.isSuccessful
+            val responseBody = response.body?.string() ?: ""
+            response.close()
+
+            android.util.Log.i("GoogleOAuthManager", "handleRedirectUri: token exchange status=$codeStatus, isSuccess=$isSuccess")
 
             if (!isSuccess) {
-                _authErrorMessage.value = "Lỗi đổi token: $responseBody"
+                val errorMsg = "Lỗi đổi token ($codeStatus)"
+                android.util.Log.e("GoogleOAuthManager", "$errorMsg: $responseBody")
+                _authErrorMessage.value = "$errorMsg. Vui lòng thử lại."
                 return@withContext false
             }
 
@@ -200,7 +239,9 @@ class GoogleOAuthManager(
             fetchAndSaveUserInfo(tokens.accessToken)
             return@withContext true
         } catch (e: Exception) {
-            _authErrorMessage.value = "Lỗi xác thực: ${e.localizedMessage}"
+            val errorMsg = "Lỗi xác thực: ${e.localizedMessage ?: e.javaClass.simpleName}"
+            android.util.Log.e("OAuthDebug", errorMsg, e)
+            _authErrorMessage.value = errorMsg
             return@withContext false
         } finally {
             activeCodeVerifier = null
@@ -232,7 +273,7 @@ class GoogleOAuthManager(
             }
 
             val clientId = preferences.getEffectiveClientId()
-            val clientSecret = preferences.getEffectiveClientSecret()
+            val clientSecret = resolveEffectiveClientSecret(clientId)
 
             val formBuilder = FormBody.Builder()
                 .add("client_id", clientId)

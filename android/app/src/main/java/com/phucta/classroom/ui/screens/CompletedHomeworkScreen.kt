@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,11 +22,14 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -59,6 +63,8 @@ import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.normalizeForVietnameseSearch
 import com.phucta.classroom.data.model.tokenizeSearchQuery
 import com.phucta.classroom.ui.components.AssignmentCard
+import com.phucta.classroom.ui.components.EmberEmotion
+import com.phucta.classroom.ui.components.EmberFlameCanvas
 import com.phucta.classroom.ui.components.SectionHeaderPill
 import com.phucta.classroom.ui.components.SubjectArtHelper
 import com.phucta.classroom.ui.components.SubjectCategory
@@ -78,10 +84,6 @@ fun CompletedHomeworkScreen(
 ) {
     val currentOnToggleCompletion by rememberUpdatedState(onToggleCompletion)
     val currentOnSelectAssignment by rememberUpdatedState(onSelectAssignment)
-    var selectedSubjectCategory by rememberSaveable { mutableStateOf<String?>(null) }
-    val selectedCategoryEnum = remember(selectedSubjectCategory) {
-        selectedSubjectCategory?.let { runCatching { SubjectCategory.valueOf(it) }.getOrNull() }
-    }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForVietnameseSearch() }
@@ -89,39 +91,11 @@ fun CompletedHomeworkScreen(
         tokenizeSearchQuery(normalizedQuery)
     }
 
-    val availableSubjectCategories = remember(completedItems) {
-        val categories = java.util.EnumSet.noneOf(SubjectCategory::class.java)
-        for (item in completedItems) {
-            val cat = SubjectArtHelper.category(item.courseName, item.title)
-            if (cat != SubjectCategory.OTHER) {
-                categories.add(cat)
-            }
-        }
-        categories.sortedBy { it.name }
-    }
-
-    val completedCountMap = remember(completedItems) {
-        val map = java.util.EnumMap<SubjectCategory, Int>(SubjectCategory::class.java)
-        for (item in completedItems) {
-            val cat = SubjectArtHelper.category(item.courseName, item.title)
-            map[cat] = (map[cat] ?: 0) + 1
-        }
-        map
-    }
-
-    val filteredItems = remember(completedItems, selectedCategoryEnum, searchTokens) {
-        val target = selectedCategoryEnum
-        val byCat = if (target == null) {
+    val filteredItems = remember(completedItems, searchTokens) {
+        if (searchTokens.isEmpty()) {
             completedItems
         } else {
             completedItems.filter { item ->
-                SubjectArtHelper.category(item.courseName, item.title) == target
-            }
-        }
-        if (searchTokens.isEmpty()) {
-            byCat
-        } else {
-            byCat.filter { item ->
                 for (token in searchTokens) {
                     if (!item.searchIndex.contains(token)) return@filter false
                 }
@@ -130,17 +104,13 @@ fun CompletedHomeworkScreen(
         }
     }
 
-    var displayLimit by remember(selectedSubjectCategory, searchQuery) { mutableIntStateOf(30) }
+    var displayLimit by remember(searchQuery) { mutableIntStateOf(30) }
     val displayedItems = remember(filteredItems, displayLimit) {
         filteredItems.take(displayLimit)
     }
 
-    BackHandler(enabled = searchQuery.isNotEmpty() || selectedSubjectCategory != null) {
-        if (searchQuery.isNotEmpty()) {
-            searchQuery = ""
-        } else {
-            selectedSubjectCategory = null
-        }
+    BackHandler(enabled = searchQuery.isNotEmpty()) {
+        searchQuery = ""
     }
 
     if (completedItems.isEmpty()) {
@@ -161,30 +131,20 @@ fun CompletedHomeworkScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(ChunkyColor.SuccessGreen.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = ChunkyColor.SuccessGreen,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                    EmberFlameCanvas(
+                        size = 76.dp,
+                        emotion = EmberEmotion.STUDYING
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Chưa có bài tập hoàn thành",
+                        text = "Chưa có bài nào xong",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = ChunkyColor.TextPrimary
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Đánh dấu bài tập đã hoàn thành từ danh sách Báo bài để xem lại tại đây.",
+                        text = "Các bài bạn đánh dấu hoàn thành sẽ nằm ở đây.",
                         fontSize = 14.sp,
                         color = ChunkyColor.TextMuted,
                         textAlign = TextAlign.Center,
@@ -203,25 +163,32 @@ fun CompletedHomeworkScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(ChunkyColor.CompletedBadgeBackground)
-                    .border(1.dp, ChunkyColor.CompletedBadgeBorder, RoundedCornerShape(12.dp))
+                    .border(1.dp, ChunkyColor.CompletedBadgeBorder, RoundedCornerShape(14.dp))
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = ChunkyColor.SuccessGreen,
-                        modifier = Modifier.size(20.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    EmberFlameCanvas(
+                        size = 46.dp,
+                        emotion = EmberEmotion.CELEBRATING
                     )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Đã hoàn thành ${completedItems.size} bài tập!",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.5.sp,
-                        color = ChunkyColor.CompletedBadgeText
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Đã làm xong ${completedItems.size} bài tập",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = ChunkyColor.CompletedBadgeText
+                        )
+                        Text(
+                            text = "Tất cả các bài bạn đã nộp hoặc đánh dấu xong.",
+                            fontSize = 12.sp,
+                            color = ChunkyColor.TextMuted
+                        )
+                    }
                 }
             }
 
@@ -258,84 +225,38 @@ fun CompletedHomeworkScreen(
                     .padding(horizontal = 16.dp, vertical = 6.dp)
             )
 
-            if (availableSubjectCategories.isNotEmpty()) {
-                LazyRow(
+            if (searchQuery.isNotBlank()) {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        .padding(horizontal = 16.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    item(key = "all_subjects", contentType = "filter_chip") {
-                        FilterChip(
-                            selected = selectedSubjectCategory == null,
-                            onClick = {
-                                selectedSubjectCategory = null
-                                displayLimit = 30
-                            },
-                            label = {
-                                Text(
-                                    text = "Tất cả (${completedItems.size})",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = ChunkyColor.SurfaceWhite,
-                                labelColor = ChunkyColor.TextPrimary,
-                                selectedContainerColor = ChunkyColor.SkyBottom.copy(alpha = 0.14f),
-                                selectedLabelColor = ChunkyColor.SkyBottom
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                borderColor = ChunkyColor.CardBorder,
-                                selectedBorderColor = ChunkyColor.SkyBottom.copy(alpha = 0.6f),
-                                borderWidth = 1.dp,
-                                selectedBorderWidth = 1.dp,
-                                enabled = true,
-                                selected = selectedSubjectCategory == null
-                            )
-                        )
-                    }
-                    items(
-                        items = availableSubjectCategories,
-                        key = { it.name },
-                        contentType = { "filter_chip" }
-                    ) { cat ->
-                        val themeColor = SubjectArtHelper.themeColor(cat)
-                        val badge = SubjectArtHelper.badgeCode(cat, "", null)
-                        val isSelected = selectedCategoryEnum == cat
-                        val catCount = completedCountMap[cat] ?: 0
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = {
-                                selectedSubjectCategory = if (isSelected) null else cat.name
-                                displayLimit = 30
-                            },
-                            label = {
-                                Text(
-                                    text = if (catCount > 0) "$badge ($catCount)" else badge,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = ChunkyColor.SurfaceWhite,
-                                labelColor = themeColor,
-                                selectedContainerColor = themeColor.copy(alpha = 0.14f),
-                                selectedLabelColor = themeColor
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                borderColor = ChunkyColor.CardBorder,
-                                selectedBorderColor = themeColor.copy(alpha = 0.6f),
-                                borderWidth = 1.dp,
-                                selectedBorderWidth = 1.dp,
-                                enabled = true,
-                                selected = isSelected
-                            )
+                    Text(
+                        text = "Tìm thấy ${filteredItems.size} bài tập đã xong",
+                        fontSize = 12.sp,
+                        color = ChunkyColor.TextMuted,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    TextButton(
+                        onClick = {
+                            searchQuery = ""
+                            displayLimit = 30
+                        },
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                    ) {
+                        Text(
+                            text = "Xóa tìm kiếm",
+                            fontSize = 12.sp,
+                            color = ChunkyColor.TextLink,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
             }
+
+
 
             LazyColumn(
                 modifier = Modifier
@@ -369,18 +290,20 @@ fun CompletedHomeworkScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                EmberFlameCanvas(
+                                    size = 56.dp,
+                                    emotion = EmberEmotion.NORMAL
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
                                 Text(
-                                    text = if (searchQuery.isNotEmpty()) "Không tìm thấy bài tập phù hợp" else "Không có bài tập đã hoàn thành cho môn này",
+                                    text = if (searchQuery.isNotEmpty()) "Không tìm thấy bài tập" else "Chưa có bài tập hoàn thành",
                                     fontSize = 14.sp,
                                     color = ChunkyColor.TextMuted
                                 )
-                                if (searchQuery.isNotEmpty() || selectedSubjectCategory != null) {
+                                if (searchQuery.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    TextButton(onClick = {
-                                        searchQuery = ""
-                                        selectedSubjectCategory = null
-                                    }) {
-                                        Text("Xoá bộ lọc", color = ChunkyColor.SkyBottom, fontWeight = FontWeight.Bold)
+                                    TextButton(onClick = { searchQuery = "" }) {
+                                        Text("Xoá tìm kiếm", color = ChunkyColor.TextLink, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -423,7 +346,7 @@ fun CompletedHomeworkScreen(
                                     text = "Đang hiển thị ${displayedItems.size}/${filteredItems.size} bài đã hoàn thành",
                                     fontSize = 12.sp,
                                     color = ChunkyColor.TextMuted,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.SemiBold
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(
@@ -446,7 +369,7 @@ fun CompletedHomeworkScreen(
                                         TextButton(
                                             onClick = { displayLimit = filteredItems.size }
                                         ) {
-                                            Text("Xem tất cả", fontSize = 12.5.sp, color = ChunkyColor.SkyBottom)
+                                            Text("Xem tất cả", fontSize = 12.5.sp, color = ChunkyColor.TextLink)
                                         }
                                     }
                                 }

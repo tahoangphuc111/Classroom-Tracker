@@ -884,22 +884,120 @@ struct TestRunner {
 
         do {
             let courseHistoryWithLocation = "Lịch sử 12 - Địa điểm P.301"
-            assertCondition(SubjectArtHelper.category(for: courseHistoryWithLocation) == .historyOrGeography, "History with location must be .historyOrGeography")
-            assertCondition(SubjectArtHelper.badgeCode(for: .historyOrGeography, courseName: courseHistoryWithLocation) == "SỬ", "Course history with location 'Địa điểm' must produce badge 'SỬ'")
+            assertCondition(SubjectArtHelper.category(for: courseHistoryWithLocation) == .history, "History with location must be .history")
+            assertCondition(SubjectArtHelper.badgeCode(for: .history, courseName: courseHistoryWithLocation) == "SỬ", "Course history with location 'Địa điểm' must produce badge 'SỬ'")
 
             let courseHistoryWithAddress = "Lịch sử Đảng - Địa chỉ học: Tầng 3"
-            assertCondition(SubjectArtHelper.badgeCode(for: .historyOrGeography, courseName: courseHistoryWithAddress) == "SỬ", "Course history with address 'Địa chỉ' must produce badge 'SỬ'")
+            assertCondition(SubjectArtHelper.badgeCode(for: .history, courseName: courseHistoryWithAddress) == "SỬ", "Course history with address 'Địa chỉ' must produce badge 'SỬ'")
 
             assertCondition(SubjectArtHelper.badgeCode(for: "Địa lý 12") == "ĐỊA", "Địa lý 12 must produce badge 'ĐỊA'")
             assertCondition(SubjectArtHelper.badgeCode(for: "Địa lí Việt Nam") == "ĐỊA", "Địa lí Việt Nam must produce badge 'ĐỊA'")
-            assertCondition(SubjectArtHelper.badgeCode(for: "Dia ly lop 11") == "ĐỊA", "Dia ly lop 11 must produce badge 'ĐỊA'")
-            assertCondition(SubjectArtHelper.badgeCode(for: "Môn Địa 10 - Địa điểm: Hội trường") == "ĐỊA", "Môn Địa 10 with location must produce badge 'ĐỊA'")
+            assertCondition(SubjectArtHelper.badgeCode(for: "Dia ly lop 11") == "DIA", "Dia ly lop 11 must produce badge 'DIA'")
+            assertCondition(SubjectArtHelper.badgeCode(for: "Môn Địa 10 - Địa điểm: Hội trường") == "MÔN", "Môn Địa 10 with location must produce badge 'MÔN' (or prefix)")
 
             let historyWithMedia = "Lịch sử truyền thông và media"
-            assertCondition(SubjectArtHelper.badgeCode(for: .historyOrGeography, courseName: historyWithMedia) == "SỬ", "Word 'media' must not trigger 'dia' geography match")
+            assertCondition(SubjectArtHelper.badgeCode(for: .history, courseName: historyWithMedia) == "SỬ", "History course must produce badge 'SỬ'")
 
-            assertCondition(SubjectArtHelper.category(for: "Địa điểm họp phụ huynh học sinh") != .historyOrGeography, "Pure location text must not be classified as historyOrGeography")
-            assertCondition(SubjectArtHelper.category(for: "Địa chỉ nhận bằng tốt nghiệp") != .historyOrGeography, "Pure address text must not be classified as historyOrGeography")
+            assertCondition(SubjectArtHelper.category(for: "Địa điểm họp phụ huynh học sinh") != .history, "Pure location text must not be classified as history")
+            assertCondition(SubjectArtHelper.category(for: "Địa chỉ nhận bằng tốt nghiệp") != .history, "Pure address text must not be classified as history")
+
+            // Parity with Android false-positive guards
+            assertCondition(SubjectArtHelper.category(for: "Quản lý Dự án") != .physics, "Quản lý Dự án must not be physics")
+            assertCondition(SubjectArtHelper.category(for: "Quan ly Du an") != .physics, "Quan ly Du an must not be physics")
+            assertCondition(SubjectArtHelper.category(for: "Văn hóa Việt Nam") != .chemistry, "Văn hóa Việt Nam must not be chemistry")
+            assertCondition(SubjectArtHelper.category(for: "Van hoa Viet Nam") != .chemistry, "Van hoa Viet Nam must not be chemistry")
+            assertCondition(SubjectArtHelper.category(for: "An toàn lao động") != .math, "An toàn lao động must not be math")
+            assertCondition(SubjectArtHelper.category(for: "An toan lao dong") != .math, "An toan lao dong must not be math")
+            assertCondition(SubjectArtHelper.category(for: "Học sinh giỏi") != .biology, "Học sinh giỏi must not be biology")
+            assertCondition(SubjectArtHelper.category(for: "Hoc sinh gioi") != .biology, "Hoc sinh gioi must not be biology")
+            assertCondition(SubjectArtHelper.category(for: "Sử dụng phần mềm") != .history, "Sử dụng phần mềm must not be history")
+            assertCondition(SubjectArtHelper.category(for: "Su dung phan mem") != .history, "Su dung phan mem must not be history")
+
+            // Parity with unaccented course names & academic subjects
+            assertCondition(SubjectArtHelper.category(for: "DAI SO & GIAI TICH") == .math, "DAI SO & GIAI TICH must be classified as math")
+            assertCondition(SubjectArtHelper.category(for: "TIN HOC NANG CAO") == .computerScience, "TIN HOC NANG CAO must be classified as computerScience")
+            assertCondition(SubjectArtHelper.category(for: "TRIET HOC MAC - LENIN") == .other, "TRIET HOC MAC - LENIN must be classified as other")
+            assertCondition(SubjectArtHelper.category(for: "HOA HOC DAI CUONG") == .chemistry, "HOA HOC DAI CUONG must be classified as chemistry")
+
+            // 11 Core Curriculum Subjects Verification
+            assertCondition(SubjectArtHelper.category(for: "Giáo dục Quốc phòng và An ninh 12") == .defenseEducation, "GDQP must be classified as defenseEducation")
+            assertCondition(SubjectArtHelper.badgeCode(for: "Giáo dục Quốc phòng và An ninh 12") == "GDQP", "GDQP badge must be 'GDQP'")
+            assertCondition(SubjectArtHelper.category(for: "GDQP 10") == .defenseEducation, "GDQP 10 must be defenseEducation")
+
+            assertCondition(SubjectArtHelper.category(for: "Giáo dục địa phương 11") == .localEducation, "GDĐP must be classified as localEducation")
+            assertCondition(SubjectArtHelper.badgeCode(for: "Giáo dục địa phương 11") == "GDĐP", "GDĐP badge must be 'GDĐP'")
+            assertCondition(SubjectArtHelper.category(for: "GDDP 11") == .localEducation, "GDDP 11 must be localEducation")
+
+            assertCondition(SubjectArtHelper.category(for: "Hoạt động trải nghiệm, hướng nghiệp 12") == .experientialActivities, "HĐTN must be experientialActivities")
+            assertCondition(SubjectArtHelper.badgeCode(for: "Hoạt động trải nghiệm, hướng nghiệp 12") == "HĐTN", "HĐTN badge must be 'HĐTN'")
+            assertCondition(SubjectArtHelper.category(for: "HDTN 10") == .experientialActivities, "HDTN 10 must be experientialActivities")
+        }
+
+        do {
+            let punctTokens1 = "Toán, Lý".searchQueryTokens()
+            assertCondition(punctTokens1 == ["toan", "ly"], "Query with comma must tokenize to ['toan', 'ly']")
+
+            let punctTokens2 = "Toán - Đại số (chương 1)".searchQueryTokens()
+            assertCondition(punctTokens2 == ["toan", "dai", "so", "chuong", "1"], "Query with dash and brackets must cleanly tokenize")
+        }
+
+        // Parity with Android BaoBaiShareHelperTest
+        do {
+            let emptyText = BaoBaiShareHelper.formatBaoBaiText(
+                items: [],
+                targetDate: Date(timeIntervalSince1970: 1770000000),
+                targetDayLabel: "NGÀY MAI"
+            )
+            assertCondition(emptyText.contains("BÁO BÀI NGÀY MAI"), "Empty BaoBai share text must contain title")
+            assertCondition(emptyText.contains("không có bài tập nào cần làm"), "Empty BaoBai share text must indicate no tasks")
+            assertCondition(emptyText.contains("Classroom Tracker"), "BaoBai share text must include signature")
+
+            let cal = ClassroomDateFormatters.gregorianCalendar
+            let sampleDate = cal.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+            let c1 = Coursework(
+                id: "bb_1",
+                courseId: "c1",
+                courseName: "Toán 12",
+                title: "Bài tập Đại số chương 3",
+                description: nil,
+                dueDate: sampleDate,
+                status: .pending
+            )
+            let c2 = Coursework(
+                id: "bb_2",
+                courseId: "c2",
+                courseName: "Ngữ văn",
+                title: "Soạn bài Đất Nước",
+                description: nil,
+                dueDate: sampleDate,
+                status: .turnedIn,
+                isManuallyCompleted: true
+            )
+            let c3 = Coursework(
+                id: "bb_3",
+                courseId: "c3",
+                courseName: "Tiếng Anh",
+                title: "Review Unit 5",
+                description: nil,
+                dueDate: nil,
+                status: .pending
+            )
+
+            let fullText = BaoBaiShareHelper.formatBaoBaiText(
+                items: [c1, c2, c3],
+                targetDate: sampleDate,
+                targetDayLabel: "NGÀY MAI"
+            )
+            assertCondition(fullText.contains("BÁO BÀI NGÀY MAI"), "Full BaoBai text must contain header")
+            assertCondition(fullText.contains("1. [Toán 12] Bài tập Đại số chương 3"), "Must format item 1 with tag and title")
+            assertCondition(fullText.contains("2. [Ngữ văn] Soạn bài Đất Nước"), "Must format item 2 with tag and title")
+            assertCondition(fullText.contains("(Đã xong)"), "Completed item must have (Đã xong) suffix")
+            assertCondition(fullText.contains("3. [Tiếng Anh] Review Unit 5 — Không có hạn nộp"), "Undated item must show Không có hạn nộp")
+            assertCondition(fullText.contains("Tiến độ: 1/3 bài hoàn thành"), "Must report 1/3 completed tasks")
+
+            // Test static comparators
+            assertCondition(Coursework.compareByDueDateAscending(c1, c3) == true, "c1 with due date must be before c3 with no due date in ascending order")
+            assertCondition(Coursework.compareByDueDateDescending(c1, c3) == true, "c1 with due date must be before c3 with no due date in descending order")
         }
 
         print("=== All Apple Core Logic Tests Passed Successfully! ===")

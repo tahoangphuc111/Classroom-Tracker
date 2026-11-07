@@ -28,8 +28,7 @@ object BaoBaiShareHelper {
         if (items.isEmpty()) {
             return buildString {
                 append("BÁO BÀI $targetDayLabel ($dateString)\n\n")
-                append("Tuyệt vời! Ngày mai bạn không có bài tập nào cần làm.\n")
-                append("Nghỉ ngơi thật tốt nhé!\n\n")
+                append("Hiện tại không có bài tập nào cần làm.\n\n")
                 append("---\n")
                 append("Classroom Tracker")
             }

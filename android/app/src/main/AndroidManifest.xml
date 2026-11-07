@@ -46,7 +46,53 @@
             </intent-filter>
         </activity>
 
-        <!-- Glance AppWidget Receiver -->
+        <!-- Glance AppWidget Receivers (Small, Medium, Large) -->
+        <receiver
+            android:name=".widget.ClassroomSmallWidgetReceiver"
+            android:label="@string/widget_name_small"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/classroom_widget_small_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.ClassroomMediumWidgetReceiver"
+            android:label="@string/widget_name_medium"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/classroom_widget_medium_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.ClassroomLargeWidgetReceiver"
+            android:label="@string/widget_name_large"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/classroom_widget_large_info" />
+        </receiver>
+
+        <!-- Glance AppWidget Receiver (Default/Legacy compatibility) -->
         <receiver
             android:name=".widget.ClassroomGlanceWidgetReceiver"
             android:label="@string/widget_name"

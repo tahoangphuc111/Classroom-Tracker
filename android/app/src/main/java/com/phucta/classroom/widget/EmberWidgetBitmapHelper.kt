@@ -76,12 +76,21 @@ object EmberWidgetBitmapHelper {
                 EmberEmotion.STRESSED -> "ember_stressed"
                 EmberEmotion.SLEEPING -> "ember_sleeping"
                 EmberEmotion.CELEBRATING -> "ember_celebrating"
+                EmberEmotion.STUDYING -> "ember_studying"
             }
             val resId = context.resources.getIdentifier(resName, "drawable", context.packageName)
             val bitmap = if (resId != 0) {
                 val decoded = android.graphics.BitmapFactory.decodeResource(context.resources, resId)
                 if (decoded != null) {
-                    Bitmap.createScaledBitmap(decoded, sizePx, sizePx, true)
+                    if (decoded.width == sizePx && decoded.height == sizePx) {
+                        decoded
+                    } else {
+                        val scaled = Bitmap.createScaledBitmap(decoded, sizePx, sizePx, true)
+                        if (scaled !== decoded) {
+                            decoded.recycle()
+                        }
+                        scaled
+                    }
                 } else {
                     renderEmber(sizePx, emotion, isUrgent)
                 }
@@ -347,7 +356,7 @@ object EmberWidgetBitmapHelper {
         }
 
         when (emotion) {
-            EmberEmotion.NORMAL -> {
+            EmberEmotion.NORMAL, EmberEmotion.STUDYING -> {
                 val eyeWidth = w * 0.10f
                 val eyeHeight = w * 0.155f
                 val eyeCorner = eyeWidth / 2f

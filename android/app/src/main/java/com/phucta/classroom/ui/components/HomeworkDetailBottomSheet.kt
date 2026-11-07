@@ -27,11 +27,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Grade
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +57,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,8 +73,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.PersonalNote
+import com.phucta.classroom.ui.theme.BeVietnamProFontFamily
 import com.phucta.classroom.ui.theme.ChunkyColor
-import com.phucta.classroom.ui.theme.OutfitFontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,24 +121,15 @@ fun HomeworkDetailBottomSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.weight(1f, fill = false),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    SubjectBadgePill(
-                        courseName = coursework.courseName,
-                        title = coursework.title
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = coursework.courseName,
-                        color = ChunkyColor.TextMuted,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = coursework.courseName,
+                    color = ChunkyColor.TextMuted,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
 
                 IconButton(
                     onClick = safeDismiss,
@@ -177,18 +174,26 @@ fun HomeworkDetailBottomSheet(
                         coursework.maxPoints.toString()
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Box(
+                    Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(ChunkyColor.NeutralBadgeBackground)
                             .border(1.dp, ChunkyColor.NeutralBadgeBorder, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(horizontal = 7.dp, vertical = 3.5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Grade,
+                            contentDescription = null,
+                            tint = ChunkyColor.NeutralBadgeText,
+                            modifier = Modifier.size(13.dp)
+                        )
                         Text(
                             text = "Thang điểm: $pointsDisplay",
                             color = ChunkyColor.NeutralBadgeText,
-                            fontFamily = OutfitFontFamily,
-                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = BeVietnamProFontFamily,
+                            fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
                         )
                     }
@@ -197,23 +202,109 @@ fun HomeworkDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = coursework.formattedFullDueDate,
-                color = ChunkyColor.TextMuted,
-                fontSize = 14.sp
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = null,
+                    tint = ChunkyColor.TextMuted,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = coursework.formattedFullDueDate,
+                    color = ChunkyColor.TextMuted,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.5.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            val detailEmotion = when {
+                coursework.isCompleted -> EmberEmotion.CELEBRATING
+                coursework.isUrgent -> EmberEmotion.STRESSED
+                else -> EmberEmotion.STUDYING
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        when {
+                            coursework.isCompleted -> Color(0xFFF0FDF4)
+                            coursework.isUrgent -> Color(0xFFFEF2F2)
+                            else -> ChunkyColor.WindowBackground
+                        }
+                    )
+                    .border(
+                        1.dp,
+                        when {
+                            coursework.isCompleted -> Color(0xFFBBF7D0)
+                            coursework.isUrgent -> Color(0xFFFECACA)
+                            else -> ChunkyColor.CardBorder
+                        },
+                        RoundedCornerShape(14.dp)
+                    )
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    EmberFlameCanvas(
+                        size = 46.dp,
+                        emotion = detailEmotion
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = when {
+                                coursework.isCompleted -> "Đã làm xong bài!"
+                                coursework.isUrgent -> "Sắp tới hạn nộp rồi"
+                                else -> "Cùng làm bài nào"
+                            },
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp,
+                            color = ChunkyColor.TextPrimary
+                        )
+                        Text(
+                            text = when {
+                                coursework.isCompleted -> "Bài đã được đánh dấu hoàn thành."
+                                coursework.isUrgent -> "Ưu tiên bài này trước để nộp cho kịp nhé."
+                                else -> "Đọc kỹ yêu cầu bên dưới rồi tick dần từng việc."
+                            },
+                            fontSize = 12.sp,
+                            color = ChunkyColor.TextMuted,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(color = ChunkyColor.Hairline)
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = "HƯỚNG DẪN BÀI TẬP",
-                color = ChunkyColor.TextMuted,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-                letterSpacing = 0.5.sp
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Description,
+                    contentDescription = null,
+                    tint = ChunkyColor.TextLink,
+                    modifier = Modifier.size(15.dp)
+                )
+                Text(
+                    text = "HƯỚNG DẪN BÀI TẬP",
+                    color = ChunkyColor.TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.5.sp,
+                    letterSpacing = 0.5.sp
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -253,17 +344,17 @@ fun HomeworkDetailBottomSheet(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.EditNote,
+                            imageVector = Icons.Default.Checklist,
                             contentDescription = null,
-                            tint = ChunkyColor.SkyBottom,
-                            modifier = Modifier.size(18.dp)
+                            tint = ChunkyColor.SuccessGreen,
+                            modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "DANH SÁCH CẦN LÀM (CHECKLIST)",
-                            color = ChunkyColor.TextMuted,
+                            color = ChunkyColor.TextPrimary,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
+                            fontSize = 12.5.sp,
                             letterSpacing = 0.5.sp
                         )
                     }
@@ -351,7 +442,7 @@ fun HomeworkDetailBottomSheet(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
                                     Text(
-                                        text = "Tất cả việc con đã xong!",
+                                        text = "Các mục việc con đã xong",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 12.sp,
                                         color = ChunkyColor.TextPrimary
@@ -396,13 +487,24 @@ fun HomeworkDetailBottomSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "GHI CHÚ CỦA BẠN",
-                    color = ChunkyColor.TextMuted,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    letterSpacing = 0.5.sp
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.EditNote,
+                        contentDescription = null,
+                        tint = ChunkyColor.TextLink,
+                        modifier = Modifier.size(17.dp)
+                    )
+                    Text(
+                        text = "GHI CHÚ CỦA BẠN",
+                        color = ChunkyColor.TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.5.sp,
+                        letterSpacing = 0.5.sp
+                    )
+                }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (attachedNote != null && onEditNoteInNotes != null) {
@@ -417,13 +519,13 @@ fun HomeworkDetailBottomSheet(
                             Icon(
                                 imageVector = Icons.Default.Edit,
                                 contentDescription = null,
-                                tint = ChunkyColor.SkyBottom,
+                                tint = ChunkyColor.TextLink,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "Mở trong Ghi chú",
-                                color = ChunkyColor.SkyBottom,
+                                color = ChunkyColor.TextLink,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -438,7 +540,7 @@ fun HomeworkDetailBottomSheet(
                         ) {
                             Text(
                                 text = if (initialNoteContent.isNullOrBlank()) "+ Thêm ghi chú" else "Chỉnh sửa",
-                                color = ChunkyColor.SkyBottom,
+                                color = ChunkyColor.TextLink,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -493,10 +595,13 @@ fun HomeworkDetailBottomSheet(
                                 isEditingNote = false
                             },
                             modifier = Modifier.heightIn(min = 48.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SkyBottom),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ChunkyColor.SkyBottom,
+                                contentColor = Color.White
+                            ),
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Text("Lưu", fontWeight = FontWeight.Bold)
+                            Text("Lưu", fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }
@@ -518,7 +623,7 @@ fun HomeworkDetailBottomSheet(
                 }
             } else if (attachedNote != null && attachedNote.checklist.isNotEmpty()) {
                 Text(
-                    text = "Chưa có nội dung lời dặn thêm (đang có ${attachedNote.checklist.size} việc cần làm ở trên).",
+                    text = "Chưa có ghi chú bổ sung (đang có ${attachedNote.checklist.size} việc cần làm ở trên).",
                     color = ChunkyColor.TextMuted,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(vertical = 4.dp)
@@ -561,7 +666,7 @@ fun HomeworkDetailBottomSheet(
                     } else {
                         view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                     }
-                    android.widget.Toast.makeText(context, "Đã sao chép thông tin bài tập!", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(context, "Đã sao chép thông tin bài tập", android.widget.Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     android.widget.Toast.makeText(
                         context,
@@ -614,13 +719,15 @@ fun HomeworkDetailBottomSheet(
                                 .heightIn(min = 48.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (coursework.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.SkyBottom
+                                containerColor = if (coursework.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.SkyBottom,
+                                contentColor = Color.White
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(
                                 imageVector = if (coursework.isCompleted) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
                                 contentDescription = null,
+                                tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -628,6 +735,7 @@ fun HomeworkDetailBottomSheet(
                                 text = if (coursework.isCompleted) "Đã làm xong" else "Đánh dấu đã nộp",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
+                                color = Color.White,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -672,10 +780,10 @@ fun HomeworkDetailBottomSheet(
                                 modifier = Modifier
                                     .weight(1f)
                                     .heightIn(min = 48.dp),
-                                border = BorderStroke(1.dp, ChunkyColor.SkyBottom.copy(alpha = 0.5f)),
+                                border = BorderStroke(1.dp, ChunkyColor.TextLink.copy(alpha = 0.5f)),
                                 colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = ChunkyColor.SkyBottom.copy(alpha = 0.08f),
-                                    contentColor = ChunkyColor.SkyBottom
+                                    containerColor = ChunkyColor.TomorrowBackground,
+                                    contentColor = ChunkyColor.TextLink
                                 ),
                                 shape = RoundedCornerShape(12.dp),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
@@ -683,13 +791,13 @@ fun HomeworkDetailBottomSheet(
                                 Icon(
                                     imageVector = Icons.Default.OpenInBrowser,
                                     contentDescription = "Mở trên Classroom",
-                                    tint = ChunkyColor.SkyBottom,
+                                    tint = ChunkyColor.TextLink,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "Mở link",
-                                    color = ChunkyColor.SkyBottom,
+                                    color = ChunkyColor.TextLink,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 14.sp,
                                     maxLines = 1,
@@ -722,13 +830,15 @@ fun HomeworkDetailBottomSheet(
                                 .heightIn(min = 48.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (coursework.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.SkyBottom
+                                containerColor = if (coursework.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.SkyBottom,
+                                contentColor = Color.White
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(
                                 imageVector = if (coursework.isCompleted) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
                                 contentDescription = null,
+                                tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -736,6 +846,7 @@ fun HomeworkDetailBottomSheet(
                                 text = if (coursework.isCompleted) "Đã làm xong" else "Đánh dấu đã nộp",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
+                                color = Color.White,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -767,10 +878,10 @@ fun HomeworkDetailBottomSheet(
                         OutlinedButton(
                             onClick = onOpenBrowserClick,
                             modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
-                            border = BorderStroke(1.dp, ChunkyColor.SkyBottom.copy(alpha = 0.5f)),
+                            border = BorderStroke(1.dp, ChunkyColor.TextLink.copy(alpha = 0.5f)),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = ChunkyColor.SkyBottom.copy(alpha = 0.08f),
-                                contentColor = ChunkyColor.SkyBottom
+                                containerColor = ChunkyColor.TomorrowBackground,
+                                contentColor = ChunkyColor.TextLink
                             ),
                             shape = RoundedCornerShape(12.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp)
@@ -778,13 +889,13 @@ fun HomeworkDetailBottomSheet(
                             Icon(
                                 imageVector = Icons.Default.OpenInBrowser,
                                 contentDescription = "Mở trên Classroom",
-                                tint = ChunkyColor.SkyBottom,
+                                tint = ChunkyColor.TextLink,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "Mở",
-                                color = ChunkyColor.SkyBottom,
+                                color = ChunkyColor.TextLink,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 14.sp
                             )

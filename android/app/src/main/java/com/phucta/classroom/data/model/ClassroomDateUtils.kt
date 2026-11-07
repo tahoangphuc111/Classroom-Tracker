@@ -11,8 +11,6 @@ import kotlin.math.max
 object ClassroomDateUtils {
     val VIETNAMESE_LOCALE = Locale("vi", "VN")
 
-    private val timeOnlyFormat = SimpleDateFormat("HH:mm", Locale.US)
-    private val shortDateFormat = SimpleDateFormat("d/M", VIETNAMESE_LOCALE)
     private val dayAndDateFormatPool = object : ThreadLocal<SimpleDateFormat>() {
         override fun initialValue(): SimpleDateFormat {
             return SimpleDateFormat("E, d/M", VIETNAMESE_LOCALE).apply {
@@ -41,10 +39,35 @@ object ClassroomDateUtils {
     @Volatile
     private var cachedTimeZoneId: String = ""
 
-    private val timeOnlyCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
-    private val fullDueDateCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
-    private val shortDateCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
-    private val dayAndDateCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
+    private class FastLongStringCache(capacity: Int = 2048) {
+        private val mask = capacity - 1
+        private val keys = LongArray(capacity) { Long.MIN_VALUE }
+        private val values = arrayOfNulls<String>(capacity)
+
+        @Synchronized
+        operator fun get(key: Long): String? {
+            val idx = (key xor (key ushr 32)).toInt() and mask
+            return if (keys[idx] == key) values[idx] else null
+        }
+
+        @Synchronized
+        operator fun set(key: Long, value: String) {
+            val idx = (key xor (key ushr 32)).toInt() and mask
+            keys[idx] = key
+            values[idx] = value
+        }
+
+        @Synchronized
+        fun clear() {
+            keys.fill(Long.MIN_VALUE)
+            values.fill(null)
+        }
+    }
+
+    private val timeOnlyCache = FastLongStringCache(capacity = 2048)
+    private val fullDueDateCache = FastLongStringCache(capacity = 1024)
+    private val shortDateCache = FastLongStringCache(capacity = 2048)
+    private val dayAndDateCache = FastLongStringCache(capacity = 2048)
 
     private val calendarPool = object : ThreadLocal<Calendar>() {
         override fun initialValue(): Calendar {
@@ -165,9 +188,6 @@ object ClassroomDateUtils {
         val day = cal.get(Calendar.DAY_OF_MONTH)
         val month = cal.get(Calendar.MONTH) + 1
         val formatted = "$day/$month"
-        if (shortDateCache.size >= 2048) {
-            shortDateCache.clear()
-        }
         shortDateCache[dueEpochMillis] = formatted
         return formatted
     }
@@ -180,9 +200,6 @@ object ClassroomDateUtils {
         val format = dayAndDateFormatPool.get() ?: SimpleDateFormat("E, d/M", VIETNAMESE_LOCALE)
         format.timeZone = TimeZone.getDefault()
         val formatted = format.format(Date(dueEpochMillis))
-        if (dayAndDateCache.size >= 2048) {
-            dayAndDateCache.clear()
-        }
         dayAndDateCache[dueEpochMillis] = formatted
         return formatted
     }
@@ -208,9 +225,6 @@ object ClassroomDateUtils {
             val m2 = ((minute % 10) + 48).toChar()
             String(charArrayOf(h1, h2, ':', m1, m2))
         }
-        if (timeOnlyCache.size >= 2048) {
-            timeOnlyCache.clear()
-        }
         timeOnlyCache[dueEpochMillis] = result
         return result
     }
@@ -225,9 +239,6 @@ object ClassroomDateUtils {
         format.timeZone = TimeZone.getDefault()
         val formatted = format.format(Date(dueEpochMillis))
         val result = formatted.replaceFirstChar { if (it.isLowerCase()) it.titlecase(VIETNAMESE_LOCALE) else it.toString() }
-        if (fullDueDateCache.size >= 1000) {
-            fullDueDateCache.clear()
-        }
         fullDueDateCache[dueEpochMillis] = result
         return result
     }

@@ -15,6 +15,7 @@
 		047645301B606D1C29B706C2 /* ember_stressed.png in Resources */ = {isa = PBXBuildFile; fileRef = 6D88CD5FE7B0D105A6966C30 /* ember_stressed.png */; };
 		052E717ECC344E5F26C8DA3A /* empty_state_all_caught_up.svg in Resources */ = {isa = PBXBuildFile; fileRef = 1613C9611D9BCAED16D12A3F /* empty_state_all_caught_up.svg */; };
 		05A0A63CF06C4C92EEB24720 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 3376E7CF9516009BB923727C /* AppIcon.icns */; };
+		05B8C3F2F03C51AA2477103E /* TomorrowProgressHeroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B4B62DDD2940D6764DC1475 /* TomorrowProgressHeroCard.swift */; };
 		07E4D11AEE60B5EF8C30CCD8 /* WidgetSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054A7230A61A968D3470F649 /* WidgetSharedViews.swift */; };
 		0AA2BBB7882B94989EE2A1B3 /* PersonalNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DED96C52D69984DF9155598 /* PersonalNote.swift */; };
 		0EE670D36CDCEB2E141D025D /* ChunkyEmberCharacterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A709199D7B0F2DB307C2C7E5 /* ChunkyEmberCharacterView.swift */; };
@@ -24,6 +25,7 @@
 		11A032A86D5153C839E010AD /* ember_normal.png in Resources */ = {isa = PBXBuildFile; fileRef = AED11BF4FA92675D20F6F001 /* ember_normal.png */; };
 		13829B8122AA52F65FF977AD /* Outfit.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2B5B470280F43B64B25B5B3B /* Outfit.ttf */; };
 		13F9F888D4073EB78BF3441B /* ClassroomWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C19BE580149DEE05DF2162F /* ClassroomWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		14D864085171FB8FAD063CFE /* BaoBaiShareHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B891B4913D6C4139F0811EFB /* BaoBaiShareHelper.swift */; };
 		14F37D8ACB579379078AEEAE /* ClassroomStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8187B2538BF1178DB6637F2 /* ClassroomStorage.swift */; };
 		17AAA7D52CC1135704F3B052 /* AssignmentListEmptyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 185B88A48EE05DB31FAC6BB0 /* AssignmentListEmptyView.swift */; };
 		17CCC4B43EED552571081077 /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
@@ -70,6 +72,7 @@
 		647B4D125CBFD0082422D82B /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
 		671D466371D14585CBE67293 /* Course.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4508EBDBFF6D0212A21C01 /* Course.swift */; };
 		6CF1ED97794083A88871588E /* PlusJakartaSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */; };
+		6D71E9EB2F5E36496285F3CD /* TomorrowProgressHeroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B4B62DDD2940D6764DC1475 /* TomorrowProgressHeroCard.swift */; };
 		72E1408985CF7E5AFF83C25D /* ChunkyTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B343F9F03A47C6F9B03FAA4A /* ChunkyTheme.swift */; };
 		7308AC24FDBB6B285CCF2F66 /* ember_studying.png in Resources */ = {isa = PBXBuildFile; fileRef = F3F262700F392082660DE196 /* ember_studying.png */; };
 		73FD2A662BDEE2DF57710B2C /* ClassroomWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 268C4F8AF62E9B98477FE3D7 /* ClassroomWidgetBundle.swift */; };
@@ -95,6 +98,7 @@
 		90E3828D44E83C72AC8358D0 /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */; };
 		9145423574CB3BD2063A1EEC /* AssignmentListRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70976B2FACF6A9FABE3EECB /* AssignmentListRow.swift */; };
 		917AB39A41B2095AB5CAF14D /* ember_studying.svg in Resources */ = {isa = PBXBuildFile; fileRef = 3094877B5D40853849D75B99 /* ember_studying.svg */; };
+		923B8E7BD4DF5424E1524AB6 /* BaoBaiShareHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B891B4913D6C4139F0811EFB /* BaoBaiShareHelper.swift */; };
 		931457AFB0AB6F7F8E244578 /* PersonalNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DED96C52D69984DF9155598 /* PersonalNote.swift */; };
 		938A8D93DFB8D87251B0EC9E /* BeVietnamPro-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */; };
 		949CDA238E341F7C71E6632F /* ember_stressed.svg in Resources */ = {isa = PBXBuildFile; fileRef = 6DF031DF29F1D5BDA325C422 /* ember_stressed.svg */; };
@@ -109,6 +113,7 @@
 		A9246BD6E508F90B70753773 /* PlatformUICompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF386037AC3117B38590B24 /* PlatformUICompat.swift */; };
 		ADC75E78930175ED1CF6A219 /* ember_sleeping.svg in Resources */ = {isa = PBXBuildFile; fileRef = B539744053714389C757D947 /* ember_sleeping.svg */; };
 		B0D3E9BC239FC8AE303DB424 /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */; };
+		B295FC218F9F9B1C797F30DC /* BaoBaiShareHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B891B4913D6C4139F0811EFB /* BaoBaiShareHelper.swift */; };
 		B2C84037AA5318BA266BBB45 /* LoopbackOAuthServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61242B4F8CB258A7002DEBFD /* LoopbackOAuthServer.swift */; };
 		B4E9C81406020332120C7D31 /* PersonalNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 323B489348E8FA84074C1E9A /* PersonalNotesView.swift */; };
 		B5B4EEA297B7633B00313171 /* ember_studying.png in Resources */ = {isa = PBXBuildFile; fileRef = F3F262700F392082660DE196 /* ember_studying.png */; };
@@ -156,6 +161,7 @@
 		EB97DE9788357CDBA9604D3E /* FloatingToastHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = F751CE375F56822B42FC0BC6 /* FloatingToastHUD.swift */; };
 		EE433BAD28689B83729C10D9 /* ClassroomWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067B66E7A83A695915BD2CF /* ClassroomWidget.swift */; };
 		F58C51854C853B817A562456 /* ember_normal.png in Resources */ = {isa = PBXBuildFile; fileRef = AED11BF4FA92675D20F6F001 /* ember_normal.png */; };
+		F596400001EB58E5B9955656 /* BaoBaiShareHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B891B4913D6C4139F0811EFB /* BaoBaiShareHelper.swift */; };
 		F74437AB2464011B3A24039E /* AssignmentListEmptyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 185B88A48EE05DB31FAC6BB0 /* AssignmentListEmptyView.swift */; };
 		F87245CE2B73EA5B72FE055A /* CompactCourseFilterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B94E928D1AF46B3BBED613 /* CompactCourseFilterSheet.swift */; };
 		F88B8589A64C05EC2AAEA51D /* ember_sleeping.svg in Resources */ = {isa = PBXBuildFile; fileRef = B539744053714389C757D947 /* ember_sleeping.svg */; };
@@ -256,12 +262,14 @@
 		868849B7A0025D50233A9F1D /* ClassroomWidget.iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClassroomWidget.iOS.entitlements; sourceTree = "<group>"; };
 		8DED96C52D69984DF9155598 /* PersonalNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalNote.swift; sourceTree = "<group>"; };
 		93274F7E3D636D61BD56BBE2 /* ClassroomApp.iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClassroomApp.iOS.entitlements; sourceTree = "<group>"; };
+		9B4B62DDD2940D6764DC1475 /* TomorrowProgressHeroCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TomorrowProgressHeroCard.swift; sourceTree = "<group>"; };
 		A1C07A754E28DEC6C075C853 /* empty_thumb.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = empty_thumb.png; sourceTree = "<group>"; };
 		A709199D7B0F2DB307C2C7E5 /* ChunkyEmberCharacterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChunkyEmberCharacterView.swift; sourceTree = "<group>"; };
 		AED11BF4FA92675D20F6F001 /* ember_normal.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ember_normal.png; sourceTree = "<group>"; };
 		B1B491BC20FE8F1329669C50 /* HomeworkReaderPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeworkReaderPane.swift; sourceTree = "<group>"; };
 		B343F9F03A47C6F9B03FAA4A /* ChunkyTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChunkyTheme.swift; sourceTree = "<group>"; };
 		B539744053714389C757D947 /* ember_sleeping.svg */ = {isa = PBXFileReference; path = ember_sleeping.svg; sourceTree = "<group>"; };
+		B891B4913D6C4139F0811EFB /* BaoBaiShareHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaoBaiShareHelper.swift; sourceTree = "<group>"; };
 		BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BeVietnamPro-SemiBold.ttf"; sourceTree = "<group>"; };
 		C5154DC9BE53EB1D8066B230 /* empty_state_all_caught_up.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = empty_state_all_caught_up.png; sourceTree = "<group>"; };
 		D1F316B5AF2C143DEF693CC7 /* ClassroomApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClassroomApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -314,6 +322,7 @@
 		47EC5A281BA1C8A789AC9A79 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				B891B4913D6C4139F0811EFB /* BaoBaiShareHelper.swift */,
 				1C4508EBDBFF6D0212A21C01 /* Course.swift */,
 				577E534AFF94B7B61CD38E00 /* Coursework.swift */,
 				8DED96C52D69984DF9155598 /* PersonalNote.swift */,
@@ -348,6 +357,7 @@
 				B1B491BC20FE8F1329669C50 /* HomeworkReaderPane.swift */,
 				323B489348E8FA84074C1E9A /* PersonalNotesView.swift */,
 				0EDBE7D2959EBE4F4B96FB0F /* SettingsSheetView.swift */,
+				9B4B62DDD2940D6764DC1475 /* TomorrowProgressHeroCard.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -705,6 +715,7 @@
 				0470806FCD28782AC6912336 /* AppleLiquidGlass.swift in Sources */,
 				F74437AB2464011B3A24039E /* AssignmentListEmptyView.swift in Sources */,
 				9145423574CB3BD2063A1EEC /* AssignmentListRow.swift in Sources */,
+				F596400001EB58E5B9955656 /* BaoBaiShareHelper.swift in Sources */,
 				FB0EA900724C821046861313 /* ChunkyEmberCharacterView.swift in Sources */,
 				72E1408985CF7E5AFF83C25D /* ChunkyTheme.swift in Sources */,
 				C18DD5AFCE61166A6C7ECE6C /* ClassroomAPIService.swift in Sources */,
@@ -727,6 +738,7 @@
 				A9246BD6E508F90B70753773 /* PlatformUICompat.swift in Sources */,
 				56AC118470E4BB4A13D4F133 /* SettingsSheetView.swift in Sources */,
 				D3E19AC3C68994D3B3F3DC88 /* SmallWidgetView.swift in Sources */,
+				05B8C3F2F03C51AA2477103E /* TomorrowProgressHeroCard.swift in Sources */,
 				A3048C4BC894E94862000751 /* WidgetSharedViews.swift in Sources */,
 				821D63C6B16A746D570A2EEA /* WidgetVectorArt.swift in Sources */,
 			);
@@ -737,6 +749,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5931377224C5F4D54FE058B7 /* AppleLiquidGlass.swift in Sources */,
+				14D864085171FB8FAD063CFE /* BaoBaiShareHelper.swift in Sources */,
 				DB417AF148401D0ABD648051 /* ChunkyEmberCharacterView.swift in Sources */,
 				5E0902C87676BBCA09DF661E /* ChunkyTheme.swift in Sources */,
 				14F37D8ACB579379078AEEAE /* ClassroomStorage.swift in Sources */,
@@ -763,6 +776,7 @@
 				BD2954CB77952D08AFCD0A47 /* AppleLiquidGlass.swift in Sources */,
 				17AAA7D52CC1135704F3B052 /* AssignmentListEmptyView.swift in Sources */,
 				CBD2E7E650DE1B9D9F4A966E /* AssignmentListRow.swift in Sources */,
+				923B8E7BD4DF5424E1524AB6 /* BaoBaiShareHelper.swift in Sources */,
 				C677921261CA4C30652CEEBF /* ChunkyEmberCharacterView.swift in Sources */,
 				115BDFB416E98A55BCCEB6A6 /* ChunkyTheme.swift in Sources */,
 				9D0307AD1FB3BB9FAADBC2D0 /* ClassroomAPIService.swift in Sources */,
@@ -785,6 +799,7 @@
 				E0DA3413AFA4C2AAFEDC2B7E /* PlatformUICompat.swift in Sources */,
 				D53A21ED4518F5686F93E7EF /* SettingsSheetView.swift in Sources */,
 				B66C454110C15165187A2FB5 /* SmallWidgetView.swift in Sources */,
+				6D71E9EB2F5E36496285F3CD /* TomorrowProgressHeroCard.swift in Sources */,
 				07E4D11AEE60B5EF8C30CCD8 /* WidgetSharedViews.swift in Sources */,
 				E3A34E0AB00CF89D9352A0A5 /* WidgetVectorArt.swift in Sources */,
 			);
@@ -795,6 +810,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				53B4DE26F1214441CB6CD47D /* AppleLiquidGlass.swift in Sources */,
+				B295FC218F9F9B1C797F30DC /* BaoBaiShareHelper.swift in Sources */,
 				0EE670D36CDCEB2E141D025D /* ChunkyEmberCharacterView.swift in Sources */,
 				1A04F5FA4134D9363DF3AFCB /* ChunkyTheme.swift in Sources */,
 				FB3DAD5704E94D8A7710CAE2 /* ClassroomStorage.swift in Sources */,

@@ -21,7 +21,7 @@ public struct LargeWidgetView: View {
             return "HÔM NAY"
         } else if hasTomorrow {
             return "NGÀY MAI"
-        } else if pending.contains(where: { $0.dueDate != nil && $0.dueDate! < Date() }) {
+        } else if pending.contains(where: { ($0.dueDate ?? .distantFuture) < Date() }) {
             return "QUÁ HẠN"
         } else if !pending.isEmpty {
             return "SẮP TỚI"
@@ -412,7 +412,7 @@ public struct LargeWidgetView: View {
                 Image(systemName: "sparkles")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
-                Text("Ngày mai rảnh rồi!")
+                Text("Ngày mai không có bài!")
                     .font(WidgetFontSystem.sectionHeader(size: 20))
                     .tracking(0.0)
                     .foregroundStyle(ChunkyTheme.textPrimary)
@@ -420,7 +420,7 @@ public struct LargeWidgetView: View {
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
             }
-            Text("Tất cả môn học đã hoàn thành. Nghỉ ngơi nhé!")
+            Text("Tất cả bài tập đều đã làm xong.")
                 .font(WidgetFontSystem.meta(size: 13))
                 .tracking(0.0)
                 .foregroundStyle(ChunkyTheme.textMuted)

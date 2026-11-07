@@ -128,7 +128,8 @@ class ClassroomRepository(
                 val allCoursework = mutableListOf<Coursework>()
                 var hasAnyFetchErrors = false
                 val chunkSize = 2
-                for (chunk in selectedCourses.chunked(chunkSize)) {
+                val courseChunks = selectedCourses.chunked(chunkSize)
+                for ((chunkIndex, chunk) in courseChunks.withIndex()) {
                     coroutineScope {
                         val deferredResults = chunk.map { course ->
                             async {
@@ -144,7 +145,9 @@ class ClassroomRepository(
                         val results = deferredResults.awaitAll()
                         results.forEach { allCoursework.addAll(it) }
                     }
-                    delay(500)
+                    if (chunkIndex < courseChunks.lastIndex) {
+                        delay(500)
+                    }
                 }
                 val unselectedIds = mergedCourses.filter { !it.isSelectedForWidget }.map { it.id }.toSet()
                 val preservedItems = existingCoursework.filter { unselectedIds.contains(it.courseId) }
@@ -326,9 +329,19 @@ class ClassroomRepository(
     suspend fun notifyWidgetReload() {
         try {
             val manager = GlanceAppWidgetManager(appContext)
-            val glanceIds = manager.getGlanceIds(ClassroomGlanceWidget::class.java)
-            glanceIds.forEach { glanceId ->
-                ClassroomGlanceWidget().update(appContext, glanceId)
+            val widgets: List<androidx.glance.appwidget.GlanceAppWidget> = listOf(
+                com.phucta.classroom.widget.ClassroomGlanceWidget(),
+                com.phucta.classroom.widget.ClassroomSmallGlanceWidget(),
+                com.phucta.classroom.widget.ClassroomMediumGlanceWidget(),
+                com.phucta.classroom.widget.ClassroomLargeGlanceWidget()
+            )
+            for (widget in widgets) {
+                try {
+                    val glanceIds = manager.getGlanceIds(widget.javaClass)
+                    glanceIds.forEach { glanceId ->
+                        widget.update(appContext, glanceId)
+                    }
+                } catch (_: Exception) {}
             }
         } catch (e: CancellationException) {
             throw e

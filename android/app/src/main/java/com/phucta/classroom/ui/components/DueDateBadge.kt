@@ -2,7 +2,7 @@ package com.phucta.classroom.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -15,8 +15,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phucta.classroom.ui.theme.BeVietnamProFontFamily
 import com.phucta.classroom.ui.theme.ChunkyColor
-import com.phucta.classroom.ui.theme.OutfitFontFamily
 
 @Immutable
 data class DueDateBadgeColors(
@@ -61,15 +61,16 @@ object DueDateBadgeDefaults {
     ): DueDateBadgeColors {
         return when {
             isCompleted -> completedColors
-            isOverdue || isUrgent -> overdueColors
+            isOverdue -> overdueColors
             isDueToday -> todayColors
             isDueTomorrow -> tomorrowColors
+            isUrgent -> overdueColors
             else -> neutralColors
         }
     }
 }
 
-private val BadgeShape = RoundedCornerShape(6.dp)
+private val BadgeShape = RoundedCornerShape(7.dp)
 
 @Composable
 fun DueDateBadge(
@@ -90,17 +91,17 @@ fun DueDateBadge(
         isUrgent = isUrgent
     )
 
-    Box(
+    Row(
         modifier = modifier
             .background(colors.background, shape = BadgeShape)
             .border(1.dp, colors.border, BadgeShape)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 7.dp, vertical = 3.5.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = text,
             color = colors.text,
-            fontFamily = OutfitFontFamily,
+            fontFamily = BeVietnamProFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = fontSize,
             maxLines = 1,

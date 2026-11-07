@@ -872,31 +872,27 @@ public struct RealSubjectArtScene: View {
     public var body: some View {
         Group {
             switch resolvedCategory {
+            case .computerScience:
+                ComputerScienceSubjectVectorArt(tintColor: resolvedColor)
             case .math:
                 MathSubjectVectorArt(tintColor: resolvedColor)
+            case .english:
+                EnglishSubjectVectorArt(tintColor: resolvedColor)
+            case .literature:
+                LiteratureSubjectVectorArt(tintColor: resolvedColor)
             case .physics:
                 PhysicsSubjectVectorArt(tintColor: resolvedColor)
             case .chemistry:
                 ChemistrySubjectVectorArt(tintColor: resolvedColor)
             case .biology:
                 BiologySubjectVectorArt(tintColor: resolvedColor)
-            case .historyOrGeography:
+            case .history:
                 HistoryOrGeographySubjectVectorArt(tintColor: resolvedColor)
-            case .literature:
-                LiteratureSubjectVectorArt(tintColor: resolvedColor)
-            case .english:
-                EnglishSubjectVectorArt(tintColor: resolvedColor)
-            case .civicsOrPhilosophy:
+            case .defenseEducation:
                 CivicsOrPhilosophySubjectVectorArt(tintColor: resolvedColor)
-            case .economics:
-                EconomicsSubjectVectorArt(tintColor: resolvedColor)
-            case .artAndDesign:
-                ArtAndDesignSubjectVectorArt(tintColor: resolvedColor)
-            case .computerScience:
-                ComputerScienceSubjectVectorArt(tintColor: resolvedColor)
-            case .networking:
-                NetworkingSubjectVectorArt(tintColor: resolvedColor)
-            case .generalAssignment:
+            case .localEducation:
+                HistoryOrGeographySubjectVectorArt(tintColor: resolvedColor)
+            case .experientialActivities:
                 GeneralAssignmentSubjectVectorArt(tintColor: resolvedColor)
             case .other:
                 OtherSubjectVectorArt(tintColor: resolvedColor)
@@ -906,6 +902,10 @@ public struct RealSubjectArtScene: View {
 }
 
 // Compatibility typealiases
+public typealias HistorySubjectVectorArt = HistoryOrGeographySubjectVectorArt
+public typealias DefenseEducationSubjectVectorArt = CivicsOrPhilosophySubjectVectorArt
+public typealias LocalEducationSubjectVectorArt = HistoryOrGeographySubjectVectorArt
+public typealias ExperientialActivitiesSubjectVectorArt = GeneralAssignmentSubjectVectorArt
 public typealias LaptopCodeVectorArtView = ComputerScienceSubjectVectorArt
 public typealias MathGeometryVectorArtView = MathSubjectVectorArt
 public typealias ScienceFlaskVectorArtView = ChemistrySubjectVectorArt

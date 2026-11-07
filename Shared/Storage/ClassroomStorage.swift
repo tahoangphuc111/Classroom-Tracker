@@ -445,6 +445,17 @@ public final class ClassroomStorage: @unchecked Sendable {
                 self?.ensureInitialData()
             }
         }
+
+        #if canImport(UIKit) && !os(watchOS)
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.invalidateMemoryCache()
+            SubjectArtHelper.clearCaches()
+        }
+        #endif
     }
 
     public func synchronizeAllStorageLayers() {
@@ -497,13 +508,15 @@ public final class ClassroomStorage: @unchecked Sendable {
                 bestPersonalNotesTime = pnTime
             }
             if let pnData = ud.data(forKey: personalNotesKey), !pnData.isEmpty {
-                if bestPersonalNotesData == nil {
-                    bestPersonalNotesData = pnData
-                } else if let currentNotes = try? Self.jsonDecoder.decode([PersonalNote].self, from: bestPersonalNotesData!),
-                          let newNotes = try? Self.jsonDecoder.decode([PersonalNote].self, from: pnData) {
-                    if currentNotes.isEmpty && !newNotes.isEmpty {
-                        bestPersonalNotesData = pnData
+                if let currentData = bestPersonalNotesData {
+                    if let currentNotes = try? Self.jsonDecoder.decode([PersonalNote].self, from: currentData),
+                       let newNotes = try? Self.jsonDecoder.decode([PersonalNote].self, from: pnData) {
+                        if currentNotes.isEmpty && !newNotes.isEmpty {
+                            bestPersonalNotesData = pnData
+                        }
                     }
+                } else {
+                    bestPersonalNotesData = pnData
                 }
             }
             let sTime = ud.double(forKey: lastSyncKey)
@@ -732,18 +745,24 @@ public final class ClassroomStorage: @unchecked Sendable {
         guard !loadedCourses.isEmpty, !items.isEmpty else { return items }
 
         var hasUnselected = false
+        for course in loadedCourses {
+            if !course.isSelectedForWidget {
+                hasUnselected = true
+                break
+            }
+        }
+        if !hasUnselected { return items }
+
         var allCourseIds = Set<String>(minimumCapacity: loadedCourses.count)
         var activeCourseIds = Set<String>(minimumCapacity: loadedCourses.count)
         for course in loadedCourses {
             allCourseIds.insert(course.id)
             if course.isSelectedForWidget {
                 activeCourseIds.insert(course.id)
-            } else {
-                hasUnselected = true
             }
         }
 
-        if !hasUnselected || activeCourseIds.isEmpty { return items }
+        if activeCourseIds.isEmpty { return items }
 
         var result: [Coursework] = []
         result.reserveCapacity(items.count)
@@ -770,6 +789,9 @@ public final class ClassroomStorage: @unchecked Sendable {
             switch (first.dueDate, second.dueDate) {
             case let (d1?, d2?):
                 if d1 != d2 { return d1 < d2 }
+                if first.normalizedTitle != second.normalizedTitle {
+                    return first.normalizedTitle < second.normalizedTitle
+                }
                 let titleOrder = first.title.localizedStandardCompare(second.title)
                 if titleOrder != .orderedSame {
                     return titleOrder == .orderedAscending
@@ -780,6 +802,9 @@ public final class ClassroomStorage: @unchecked Sendable {
             case (nil, _?):
                 return false
             case (nil, nil):
+                if first.normalizedTitle != second.normalizedTitle {
+                    return first.normalizedTitle < second.normalizedTitle
+                }
                 let titleOrder = first.title.localizedStandardCompare(second.title)
                 if titleOrder != .orderedSame {
                     return titleOrder == .orderedAscending
@@ -864,10 +889,10 @@ public final class ClassroomStorage: @unchecked Sendable {
 
             if dueDate >= startOfTomorrow && dueDate < startOfDayAfter {
                 if isEligible { tomorrowFiltered.append(item) }
-            } else if dueDate >= now && dueDate < startOfTomorrow {
+            } else if dueDate >= startOfToday && dueDate < startOfTomorrow {
                 if item.isCompleted {
                     if includeCompleted { todayCompletedFiltered.append(item) }
-                } else {
+                } else if dueDate >= now {
                     todayIncompleteFiltered.append(item)
                 }
             } else if dueDate >= startOfDayAfter {

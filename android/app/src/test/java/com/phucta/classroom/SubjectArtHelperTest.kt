@@ -27,11 +27,19 @@ class SubjectArtHelperTest {
         assertEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Thí nghiệm Quang học"))
         assertEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Hóa phân tích thực nghiệm"))
         assertEquals(SubjectCategory.BIOLOGY, SubjectArtHelper.category("Di truyền học quần thể"))
-        assertEquals(SubjectCategory.CIVICS_OR_PHILOSOPHY, SubjectArtHelper.category("Triết học Mác - Lênin"))
-        assertEquals(SubjectCategory.CIVICS_OR_PHILOSOPHY, SubjectArtHelper.category("Tư tưởng Hồ Chí Minh"))
+        assertEquals(SubjectCategory.OTHER, SubjectArtHelper.category("Triết học Mác - Lênin"))
+        assertEquals(SubjectCategory.OTHER, SubjectArtHelper.category("Tư tưởng Hồ Chí Minh"))
         assertEquals(SubjectCategory.COMPUTER_SCIENCE, SubjectArtHelper.category("Cấu trúc dữ liệu và giải thuật"))
         assertEquals(SubjectCategory.COMPUTER_SCIENCE, SubjectArtHelper.category("Trí tuệ nhân tạo"))
-        assertEquals(SubjectCategory.NETWORKING, SubjectArtHelper.category("An toàn thông tin mạng"))
+        assertEquals(SubjectCategory.OTHER, SubjectArtHelper.category("An toàn thông tin mạng"))
+
+        // 11 Core High School Curriculum Subjects
+        assertEquals(SubjectCategory.DEFENSE_EDUCATION, SubjectArtHelper.category("Giáo dục Quốc phòng và An ninh 12"))
+        assertEquals(SubjectCategory.DEFENSE_EDUCATION, SubjectArtHelper.category("GDQP 10"))
+        assertEquals(SubjectCategory.LOCAL_EDUCATION, SubjectArtHelper.category("Giáo dục địa phương 11"))
+        assertEquals(SubjectCategory.LOCAL_EDUCATION, SubjectArtHelper.category("GDDP 11"))
+        assertEquals(SubjectCategory.EXPERIENTIAL_ACTIVITIES, SubjectArtHelper.category("Hoạt động trải nghiệm, hướng nghiệp 12"))
+        assertEquals(SubjectCategory.EXPERIENTIAL_ACTIVITIES, SubjectArtHelper.category("HDTN 10"))
     }
 
     @Test
@@ -74,17 +82,17 @@ class SubjectArtHelperTest {
 
     @Test
     fun testNegativeTokenGuards_History() {
-        assertNotEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Sử dụng phần mềm văn phòng"))
-        assertNotEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Lịch sự trong giao tiếp"))
+        assertNotEquals(SubjectCategory.HISTORY, SubjectArtHelper.category("Sử dụng phần mềm văn phòng"))
+        assertNotEquals(SubjectCategory.HISTORY, SubjectArtHelper.category("Lịch sự trong giao tiếp"))
 
         // Unaccented guards
-        assertNotEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Su dung phan mem van phong"))
-        assertNotEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Lich su trong giao tiep"))
+        assertNotEquals(SubjectCategory.HISTORY, SubjectArtHelper.category("Su dung phan mem van phong"))
+        assertNotEquals(SubjectCategory.HISTORY, SubjectArtHelper.category("Lich su trong giao tiep"))
 
-        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Lịch sử Việt Nam"))
-        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Sử 12"))
-        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Lich su Viet Nam"))
-        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Su 12"))
+        assertEquals(SubjectCategory.HISTORY, SubjectArtHelper.category("Lịch sử Việt Nam"))
+        assertEquals(SubjectCategory.HISTORY, SubjectArtHelper.category("Sử 12"))
+        assertEquals(SubjectCategory.HISTORY, SubjectArtHelper.category("Lich su Viet Nam"))
+        assertEquals(SubjectCategory.HISTORY, SubjectArtHelper.category("Su 12"))
     }
 
     @Test
@@ -100,7 +108,7 @@ class SubjectArtHelperTest {
 
         // "Sử 12" with decomposed horn and hook
         val nfdSu = java.text.Normalizer.normalize("Sử 12", java.text.Normalizer.Form.NFD)
-        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category(nfdSu))
+        assertEquals(SubjectCategory.HISTORY, SubjectArtHelper.category(nfdSu))
 
         // "Quản lý" decomposed must not match PHYSICS
         val nfdQuanLy = java.text.Normalizer.normalize("Quản lý Dự án", java.text.Normalizer.Form.NFD)
@@ -175,8 +183,8 @@ class SubjectArtHelperTest {
     }
 
     @Test
-    fun testCloudToken_NetworkingCategory() {
-        assertEquals(SubjectCategory.NETWORKING, SubjectArtHelper.category("Hạ tầng Cloud"))
+    fun testCloudToken_FallbackToOther() {
+        assertEquals(SubjectCategory.OTHER, SubjectArtHelper.category("Hạ tầng Cloud"))
     }
 
     @Test
@@ -185,9 +193,9 @@ class SubjectArtHelperTest {
         val colors = categories.map { SubjectArtHelper.themeColor(it) }
 
         assertNotEquals(SubjectArtHelper.themeColor(SubjectCategory.MATH), SubjectArtHelper.themeColor(SubjectCategory.LITERATURE))
-        assertNotEquals(SubjectArtHelper.themeColor(SubjectCategory.MATH), SubjectArtHelper.themeColor(SubjectCategory.HISTORY_OR_GEOGRAPHY))
-        assertNotEquals(SubjectArtHelper.themeColor(SubjectCategory.MATH), SubjectArtHelper.themeColor(SubjectCategory.ECONOMICS))
-        assertNotEquals(SubjectArtHelper.themeColor(SubjectCategory.LITERATURE), SubjectArtHelper.themeColor(SubjectCategory.CIVICS_OR_PHILOSOPHY))
+        assertNotEquals(SubjectArtHelper.themeColor(SubjectCategory.MATH), SubjectArtHelper.themeColor(SubjectCategory.HISTORY))
+        assertNotEquals(SubjectArtHelper.themeColor(SubjectCategory.MATH), SubjectArtHelper.themeColor(SubjectCategory.DEFENSE_EDUCATION))
+        assertNotEquals(SubjectArtHelper.themeColor(SubjectCategory.LITERATURE), SubjectArtHelper.themeColor(SubjectCategory.LOCAL_EDUCATION))
     }
 
     @Test
@@ -237,10 +245,15 @@ class SubjectArtHelperTest {
     }
 
     @Test
-    fun testQuanTriMang_ClassifiesAsNetworking_NotEconomics() {
+    fun testNonCurriculumSubjects_ClassifyAsOther() {
         val category = SubjectArtHelper.category("Quản trị mạng")
-        assertEquals(SubjectCategory.NETWORKING, category)
-        assertNotEquals(SubjectCategory.ECONOMICS, category)
+        assertEquals(SubjectCategory.OTHER, category)
+
+        val econCategory = SubjectArtHelper.category("Kinh tế học đại cương")
+        assertEquals(SubjectCategory.OTHER, econCategory)
+
+        val artCategory = SubjectArtHelper.category("Mỹ thuật và Thiết kế")
+        assertEquals(SubjectCategory.OTHER, artCategory)
     }
 
     @Test
@@ -273,29 +286,48 @@ class SubjectArtHelperTest {
         assertEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("Ly 11"))
         assertEquals(SubjectCategory.CHEMISTRY, SubjectArtHelper.category("Hoa 10"))
         assertEquals(SubjectCategory.LITERATURE, SubjectArtHelper.category("Van 12"))
-        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Su 11"))
-        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category("Dia 10"))
+        assertEquals(SubjectCategory.HISTORY, SubjectArtHelper.category("Su 11"))
+        assertEquals(SubjectCategory.OTHER, SubjectArtHelper.category("Dia 10"))
 
         val diaTheme = SubjectArtHelper.theme("Dia 10")
-        assertEquals("ĐỊA", diaTheme.badgeCode)
+        assertEquals("DIA", diaTheme.badgeCode)
     }
 
     @Test
-    fun testUI04_GeographyBadge_ExcludesCompoundWordsLikeDiaDiemAndDiaChi() {
-        // Course has "Lịch sử" but also "Địa điểm" - badge must be "SỬ", not "ĐỊA"
+    fun testHistoryBadgeAndGeographyFallback() {
+        // Course has "Lịch sử" but also "Địa điểm" - badge must be "SỬ"
         val courseWithLocation = "Lịch sử 12 - Địa điểm P.301"
-        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category(courseWithLocation))
+        assertEquals(SubjectCategory.HISTORY, SubjectArtHelper.category(courseWithLocation))
         assertEquals("SỬ", SubjectArtHelper.badgeCode(courseWithLocation))
 
         // Course with "Địa chỉ" in history
         val courseWithAddress = "Lịch sử 10 - Địa chỉ lớp học"
-        assertEquals(SubjectCategory.HISTORY_OR_GEOGRAPHY, SubjectArtHelper.category(courseWithAddress))
+        assertEquals(SubjectCategory.HISTORY, SubjectArtHelper.category(courseWithAddress))
         assertEquals("SỬ", SubjectArtHelper.badgeCode(courseWithAddress))
 
-        // Legitimate Geography courses
+        // Non-curriculum Geography courses fall into OTHER with clean prefix badge
         assertEquals("ĐỊA", SubjectArtHelper.badgeCode("Địa lý 12"))
         assertEquals("ĐỊA", SubjectArtHelper.badgeCode("Địa lí 11"))
-        assertEquals("ĐỊA", SubjectArtHelper.badgeCode("Môn Địa 10 - Địa điểm phòng 101"))
-        assertEquals("ĐỊA", SubjectArtHelper.badgeCode("Dia ly 12"))
+        assertEquals("MÔN", SubjectArtHelper.badgeCode("Môn Địa 10 - Địa điểm phòng 101"))
+        assertEquals("DIA", SubjectArtHelper.badgeCode("Dia ly 12"))
+    }
+
+    @Test
+    fun testHomeroomClassWithSpecificAssignmentTitle() {
+        // High school homeroom class "11 Tin" should not force Physics/Math/Local assignments into Computer Science
+        assertEquals(SubjectCategory.PHYSICS, SubjectArtHelper.category("11 Tin", "Lý (tuần 10)"))
+        assertEquals("LÝ", SubjectArtHelper.badgeCode(SubjectCategory.PHYSICS, "11 Tin", "Lý (tuần 10)"))
+
+        assertEquals(SubjectCategory.MATH, SubjectArtHelper.category("11 Tin", "Toán (tuần 7)"))
+        assertEquals("TOÁ", SubjectArtHelper.badgeCode(SubjectCategory.MATH, "11 Tin", "Toán (tuần 7)"))
+
+        assertEquals(SubjectCategory.LOCAL_EDUCATION, SubjectArtHelper.category("11 Tin", "GDDP (tuần 8)"))
+        assertEquals("GDĐP", SubjectArtHelper.badgeCode(SubjectCategory.LOCAL_EDUCATION, "11 Tin", "GDDP (tuần 8)"))
+
+        assertEquals(SubjectCategory.DEFENSE_EDUCATION, SubjectArtHelper.category("11 Tin", "GDQP (tuần 9)"))
+        assertEquals("GDQP", SubjectArtHelper.badgeCode(SubjectCategory.DEFENSE_EDUCATION, "11 Tin", "GDQP (tuần 9)"))
+
+        assertEquals(SubjectCategory.EXPERIENTIAL_ACTIVITIES, SubjectArtHelper.category("11 Tin", "HDTN (tuần 10)"))
+        assertEquals("HĐTN", SubjectArtHelper.badgeCode(SubjectCategory.EXPERIENTIAL_ACTIVITIES, "11 Tin", "HDTN (tuần 10)"))
     }
 }

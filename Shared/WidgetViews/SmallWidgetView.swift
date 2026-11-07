@@ -21,7 +21,7 @@ public struct SmallWidgetView: View {
             return "HÔM NAY"
         } else if hasTomorrow {
             return "NGÀY MAI"
-        } else if pending.contains(where: { $0.dueDate != nil && $0.dueDate! < Date() }) {
+        } else if pending.contains(where: { ($0.dueDate ?? .distantFuture) < Date() }) {
             return "QUÁ HẠN"
         } else if !pending.isEmpty {
             return "SẮP TỚI"
@@ -185,14 +185,14 @@ public struct SmallWidgetView: View {
                 Image(systemName: "sparkles")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
-                Text("Ngày mai rảnh rồi!")
+                Text("Hết bài rồi!")
                     .font(WidgetFontSystem.sectionHeader(size: 11))
                     .tracking(0.0)
                     .foregroundStyle(ChunkyTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            Text("Nghỉ ngơi nhé")
+            Text("Đã xong hết")
                 .font(WidgetFontSystem.meta(size: 9.5))
                 .tracking(0.0)
                 .foregroundStyle(ChunkyTheme.textMuted)

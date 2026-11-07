@@ -24,22 +24,38 @@ class TokenStorage(context: Context) {
         } catch (_: Exception) {}
     }
 
+    private fun createEncryptedPrefs(): SharedPreferences {
+        val masterKey = MasterKey.Builder(appContext)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+
+        return EncryptedSharedPreferences.create(
+            appContext,
+            "secure_oauth_tokens",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
     private val prefs: SharedPreferences by lazy {
         try {
-            val masterKey = MasterKey.Builder(appContext)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-
-            EncryptedSharedPreferences.create(
-                appContext,
-                "secure_oauth_tokens",
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
-        } catch (e: Exception) {
-            android.util.Log.e("TokenStorage", "Android KeyStore / EncryptedSharedPreferences initialization failed", e)
-            throw IllegalStateException("Failed to initialize secure encrypted storage for OAuth tokens", e)
+            createEncryptedPrefs()
+        } catch (firstAttemptError: Throwable) {
+            android.util.Log.w("TokenStorage", "Android KeyStore / EncryptedSharedPreferences corrupted, attempting recovery...", firstAttemptError)
+            try {
+                appContext.deleteSharedPreferences("secure_oauth_tokens")
+                try {
+                    val keyStore = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+                    keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+                } catch (ksError: Throwable) {
+                    android.util.Log.w("TokenStorage", "Could not delete MasterKey alias from AndroidKeyStore", ksError)
+                }
+                createEncryptedPrefs()
+            } catch (recoveryError: Throwable) {
+                android.util.Log.e("TokenStorage", "EncryptedSharedPreferences recovery failed, falling back to private preferences to prevent crash bootloop", recoveryError)
+                appContext.getSharedPreferences("secure_oauth_tokens_fallback_safe", Context.MODE_PRIVATE)
+            }
         }
     }
 
@@ -63,8 +79,9 @@ class TokenStorage(context: Context) {
             } else {
                 editor.remove(KEY_AUTH_STATE)
             }
-            editor.apply()
+            editor.commit()
         } catch (e: Exception) {
+            android.util.Log.e("TokenStorage", "saveAuthFlowState error", e)
             e.printStackTrace()
         }
     }
@@ -72,18 +89,21 @@ class TokenStorage(context: Context) {
     fun loadAuthFlowVerifier(): String? = try {
         prefs.getString(KEY_AUTH_VERIFIER, null)
     } catch (e: Exception) {
+        android.util.Log.e("TokenStorage", "loadAuthFlowVerifier error", e)
         null
     }
 
     fun loadAuthFlowRedirectUri(): String? = try {
         prefs.getString(KEY_AUTH_REDIRECT_URI, null)
     } catch (e: Exception) {
+        android.util.Log.e("TokenStorage", "loadAuthFlowRedirectUri error", e)
         null
     }
 
     fun loadAuthFlowState(): String? = try {
         prefs.getString(KEY_AUTH_STATE, null)
     } catch (e: Exception) {
+        android.util.Log.e("TokenStorage", "loadAuthFlowState error", e)
         null
     }
 
@@ -93,8 +113,9 @@ class TokenStorage(context: Context) {
                 .remove(KEY_AUTH_VERIFIER)
                 .remove(KEY_AUTH_REDIRECT_URI)
                 .remove(KEY_AUTH_STATE)
-                .apply()
+                .commit()
         } catch (e: Exception) {
+            android.util.Log.e("TokenStorage", "clearAuthFlowState error", e)
             e.printStackTrace()
         }
     }
@@ -106,8 +127,9 @@ class TokenStorage(context: Context) {
                 .putString(KEY_REFRESH_TOKEN, tokens.refreshToken)
                 .putInt(KEY_EXPIRES_IN, tokens.expiresIn)
                 .putLong(KEY_EXPIRES_AT, tokens.expiresAt)
-                .apply()
+                .commit()
         } catch (e: Exception) {
+            android.util.Log.e("TokenStorage", "saveTokens error", e)
             e.printStackTrace()
         }
     }

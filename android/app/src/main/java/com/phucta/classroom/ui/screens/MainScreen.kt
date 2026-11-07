@@ -19,7 +19,10 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -102,6 +105,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.semantics.Role
 import com.phucta.classroom.ClassroomApplication
+import com.phucta.classroom.data.model.Course
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.PersonalNote
 import com.phucta.classroom.domain.BaoBaiBucketingUtils
@@ -111,6 +115,7 @@ import com.phucta.classroom.ui.components.HomeworkDetailBottomSheet
 import com.phucta.classroom.ui.components.SubjectBadgePill
 import com.phucta.classroom.ui.theme.ChunkyColor
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.launch
 
 @Immutable
@@ -119,6 +124,17 @@ private data class MainScreenCourseworkState(
     val completedItems: List<Coursework> = emptyList(),
     val upcomingIncompleteCount: Int = 0
 )
+
+private val TabSlideSpec = spring<IntOffset>(dampingRatio = 0.82f, stiffness = 420f)
+private val TabFadeInSpec = tween<Float>(200)
+private val TabFadeOutSpec = tween<Float>(160)
+
+private val TabSlideRightIn = slideInHorizontally(animationSpec = TabSlideSpec) { width -> (width * 0.15f).toInt() } + fadeIn(animationSpec = TabFadeInSpec)
+private val TabSlideLeftOut = slideOutHorizontally(animationSpec = TabSlideSpec) { width -> -(width * 0.15f).toInt() } + fadeOut(animationSpec = TabFadeOutSpec)
+private val TabSlideLeftIn = slideInHorizontally(animationSpec = TabSlideSpec) { width -> -(width * 0.15f).toInt() } + fadeIn(animationSpec = TabFadeInSpec)
+private val TabSlideRightOut = slideOutHorizontally(animationSpec = TabSlideSpec) { width -> (width * 0.15f).toInt() } + fadeOut(animationSpec = TabFadeOutSpec)
+private val TabForwardTransition = TabSlideRightIn.togetherWith(TabSlideLeftOut)
+private val TabBackwardTransition = TabSlideLeftIn.togetherWith(TabSlideRightOut)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -232,51 +248,7 @@ fun MainScreen() {
 
     val pullToRefreshState = rememberPullToRefreshState()
 
-    val onToggleTomorrowCompletion = remember(scope, repository, snackbarHostState) {
-        { id: String, completed: Boolean ->
-            if (id.startsWith("note_")) {
-                val noteId = id.removePrefix("note_")
-                scope.launch {
-                    try {
-                        repository.togglePersonalNoteCompletion(noteId, completed)
-                        if (completed) {
-                            val result = snackbarHostState.showSnackbar(
-                                message = "Đã hoàn thành ghi chú!",
-                                actionLabel = "Hoàn tác",
-                                duration = androidx.compose.material3.SnackbarDuration.Short
-                            )
-                            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                                repository.togglePersonalNoteCompletion(noteId, false)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        snackbarHostState.showSnackbar("Không thể cập nhật ghi chú: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
-                    }
-                }
-            } else {
-                scope.launch {
-                    try {
-                        repository.toggleTaskCompletion(id, completed)
-                        if (completed) {
-                            val result = snackbarHostState.showSnackbar(
-                                message = "Đã hoàn thành bài tập!",
-                                actionLabel = "Hoàn tác",
-                                duration = androidx.compose.material3.SnackbarDuration.Short
-                            )
-                            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                                repository.toggleTaskCompletion(id, false)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        snackbarHostState.showSnackbar("Không thể cập nhật bài tập: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
-                    }
-                }
-            }
-            Unit
-        }
-    }
-
-    val onToggleTaskCompletion = remember(scope, repository, snackbarHostState) {
+    val onToggleAssignmentCompletion = remember(scope, repository, snackbarHostState) {
         { id: String, completed: Boolean ->
             if (id.startsWith("note_")) {
                 val noteId = id.removePrefix("note_")
@@ -372,19 +344,7 @@ fun MainScreen() {
         }
     }
 
-    val onSelectTomorrowAssignment = remember(personalNotes) {
-        { coursework: Coursework ->
-            if (coursework.id.startsWith("note_")) {
-                val noteId = coursework.id.removePrefix("note_")
-                noteToEditFromExternal = personalNotes.find { it.id == noteId }
-                selectedTabIndex = 3
-            } else {
-                selectedCourseworkId = coursework.id
-            }
-        }
-    }
-
-    val onSelectUpcomingOrCompletedAssignment = remember(personalNotes) {
+    val onSelectAssignment = remember(personalNotes) {
         { coursework: Coursework ->
             if (coursework.id.startsWith("note_")) {
                 val noteId = coursework.id.removePrefix("note_")
@@ -415,490 +375,159 @@ fun MainScreen() {
         }
 
         ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = ChunkyColor.SurfaceWhite,
-                modifier = Modifier.width(310.dp)
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = "Lọc môn học",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = ChunkyColor.TextPrimary
-                    )
-                    Text(
-                        text = "Chọn các môn tham gia Báo bài & hiển thị trên Widget",
-                        fontSize = 12.sp,
-                        color = ChunkyColor.TextMuted,
-                        modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
-                    )
-                    HorizontalDivider(color = ChunkyColor.Hairline)
-
-                    if (courses.isNotEmpty()) {
-                        val allSelected = courses.all { it.isSelectedForWidget }
-                        val selectedCount = courses.count { it.isSelectedForWidget }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Lớp hiển thị ($selectedCount/${courses.size})",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = ChunkyColor.TextMuted
-                            )
-                            TextButton(
-                                onClick = {
-                                    scope.launch {
-                                        try {
-                                            repository.updateAllCoursesWidgetSelection(!allSelected)
-                                        } catch (e: Exception) {
-                                            snackbarHostState.showSnackbar("Không thể cập nhật danh sách lớp: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
-                                        }
-                                    }
-                                },
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = if (allSelected) "Bỏ chọn hết" else "Tất cả",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = ChunkyColor.SkyBottom
-                                )
-                            }
-                        }
-
-                        if (courses.size > 5) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = drawerSearchQuery,
-                                onValueChange = { drawerSearchQuery = it },
-                                placeholder = { Text("Tìm tên môn học...", fontSize = 12.5.sp) },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Default.Search,
-                                        contentDescription = null,
-                                        tint = ChunkyColor.TextMuted,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                },
-                                trailingIcon = {
-                                    if (drawerSearchQuery.isNotEmpty()) {
-                                        IconButton(
-                                            onClick = { drawerSearchQuery = "" },
-                                            modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Clear,
-                                                contentDescription = "Clear",
-                                                tint = ChunkyColor.TextMuted,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                        }
-                                    }
-                                },
-                                singleLine = true,
-                                shape = RoundedCornerShape(8.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedContainerColor = ChunkyColor.WindowBackground,
-                                    unfocusedContainerColor = ChunkyColor.WindowBackground,
-                                    focusedBorderColor = ChunkyColor.SkyBottom,
-                                    unfocusedBorderColor = ChunkyColor.CardBorder
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 40.dp)
-                            )
-                        }
-                    }
-                }
-
-                if (courses.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Chưa có môn học nào được đồng bộ.",
-                            fontSize = 13.sp,
-                            color = ChunkyColor.TextMuted,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 24.dp)
-                    ) {
-                        items(
-                            items = displayedCoursesInDrawer,
-                            key = { it.id },
-                            contentType = { "course_filter_item" }
-                        ) { course ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(
-                                        role = Role.Checkbox,
-                                        onClick = {
-                                            scope.launch {
-                                                try {
-                                                    repository.updateCourseWidgetSelection(
-                                                        course.id,
-                                                        !course.isSelectedForWidget
-                                                    )
-                                                } catch (e: Exception) {
-                                                    snackbarHostState.showSnackbar("Không thể cập nhật môn học: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
-                                                }
-                                            }
-                                        }
-                                    )
-                                    .padding(horizontal = 20.dp, vertical = 12.dp)
-                            ) {
-                                SubjectBadgePill(courseName = course.name)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = course.name,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp,
-                                    color = ChunkyColor.TextPrimary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Checkbox(
-                                    checked = course.isSelectedForWidget,
-                                    onCheckedChange = null,
-                                    colors = CheckboxDefaults.colors(checkedColor = ChunkyColor.SkyBottom)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    ) {
-        Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Classroom Tracker",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                color = ChunkyColor.TextPrimary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(ChunkyColor.SkyBottom.copy(alpha = 0.10f))
-                                    .padding(horizontal = 7.dp, vertical = 2.5.dp)
-                            ) {
-                                Text(
-                                    text = com.phucta.classroom.data.model.ClassroomDateUtils.formatDayAndDate(currentDayEpoch),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = ChunkyColor.SkyBottom
-                                )
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = ChunkyColor.SurfaceWhite),
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            BadgedBox(
-                                badge = {
-                                    if (isAnyCourseFiltered) {
-                                        Badge(
-                                            containerColor = ChunkyColor.SkyBottom,
-                                            modifier = Modifier.size(6.dp)
-                                        )
-                                    }
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.FilterList,
-                                    contentDescription = "Filter Courses",
-                                    tint = if (isAnyCourseFiltered) ChunkyColor.SkyBottom else ChunkyColor.TextPrimary
-                                )
-                            }
-                        }
-                    },
-                    actions = {
-                        SyncActionButton(
-                            isSyncing = isSyncing,
-                            onSyncClick = {
-                                scope.launch {
-                                    try {
-                                        val result = repository.syncAll()
-                                        if (result.isSuccess) {
-                                            snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
-                                        } else {
-                                            result.exceptionOrNull()?.let { e ->
-                                                snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
-                                            }
-                                        }
-                                    } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
-                                    }
-                                }
-                            }
-                        )
-                        IconButton(onClick = { showSettingsDialog = true }) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = ChunkyColor.TextPrimary)
-                        }
-                    }
-                )
-            },
-            bottomBar = {
-                NavigationBar(
-                    containerColor = ChunkyColor.SurfaceWhite,
-                    tonalElevation = 4.dp
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    drawerContainerColor = ChunkyColor.SurfaceWhite,
+                    modifier = Modifier.width(310.dp)
                 ) {
-                    NavigationBarItem(
-                        selected = selectedTabIndex == 0,
-                        onClick = {
-                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                            selectedTabIndex = 0
-                        },
-                        icon = {
-                            BadgedBox(
-                                badge = {
-                                    if (tomorrowIncompleteCount > 0) {
-                                        Badge(
-                                            containerColor = if (tomorrowIncompleteCount >= 3) ChunkyColor.HeaderOverdue else ChunkyColor.HeaderToday,
-                                            contentColor = Color.White
-                                        ) {
-                                            Text("$tomorrowIncompleteCount", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                        }
-                                    }
+                    CourseFilterDrawerContent(
+                        courses = courses,
+                        displayedCourses = displayedCoursesInDrawer,
+                        searchQuery = drawerSearchQuery,
+                        onSearchQueryChange = { drawerSearchQuery = it },
+                        onToggleCourse = { course ->
+                            scope.launch {
+                                try {
+                                    repository.updateCourseWidgetSelection(
+                                        course.id,
+                                        !course.isSelectedForWidget
+                                    )
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar("Không thể cập nhật môn học: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
                                 }
-                            ) {
-                                Icon(Icons.Default.CalendarToday, contentDescription = null)
                             }
                         },
-                        label = {
-                            Text(
-                                text = "Báo bài",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = ChunkyColor.SkyBottom,
-                            selectedTextColor = ChunkyColor.SkyBottom,
-                            indicatorColor = ChunkyColor.SkyBottom.copy(alpha = 0.14f),
-                            unselectedIconColor = Color(0xFF64748B),
-                            unselectedTextColor = Color(0xFF64748B)
-                        )
-                    )
-                    NavigationBarItem(
-                        selected = selectedTabIndex == 1,
-                        onClick = {
-                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                            selectedTabIndex = 1
-                        },
-                        icon = {
-                            BadgedBox(
-                                badge = {
-                                    if (upcomingIncompleteCount > 0) {
-                                        Badge(
-                                            containerColor = Color(0xFF2563EB),
-                                            contentColor = Color.White
-                                        ) {
-                                            Text("$upcomingIncompleteCount", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                        }
-                                    }
+                        onToggleAllCourses = { selectAll ->
+                            scope.launch {
+                                try {
+                                    repository.updateAllCoursesWidgetSelection(selectAll)
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar("Không thể cập nhật danh sách lớp: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
                                 }
-                            ) {
-                                Icon(Icons.Default.Upcoming, contentDescription = null)
                             }
-                        },
-                        label = {
-                            Text(
-                                text = "Sắp tới",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF2563EB),
-                            selectedTextColor = Color(0xFF2563EB),
-                            indicatorColor = Color(0xFF2563EB).copy(alpha = 0.12f),
-                            unselectedIconColor = Color(0xFF64748B),
-                            unselectedTextColor = Color(0xFF64748B)
-                        )
-                    )
-                    NavigationBarItem(
-                        selected = selectedTabIndex == 2,
-                        onClick = {
-                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                            selectedTabIndex = 2
-                        },
-                        icon = { Icon(Icons.Default.CheckCircle, contentDescription = null) },
-                        label = {
-                            Text(
-                                text = "Đã xong",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = ChunkyColor.HeaderCompleted,
-                            selectedTextColor = ChunkyColor.HeaderCompleted,
-                            indicatorColor = ChunkyColor.HeaderCompleted.copy(alpha = 0.14f),
-                            unselectedIconColor = Color(0xFF64748B),
-                            unselectedTextColor = Color(0xFF64748B)
-                        )
-                    )
-                    NavigationBarItem(
-                        selected = selectedTabIndex == 3,
-                        onClick = {
-                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                            selectedTabIndex = 3
-                        },
-                        icon = {
-                            BadgedBox(
-                                badge = {
-                                    if (incompleteNotesCount > 0) {
-                                        Badge(
-                                            containerColor = Color(0xFFD97706),
-                                            contentColor = Color.White
-                                        ) {
-                                            Text("$incompleteNotesCount", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                        }
-                                    }
-                                }
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.StickyNote2, contentDescription = null)
-                            }
-                        },
-                        label = {
-                            Text(
-                                text = "Ghi chú",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFFD97706),
-                            selectedTextColor = Color(0xFFD97706),
-                            indicatorColor = Color(0xFFD97706).copy(alpha = 0.14f),
-                            unselectedIconColor = Color(0xFF64748B),
-                            unselectedTextColor = Color(0xFF64748B)
-                        )
+                        }
                     )
                 }
             }
-        ) { paddingValues ->
-            PullToRefreshBox(
-                isRefreshing = isSyncing,
-                onRefresh = {
-                    scope.launch {
-                        try {
-                            val result = repository.syncAll()
-                            if (result.isSuccess) {
-                                snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
-                            } else {
-                                result.exceptionOrNull()?.let { e ->
+        ) {
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHostState) },
+                topBar = {
+                    MainTopAppBar(
+                        currentDayEpoch = currentDayEpoch,
+                        isAnyCourseFiltered = isAnyCourseFiltered,
+                        isSyncing = isSyncing,
+                        onOpenDrawer = { scope.launch { drawerState.open() } },
+                        onSyncClick = {
+                            scope.launch {
+                                try {
+                                    val result = repository.syncAll()
+                                    if (result.isSuccess) {
+                                        snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+                                    } else {
+                                        result.exceptionOrNull()?.let { e ->
+                                            snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
+                                        }
+                                    }
+                                } catch (e: Exception) {
                                     snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
                                 }
                             }
-                        } catch (e: Exception) {
-                            snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
-                        }
-                    }
+                        },
+                        onOpenSettings = { showSettingsDialog = true }
+                    )
                 },
-                state = pullToRefreshState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                indicator = {
-                    PullToRefreshDefaults.Indicator(
-                        state = pullToRefreshState,
-                        isRefreshing = isSyncing,
-                        modifier = Modifier.align(Alignment.TopCenter),
-                        containerColor = ChunkyColor.SurfaceWhite,
-                        color = ChunkyColor.SkyBottom
+                bottomBar = {
+                    MainBottomNavigationBar(
+                        selectedTabIndex = selectedTabIndex,
+                        tomorrowIncompleteCount = tomorrowIncompleteCount,
+                        upcomingIncompleteCount = upcomingIncompleteCount,
+                        incompleteNotesCount = incompleteNotesCount,
+                        onTabSelected = { selectedTabIndex = it }
                     )
                 }
-            ) {
-                AnimatedContent(
-                    targetState = selectedTabIndex,
-                    transitionSpec = {
-                        if (targetState > initialState) {
-                            (slideInHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> (width * 0.15f).toInt() } + fadeIn(animationSpec = tween(200)))
-                                .togetherWith(
-                                    slideOutHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> -(width * 0.15f).toInt() } + fadeOut(animationSpec = tween(160))
-                                )
-                        } else {
-                            (slideInHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> -(width * 0.15f).toInt() } + fadeIn(animationSpec = tween(200)))
-                                .togetherWith(
-                                    slideOutHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)) { width -> (width * 0.15f).toInt() } + fadeOut(animationSpec = tween(160))
-                                )
+            ) { paddingValues ->
+                PullToRefreshBox(
+                    isRefreshing = isSyncing,
+                    onRefresh = {
+                        scope.launch {
+                            try {
+                                val result = repository.syncAll()
+                                if (result.isSuccess) {
+                                    snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+                                } else {
+                                    result.exceptionOrNull()?.let { e ->
+                                        snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
+                            }
                         }
                     },
-                    label = "tabTransition",
-                    modifier = Modifier.fillMaxSize()
-                ) { tabIndex ->
-                    when (tabIndex) {
-                        0 -> TomorrowHomeworkScreen(
-                            tomorrowItems = tomorrowItems,
-                            courseworkIdsWithNotes = courseworkIdsWithNotes,
-                            currentDayEpoch = currentDayEpoch,
-                            onToggleCompletion = onToggleTomorrowCompletion,
-                            onSelectAssignment = onSelectTomorrowAssignment
+                    state = pullToRefreshState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    indicator = {
+                        PullToRefreshDefaults.Indicator(
+                            state = pullToRefreshState,
+                            isRefreshing = isSyncing,
+                            modifier = Modifier.align(Alignment.TopCenter),
+                            containerColor = ChunkyColor.SurfaceWhite,
+                            color = ChunkyColor.SkyBottom
                         )
-                        1 -> AllUpcomingScreen(
-                            allCoursework = allCoursework,
-                            courses = courses,
-                            courseworkIdsWithNotes = courseworkIdsWithNotes,
-                            currentDayEpoch = currentDayEpoch,
-                            onToggleCompletion = onToggleTaskCompletion,
-                            onSelectAssignment = onSelectUpcomingOrCompletedAssignment
-                        )
-                        2 -> CompletedHomeworkScreen(
-                            completedItems = completedItems,
-                            courseworkIdsWithNotes = courseworkIdsWithNotes,
-                            onToggleCompletion = onToggleTaskCompletion,
-                            onSelectAssignment = onSelectUpcomingOrCompletedAssignment
-                        )
-                        3 -> PersonalNotesScreen(
-                            notes = personalNotes,
-                            courses = courses,
-                            onToggleCompletion = onTogglePersonalNoteCompletion,
-                            onToggleChecklistItem = onToggleChecklistItem,
-                            onSaveNote = onSavePersonalNote,
-                            onDeleteNote = onDeletePersonalNote,
-                            initialNoteToEdit = noteToEditFromExternal,
-                            onClearInitialNoteToEdit = { noteToEditFromExternal = null }
-                        )
+                    }
+                ) {
+                    AnimatedContent(
+                        targetState = selectedTabIndex,
+                        transitionSpec = {
+                            if (targetState > initialState) TabForwardTransition else TabBackwardTransition
+                        },
+                        label = "tabTransition",
+                        modifier = Modifier.fillMaxSize()
+                    ) { tabIndex ->
+                        when (tabIndex) {
+                            0 -> TomorrowHomeworkScreen(
+                                tomorrowItems = tomorrowItems,
+                                courseworkIdsWithNotes = courseworkIdsWithNotes,
+                                currentDayEpoch = currentDayEpoch,
+                                onToggleCompletion = onToggleAssignmentCompletion,
+                                onSelectAssignment = onSelectAssignment
+                            )
+                            1 -> AllUpcomingScreen(
+                                allCoursework = allCoursework,
+                                courses = courses,
+                                courseworkIdsWithNotes = courseworkIdsWithNotes,
+                                currentDayEpoch = currentDayEpoch,
+                                onToggleCompletion = onToggleAssignmentCompletion,
+                                onSelectAssignment = onSelectAssignment
+                            )
+                            2 -> CompletedHomeworkScreen(
+                                completedItems = completedItems,
+                                courseworkIdsWithNotes = courseworkIdsWithNotes,
+                                onToggleCompletion = onToggleAssignmentCompletion,
+                                onSelectAssignment = onSelectAssignment
+                            )
+                            3 -> PersonalNotesScreen(
+                                notes = personalNotes,
+                                courses = courses,
+                                onToggleCompletion = onTogglePersonalNoteCompletion,
+                                onToggleChecklistItem = onToggleChecklistItem,
+                                onSaveNote = onSavePersonalNote,
+                                onDeleteNote = onDeletePersonalNote,
+                                initialNoteToEdit = noteToEditFromExternal,
+                                onClearInitialNoteToEdit = { noteToEditFromExternal = null }
+                            )
+                        }
                     }
                 }
             }
         }
-        }
     } else {
         WelcomeLoginScreen(
+            snackbarHostState = snackbarHostState,
             onSignIn = {
                 scope.launch {
                     try {
@@ -1024,15 +653,409 @@ fun MainScreen() {
     }
 }
 
+@Composable
+private fun CourseFilterDrawerContent(
+    courses: List<Course>,
+    displayedCourses: List<Course>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onToggleCourse: (Course) -> Unit,
+    onToggleAllCourses: (Boolean) -> Unit
+) {
+    Column(modifier = Modifier.padding(20.dp)) {
+        Text(
+            text = "Lọc môn học",
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            color = ChunkyColor.TextPrimary
+        )
+        Text(
+            text = "Chọn các môn tham gia Báo bài & hiển thị trên Widget",
+            fontSize = 12.sp,
+            color = ChunkyColor.TextMuted,
+            modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
+        )
+
+        HorizontalDivider(color = ChunkyColor.Hairline)
+
+        if (courses.isNotEmpty()) {
+            val allSelected = courses.all { it.isSelectedForWidget }
+            val selectedCount = courses.count { it.isSelectedForWidget }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Lớp hiển thị ($selectedCount/${courses.size})",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ChunkyColor.TextMuted
+                )
+                TextButton(
+                    onClick = { onToggleAllCourses(!allSelected) },
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = if (allSelected) "Bỏ chọn hết" else "Tất cả",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = ChunkyColor.SkyBottom
+                    )
+                }
+            }
+
+            if (courses.size > 5) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    placeholder = { Text("Tìm tên môn học...", fontSize = 12.5.sp) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            tint = ChunkyColor.TextMuted,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(
+                                onClick = { onSearchQueryChange("") },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = "Clear",
+                                    tint = ChunkyColor.TextMuted,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = ChunkyColor.WindowBackground,
+                        unfocusedContainerColor = ChunkyColor.WindowBackground,
+                        focusedBorderColor = ChunkyColor.SkyBottom,
+                        unfocusedBorderColor = ChunkyColor.CardBorder
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 40.dp)
+                )
+            }
+        }
+    }
+
+    if (courses.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Chưa có môn học nào được đồng bộ.",
+                fontSize = 13.sp,
+                color = ChunkyColor.TextMuted,
+                textAlign = TextAlign.Center
+            )
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            items(
+                items = displayedCourses,
+                key = { it.id },
+                contentType = { "course_filter_item" }
+            ) { course ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            role = androidx.compose.ui.semantics.Role.Checkbox,
+                            onClick = { onToggleCourse(course) }
+                        )
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                ) {
+                    SubjectBadgePill(courseName = course.name)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = course.name,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = ChunkyColor.TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Checkbox(
+                        checked = course.isSelectedForWidget,
+                        onCheckedChange = null,
+                        colors = CheckboxDefaults.colors(checkedColor = ChunkyColor.SkyBottom)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MainTopAppBar(
+    currentDayEpoch: Long,
+    isAnyCourseFiltered: Boolean,
+    isSyncing: Boolean,
+    onOpenDrawer: () -> Unit,
+    onSyncClick: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Classroom Tracker",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = ChunkyColor.TextPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(ChunkyColor.TomorrowBackground)
+                        .border(1.dp, ChunkyColor.TomorrowBorder, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                ) {
+                    Text(
+                        text = com.phucta.classroom.data.model.ClassroomDateUtils.formatDayAndDate(currentDayEpoch),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                        color = ChunkyColor.TomorrowText
+                    )
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = ChunkyColor.SurfaceWhite),
+        navigationIcon = {
+            IconButton(onClick = onOpenDrawer) {
+                BadgedBox(
+                    badge = {
+                        if (isAnyCourseFiltered) {
+                            Badge(
+                                containerColor = ChunkyColor.SkyBottom,
+                                modifier = Modifier.size(6.dp)
+                            )
+                        }
+                    }
+                ) {
+                    Icon(
+                        Icons.Default.FilterList,
+                        contentDescription = "Filter Courses",
+                        tint = if (isAnyCourseFiltered) ChunkyColor.SkyBottom else ChunkyColor.TextPrimary
+                    )
+                }
+            }
+        },
+        actions = {
+            SyncActionButton(
+                isSyncing = isSyncing,
+                onSyncClick = onSyncClick
+            )
+            IconButton(onClick = onOpenSettings) {
+                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = ChunkyColor.TextPrimary)
+            }
+        }
+    )
+}
+
+@Composable
+private fun MainBottomNavigationBar(
+    selectedTabIndex: Int,
+    tomorrowIncompleteCount: Int,
+    upcomingIncompleteCount: Int,
+    incompleteNotesCount: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    val view = androidx.compose.ui.platform.LocalView.current
+    val standardNavColors = NavigationBarItemDefaults.colors(
+        selectedIconColor = ChunkyColor.ActionBlue,
+        selectedTextColor = ChunkyColor.ActionBlue,
+        indicatorColor = Color.Transparent,
+        unselectedIconColor = ChunkyColor.TextMuted,
+        unselectedTextColor = ChunkyColor.TextMuted
+    )
+    NavigationBar(
+        containerColor = ChunkyColor.SurfaceWhite,
+        tonalElevation = 0.dp,
+        modifier = Modifier.drawBehind {
+            drawLine(
+                color = ChunkyColor.CardBorder,
+                start = Offset(0f, 0f),
+                end = Offset(size.width, 0f),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+    ) {
+        NavigationBarItem(
+            selected = selectedTabIndex == 0,
+            onClick = {
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                onTabSelected(0)
+            },
+            icon = {
+                BadgedBox(
+                    badge = {
+                        if (tomorrowIncompleteCount > 0) {
+                            Badge(
+                                containerColor = Color(0xFFEF4444),
+                                contentColor = Color.White
+                            ) {
+                                Text(
+                                    text = if (tomorrowIncompleteCount > 99) "99+" else "$tomorrowIncompleteCount",
+                                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                    }
+                ) {
+                    Icon(Icons.Default.CalendarToday, contentDescription = "Báo bài")
+                }
+            },
+            label = {
+                Text(
+                    text = "Báo bài",
+                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                    fontWeight = if (selectedTabIndex == 0) FontWeight.Bold else FontWeight.SemiBold,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            colors = standardNavColors
+        )
+        NavigationBarItem(
+            selected = selectedTabIndex == 1,
+            onClick = {
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                onTabSelected(1)
+            },
+            icon = {
+                BadgedBox(
+                    badge = {
+                        if (upcomingIncompleteCount > 0) {
+                            Badge(
+                                containerColor = Color(0xFFEF4444),
+                                contentColor = Color.White
+                            ) {
+                                Text(
+                                    text = if (upcomingIncompleteCount > 99) "99+" else "$upcomingIncompleteCount",
+                                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                    }
+                ) {
+                    Icon(Icons.Default.Upcoming, contentDescription = "Sắp tới")
+                }
+            },
+            label = {
+                Text(
+                    text = "Sắp tới",
+                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                    fontWeight = if (selectedTabIndex == 1) FontWeight.Bold else FontWeight.SemiBold,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            colors = standardNavColors
+        )
+        NavigationBarItem(
+            selected = selectedTabIndex == 2,
+            onClick = {
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                onTabSelected(2)
+            },
+            icon = { Icon(Icons.Default.CheckCircle, contentDescription = "Đã xong") },
+            label = {
+                Text(
+                    text = "Đã xong",
+                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                    fontWeight = if (selectedTabIndex == 2) FontWeight.Bold else FontWeight.SemiBold,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            colors = standardNavColors
+        )
+        NavigationBarItem(
+            selected = selectedTabIndex == 3,
+            onClick = {
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                onTabSelected(3)
+            },
+            icon = {
+                BadgedBox(
+                    badge = {
+                        if (incompleteNotesCount > 0) {
+                            Badge(
+                                containerColor = Color(0xFFF59E0B),
+                                contentColor = Color.White
+                            ) {
+                                Text(
+                                    text = if (incompleteNotesCount > 99) "99+" else "$incompleteNotesCount",
+                                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                    }
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.StickyNote2, contentDescription = "Ghi chú")
+                }
+            },
+            label = {
+                Text(
+                    text = "Ghi chú",
+                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                    fontWeight = if (selectedTabIndex == 3) FontWeight.Bold else FontWeight.SemiBold,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            colors = standardNavColors
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WelcomeLoginScreen(
+    snackbarHostState: SnackbarHostState,
     onSignIn: () -> Unit,
     onDemoMode: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     Scaffold(
         containerColor = ChunkyColor.WindowBackground,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { },
@@ -1101,7 +1124,7 @@ private fun WelcomeLoginScreen(
                 Text(
                     text = "Xem thử dữ liệu mẫu",
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.SemiBold,
                     color = ChunkyColor.TextMuted
                 )
             }
@@ -1113,10 +1136,10 @@ private fun WelcomeLoginScreen(
 private fun FloatingWelcomeEmber() {
     val infiniteTransition = rememberInfiniteTransition(label = "welcomeFloating")
     val floatOffset = infiniteTransition.animateFloat(
-        initialValue = -5f,
-        targetValue = 5f,
+        initialValue = -6f,
+        targetValue = 6f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2800, easing = FastOutSlowInEasing),
+            animation = tween(2600, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "welcomeFloat"
@@ -1125,13 +1148,11 @@ private fun FloatingWelcomeEmber() {
     Box(
         modifier = Modifier
             .graphicsLayer { translationY = floatOffset.value }
-            .size(88.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(ChunkyColor.SkyGradient),
+            .size(96.dp),
         contentAlignment = Alignment.Center
     ) {
         EmberFlameCanvas(
-            size = 64.dp,
+            size = 96.dp,
             emotion = EmberEmotion.NORMAL
         )
     }

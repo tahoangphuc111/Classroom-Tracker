@@ -9,12 +9,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.lifecycle.lifecycleScope
 import com.phucta.classroom.ClassroomApplication
 import com.phucta.classroom.data.model.ClassroomDateUtils
 import com.phucta.classroom.ui.screens.MainScreen
+import com.phucta.classroom.ui.theme.BeVietnamProFontFamily
 import com.phucta.classroom.ui.theme.ChunkyColor
 import com.phucta.classroom.ui.theme.ClassroomTypography
 import androidx.activity.enableEdgeToEdge
@@ -46,12 +49,19 @@ class MainActivity : ComponentActivity() {
                 ),
                 typography = ClassroomTypography
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(ChunkyColor.WindowBackground)
+                ProvideTextStyle(
+                    value = TextStyle(
+                        fontFamily = BeVietnamProFontFamily,
+                        color = ChunkyColor.TextPrimary
+                    )
                 ) {
-                    MainScreen()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(ChunkyColor.WindowBackground)
+                    ) {
+                        MainScreen()
+                    }
                 }
             }
         }

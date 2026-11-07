@@ -49,6 +49,8 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.phucta.classroom.ui.components.EmberEmotion
+import com.phucta.classroom.ui.components.EmberFlameCanvas
 import com.phucta.classroom.ui.theme.ChunkyColor
 
 import androidx.compose.foundation.layout.imePadding
@@ -119,20 +121,10 @@ fun SettingsDialog(
                         .padding(16.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(ChunkyColor.SkyBottom.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AccountCircle,
-                                contentDescription = null,
-                                tint = ChunkyColor.SkyBottom,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
+                        EmberFlameCanvas(
+                            size = 44.dp,
+                            emotion = if (isAuthenticated) EmberEmotion.NORMAL else EmberEmotion.SLEEPING
+                        )
 
                         Spacer(modifier = Modifier.width(12.dp))
 
@@ -174,7 +166,7 @@ fun SettingsDialog(
                             onClick = onSyncNow,
                             enabled = !isSyncing,
                             modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SkyBottom),
+                            colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.ActionBlue),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             if (isSyncing) {
@@ -203,7 +195,7 @@ fun SettingsDialog(
                     Button(
                         onClick = onSignIn,
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SkyBottom),
+                        colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.ActionBlue),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text("Đăng nhập bằng Google", fontWeight = FontWeight.Bold)
@@ -213,6 +205,8 @@ fun SettingsDialog(
                 Spacer(modifier = Modifier.height(20.dp))
                 HorizontalDivider(color = ChunkyColor.Hairline)
                 Spacer(modifier = Modifier.height(16.dp))
+
+
 
                 Box(
                     modifier = Modifier
@@ -314,9 +308,9 @@ fun SettingsDialog(
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = msg,
-                                color = ChunkyColor.SkyBottom,
+                                color = ChunkyColor.TextLink,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
 
@@ -350,7 +344,7 @@ fun SettingsDialog(
                                     credentialsMessage = "Đã lưu cấu hình Client ID"
                                 },
                                 modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SkyBottom),
+                                colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.ActionBlue),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Text("Lưu Client ID", fontWeight = FontWeight.Bold, fontSize = 13.sp)

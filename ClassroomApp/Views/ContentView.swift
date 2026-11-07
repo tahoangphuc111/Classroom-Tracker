@@ -418,44 +418,12 @@ public struct ContentView: View {
             }
         }
 
-        let sameStatusDueDateAscending: (Coursework, Coursework) -> Bool = {
-            switch ($0.dueDate, $1.dueDate) {
-            case let (d1?, d2?):
-                if d1 != d2 { return d1 < d2 }
-                let titleOrder = $0.title.localizedStandardCompare($1.title)
-                if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
-                return $0.id < $1.id
-            case (_?, nil): return true
-            case (nil, _?): return false
-            case (nil, nil):
-                let titleOrder = $0.title.localizedStandardCompare($1.title)
-                if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
-                return $0.id < $1.id
-            }
-        }
-
-        let dueDateDescending: (Coursework, Coursework) -> Bool = {
-            switch ($0.dueDate, $1.dueDate) {
-            case let (d1?, d2?):
-                if d1 != d2 { return d1 > d2 }
-                let titleOrder = $0.title.localizedStandardCompare($1.title)
-                if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
-                return $0.id < $1.id
-            case (_?, nil): return true
-            case (nil, _?): return false
-            case (nil, nil):
-                let titleOrder = $0.title.localizedStandardCompare($1.title)
-                if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
-                return $0.id < $1.id
-            }
-        }
-
-        tomorrowsStrict.sort(by: sameStatusDueDateAscending)
-        todays.sort(by: sameStatusDueDateAscending)
-        laters.sort(by: sameStatusDueDateAscending)
-        pasts.sort(by: sameStatusDueDateAscending)
-        comp.sort(by: dueDateDescending)
-        noDates.sort(by: sameStatusDueDateAscending)
+        tomorrowsStrict.sort(by: Coursework.compareByDueDateAscending)
+        todays.sort(by: Coursework.compareByDueDateAscending)
+        laters.sort(by: Coursework.compareByDueDateAscending)
+        pasts.sort(by: Coursework.compareByDueDateAscending)
+        comp.sort(by: Coursework.compareByDueDateDescending)
+        noDates.sort(by: Coursework.compareByDueDateAscending)
 
         let baoBaiItems = ClassroomStorage.shared.getTomorrowCoursework(items: allCoursework, courses: courses, includeCompleted: true)
 
@@ -731,36 +699,10 @@ public struct ContentView: View {
             autoSelectFirstItem()
         }
         .onChange(of: selectedSubjectFilter) {
-            completedDisplayLimit = 30
-            let list = currentFilteredList
-            if let current = selectedCoursework, list.contains(where: { $0.id == current.id }) {
-                selectedCourseworkIds = selectedCourseworkIds.filter { id in list.contains(where: { $0.id == id }) }
-                if selectedCourseworkIds.isEmpty {
-                    selectedCourseworkIds = [current.id]
-                }
-            } else if let first = list.first {
-                selectedCoursework = first
-                selectedCourseworkIds = [first.id]
-            } else {
-                selectedCoursework = nil
-                selectedCourseworkIds.removeAll()
-            }
+            reconcileSelectionAfterFilterChange()
         }
         .onChange(of: searchText) {
-            completedDisplayLimit = 30
-            let list = currentFilteredList
-            if let current = selectedCoursework, list.contains(where: { $0.id == current.id }) {
-                selectedCourseworkIds = selectedCourseworkIds.filter { id in list.contains(where: { $0.id == id }) }
-                if selectedCourseworkIds.isEmpty {
-                    selectedCourseworkIds = [current.id]
-                }
-            } else if let first = list.first {
-                selectedCoursework = first
-                selectedCourseworkIds = [first.id]
-            } else {
-                selectedCoursework = nil
-                selectedCourseworkIds.removeAll()
-            }
+            reconcileSelectionAfterFilterChange()
         }
         #if os(iOS)
         .onChange(of: selectedCoursework) {
@@ -2373,8 +2315,14 @@ public struct ContentView: View {
                     LazyVStack(alignment: .leading, spacing: 8) {
                         if activeCategory == .tomorrow {
                             if !list.isEmpty && searchText.isEmpty {
-                                tomorrowHeroBanner
-                                tomorrowProgressHeroCard
+                                TomorrowHeroBanner()
+                                TomorrowProgressHeroCard(
+                                    totalCount: buckets.tomorrow.count,
+                                    completedCount: buckets.tomorrow.filter(\.isCompleted).count,
+                                    hasTomorrowTasks: !buckets.tomorrowStrict.isEmpty,
+                                    hasTodayTasks: !buckets.today.isEmpty,
+                                    shareText: formattedBaoBaiShareText
+                                )
                             }
 
                             let pendingItems = list.filter { !$0.isCompleted }
@@ -2509,199 +2457,12 @@ public struct ContentView: View {
         .background(Color.platformWindowBackground)
     }
 
-    private var tomorrowProgressHeroCard: some View {
-        let totalCount = buckets.tomorrow.count
-        let completedCount = buckets.tomorrow.filter(\.isCompleted).count
-        let incompleteCount = totalCount - completedCount
-        let isAllDone = totalCount > 0 && incompleteCount == 0
-        let progressFraction = totalCount > 0 ? Double(completedCount) / Double(totalCount) : 0.0
-
-        let hasTomorrowTasks = !buckets.tomorrowStrict.isEmpty
-        let hasTodayTasks = !buckets.today.isEmpty
-        let titleSuffix = hasTomorrowTasks ? "ngày mai" : (hasTodayTasks ? "hôm nay" : "sắp tới")
-
-        let emotion: EmberEmotion = {
-            if isAllDone { return .celebrating }
-            if incompleteCount >= 3 { return .stressed }
-            return .normal
-        }()
-
-        return VStack(spacing: 10) {
-            HStack(spacing: 12) {
-                FloatingEmberView(emotion: emotion, size: 52)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(isAllDone ? "Xuất sắc! Đã xong hết" : "Báo bài \(titleSuffix)")
-                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.white)
-
-                    Text(isAllDone ? "Đã hoàn thành toàn bộ bài tập \(titleSuffix)." : "Còn \(incompleteCount) bài tập cần nộp.")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.92))
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 4)
-
-                    ShareLink(item: formattedBaoBaiShareText) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 11, weight: .bold))
-                            Text("Chia sẻ")
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                        }
-                        .foregroundStyle(Color.white)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(
-                            Capsule().fill(Color.white.opacity(0.22))
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.white.opacity(0.4), lineWidth: 0.8)
-                        )
-                    }
-                    .buttonStyle(.plain)
-            }
-
-            VStack(spacing: 5) {
-                HStack {
-                    Text(isAllDone ? "Hoàn thành 100%!" : "Tiến độ: \(completedCount)/\(totalCount) bài tập")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.white.opacity(0.95))
-
-                    Spacer()
-
-                    Text("\(Int(progressFraction * 100))%")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(Color.white.opacity(0.90))
-                }
-
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color.white.opacity(0.25))
-                            .frame(height: 6)
-
-                        Capsule()
-                            .fill(Color.white)
-                            .frame(width: max(6, geo.size.width * CGFloat(progressFraction)), height: 6)
-                            .animation(.spring(response: 0.35, dampingFraction: 0.78), value: progressFraction)
-                    }
-                }
-                .frame(height: 6)
-            }
-        }
-        .padding(13)
-        .background(
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .fill(ChunkyTheme.skyGradient)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .stroke(Color.white.opacity(0.22), lineWidth: 1)
-        )
-        .shadow(color: Color.blue.opacity(0.18), radius: 6, x: 0, y: 3)
-        .padding(.bottom, 4)
-    }
-
-    private var tomorrowHeroBanner: some View {
-        #if os(macOS)
-        let img = NSImage(named: "HeroBaoBai")
-        #else
-        let img = UIImage(named: "HeroBaoBai")
-        #endif
-        return Group {
-            if img != nil {
-                ZStack(alignment: .bottom) {
-                    Image("HeroBaoBai")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 128)
-                        .clipped()
-
-                    LinearGradient(
-                        colors: [Color.clear, Color.platformWindowBackground.opacity(0.35)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .stroke(Color.platformCardBorder.opacity(0.7), lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
-                .padding(.bottom, 4)
-            }
-        }
-    }
-
     private var formattedBaoBaiShareText: String {
-        let items = buckets.tomorrow
-        let hasTomorrowTasks = !buckets.tomorrowStrict.isEmpty
-        let hasTodayTasks = !buckets.today.isEmpty
-        let targetDayLabel = hasTomorrowTasks ? "NGÀY MAI" : (hasTodayTasks ? "HÔM NAY" : "SẮP TỚI")
-
-        let cal = ClassroomDateFormatters.gregorianCalendar
-        let targetDate: Date = {
-            if hasTomorrowTasks {
-                return cal.date(byAdding: .day, value: 1, to: Date()) ?? Date()
-            } else if hasTodayTasks {
-                return Date()
-            } else {
-                return items.first?.dueDate ?? (cal.date(byAdding: .day, value: 1, to: Date()) ?? Date())
-            }
-        }()
-
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "vi_VN")
-        formatter.calendar = cal
-        formatter.dateFormat = "EEEE, 'ngày' dd/MM"
-        var dateStr = formatter.string(from: targetDate)
-        if let firstChar = dateStr.first {
-            dateStr = firstChar.uppercased() + dateStr.dropFirst()
-        }
-
-        if items.isEmpty {
-            return """
-            BÁO BÀI \(targetDayLabel) (\(dateStr))
-
-            Tuyệt vời! Bạn không có bài tập nào cần làm.
-            Nghỉ ngơi thật tốt nhé!
-
-            ---
-            Classroom Tracker
-            """
-        }
-
-        let totalCount = items.count
-        var completedCount = 0
-        var lines = [
-            "BÁO BÀI \(targetDayLabel) (\(dateStr))\n"
-        ]
-        for (index, item) in items.enumerated() {
-            if item.isCompleted {
-                completedCount += 1
-            }
-            let courseTag = !item.courseName.isEmpty ? "[\(item.courseName)]" : "[Chung]"
-            let dueStr: String
-            if item.dueDate != nil {
-                if item.isDueTomorrow {
-                    dueStr = "Hạn: \(item.timeOnlyString)"
-                } else {
-                    let shortDay = ClassroomDateFormatters.shortDate.string(from: item.dueDate!)
-                    dueStr = "Hạn: \(item.timeOnlyString) (\(shortDay))"
-                }
-            } else {
-                dueStr = "Không có hạn nộp"
-            }
-            let statusSuffix = item.isCompleted ? " (Đã xong)" : ""
-            lines.append("\(index + 1). \(courseTag) \(item.title) — \(dueStr)\(statusSuffix)")
-        }
-        lines.append("\n---\nTiến độ: \(completedCount)/\(totalCount) bài hoàn thành\nClassroom Tracker")
-        return lines.joined(separator: "\n")
+        BaoBaiShareHelper.formatBaoBaiText(
+            items: buckets.tomorrow,
+            hasTomorrowTasks: !buckets.tomorrowStrict.isEmpty,
+            hasTodayTasks: !buckets.today.isEmpty
+        )
     }
 
     private var homeworkReaderPane: some View {
@@ -3178,6 +2939,23 @@ public struct ContentView: View {
         }
         if showFeedbackToast {
             showToast(title: "Đã lưu việc cần làm", icon: "checkmark.circle.fill", tint: .green)
+        }
+    }
+
+    private func reconcileSelectionAfterFilterChange() {
+        completedDisplayLimit = 30
+        let list = currentFilteredList
+        if let current = selectedCoursework, list.contains(where: { $0.id == current.id }) {
+            selectedCourseworkIds = selectedCourseworkIds.filter { id in list.contains(where: { $0.id == id }) }
+            if selectedCourseworkIds.isEmpty {
+                selectedCourseworkIds = [current.id]
+            }
+        } else if let first = list.first {
+            selectedCoursework = first
+            selectedCourseworkIds = [first.id]
+        } else {
+            selectedCoursework = nil
+            selectedCourseworkIds.removeAll()
         }
     }
 

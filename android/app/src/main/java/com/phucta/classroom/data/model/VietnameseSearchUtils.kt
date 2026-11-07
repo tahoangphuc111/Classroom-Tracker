@@ -132,6 +132,12 @@ private val COMMON_SYLLABLES: Map<String, String> = run {
     map
 }
 
+private fun isSearchDelimiterChar(ch: Char): Boolean {
+    return ch <= ' ' || ch == '\u00A0' || ch == ',' || ch == ';' || ch == ':' ||
+            ch == '-' || ch == '/' || ch == '(' || ch == ')' || ch == '[' || ch == ']' ||
+            ch == '{' || ch == '}' || ch == '|' || ch == '"' || ch == '\'' || ch == '?' || ch == '!'
+}
+
 fun tokenizeSearchQuery(query: String): List<String> {
     val len = query.length
     if (len == 0) return emptyList()
@@ -141,8 +147,8 @@ fun tokenizeSearchQuery(query: String): List<String> {
 
     for (i in 0 until len) {
         val ch = query[i]
-        val isWs = ch <= ' ' || ch == '\u00A0'
-        if (!isWs) {
+        val isDelimiter = isSearchDelimiterChar(ch)
+        if (!isDelimiter) {
             if (start == -1) {
                 start = i
             }
@@ -201,7 +207,7 @@ fun String.normalizeForVietnameseSearch(): String {
         if (common != null) return common
     }
 
-    val outChars = CharArray(trimmedLen)
+    val buffer = if (trimmedLen <= 512) threadLocalBuffer.get() ?: CharArray(512) else CharArray(trimmedLen)
     var outPos = 0
     for (i in start..end) {
         val ch = this[i]
@@ -209,14 +215,14 @@ fun String.normalizeForVietnameseSearch(): String {
         if (code < 0x1F00) {
             val mapped = VIETNAMESE_CHAR_MAP[code]
             if (mapped != SKIP_COMBINING_MARK) {
-                outChars[outPos++] = mapped
+                buffer[outPos++] = mapped
             }
         } else {
-            outChars[outPos++] = ch.lowercaseChar()
+            buffer[outPos++] = ch.lowercaseChar()
         }
     }
 
-    val stripped = if (outPos == trimmedLen) String(outChars) else String(outChars, 0, outPos)
+    val stripped = String(buffer, 0, outPos)
     if (len <= 128) {
         NORMALIZE_CACHE[this] = stripped
     }
@@ -224,10 +230,18 @@ fun String.normalizeForVietnameseSearch(): String {
     return stripped
 }
 
+private val threadLocalBuffer = object : ThreadLocal<CharArray>() {
+    override fun initialValue(): CharArray = CharArray(512)
+}
+
+private fun isWordBoundaryChar(ch: Char): Boolean {
+    return !(ch in 'a'..'z' || ch in '0'..'9')
+}
+
 private fun hasSubsequentWordBoundary(text: String, token: String, fromIndex: Int): Boolean {
     var index = text.indexOf(token, fromIndex + 1)
     while (index > 0) {
-        if (text[index - 1] == ' ') {
+        if (isWordBoundaryChar(text[index - 1])) {
             return true
         }
         index = text.indexOf(token, index + 1)
@@ -243,7 +257,8 @@ fun calculateSearchRelevance(
     content: String? = null,
     normalizedTitle: String? = null,
     normalizedCourseName: String? = null,
-    normalizedContent: String? = null
+    normalizedContent: String? = null,
+    checklistTitles: List<String> = emptyList()
 ): Int {
     val tokenCount = queryTokens.size
     if (tokenCount == 0) return 0
@@ -255,7 +270,7 @@ fun calculateSearchRelevance(
     val courseLen = normCourse.length
     val contentLen = normContent.length
 
-    if (titleLen == 0 && courseLen == 0 && contentLen == 0) return 0
+    if (titleLen == 0 && courseLen == 0 && contentLen == 0 && checklistTitles.isEmpty()) return 0
     var score = 0
 
     val rawQueryLen = rawNormalizedQuery.length
@@ -283,7 +298,7 @@ fun calculateSearchRelevance(
         val token = rawNormalizedQuery
         if (titleLen >= rawQueryLen && titleIdx >= 0) {
             score += 30
-            if (titleIdx == 0 || normTitle[titleIdx - 1] == ' ' || hasSubsequentWordBoundary(normTitle, token, titleIdx)) {
+            if (titleIdx == 0 || isWordBoundaryChar(normTitle[titleIdx - 1]) || hasSubsequentWordBoundary(normTitle, token, titleIdx)) {
                 score += 15
             }
         }
@@ -292,6 +307,14 @@ fun calculateSearchRelevance(
         }
         if (contentLen >= rawQueryLen && normContent.indexOf(token) >= 0) {
             score += 5
+        }
+        if (checklistTitles.isNotEmpty()) {
+            for (rawChecklistTitle in checklistTitles) {
+                val normItem = rawChecklistTitle.normalizeForVietnameseSearch()
+                if (normItem.contains(rawNormalizedQuery)) {
+                    score += 5
+                }
+            }
         }
         return score
     }
@@ -303,7 +326,7 @@ fun calculateSearchRelevance(
             val matchIdx = normTitle.indexOf(token)
             if (matchIdx >= 0) {
                 score += 30
-                if (matchIdx == 0 || normTitle[matchIdx - 1] == ' ' || hasSubsequentWordBoundary(normTitle, token, matchIdx)) {
+                if (matchIdx == 0 || isWordBoundaryChar(normTitle[matchIdx - 1]) || hasSubsequentWordBoundary(normTitle, token, matchIdx)) {
                     score += 15
                 }
             }
@@ -313,6 +336,25 @@ fun calculateSearchRelevance(
         }
         if (contentLen >= tokenLen && normContent.indexOf(token) >= 0) {
             score += 5
+        }
+    }
+    if (checklistTitles.isNotEmpty()) {
+        for (rawChecklistTitle in checklistTitles) {
+            val normItem = rawChecklistTitle.normalizeForVietnameseSearch()
+            val normItemLen = normItem.length
+            if (rawQueryLen > 0 && normItemLen >= rawQueryLen) {
+                if (normItem == rawNormalizedQuery) {
+                    score += 60
+                } else if (normItem.contains(rawNormalizedQuery)) {
+                    score += 30
+                }
+            }
+            for (i in 0 until tokenCount) {
+                val token = queryTokens[i]
+                if (token.isNotEmpty() && normItem.contains(token)) {
+                    score += 8
+                }
+            }
         }
     }
     return score
