@@ -34,7 +34,7 @@ permissions:
 jobs:
   build-macos:
     name: Build macOS 27 (.pkg)
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -58,7 +58,7 @@ jobs:
 
   build-ios:
     name: Build iOS (17 -> 27) (.ipa)
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
