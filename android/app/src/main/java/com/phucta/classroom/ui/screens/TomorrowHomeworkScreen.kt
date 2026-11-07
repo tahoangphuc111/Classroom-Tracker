@@ -212,7 +212,7 @@ fun TomorrowHomeworkScreen(
                             painter = painterResource(id = R.drawable.empty_state_all_caught_up),
                             contentDescription = "Không có bài tập ngày mai",
                             modifier = Modifier
-                                .size(136.dp)
+                                .size(144.dp)
                                 .clip(RoundedCornerShape(12.dp)),
                             contentScale = ContentScale.Fit
                         )
@@ -220,16 +220,16 @@ fun TomorrowHomeworkScreen(
                         Text(
                             text = "Ngày mai không có bài",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp,
+                            fontSize = 19.sp,
                             color = ChunkyColor.TextPrimary
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = "Không có bài tập nào cần chuẩn bị cho ngày mai.",
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             color = ChunkyColor.TextMuted,
                             textAlign = TextAlign.Center,
-                            lineHeight = 18.sp
+                            lineHeight = 20.sp
                         )
                     }
                 }
@@ -338,7 +338,7 @@ private fun FloatingEmberHero(
     )
 
     EmberFlameCanvas(
-        size = 72.dp,
+        size = 76.dp,
         emotion = emotion,
         isUrgent = isUrgent,
         modifier = modifier.graphicsLayer {
@@ -367,7 +367,7 @@ private fun HomeworkProgressBar(
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(8.dp)
+            .height(9.dp)
     ) {
         val cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
         drawRoundRect(
@@ -403,10 +403,10 @@ private fun TomorrowSummaryCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(ChunkyColor.SkyGradient)
-            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
-            .padding(16.dp)
+            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(18.dp))
+            .padding(18.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -428,15 +428,15 @@ private fun TomorrowSummaryCard(
                             text = "Ngày mai không có bài!",
                             color = Color.White,
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 20.sp
+                            fontSize = 22.sp
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Chưa có bài tập nào cần nộp ngày mai.",
                             color = Color.White.copy(alpha = 0.95f),
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            lineHeight = 18.sp
+                            fontSize = 15.sp,
+                            lineHeight = 20.sp
                         )
                     } else if (isAllDone) {
                         val doneMessage = when {
@@ -448,15 +448,15 @@ private fun TomorrowSummaryCard(
                             text = "Đã xong hết bài!",
                             color = Color.White,
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 20.sp
+                            fontSize = 22.sp
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = doneMessage,
                             color = Color.White.copy(alpha = 0.95f),
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            lineHeight = 18.sp
+                            fontSize = 15.sp,
+                            lineHeight = 20.sp
                         )
                     } else {
                         val headerTitle = when {
@@ -468,15 +468,15 @@ private fun TomorrowSummaryCard(
                             text = headerTitle,
                             color = Color.White,
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 20.sp
+                            fontSize = 22.sp
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Còn $incompleteCount bài tập cần nộp.",
                             color = Color.White.copy(alpha = 0.95f),
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            lineHeight = 18.sp
+                            fontSize = 15.sp,
+                            lineHeight = 20.sp
                         )
                     }
                 }
@@ -494,14 +494,14 @@ private fun TomorrowSummaryCard(
                             text = if (isAllDone) "Đã xong hết 100%" else "Đã làm: $completedCount/$totalCount bài",
                             color = Color.White.copy(alpha = 0.95f),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.5.sp
+                            fontSize = 14.sp
                         )
                         Text(
                             text = "${(progressFraction * 100).toInt()}%",
                             color = Color.White,
                             fontFamily = BeVietnamProFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                            fontSize = 14.5.sp
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -512,19 +512,20 @@ private fun TomorrowSummaryCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
                     modifier = Modifier
+                        .weight(1f)
                         .minimumInteractiveComponentSize()
-                        .height(38.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(11.dp))
                         .background(Color.White.copy(alpha = 0.20f))
-                        .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(11.dp))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = ripple(color = Color.White),
@@ -563,32 +564,32 @@ private fun TomorrowSummaryCard(
                             }
                         )
                         .padding(horizontal = 14.dp),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.ContentCopy,
                         contentDescription = "Sao chép báo bài",
                         tint = Color.White,
-                        modifier = Modifier.size(15.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Sao chép",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.5.sp
+                        fontSize = 14.sp
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
                 Row(
                     modifier = Modifier
+                        .weight(1f)
                         .minimumInteractiveComponentSize()
-                        .height(38.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(11.dp))
                         .background(Color.White.copy(alpha = 0.20f))
-                        .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(11.dp))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = ripple(color = Color.White),
@@ -627,20 +628,21 @@ private fun TomorrowSummaryCard(
                             }
                         )
                         .padding(horizontal = 14.dp),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.Share,
                         contentDescription = "Chia sẻ báo bài",
                         tint = Color.White,
-                        modifier = Modifier.size(15.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Chia sẻ",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.5.sp
+                        fontSize = 14.sp
                     )
                 }
             }

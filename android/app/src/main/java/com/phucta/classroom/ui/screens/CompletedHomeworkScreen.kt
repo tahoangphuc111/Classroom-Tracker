@@ -132,23 +132,23 @@ fun CompletedHomeworkScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     EmberFlameCanvas(
-                        size = 76.dp,
+                        size = 80.dp,
                         emotion = EmberEmotion.STUDYING
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Chưa có bài nào xong",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
+                        fontSize = 19.sp,
                         color = ChunkyColor.TextPrimary
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Các bài bạn đánh dấu hoàn thành sẽ nằm ở đây.",
-                        fontSize = 14.sp,
+                        fontSize = 15.sp,
                         color = ChunkyColor.TextMuted,
                         textAlign = TextAlign.Center,
-                        lineHeight = 18.sp
+                        lineHeight = 20.sp
                     )
                 }
             }
@@ -166,26 +166,27 @@ fun CompletedHomeworkScreen(
                     .clip(RoundedCornerShape(14.dp))
                     .background(ChunkyColor.CompletedBadgeBackground)
                     .border(1.dp, ChunkyColor.CompletedBadgeBorder, RoundedCornerShape(14.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     EmberFlameCanvas(
-                        size = 46.dp,
+                        size = 50.dp,
                         emotion = EmberEmotion.CELEBRATING
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Đã làm xong ${completedItems.size} bài tập",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = 15.5.sp,
                             color = ChunkyColor.CompletedBadgeText
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Tất cả các bài bạn đã nộp hoặc đánh dấu xong.",
-                            fontSize = 12.sp,
+                            fontSize = 13.5.sp,
                             color = ChunkyColor.TextMuted
                         )
                     }
@@ -198,7 +199,7 @@ fun CompletedHomeworkScreen(
                     searchQuery = it
                     displayLimit = 30
                 },
-                placeholder = { Text("Tìm bài tập đã hoàn thành...", fontSize = 14.sp) },
+                placeholder = { Text("Tìm bài tập đã hoàn thành...", fontSize = 15.sp) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = ChunkyColor.TextMuted) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
@@ -235,7 +236,7 @@ fun CompletedHomeworkScreen(
                 ) {
                     Text(
                         text = "Tìm thấy ${filteredItems.size} bài tập đã xong",
-                        fontSize = 12.sp,
+                        fontSize = 13.5.sp,
                         color = ChunkyColor.TextMuted,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -248,7 +249,7 @@ fun CompletedHomeworkScreen(
                     ) {
                         Text(
                             text = "Xóa tìm kiếm",
-                            fontSize = 12.sp,
+                            fontSize = 13.5.sp,
                             color = ChunkyColor.TextLink,
                             fontWeight = FontWeight.SemiBold
                         )

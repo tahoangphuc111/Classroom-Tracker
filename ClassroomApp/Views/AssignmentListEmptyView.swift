@@ -89,11 +89,11 @@ struct AssignmentListEmptyView: View {
 
             VStack(spacing: 6) {
                 Text(emptyTitle)
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .font(.system(size: 19, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.platformTextPrimary)
 
                 Text(emptySubtitle)
-                    .font(.system(size: 13.5))
+                    .font(.system(size: 15))
                     .foregroundStyle(Color.platformTextSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
@@ -105,10 +105,10 @@ struct AssignmentListEmptyView: View {
                     onClearSearch()
                 }
                 .buttonStyle(.plain)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 14.5, weight: .semibold))
                 .foregroundStyle(Color.blue)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
+                .padding(.horizontal, 15)
+                .padding(.vertical, 8)
                 .background(
                     Capsule().fill(Color.blue.opacity(0.10))
                 )
@@ -122,15 +122,15 @@ struct AssignmentListEmptyView: View {
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "tray")
-                            .font(.system(size: 12))
+                            .font(.system(size: 13))
                         Text("Xem tất cả bài tập sắp tới")
-                            .font(.system(size: 13.5, weight: .semibold))
+                            .font(.system(size: 14.5, weight: .semibold))
                     }
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.blue)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
+                .padding(.horizontal, 15)
+                .padding(.vertical, 8)
                 .background(
                     Capsule().fill(Color.blue.opacity(0.10))
                 )

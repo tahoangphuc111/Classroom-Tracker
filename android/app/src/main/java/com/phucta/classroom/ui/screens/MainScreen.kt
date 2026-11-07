@@ -666,14 +666,14 @@ private fun CourseFilterDrawerContent(
         Text(
             text = "Lọc môn học",
             fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
+            fontSize = 20.sp,
             color = ChunkyColor.TextPrimary
         )
         Text(
             text = "Chọn các môn tham gia Báo bài & hiển thị trên Widget",
-            fontSize = 12.sp,
+            fontSize = 13.5.sp,
             color = ChunkyColor.TextMuted,
-            modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
+            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
         )
 
         HorizontalDivider(color = ChunkyColor.Hairline)
@@ -690,7 +690,7 @@ private fun CourseFilterDrawerContent(
             ) {
                 Text(
                     text = "Lớp hiển thị ($selectedCount/${courses.size})",
-                    fontSize = 12.sp,
+                    fontSize = 13.5.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = ChunkyColor.TextMuted
                 )
@@ -700,7 +700,7 @@ private fun CourseFilterDrawerContent(
                 ) {
                     Text(
                         text = if (allSelected) "Bỏ chọn hết" else "Tất cả",
-                        fontSize = 12.sp,
+                        fontSize = 13.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = ChunkyColor.SkyBottom
                     )
@@ -712,7 +712,7 @@ private fun CourseFilterDrawerContent(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = onSearchQueryChange,
-                    placeholder = { Text("Tìm tên môn học...", fontSize = 12.5.sp) },
+                    placeholder = { Text("Tìm tên môn học...", fontSize = 14.sp) },
                     leadingIcon = {
                         Icon(
                             Icons.Default.Search,
@@ -761,7 +761,7 @@ private fun CourseFilterDrawerContent(
         ) {
             Text(
                 text = "Chưa có môn học nào được đồng bộ.",
-                fontSize = 13.sp,
+                fontSize = 14.5.sp,
                 color = ChunkyColor.TextMuted,
                 textAlign = TextAlign.Center
             )
@@ -787,11 +787,11 @@ private fun CourseFilterDrawerContent(
                         .padding(horizontal = 20.dp, vertical = 12.dp)
                 ) {
                     SubjectBadgePill(courseName = course.name)
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = course.name,
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
+                        fontSize = 15.5.sp,
                         color = ChunkyColor.TextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -824,7 +824,7 @@ private fun MainTopAppBar(
                 Text(
                     text = "Classroom Tracker",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                    fontSize = 19.5.sp,
                     color = ChunkyColor.TextPrimary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -833,11 +833,11 @@ private fun MainTopAppBar(
                         .clip(RoundedCornerShape(6.dp))
                         .background(ChunkyColor.TomorrowBackground)
                         .border(1.dp, ChunkyColor.TomorrowBorder, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = com.phucta.classroom.data.model.ClassroomDateUtils.formatDayAndDate(currentDayEpoch),
-                        fontSize = 11.sp,
+                        fontSize = 12.5.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
                         color = ChunkyColor.TomorrowText
@@ -924,7 +924,7 @@ private fun MainBottomNavigationBar(
                                     text = if (tomorrowIncompleteCount > 99) "99+" else "$tomorrowIncompleteCount",
                                     fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp
+                                    fontSize = 11.sp
                                 )
                             }
                         }
@@ -938,7 +938,7 @@ private fun MainBottomNavigationBar(
                     text = "Báo bài",
                     fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
                     fontWeight = if (selectedTabIndex == 0) FontWeight.Bold else FontWeight.SemiBold,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -963,7 +963,7 @@ private fun MainBottomNavigationBar(
                                     text = if (upcomingIncompleteCount > 99) "99+" else "$upcomingIncompleteCount",
                                     fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp
+                                    fontSize = 11.sp
                                 )
                             }
                         }
@@ -977,7 +977,7 @@ private fun MainBottomNavigationBar(
                     text = "Sắp tới",
                     fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
                     fontWeight = if (selectedTabIndex == 1) FontWeight.Bold else FontWeight.SemiBold,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -996,7 +996,7 @@ private fun MainBottomNavigationBar(
                     text = "Đã xong",
                     fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
                     fontWeight = if (selectedTabIndex == 2) FontWeight.Bold else FontWeight.SemiBold,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1021,7 +1021,7 @@ private fun MainBottomNavigationBar(
                                     text = if (incompleteNotesCount > 99) "99+" else "$incompleteNotesCount",
                                     fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp
+                                    fontSize = 11.sp
                                 )
                             }
                         }
@@ -1035,7 +1035,7 @@ private fun MainBottomNavigationBar(
                     text = "Ghi chú",
                     fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
                     fontWeight = if (selectedTabIndex == 3) FontWeight.Bold else FontWeight.SemiBold,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1088,23 +1088,23 @@ private fun WelcomeLoginScreen(
             Text(
                 text = "Classroom Tracker",
                 fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
+                fontSize = 26.sp,
                 color = ChunkyColor.TextPrimary
             )
 
             Text(
                 text = "Theo dõi bài tập Google Classroom",
-                fontSize = 14.sp,
+                fontSize = 15.5.sp,
                 color = ChunkyColor.TextMuted,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp, bottom = 32.dp)
+                modifier = Modifier.padding(top = 6.dp, bottom = 32.dp)
             )
 
             androidx.compose.material3.Button(
                 onClick = onSignIn,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .height(54.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                     containerColor = ChunkyColor.SkyBottom
@@ -1113,7 +1113,7 @@ private fun WelcomeLoginScreen(
                 Text(
                     text = "Đăng nhập bằng Google",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     color = androidx.compose.ui.graphics.Color.White
                 )
             }
@@ -1123,7 +1123,7 @@ private fun WelcomeLoginScreen(
             androidx.compose.material3.TextButton(onClick = onDemoMode) {
                 Text(
                     text = "Xem thử dữ liệu mẫu",
-                    fontSize = 14.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = ChunkyColor.TextMuted
                 )

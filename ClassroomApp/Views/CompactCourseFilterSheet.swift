@@ -12,10 +12,10 @@ struct CompactCourseFilterSheet: View {
                 if courses.isEmpty {
                     VStack(spacing: 8) {
                         Image(systemName: "books.vertical")
-                            .font(.system(size: 28))
+                            .font(.system(size: 30))
                             .foregroundStyle(Color.secondary)
                         Text("Chưa có danh sách môn học")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 15.5, weight: .medium))
                             .foregroundStyle(Color.platformTextSecondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .center)

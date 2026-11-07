@@ -75,21 +75,21 @@ public struct MediumWidgetView: View {
                 loggedOutMediumView
                     .widgetURL(URL(string: "classroomwidget://login"))
             } else {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     VStack(spacing: 0) {
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text("\(activeItems.count)")
-                                .font(WidgetFontSystem.counter(size: 32))
+                                .font(WidgetFontSystem.counter(size: 35))
                                 .foregroundStyle(Color.white)
                                 .shadow(color: Color.black.opacity(0.20), radius: 0, x: 0, y: 1.5)
 
                             if activeItems.isEmpty && !courseworkList.isEmpty {
                                 Image(systemName: "checkmark.seal.fill")
-                                    .font(.system(size: 16, weight: .bold))
+                                    .font(.system(size: 17, weight: .bold))
                                     .foregroundStyle(ChunkyTheme.butterYellow)
                             } else {
                                 Text(sectionHeaderTitle)
-                                    .font(WidgetFontSystem.sectionHeader(size: 9))
+                                    .font(WidgetFontSystem.sectionHeader(size: 10.5))
                                     .tracking(0.0)
                                     .foregroundStyle(ChunkyTheme.butterYellow)
                                     .lineLimit(1)
@@ -102,7 +102,7 @@ public struct MediumWidgetView: View {
                         ChunkyEmberCharacterView(emotion: characterEmotion, size: 76)
                             .padding(.bottom, 6)
                     }
-                    .frame(width: 98)
+                    .frame(width: 96)
                     .frame(maxHeight: .infinity)
 
                     ZStack(alignment: .topLeading) {
@@ -117,7 +117,7 @@ public struct MediumWidgetView: View {
                         VStack(alignment: .leading, spacing: 0) {
                             HStack(alignment: .center, spacing: 6) {
                                 Text(sectionHeaderTitle)
-                                    .font(WidgetFontSystem.sectionHeader(size: 10))
+                                    .font(WidgetFontSystem.sectionHeader(size: 11.5))
                                     .tracking(0.0)
                                     .foregroundStyle(ChunkyTheme.textMuted)
 
@@ -125,19 +125,19 @@ public struct MediumWidgetView: View {
 
                                 if activeItems.count > 3 {
                                     Text("+\(activeItems.count - 3)")
-                                        .font(WidgetFontSystem.statusTag(size: 8.5))
+                                        .font(WidgetFontSystem.statusTag(size: 10))
                                         .foregroundStyle(ChunkyTheme.urgentAccent)
-                                        .padding(.horizontal, 6)
+                                        .padding(.horizontal, 6.5)
                                         .padding(.vertical, 2)
                                         .background(ChunkyTheme.urgentAccent.opacity(0.12))
                                         .clipShape(Capsule())
                                 } else if !activeItems.isEmpty {
                                     Text("\(activeItems.count)")
-                                        .font(WidgetFontSystem.sectionHeader(size: 9))
+                                        .font(WidgetFontSystem.sectionHeader(size: 10.5))
                                         .foregroundStyle(ChunkyTheme.textMuted)
                                 } else if !courseworkList.isEmpty {
                                     Image(systemName: "checkmark")
-                                        .font(WidgetFontSystem.sectionHeader(size: 9))
+                                        .font(WidgetFontSystem.sectionHeader(size: 10.5))
                                         .foregroundStyle(Color.green)
                                 }
                             }
@@ -181,7 +181,7 @@ public struct MediumWidgetView: View {
                 ChunkyEmberCharacterView(emotion: .normal, size: 68)
 
                 Text("Báo bài")
-                    .font(WidgetFontSystem.sectionHeader(size: 10))
+                    .font(WidgetFontSystem.sectionHeader(size: 11.5))
                     .foregroundStyle(ChunkyTheme.butterYellow)
             }
             .frame(width: 90)
@@ -197,15 +197,15 @@ public struct MediumWidgetView: View {
 
                 VStack(spacing: 6) {
                     Image(systemName: "person.crop.circle.badge.plus")
-                        .font(.system(size: 26, weight: .semibold))
+                        .font(.system(size: 28, weight: .semibold))
                         .foregroundStyle(ChunkyTheme.pillBlue)
 
                     Text("Chưa đăng nhập")
-                        .font(WidgetFontSystem.courseTitle(size: 13))
+                        .font(WidgetFontSystem.courseTitle(size: 15))
                         .foregroundStyle(ChunkyTheme.textPrimary)
 
                     Text("Chạm để đăng nhập Google Classroom")
-                        .font(WidgetFontSystem.meta(size: 10))
+                        .font(WidgetFontSystem.meta(size: 12))
                         .foregroundStyle(ChunkyTheme.textMuted)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
@@ -234,20 +234,20 @@ public struct MediumWidgetView: View {
             ZStack {
                 Circle()
                     .fill(ChunkyTheme.butterYellow.opacity(0.35))
-                    .frame(width: 38, height: 38)
+                    .frame(width: 40, height: 40)
 
                 Image(systemName: "sparkles")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 2.5) {
                 Text(sectionHeaderTitle == "HÔM NAY" ? "Hôm nay hết bài rồi!" : (sectionHeaderTitle == "SẮP TỚI" ? "Chưa có bài sắp tới" : "Ngày mai không có bài!"))
-                    .font(.system(size: 14, weight: .heavy, design: .rounded))
+                    .font(.system(size: 16, weight: .heavy, design: .rounded))
                     .foregroundStyle(ChunkyTheme.textPrimary)
 
                 Text("Tất cả bài tập đều đã làm xong.")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
                     .lineSpacing(2)
                     .foregroundStyle(ChunkyTheme.textMuted)
             }
@@ -273,15 +273,15 @@ public struct MediumWidgetView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .fill(themeColor)
-                            .frame(width: 30, height: 30)
+                            .frame(width: 32, height: 32)
 
                         Image(systemName: SubjectArtHelper.icon(for: item.courseName, title: item.title))
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(Color.white)
                     }
 
                     Text(subHeadline)
-                        .font(WidgetFontSystem.courseTitle(size: 13.5))
+                        .font(WidgetFontSystem.courseTitle(size: 15))
                         .foregroundStyle(themeColor)
                         .lineLimit(1)
 
@@ -290,24 +290,24 @@ public struct MediumWidgetView: View {
                     if item.isCompleted {
                         HStack(spacing: 4) {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 13, weight: .bold))
+                                .font(.system(size: 14, weight: .bold))
                             Text("Đã xong")
-                                .font(WidgetFontSystem.statusTag(size: 10.5))
+                                .font(WidgetFontSystem.statusTag(size: 12))
                         }
                         .foregroundStyle(Color.green)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3.5)
                         .background(Color.green.opacity(0.12))
                         .clipShape(Capsule())
                     } else {
                         HStack(spacing: 3.5) {
                             Image(systemName: "clock")
-                                .font(.system(size: 9.5, weight: .semibold))
+                                .font(.system(size: 10.5, weight: .semibold))
                             Text(item.compactDueString)
-                                .font(WidgetFontSystem.statusTag(size: 10.5))
+                                .font(WidgetFontSystem.statusTag(size: 12))
                         }
                         .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textPrimary)
-                        .padding(.horizontal, 8)
+                        .padding(.horizontal, 8.5)
                         .padding(.vertical, 3.5)
                         .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.06))
                         .clipShape(Capsule())
@@ -315,7 +315,7 @@ public struct MediumWidgetView: View {
                 }
 
                 Text(mainHeadline)
-                    .font(WidgetFontSystem.courseTitle(size: 15.5))
+                    .font(WidgetFontSystem.courseTitle(size: 18))
                     .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
@@ -323,16 +323,16 @@ public struct MediumWidgetView: View {
 
                 if !descSnippet.isEmpty && descSnippet != mainHeadline {
                     Text(descSnippet)
-                        .font(WidgetFontSystem.meta(size: 11))
+                        .font(WidgetFontSystem.meta(size: 12.5))
                         .foregroundStyle(ChunkyTheme.textMuted)
                         .lineLimit(2)
                         .lineSpacing(1.5)
                 } else {
                     HStack(spacing: 4) {
                         Image(systemName: item.isCompleted ? "checkmark" : "exclamationmark.circle")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold))
                         Text(item.isCompleted ? "Bài tập đã được đánh dấu hoàn thành" : (item.isUrgent ? "Hạn nộp sắp tới, hãy hoàn thành sớm" : "Chạm để xem chi tiết bài tập"))
-                            .font(WidgetFontSystem.meta(size: 10.5))
+                            .font(WidgetFontSystem.meta(size: 12))
                     }
                     .foregroundStyle(ChunkyTheme.textMuted)
                 }
@@ -349,7 +349,7 @@ public struct MediumWidgetView: View {
     @ViewBuilder
     private var pureTaskListRows: some View {
         let itemsToShow = Array(displayItems.prefix(3))
-        let rowHeight: CGFloat = displayItems.count <= 2 ? 46 : 38
+        let rowHeight: CGFloat = displayItems.count <= 2 ? 48 : 39
 
         VStack(spacing: 0) {
             ForEach(Array(itemsToShow.enumerated()), id: \.element.id) { index, item in
@@ -357,12 +357,12 @@ public struct MediumWidgetView: View {
                     VStack(spacing: 0) {
                         HStack(alignment: .center, spacing: 9) {
                             ZStack {
-                                RoundedRectangle(cornerRadius: 6.5, style: .continuous)
+                                RoundedRectangle(cornerRadius: 7, style: .continuous)
                                     .fill(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
-                                    .frame(width: displayItems.count <= 2 ? 28 : 25, height: displayItems.count <= 2 ? 28 : 25)
+                                    .frame(width: displayItems.count <= 2 ? 30 : 26, height: displayItems.count <= 2 ? 30 : 26)
 
                                 Image(systemName: SubjectArtHelper.icon(for: item.courseName, title: item.title))
-                                    .font(.system(size: displayItems.count <= 2 ? 13 : 12, weight: .bold))
+                                    .font(.system(size: displayItems.count <= 2 ? 14 : 12.5, weight: .bold))
                                     .foregroundStyle(Color.white)
                             }
 
@@ -371,14 +371,14 @@ public struct MediumWidgetView: View {
                                 let subHeadline = item.title.isEmpty ? (item.description?.components(separatedBy: .newlines).first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) ?? "") : item.courseName
 
                                 Text(mainHeadline)
-                                    .font(WidgetFontSystem.courseTitle(size: displayItems.count <= 2 ? 13.5 : 12.5))
+                                    .font(WidgetFontSystem.courseTitle(size: displayItems.count <= 2 ? 15.5 : 14))
                                     .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.82)
 
                                 if !subHeadline.isEmpty {
                                     Text(subHeadline)
-                                        .font(WidgetFontSystem.meta(size: displayItems.count <= 2 ? 10.5 : 9.5))
+                                        .font(WidgetFontSystem.meta(size: displayItems.count <= 2 ? 12 : 11))
                                         .foregroundStyle(ChunkyTheme.textMuted)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.82)
@@ -389,13 +389,13 @@ public struct MediumWidgetView: View {
 
                             if item.isCompleted {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 13, weight: .bold))
+                                    .font(.system(size: 14.5, weight: .bold))
                                     .foregroundStyle(Color.green)
                             } else {
                                 Text(item.compactDueString)
-                                    .font(WidgetFontSystem.statusTag(size: displayItems.count <= 2 ? 10 : 9))
+                                    .font(WidgetFontSystem.statusTag(size: displayItems.count <= 2 ? 11.5 : 10.5))
                                     .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
-                                    .padding(.horizontal, 6)
+                                    .padding(.horizontal, 6.5)
                                     .padding(.vertical, 2.5)
                                     .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.04))
                                     .clipShape(Capsule())

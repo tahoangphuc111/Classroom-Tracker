@@ -81,7 +81,7 @@ fun DueDateBadge(
     isDueToday: Boolean = false,
     isDueTomorrow: Boolean = false,
     isUrgent: Boolean = false,
-    fontSize: TextUnit = 12.sp
+    fontSize: TextUnit = 13.sp
 ) {
     val colors = DueDateBadgeDefaults.colors(
         isCompleted = isCompleted,
@@ -95,7 +95,7 @@ fun DueDateBadge(
         modifier = modifier
             .background(colors.background, shape = BadgeShape)
             .border(1.dp, colors.border, BadgeShape)
-            .padding(horizontal = 7.dp, vertical = 3.5.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(

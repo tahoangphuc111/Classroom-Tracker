@@ -40,14 +40,14 @@ fun SectionHeaderPill(
             .clip(SectionPillShape)
             .background(color.copy(alpha = 0.08f))
             .border(1.dp, color.copy(alpha = 0.18f), SectionPillShape)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 13.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = color,
-            modifier = Modifier.size(16.dp)
+            modifier = Modifier.size(17.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
@@ -55,7 +55,7 @@ fun SectionHeaderPill(
             color = color,
             fontFamily = BeVietnamProFontFamily,
             fontWeight = FontWeight.Bold,
-            fontSize = 13.sp,
+            fontSize = 14.sp,
             letterSpacing = 0.5.sp
         )
         Spacer(modifier = Modifier.weight(1f))
@@ -63,7 +63,7 @@ fun SectionHeaderPill(
             modifier = Modifier
                 .clip(CircleShape)
                 .background(color.copy(alpha = 0.14f))
-                .padding(horizontal = 8.dp, vertical = 2.dp),
+                .padding(horizontal = 9.dp, vertical = 2.5.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -71,7 +71,7 @@ fun SectionHeaderPill(
                 color = color,
                 fontFamily = BeVietnamProFontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
+                fontSize = 13.sp
             )
         }
     }

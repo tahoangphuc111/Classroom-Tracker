@@ -219,7 +219,7 @@ fun AssignmentCard(
     ) {
         Box(
             modifier = Modifier
-                .padding(start = 4.dp, top = 2.dp)
+                .padding(start = 4.dp, top = 4.dp)
                 .size(48.dp)
                 .clickable(
                     interactionSource = checkInteractionSource,
@@ -231,7 +231,7 @@ fun AssignmentCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(25.dp)
                     .graphicsLayer {
                         val pScale = 1.0f - 0.10f * checkPressScale.value
                         val combinedScale = checkScaleAnim.value * pScale
@@ -262,7 +262,7 @@ fun AssignmentCard(
                     contentDescription = "Completed",
                     tint = Color.White,
                     modifier = Modifier
-                        .size(16.dp)
+                        .size(17.dp)
                         .graphicsLayer {
                             val progress = completionProgress.value
                             scaleX = iconScaleAnim.value
@@ -277,14 +277,14 @@ fun AssignmentCard(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 48.dp)
+                .heightIn(min = 52.dp)
                 .clip(CardEndShape)
                 .clickable(
                     interactionSource = cardInteractionSource,
                     indication = ripple(),
                     onClick = onClick
                 )
-                .padding(start = 6.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+                .padding(start = 6.dp, end = 16.dp, top = 13.dp, bottom = 13.dp),
             verticalAlignment = Alignment.Top
         ) {
             Column(
@@ -295,8 +295,8 @@ fun AssignmentCard(
                     color = ChunkyColor.TextPrimary,
                     fontFamily = BeVietnamProFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    lineHeight = 22.sp,
+                    fontSize = 17.5.sp,
+                    lineHeight = 24.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     onTextLayout = onTextLayout,
@@ -343,11 +343,11 @@ fun AssignmentCard(
                             }
                         }
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(5.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(6.dp)
+                            .size(7.dp)
                             .background(subjectTheme.color, CircleShape)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
@@ -355,25 +355,25 @@ fun AssignmentCard(
                         text = coursework.courseName,
                         color = ChunkyColor.TextMuted,
                         fontFamily = BeVietnamProFontFamily,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Normal,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     if (hasNote) {
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(5.dp))
                         Icon(
                             imageVector = Icons.Default.EditNote,
                             contentDescription = "Có ghi chú",
                             tint = ChunkyColor.TextLink,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(17.dp)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             DueDateBadge(
                 text = coursework.compactDueString,
@@ -382,8 +382,8 @@ fun AssignmentCard(
                 isDueToday = coursework.isDueToday,
                 isDueTomorrow = coursework.isDueTomorrow,
                 isUrgent = coursework.isUrgent,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(top = 1.dp)
+                fontSize = 13.sp,
+                modifier = Modifier.padding(top = 2.dp)
             )
         }
     }

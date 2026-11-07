@@ -33,17 +33,17 @@ public struct TomorrowProgressHeroCard: View {
             return .normal
         }()
 
-        return VStack(spacing: 10) {
+        return VStack(spacing: 11) {
             HStack(spacing: 12) {
-                FloatingEmberView(emotion: emotion, size: 52)
+                FloatingEmberView(emotion: emotion, size: 58)
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 3.5) {
                     Text(isAllDone ? "Xuất sắc! Đã xong hết" : "Báo bài \(titleSuffix)")
-                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.white)
 
                     Text(isAllDone ? "Đã hoàn thành toàn bộ bài tập \(titleSuffix)." : "Còn \(incompleteCount) bài tập cần nộp.")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Color.white.opacity(0.92))
                         .lineLimit(1)
                 }
@@ -51,15 +51,15 @@ public struct TomorrowProgressHeroCard: View {
                 Spacer(minLength: 4)
 
                 ShareLink(item: shareText) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 4.5) {
                         Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 12, weight: .bold))
                         Text("Chia sẻ")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .font(.system(size: 13.5, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(Color.white)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 6)
                     .background(
                         Capsule().fill(Color.white.opacity(0.22))
                     )
@@ -71,16 +71,16 @@ public struct TomorrowProgressHeroCard: View {
                 .buttonStyle(.plain)
             }
 
-            VStack(spacing: 5) {
+            VStack(spacing: 6) {
                 HStack {
                     Text(isAllDone ? "Hoàn thành 100%!" : "Tiến độ: \(completedCount)/\(totalCount) bài tập")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(Color.white.opacity(0.95))
 
                     Spacer()
 
                     Text("\(Int(progressFraction * 100))%")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundStyle(Color.white.opacity(0.90))
                 }
 
@@ -88,18 +88,18 @@ public struct TomorrowProgressHeroCard: View {
                     ZStack(alignment: .leading) {
                         Capsule()
                             .fill(Color.white.opacity(0.25))
-                            .frame(height: 6)
+                            .frame(height: 7.5)
 
                         Capsule()
                             .fill(Color.white)
-                            .frame(width: max(6, geo.size.width * CGFloat(progressFraction)), height: 6)
+                            .frame(width: max(7.5, geo.size.width * CGFloat(progressFraction)), height: 7.5)
                             .animation(.spring(response: 0.35, dampingFraction: 0.78), value: progressFraction)
                     }
                 }
-                .frame(height: 6)
+                .frame(height: 7.5)
             }
         }
-        .padding(13)
+        .padding(15)
         .background(
             RoundedRectangle(cornerRadius: 13, style: .continuous)
                 .fill(ChunkyTheme.skyGradient)

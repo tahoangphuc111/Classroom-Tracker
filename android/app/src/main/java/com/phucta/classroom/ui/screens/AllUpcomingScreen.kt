@@ -136,7 +136,7 @@ fun AllUpcomingScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Tìm bài tập...", fontSize = 14.sp) },
+            placeholder = { Text("Tìm bài tập...", fontSize = 15.sp) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = ChunkyColor.TextMuted) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
@@ -170,7 +170,7 @@ fun AllUpcomingScreen(
             ) {
                 Text(
                     text = "Tìm thấy ${filteredItems.size} bài tập",
-                    fontSize = 12.sp,
+                    fontSize = 13.5.sp,
                     color = ChunkyColor.TextMuted,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -180,7 +180,7 @@ fun AllUpcomingScreen(
                 ) {
                     Text(
                         text = "Xóa tìm kiếm",
-                        fontSize = 12.sp,
+                        fontSize = 13.5.sp,
                         color = ChunkyColor.TextLink,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -226,14 +226,14 @@ fun AllUpcomingScreen(
                         else ChunkyColor.CardBorder,
                         RoundedCornerShape(14.dp)
                     )
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     EmberFlameCanvas(
-                        size = 44.dp,
+                        size = 50.dp,
                         emotion = upcomingEmotion
                     )
                     Column(modifier = Modifier.weight(1f)) {
@@ -244,18 +244,19 @@ fun AllUpcomingScreen(
                                 "Đang có $upcomingIncompleteCount bài sắp tới"
                             },
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.5.sp,
+                            fontSize = 15.5.sp,
                             color = ChunkyColor.TextPrimary
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = if (upcomingEmotion == EmberEmotion.STRESSED) {
                                 "Có bài quá hạn hoặc sắp đến hạn nộp rồi."
                             } else {
                                 "Xếp theo thời gian nộp từ gần đến xa để dễ theo dõi."
                             },
-                            fontSize = 12.sp,
+                            fontSize = 13.5.sp,
                             color = ChunkyColor.TextMuted,
-                            lineHeight = 16.sp
+                            lineHeight = 18.sp
                         )
                     }
                 }
@@ -280,14 +281,14 @@ fun AllUpcomingScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         EmberFlameCanvas(
-                            size = 72.dp,
+                            size = 80.dp,
                             emotion = if (searchQuery.isNotBlank()) EmberEmotion.NORMAL else EmberEmotion.SLEEPING
                         )
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
                             text = if (searchQuery.isNotBlank()) "Không tìm thấy bài tập" else "Chưa có bài tập nào",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
+                            fontSize = 18.sp,
                             color = ChunkyColor.TextPrimary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -297,10 +298,10 @@ fun AllUpcomingScreen(
                             } else {
                                 "Danh sách bài tập sắp tới hiện đang trống."
                             },
-                            fontSize = 13.sp,
+                            fontSize = 14.5.sp,
                             color = ChunkyColor.TextMuted,
                             textAlign = TextAlign.Center,
-                            lineHeight = 18.sp
+                            lineHeight = 20.sp
                         )
                     }
                 }
@@ -323,24 +324,24 @@ fun AllUpcomingScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         EmberFlameCanvas(
-                            size = 76.dp,
+                            size = 80.dp,
                             emotion = EmberEmotion.CELEBRATING
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = "Hết bài cần nộp rồi",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
+                            fontSize = 18.sp,
                             color = ChunkyColor.TextPrimary,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Tất cả bài tập trong danh sách đều đã xong.",
-                            fontSize = 13.sp,
+                            fontSize = 14.5.sp,
                             color = ChunkyColor.TextMuted,
                             textAlign = TextAlign.Center,
-                            lineHeight = 18.sp
+                            lineHeight = 20.sp
                         )
                     }
                 }

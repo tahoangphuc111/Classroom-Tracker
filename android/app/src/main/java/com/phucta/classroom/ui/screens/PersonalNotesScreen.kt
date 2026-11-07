@@ -282,7 +282,7 @@ fun PersonalNotesScreen(
                         Text(
                             text = "Tất cả",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             color = if (selectedStatusTab == 0) ChunkyColor.ActionBlue else ChunkyColor.TextMuted
                         )
                     }
@@ -294,7 +294,7 @@ fun PersonalNotesScreen(
                         Text(
                             text = "Đang làm",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             color = if (selectedStatusTab == 1) ChunkyColor.HeaderToday else ChunkyColor.TextMuted
                         )
                     }
@@ -306,7 +306,7 @@ fun PersonalNotesScreen(
                         Text(
                             text = "Đã xong",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             color = if (selectedStatusTab == 2) ChunkyColor.HeaderCompleted else ChunkyColor.TextMuted
                         )
                     }
@@ -318,7 +318,7 @@ fun PersonalNotesScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Tìm ghi chú...", fontSize = 14.sp) },
+                placeholder = { Text("Tìm ghi chú...", fontSize = 15.sp) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = ChunkyColor.TextMuted) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
@@ -368,18 +368,18 @@ fun PersonalNotesScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        EmberFlameCanvas(size = 72.dp, emotion = emptyEmotion)
+                        EmberFlameCanvas(size = 80.dp, emotion = emptyEmotion)
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = emptyTitle,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
+                            fontSize = 19.sp,
                             color = ChunkyColor.TextPrimary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = emptySubtitle,
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             color = ChunkyColor.TextMuted,
                             textAlign = TextAlign.Center
                         )
@@ -594,7 +594,7 @@ private fun PersonalNoteCard(
     ) {
         Box(
             modifier = Modifier
-                .padding(start = 4.dp, top = 2.dp)
+                .padding(start = 4.dp, top = 4.dp)
                 .size(48.dp)
                 .clickable(
                     interactionSource = checkInteractionSource,
@@ -618,7 +618,7 @@ private fun PersonalNoteCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(25.dp)
                     .graphicsLayer {
                         val combinedScale = checkScale.value * checkPressScale.value
                         scaleX = combinedScale
@@ -648,7 +648,7 @@ private fun PersonalNoteCard(
                     contentDescription = "Hoàn thành",
                     tint = Color.White,
                     modifier = Modifier
-                        .size(16.dp)
+                        .size(17.dp)
                         .graphicsLayer {
                             val progress = completionProgress.value
                             scaleX = progress
@@ -663,7 +663,7 @@ private fun PersonalNoteCard(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 4.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+                .padding(start = 4.dp, end = 16.dp, top = 13.dp, bottom = 13.dp),
             verticalAlignment = Alignment.Top
         ) {
             Column(
@@ -686,7 +686,8 @@ private fun PersonalNoteCard(
                         Text(
                             text = note.title,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
+                            fontSize = 17.5.sp,
+                            lineHeight = 24.sp,
                             color = ChunkyColor.TextPrimary,
                             onTextLayout = { titleLayoutResultHolder[0] = it },
                             modifier = Modifier
@@ -740,8 +741,8 @@ private fun PersonalNoteCard(
                                 text = "Ngày mai",
                                 isCompleted = note.isCompleted,
                                 isDueTomorrow = true,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(top = 1.dp)
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(top = 2.dp)
                             )
                         } else if (note.isDueToday) {
                             Spacer(modifier = Modifier.width(8.dp))
@@ -749,8 +750,8 @@ private fun PersonalNoteCard(
                                 text = "Hôm nay",
                                 isCompleted = note.isCompleted,
                                 isDueToday = true,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(top = 1.dp)
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(top = 2.dp)
                             )
                         } else if (note.dueEpochMillis != null) {
                             val dateStr = ClassroomDateUtils.formatShortDate(note.dueEpochMillis)
@@ -758,17 +759,18 @@ private fun PersonalNoteCard(
                             DueDateBadge(
                                 text = dateStr,
                                 isCompleted = note.isCompleted,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(top = 1.dp)
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(top = 2.dp)
                             )
                         }
                     }
 
                     if (note.content.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(5.dp))
                         Text(
                             text = note.content,
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
+                            lineHeight = 21.sp,
                             color = if (note.isCompleted) ChunkyColor.TextMuted.copy(alpha = 0.7f) else ChunkyColor.TextMuted,
                             maxLines = 3,
                             overflow = TextOverflow.Ellipsis
@@ -786,7 +788,7 @@ private fun PersonalNoteCard(
                     ) {
                         Text(
                             text = "${note.completedChecklistCount}/${note.totalChecklistCount} việc con",
-                            fontSize = 11.5.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (note.completedChecklistCount == note.totalChecklistCount) ChunkyColor.SuccessGreen else ChunkyColor.TextMuted
                         )
@@ -794,15 +796,15 @@ private fun PersonalNoteCard(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(2.dp))
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(2.5.dp))
                                 .background(ChunkyColor.CardBorder)
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth(note.checklistProgress)
-                                    .height(4.dp)
-                                    .clip(RoundedCornerShape(2.dp))
+                                    .height(5.dp)
+                                    .clip(RoundedCornerShape(2.5.dp))
                                     .background(if (note.completedChecklistCount == note.totalChecklistCount) ChunkyColor.SuccessGreen else ChunkyColor.SkyBottom)
                             )
                         }
@@ -811,7 +813,7 @@ private fun PersonalNoteCard(
                     if (onToggleChecklistItem != null) {
                         Spacer(modifier = Modifier.height(6.dp))
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(5.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             note.checklist.take(4).forEach { item ->
@@ -823,26 +825,26 @@ private fun PersonalNoteCard(
                                             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                             onToggleChecklistItem(note.id, item.id)
                                         }
-                                        .padding(vertical = 2.dp, horizontal = 2.dp)
+                                        .padding(vertical = 2.5.dp, horizontal = 2.dp)
                                 ) {
                                     if (item.isCompleted) {
                                         Icon(
                                             imageVector = Icons.Default.CheckCircle,
                                             contentDescription = null,
                                             tint = ChunkyColor.SuccessGreen,
-                                            modifier = Modifier.size(15.dp)
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     } else {
                                         Box(
                                             modifier = Modifier
-                                                .size(15.dp)
-                                                .border(1.3.dp, ChunkyColor.TextMuted.copy(alpha = 0.5f), CircleShape)
+                                                .size(16.dp)
+                                                .border(1.4.dp, ChunkyColor.TextMuted.copy(alpha = 0.5f), CircleShape)
                                         )
                                     }
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Spacer(modifier = Modifier.width(7.dp))
                                     Text(
                                         text = item.title,
-                                        fontSize = 12.5.sp,
+                                        fontSize = 14.sp,
                                         color = if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary,
                                         textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
                                         maxLines = 1,
@@ -853,7 +855,7 @@ private fun PersonalNoteCard(
                             if (note.checklist.size > 4) {
                                 Text(
                                     text = "+ ${note.checklist.size - 4} mục khác...",
-                                    fontSize = 11.5.sp,
+                                    fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = ChunkyColor.TextMuted,
                                     modifier = Modifier
@@ -1398,12 +1400,12 @@ private fun BottomQuickCaptureBar(
                     placeholder = {
                         Text(
                             text = "Thêm việc cần làm nhanh...",
-                            fontSize = 13.5.sp,
+                            fontSize = 14.5.sp,
                             color = ChunkyColor.TextMuted
                         )
                     },
                     singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, color = ChunkyColor.TextPrimary),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, color = ChunkyColor.TextPrimary),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
                         val trimmed = title.trim()
@@ -1447,7 +1449,7 @@ private fun BottomQuickCaptureBar(
                         }
                     },
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(46.dp)
                         .clip(CircleShape)
                         .background(if (title.trim().isNotEmpty()) ChunkyColor.ActionBlue else ChunkyColor.WindowBackground)
                         .border(1.dp, if (title.trim().isNotEmpty()) ChunkyColor.ActionBlue else ChunkyColor.CardBorder, CircleShape)
@@ -1456,7 +1458,7 @@ private fun BottomQuickCaptureBar(
                         imageVector = if (title.trim().isNotEmpty()) Icons.Default.Check else Icons.Default.Add,
                         contentDescription = "Lưu hoặc mở rộng",
                         tint = if (title.trim().isNotEmpty()) Color.White else ChunkyColor.TextPrimary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -1465,7 +1467,7 @@ private fun BottomQuickCaptureBar(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 QuickDeadlinePill(
@@ -1488,7 +1490,7 @@ private fun BottomQuickCaptureBar(
 
                 Text(
                     text = "Mở rộng",
-                    fontSize = 11.5.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = ChunkyColor.TextLink,
                     modifier = Modifier
@@ -1517,11 +1519,11 @@ private fun QuickDeadlinePill(
             .background(bg)
             .border(1.dp, border, RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 9.dp, vertical = 3.dp)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
         Text(
             text = label,
-            fontSize = 11.5.sp,
+            fontSize = 13.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
             color = textCol
         )

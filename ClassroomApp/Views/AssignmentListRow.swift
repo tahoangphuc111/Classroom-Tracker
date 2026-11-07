@@ -24,25 +24,25 @@ struct SectionHeaderPill: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(color)
 
             Text(title)
-                .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                .font(.system(size: 14.5, weight: .bold, design: .rounded))
                 .foregroundStyle(color)
 
             Spacer()
 
             Text("\(count) bài")
-                .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                .font(.system(size: 13.5, weight: .bold, design: .rounded))
                 .foregroundStyle(color)
-                .padding(.horizontal, 7.5)
-                .padding(.vertical, 2.5)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
                 .background(color.opacity(0.14))
                 .clipShape(Capsule())
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(color.opacity(0.06))
@@ -66,17 +66,17 @@ struct SubjectGroupHeaderRow: View {
         HStack(spacing: 8) {
             RoundedRectangle(cornerRadius: 2, style: .continuous)
                 .fill(themeColor)
-                .frame(width: 4, height: 14)
+                .frame(width: 4, height: 15)
 
             Text(courseName.uppercased())
-                .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(Color.platformTextPrimary)
 
             Text("\(count) bài")
-                .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                .font(.system(size: 12, weight: .bold, design: .rounded))
                 .foregroundStyle(themeColor)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2.5)
                 .background(themeColor.opacity(0.12), in: Capsule())
 
             Spacer()
@@ -92,11 +92,11 @@ struct CompletedSectionHeaderRow: View {
     var body: some View {
         HStack(spacing: 7) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 13.5, weight: .bold))
                 .foregroundStyle(Color.green)
 
             Text("ĐÃ HOÀN THÀNH (\(count))")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.system(size: 12.5, weight: .bold, design: .rounded))
                 .foregroundStyle(Color.platformTextSecondary)
 
             Spacer()
@@ -149,13 +149,13 @@ struct AssignmentListRow: View, Equatable {
                     onToggleCompletion()
                 } label: {
                     ZStack(alignment: .bottomTrailing) {
-                        SubjectArtBadgeView(courseName: item.courseName, title: item.title, size: 32)
+                        SubjectArtBadgeView(courseName: item.courseName, title: item.title, size: 34)
                             .equatable()
 
                         if isTurnedIn {
                             if #available(macOS 14.0, iOS 17.0, *) {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 15, weight: .bold))
+                                    .font(.system(size: 15.5, weight: .bold))
                                     .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
                                     .background(Circle().fill(Color.white).padding(1))
                                     .offset(x: 3, y: 3)
@@ -164,7 +164,7 @@ struct AssignmentListRow: View, Equatable {
                                     .transition(.scale(scale: 0.5).combined(with: .opacity))
                             } else {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 15, weight: .bold))
+                                    .font(.system(size: 15.5, weight: .bold))
                                     .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
                                     .background(Circle().fill(Color.white).padding(1))
                                     .offset(x: 3, y: 3)
@@ -175,7 +175,7 @@ struct AssignmentListRow: View, Equatable {
                             Circle()
                                 .strokeBorder(Color.secondary.opacity(0.35), lineWidth: 1.3)
                                 .background(Circle().fill(Color.platformControlBackground.opacity(0.85)))
-                                .frame(width: 13, height: 13)
+                                .frame(width: 14, height: 14)
                                 .offset(x: 2, y: 2)
                                 .scaleEffect(checkmarkBounce ? 0.9 : 1.0)
                                 .transition(.scale(scale: 0.5).combined(with: .opacity))
@@ -184,7 +184,7 @@ struct AssignmentListRow: View, Equatable {
                     .scaleEffect(checkmarkBounce ? 1.15 : 1.0)
                 }
                 #if os(macOS)
-                .frame(width: 34, height: 34)
+                .frame(width: 36, height: 36)
                 #else
                 .frame(width: 44, height: 44)
                 #endif
@@ -196,10 +196,10 @@ struct AssignmentListRow: View, Equatable {
             .padding(.trailing, 9)
 
             HStack(alignment: .center, spacing: 9) {
-                VStack(alignment: .leading, spacing: 3.5) {
+                VStack(alignment: .leading, spacing: 4) {
                     #if os(macOS)
                     Text(item.title)
-                        .font(.system(size: 14, weight: isSelected ? .bold : .semibold))
+                        .font(.system(size: 15.5, weight: isSelected ? .bold : .semibold))
                         .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
                         .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
                         .opacity(isTurnedIn ? 0.72 : 1.0)
@@ -208,37 +208,37 @@ struct AssignmentListRow: View, Equatable {
                     HStack(spacing: 5) {
                         Circle()
                             .fill(themeColor)
-                            .frame(width: 6, height: 6)
-                        Text(item.courseName)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(themeColor)
-                            .lineLimit(1)
-                        if hasNote {
-                            Image(systemName: "square.and.pencil")
-                                .font(.system(size: 10.5, weight: .semibold))
-                                .foregroundStyle(Color.blue)
-                        }
-                    }
-                    .opacity(isTurnedIn ? 0.75 : 1.0)
-                    #else
-                    Text(item.title)
-                        .font(.system(size: 16.5, weight: isSelected ? .bold : .semibold))
-                        .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
-                        .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
-                        .opacity(isTurnedIn ? 0.72 : 1.0)
-                        .lineLimit(2)
-
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(themeColor)
-                            .frame(width: 6, height: 6)
+                            .frame(width: 7, height: 7)
                         Text(item.courseName)
                             .font(.system(size: 13.5, weight: .semibold))
                             .foregroundStyle(themeColor)
                             .lineLimit(1)
                         if hasNote {
                             Image(systemName: "square.and.pencil")
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(.system(size: 11.5, weight: .semibold))
+                                .foregroundStyle(Color.blue)
+                        }
+                    }
+                    .opacity(isTurnedIn ? 0.75 : 1.0)
+                    #else
+                    Text(item.title)
+                        .font(.system(size: 17.5, weight: isSelected ? .bold : .semibold))
+                        .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
+                        .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
+                        .opacity(isTurnedIn ? 0.72 : 1.0)
+                        .lineLimit(2)
+
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(themeColor)
+                            .frame(width: 7, height: 7)
+                        Text(item.courseName)
+                            .font(.system(size: 14.5, weight: .semibold))
+                            .foregroundStyle(themeColor)
+                            .lineLimit(1)
+                        if hasNote {
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(Color.blue)
                         }
                     }
@@ -254,10 +254,10 @@ struct AssignmentListRow: View, Equatable {
             }
             .padding(.trailing, 11)
             #if os(iOS)
-            .padding(.vertical, 10)
-            .frame(minHeight: 62)
+            .padding(.vertical, 11)
+            .frame(minHeight: 66)
             #else
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
             #endif
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())

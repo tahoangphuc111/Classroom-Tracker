@@ -835,11 +835,11 @@ public struct ContentView: View {
 
                 VStack(spacing: 6) {
                     Text("Classroom Tracker")
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
 
                     Text("Theo dõi bài tập Google Classroom")
-                        .font(.system(size: 14, weight: .regular))
+                        .font(.system(size: 15.5, weight: .regular))
                         .foregroundStyle(.secondary)
                 }
                 .opacity(welcomeAppeared ? 1 : 0)
@@ -850,7 +850,7 @@ public struct ContentView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.red)
                         Text(err)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(.red)
                     }
                     .padding(.horizontal, 16)
@@ -873,12 +873,12 @@ public struct ContentView: View {
                                     .colorScheme(.dark)
                                 #endif
                                 Text("Đang kết nối Google...")
-                                    .font(.system(size: 15, weight: .semibold))
+                                    .font(.system(size: 16, weight: .semibold))
                             } else {
                                 Image(systemName: "person.badge.key.fill")
-                                    .font(.system(size: 15, weight: .semibold))
+                                    .font(.system(size: 16, weight: .semibold))
                                 Text("Đăng nhập bằng Google")
-                                    .font(.system(size: 15, weight: .bold))
+                                    .font(.system(size: 16, weight: .bold))
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -901,7 +901,7 @@ public struct ContentView: View {
                         }
                     } label: {
                         Text("Xem thử dữ liệu mẫu")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 14.5, weight: .medium))
                             .foregroundStyle(.secondary)
                             .padding(.vertical, 4)
                     }
@@ -1289,18 +1289,18 @@ public struct ContentView: View {
 
         return HStack(spacing: 9) {
             ZStack {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                RoundedRectangle(cornerRadius: 6.5, style: .continuous)
                     .fill(iconBgColor)
-                    .frame(width: 24, height: 24)
+                    .frame(width: 26, height: 26)
 
                 Image(systemName: category.icon)
-                    .font(.system(size: 11.5, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(iconFgColor)
                     .scaleEffect(isSelected ? 1.08 : 1.0)
             }
 
             Text(category.rawValue)
-                .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                .font(.system(size: 14.5, weight: isSelected ? .bold : .medium))
                 .foregroundStyle(textFgColor)
                 .lineLimit(1)
 
@@ -1308,10 +1308,10 @@ public struct ContentView: View {
 
             if let count, count > 0 {
                 Text("\(count)")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
                     .contentTransition(.numericText())
-                    .padding(.horizontal, 6.5)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2.5)
                     .background(
                         Capsule()
                             .fill(badgeBgColor)
@@ -1321,7 +1321,7 @@ public struct ContentView: View {
                     .scaleEffect(isSelected ? 1.06 : 1.0)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 2.5)
         .animation(.spring(response: 0.30, dampingFraction: 0.75), value: isSelected)
     }
 
@@ -1701,10 +1701,10 @@ public struct ContentView: View {
         HStack(alignment: .center, spacing: 8) {
             HStack(spacing: 5) {
                 Image(systemName: "calendar")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 13.5, weight: .semibold))
                     .foregroundStyle(Color.platformTextTertiary)
                 Text(formattedCompactCurrentDate())
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .font(.system(size: 14.5, weight: .semibold))
                     .foregroundStyle(Color.platformTextSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
@@ -1719,14 +1719,14 @@ public struct ContentView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "line.3.horizontal.decrease.circle")
-                                .font(.system(size: 12.5, weight: .semibold))
+                                .font(.system(size: 13, weight: .semibold))
                             Text("Lớp (\(courses.filter(\.isSelectedForWidget).count)/\(courses.count))")
-                                .font(.system(size: 13.5, weight: .medium))
+                                .font(.system(size: 14, weight: .medium))
                                 .lineLimit(1)
                         }
                         .foregroundStyle(Color.platformTextSecondary)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 4.5)
+                        .padding(.horizontal, 9.5)
+                        .padding(.vertical, 5)
                         .background(
                             Capsule().fill(Color.platformControlBackground)
                         )
@@ -1740,14 +1740,14 @@ public struct ContentView: View {
                     if category == .widgetPreview {
                         HStack(spacing: 4) {
                             Image(systemName: "macwindow.on.rectangle")
-                                .font(.system(size: 11.5, weight: .semibold))
+                                .font(.system(size: 12, weight: .semibold))
                             Text("Xem trước")
-                                .font(.system(size: 13, weight: .medium))
+                                .font(.system(size: 13.5, weight: .medium))
                                 .lineLimit(1)
                         }
                         .foregroundStyle(.purple)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 4.5)
+                        .padding(.horizontal, 9.5)
+                        .padding(.vertical, 5)
                         .background(
                             Capsule().fill(Color.purple.opacity(0.10))
                         )
@@ -1756,15 +1756,15 @@ public struct ContentView: View {
                         if pendingNotesCount == 0 && totalIndependentNotesCount > 0 {
                             HStack(spacing: 5) {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 11, weight: .bold))
+                                    .font(.system(size: 11.5, weight: .bold))
                                     .foregroundStyle(.green)
                                 Text("Đã xong hết")
-                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
                                     .foregroundStyle(.green)
                                     .lineLimit(1)
                             }
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 4.5)
+                            .padding(.horizontal, 9.5)
+                            .padding(.vertical, 5)
                             .background(
                                 Capsule().fill(Color.green.opacity(0.12))
                             )
@@ -1773,14 +1773,14 @@ public struct ContentView: View {
                             HStack(spacing: 5) {
                                 Circle()
                                     .fill(categoryIconColor(category))
-                                    .frame(width: 6, height: 6)
+                                    .frame(width: 6.5, height: 6.5)
                                 Text("\(pendingNotesCount) việc cần làm")
-                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
                                     .foregroundStyle(categoryIconColor(category))
                                     .lineLimit(1)
                             }
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 4.5)
+                            .padding(.horizontal, 9.5)
+                            .padding(.vertical, 5)
                             .background(
                                 Capsule().fill(categoryIconColor(category).opacity(0.10))
                             )
@@ -1792,14 +1792,14 @@ public struct ContentView: View {
                             HStack(spacing: 5) {
                                 Circle()
                                     .fill(categoryIconColor(category))
-                                    .frame(width: 6, height: 6)
+                                    .frame(width: 6.5, height: 6.5)
                                 Text("\(pendingCount) cần nộp")
-                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
                                     .foregroundStyle(categoryIconColor(category))
                                     .lineLimit(1)
                             }
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 4.5)
+                            .padding(.horizontal, 9.5)
+                            .padding(.vertical, 5)
                             .background(
                                 Capsule().fill(categoryIconColor(category).opacity(0.10))
                             )
@@ -1807,14 +1807,14 @@ public struct ContentView: View {
                         } else if categoryHasItems(category) {
                             HStack(spacing: 4) {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 10.5, weight: .bold))
+                                    .font(.system(size: 11, weight: .bold))
                                 Text("Đã nộp hết")
-                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
                                     .lineLimit(1)
                             }
                             .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 4.5)
+                            .padding(.horizontal, 9.5)
+                            .padding(.vertical, 5)
                             .background(
                                 Capsule().fill(Color(red: 0.12, green: 0.62, blue: 0.35).opacity(0.12))
                             )
@@ -1878,28 +1878,28 @@ public struct ContentView: View {
 
     private func regularHeaderBar(category: AppFilterCategory) -> some View {
         HStack(alignment: .center, spacing: 14) {
-            HStack(spacing: 10) {
+            HStack(spacing: 11) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
                         .fill(categoryIconColor(category).opacity(0.12))
-                        .frame(width: 32, height: 32)
+                        .frame(width: 36, height: 36)
 
                     Image(systemName: category.icon)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 16.5, weight: .semibold))
                         .foregroundStyle(categoryIconColor(category))
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 2.5) {
                     Text(category.rawValue)
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .font(.system(size: 19, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.platformTextPrimary)
 
                     HStack(spacing: 4) {
                         Image(systemName: "calendar")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.system(size: 11.5, weight: .medium))
                             .foregroundStyle(Color.platformTextTertiary)
                         Text(formattedCurrentDate())
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(Color.platformTextSecondary)
                     }
                 }
@@ -1911,14 +1911,14 @@ public struct ContentView: View {
                 if category == .widgetPreview {
                     HStack(spacing: 6) {
                         Image(systemName: "macwindow.on.rectangle")
-                            .font(.system(size: 11.5, weight: .semibold))
+                            .font(.system(size: 12.5, weight: .semibold))
                         Text("Cấu hình & Xem trước Widget")
-                            .font(.system(size: 11.5, weight: .medium))
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.purple)
                             .lineLimit(1)
                     }
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 4.5)
+                    .padding(.vertical, 5)
                     .background(
                         Capsule().fill(Color.purple.opacity(0.10))
                     )
@@ -1927,15 +1927,15 @@ public struct ContentView: View {
                     if pendingNotesCount == 0 && totalIndependentNotesCount > 0 {
                         HStack(spacing: 5) {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.system(size: 11, weight: .bold))
                                 .foregroundStyle(.green)
                             Text("Đã xong hết")
-                                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundStyle(.green)
                                 .lineLimit(1)
                         }
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4.5)
                         .background(
                             Capsule().fill(Color.green.opacity(0.12))
                         )
@@ -1944,14 +1944,14 @@ public struct ContentView: View {
                         HStack(spacing: 5) {
                             Circle()
                                 .fill(categoryIconColor(category))
-                                .frame(width: 6, height: 6)
+                                .frame(width: 6.5, height: 6.5)
                             Text("\(pendingNotesCount) việc cần làm")
-                                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundStyle(categoryIconColor(category))
                                 .lineLimit(1)
                         }
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4.5)
                         .background(
                             Capsule().fill(categoryIconColor(category).opacity(0.10))
                         )
@@ -1963,14 +1963,14 @@ public struct ContentView: View {
                         HStack(spacing: 5) {
                             Circle()
                                 .fill(categoryIconColor(category))
-                                .frame(width: 6, height: 6)
+                                .frame(width: 6.5, height: 6.5)
                             Text("\(pendingCount) bài cần nộp")
-                                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundStyle(categoryIconColor(category))
                                 .lineLimit(1)
                         }
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4.5)
                         .background(
                             Capsule().fill(categoryIconColor(category).opacity(0.10))
                         )
@@ -1978,14 +1978,14 @@ public struct ContentView: View {
                     } else if categoryHasItems(category) {
                         HStack(spacing: 5) {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 9.5, weight: .bold))
+                                .font(.system(size: 10.5, weight: .bold))
                             Text("Đã nộp tất cả")
-                                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .lineLimit(1)
                         }
                         .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4.5)
                         .background(
                             Capsule().fill(Color(red: 0.12, green: 0.62, blue: 0.35).opacity(0.12))
                         )
@@ -1996,15 +1996,15 @@ public struct ContentView: View {
                 if authService.isAuthenticated {
                     HStack(spacing: 6) {
                         Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(Color.blue)
                         Text(authService.currentUserEmail ?? "Đã kết nối")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 12.5, weight: .medium))
                             .foregroundStyle(Color.platformTextSecondary)
                             .lineLimit(1)
                     }
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4.5)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
                     .background(
                         Capsule().fill(Color.platformControlBackground)
                     )
@@ -2155,7 +2155,7 @@ public struct ContentView: View {
             if !searchText.isEmpty {
                 HStack {
                     Text("Tìm thấy \(list.count) bài tập")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Color.platformTextSecondary)
                         .contentTransition(.numericText())
                     Spacer()
@@ -2166,10 +2166,10 @@ public struct ContentView: View {
             } else if activeCategory == .completed && !list.isEmpty {
                 HStack(spacing: 5) {
                     Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 12.5, weight: .semibold))
                         .foregroundStyle(Color(red: 0.12, green: 0.62, blue: 0.35))
                     Text("\(list.count) bài đã hoàn thành")
-                        .font(.system(size: 11.5, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Color.platformTextSecondary)
                         .contentTransition(.numericText())
                     Spacer()
@@ -2195,10 +2195,10 @@ public struct ContentView: View {
                                     }
                                 } label: {
                                     Text(pill)
-                                        .font(.system(size: 11.5, weight: isSelected ? .bold : .medium))
+                                        .font(.system(size: 13, weight: isSelected ? .bold : .medium))
                                         .foregroundStyle(isSelected ? Color.white : Color.platformTextSecondary)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 4.5)
+                                        .padding(.horizontal, 11)
+                                        .padding(.vertical, 5)
                                         .background(
                                             Capsule()
                                                 .fill(isSelected ? Color.blue : Color.platformControlBackground)

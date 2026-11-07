@@ -77,17 +77,17 @@ public struct SmallWidgetView: View {
                     HStack(alignment: .center, spacing: 6) {
                         HStack(alignment: .firstTextBaseline, spacing: 5) {
                             Text("\(activeItems.count)")
-                                .font(WidgetFontSystem.counter(size: 28))
+                                .font(WidgetFontSystem.counter(size: 31))
                                 .foregroundStyle(Color.white)
                                 .shadow(color: Color.black.opacity(0.18), radius: 0, x: 0, y: 1)
 
                             if activeItems.isEmpty && !courseworkList.isEmpty {
                                 Image(systemName: "checkmark.seal.fill")
-                                    .font(.system(size: 13, weight: .bold))
+                                    .font(.system(size: 14, weight: .bold))
                                     .foregroundStyle(ChunkyTheme.butterYellow)
                             } else {
                                 Text(sectionHeaderTitle)
-                                    .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
                                     .foregroundStyle(ChunkyTheme.butterYellow)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.75)
@@ -95,10 +95,10 @@ public struct SmallWidgetView: View {
 
                             if extraCount > 0 {
                                 Text("+\(extraCount)")
-                                    .font(WidgetFontSystem.statusTag(size: 8.5))
+                                    .font(WidgetFontSystem.statusTag(size: 10))
                                     .foregroundStyle(Color.white)
-                                    .padding(.horizontal, 4.5)
-                                    .padding(.vertical, 1.5)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
                                     .background(ChunkyTheme.urgentAccent)
                                     .clipShape(Capsule())
                                     .fixedSize()
@@ -148,14 +148,14 @@ public struct SmallWidgetView: View {
                             .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
                     )
 
-                VStack(spacing: 3) {
+                VStack(spacing: 3.5) {
                     Text("Chưa đăng nhập")
-                        .font(WidgetFontSystem.courseTitle(size: 10))
+                        .font(WidgetFontSystem.courseTitle(size: 12.5))
                         .foregroundStyle(ChunkyTheme.textPrimary)
                         .lineLimit(1)
 
                     Text("Chạm để đăng nhập")
-                        .font(WidgetFontSystem.meta(size: 8))
+                        .font(WidgetFontSystem.meta(size: 10.5))
                         .foregroundStyle(ChunkyTheme.pillBlue)
                         .lineLimit(1)
                 }
@@ -180,20 +180,20 @@ public struct SmallWidgetView: View {
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 4) {
             HStack(spacing: 4) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
                 Text("Hết bài rồi!")
-                    .font(WidgetFontSystem.sectionHeader(size: 11))
+                    .font(WidgetFontSystem.sectionHeader(size: 13.5))
                     .tracking(0.0)
                     .foregroundStyle(ChunkyTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
             Text("Đã xong hết")
-                .font(WidgetFontSystem.meta(size: 9.5))
+                .font(WidgetFontSystem.meta(size: 11.5))
                 .tracking(0.0)
                 .foregroundStyle(ChunkyTheme.textMuted)
         }
@@ -201,27 +201,27 @@ public struct SmallWidgetView: View {
     }
 
     private func singleItemCard(item: Coursework) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 3.5) {
             HStack(alignment: .center, spacing: 5) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    RoundedRectangle(cornerRadius: 6.5, style: .continuous)
                         .fill(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
-                        .frame(width: 22, height: 22)
+                        .frame(width: 24, height: 24)
 
                     Image(systemName: SubjectArtHelper.icon(for: item.courseName, title: item.title))
-                        .font(.system(size: 11.5, weight: .bold))
+                        .font(.system(size: 12.5, weight: .bold))
                         .foregroundStyle(Color.white)
                 }
 
                 Text(item.courseName)
-                    .font(WidgetFontSystem.courseTitle(size: 12.5))
+                    .font(WidgetFontSystem.courseTitle(size: 14))
                     .foregroundStyle(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
                 Spacer(minLength: 2)
 
-                statusTag(for: item, fontSize: 9.5)
+                statusTag(for: item, fontSize: 11)
             }
 
             Rectangle()
@@ -230,7 +230,7 @@ public struct SmallWidgetView: View {
 
             let headline = item.title.isEmpty ? item.courseName : item.title
             Text(headline)
-                .font(WidgetFontSystem.courseTitle(size: 14.5))
+                .font(WidgetFontSystem.courseTitle(size: 16.5))
                 .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
                 .lineLimit(3)
                 .minimumScaleFactor(0.82)
@@ -238,11 +238,11 @@ public struct SmallWidgetView: View {
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 3.5) {
+            HStack(spacing: 4) {
                 Image(systemName: "clock")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 10.5, weight: .semibold))
                 Text(dueLabel(for: item))
-                    .font(WidgetFontSystem.meta(size: 9.5))
+                    .font(WidgetFontSystem.meta(size: 11))
             }
             .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : (item.isCompleted ? Color.green : ChunkyTheme.textMuted))
             .padding(.top, 1)
@@ -257,35 +257,35 @@ public struct SmallWidgetView: View {
             ForEach(Array(itemsToShow.enumerated()), id: \.element.id) { index, subItem in
                 HStack(alignment: .center, spacing: 6) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 5.5, style: .continuous)
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
                             .fill(SubjectArtHelper.themeColor(for: subItem.courseName, title: subItem.title))
-                            .frame(width: 21, height: 21)
+                            .frame(width: 23, height: 23)
 
                         Image(systemName: SubjectArtHelper.icon(for: subItem.courseName, title: subItem.title))
-                            .font(.system(size: 10.5, weight: .bold))
+                            .font(.system(size: 11.5, weight: .bold))
                             .foregroundStyle(Color.white)
                     }
 
                     VStack(alignment: .leading, spacing: 1.5) {
                         let headline = subItem.title.isEmpty ? subItem.courseName : subItem.title
                         Text(headline)
-                            .font(WidgetFontSystem.courseTitle(size: 12))
+                            .font(WidgetFontSystem.courseTitle(size: 13.5))
                             .foregroundStyle(subItem.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
 
                         HStack(spacing: 3) {
                             Text(subItem.courseName)
-                                .font(WidgetFontSystem.meta(size: 9.5))
+                                .font(WidgetFontSystem.meta(size: 11))
                                 .foregroundStyle(ChunkyTheme.textMuted)
                                 .lineLimit(1)
 
                             Text("•")
-                                .font(.system(size: 7, weight: .bold))
+                                .font(.system(size: 7.5, weight: .bold))
                                 .foregroundStyle(ChunkyTheme.textMuted.opacity(0.45))
 
                             Text(dueLabel(for: subItem))
-                                .font(WidgetFontSystem.meta(size: 9.5))
+                                .font(WidgetFontSystem.meta(size: 11))
                                 .foregroundStyle(subItem.isUrgent ? ChunkyTheme.urgentAccent : (subItem.isCompleted ? Color.green : ChunkyTheme.textMuted))
                                 .lineLimit(1)
                         }
@@ -295,7 +295,7 @@ public struct SmallWidgetView: View {
 
                     if subItem.isCompleted {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 14.5, weight: .bold))
                             .foregroundStyle(Color.green)
                     }
                 }

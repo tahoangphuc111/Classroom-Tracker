@@ -67,10 +67,10 @@ struct HomeworkReaderPane: View {
                             HStack {
                                 HStack(spacing: 6) {
                                     Image(systemName: isPersonalNote ? "doc.plaintext.fill" : "doc.text.fill")
-                                        .font(.system(size: 14, weight: .semibold))
+                                        .font(.system(size: 15, weight: .semibold))
                                         .foregroundStyle(Color.blue)
                                     Text(isPersonalNote ? "NỘI DUNG VIỆC CẦN LÀM" : "HƯỚNG DẪN BÀI TẬP")
-                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                        .font(.system(size: 15, weight: .bold, design: .rounded))
                                         .foregroundStyle(Color.platformTextSecondary)
                                 }
 
@@ -82,10 +82,10 @@ struct HomeworkReaderPane: View {
                                     } label: {
                                         HStack(spacing: 4) {
                                             Image(systemName: copyFeedbackMessage != nil ? "checkmark" : "doc.on.doc")
-                                                .font(.system(size: 11.5))
+                                                .font(.system(size: 12.5))
                                                 .foregroundStyle(copyFeedbackMessage != nil ? Color.green : Color.blue)
                                             Text(copyFeedbackMessage ?? "Sao chép")
-                                                .font(.system(size: 13, weight: .medium))
+                                                .font(.system(size: 14, weight: .medium))
                                         }
                                     }
                                     .buttonStyle(.plain)
@@ -96,7 +96,7 @@ struct HomeworkReaderPane: View {
 
                             if let desc = item.description, !desc.isEmpty {
                                 Text(desc)
-                                    .font(.system(size: 16, weight: .regular))
+                                    .font(.system(size: 17, weight: .regular))
                                     .lineSpacing(6.5)
                                     .foregroundStyle(Color.platformTextPrimary)
                                     .textSelection(.enabled)
@@ -114,7 +114,7 @@ struct HomeworkReaderPane: View {
                                     Image(systemName: "info.circle")
                                         .foregroundStyle(Color.platformTextTertiary)
                                     Text(isPersonalNote ? "Không có nội dung chi tiết." : "Không có mô tả chi tiết.")
-                                        .font(.system(size: 14.5))
+                                        .font(.system(size: 15.5))
                                         .foregroundStyle(Color.platformTextSecondary)
                                 }
                                 .padding(16)
@@ -136,17 +136,17 @@ struct HomeworkReaderPane: View {
                                 HStack {
                                     HStack(spacing: 6) {
                                         Image(systemName: "checklist")
-                                            .font(.system(size: 14, weight: .semibold))
+                                            .font(.system(size: 15, weight: .semibold))
                                             .foregroundStyle(Color.blue)
                                         Text(isPersonalNote ? "DANH SÁCH VIỆC CON" : "DANH SÁCH CẦN LÀM (CHECKLIST)")
-                                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                                            .font(.system(size: 15, weight: .bold, design: .rounded))
                                             .foregroundStyle(Color.platformTextSecondary)
                                     }
 
                                     Spacer()
 
                                     Text("\(pNote.completedChecklistCount)/\(pNote.totalChecklistCount) việc")
-                                        .font(.system(size: 12, weight: .semibold))
+                                        .font(.system(size: 13.5, weight: .semibold))
                                         .foregroundStyle(pNote.completedChecklistCount == pNote.totalChecklistCount ? Color.green : Color.secondary)
                                 }
 
@@ -159,16 +159,16 @@ struct HomeworkReaderPane: View {
                                             HStack(spacing: 10) {
                                                 if #available(macOS 14.0, iOS 17.0, *) {
                                                     Image(systemName: checkItem.isCompleted ? "checkmark.circle.fill" : "circle")
-                                                        .font(.system(size: 15, weight: .semibold))
+                                                        .font(.system(size: 16.5, weight: .semibold))
                                                         .foregroundStyle(checkItem.isCompleted ? Color.green : Color.secondary.opacity(0.6))
                                                         .symbolEffect(.bounce, value: checkItem.isCompleted)
                                                 } else {
                                                     Image(systemName: checkItem.isCompleted ? "checkmark.circle.fill" : "circle")
-                                                        .font(.system(size: 15, weight: .semibold))
+                                                        .font(.system(size: 16.5, weight: .semibold))
                                                         .foregroundStyle(checkItem.isCompleted ? Color.green : Color.secondary.opacity(0.6))
                                                 }
                                                 Text(checkItem.title)
-                                                    .font(.system(size: 14))
+                                                    .font(.system(size: 15.5))
                                                     .foregroundStyle(checkItem.isCompleted ? Color.platformTextTertiary : Color.platformTextPrimary)
                                                     .strikethrough(checkItem.isCompleted, color: Color.platformTextTertiary)
                                                     .lineLimit(2)
@@ -202,10 +202,10 @@ struct HomeworkReaderPane: View {
                             HStack {
                                 HStack(spacing: 6) {
                                     Image(systemName: "square.and.pencil")
-                                        .font(.system(size: 14, weight: .semibold))
+                                        .font(.system(size: 15, weight: .semibold))
                                         .foregroundStyle(Color.orange)
                                     Text("GHI CHÚ CỦA BẠN")
-                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                        .font(.system(size: 15, weight: .bold, design: .rounded))
                                         .foregroundStyle(Color.platformTextSecondary)
                                 }
 
@@ -222,9 +222,9 @@ struct HomeworkReaderPane: View {
                                     } label: {
                                         HStack(spacing: 4) {
                                             Image(systemName: "arrow.up.forward.app")
-                                                .font(.system(size: 11.5))
+                                                .font(.system(size: 12.5))
                                             Text("Mở trong Ghi chú")
-                                                .font(.system(size: 13, weight: .medium))
+                                                .font(.system(size: 14, weight: .medium))
                                         }
                                         .foregroundStyle(Color.blue)
                                     }
@@ -240,9 +240,9 @@ struct HomeworkReaderPane: View {
                                     } label: {
                                         HStack(spacing: 4) {
                                             Image(systemName: personalNotes.contains { $0.courseworkId == item.id && !$0.content.isEmpty } ? "pencil" : "plus")
-                                                .font(.system(size: 11.5))
+                                                .font(.system(size: 12.5))
                                             Text(personalNotes.contains { $0.courseworkId == item.id && !$0.content.isEmpty } ? "Sửa" : "Thêm ghi chú")
-                                                .font(.system(size: 13, weight: .medium))
+                                                .font(.system(size: 14, weight: .medium))
                                         }
                                         .foregroundStyle(Color.blue)
                                     }
@@ -260,7 +260,7 @@ struct HomeworkReaderPane: View {
                                             TextEditor(text: $courseworkNoteEditingText)
                                         }
                                     }
-                                    .font(.system(size: 14.5))
+                                    .font(.system(size: 15.5))
                                     .frame(minHeight: 80)
                                     .padding(8)
                                     .background(Color.platformControlBackground)
@@ -275,7 +275,7 @@ struct HomeworkReaderPane: View {
                                             courseworkNoteToEditCourseworkId = nil
                                             courseworkNoteEditingText = ""
                                         }
-                                        .font(.system(size: 13))
+                                        .font(.system(size: 14))
                                         .foregroundStyle(Color.secondary)
 
                                         Button("Lưu ghi chú") {
@@ -283,7 +283,7 @@ struct HomeworkReaderPane: View {
                                             courseworkNoteToEditCourseworkId = nil
                                             courseworkNoteEditingText = ""
                                         }
-                                        .font(.system(size: 13, weight: .semibold))
+                                        .font(.system(size: 14, weight: .semibold))
                                         .foregroundStyle(.white)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 6)
@@ -293,7 +293,7 @@ struct HomeworkReaderPane: View {
                                 }
                             } else if let note = attachedCourseworkNote, !note.content.isEmpty {
                                 Text(note.content)
-                                    .font(.system(size: 15))
+                                    .font(.system(size: 16))
                                     .foregroundStyle(Color.platformTextPrimary)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(14)
@@ -305,13 +305,13 @@ struct HomeworkReaderPane: View {
                                     )
                             } else if let note = attachedCourseworkNote, note.hasChecklist {
                                 Text("Chưa có nội dung lời dặn thêm (đang có \(note.totalChecklistCount) việc cần làm ở danh sách trên).")
-                                    .font(.system(size: 13.5))
+                                    .font(.system(size: 14.5))
                                     .foregroundStyle(Color.platformTextTertiary)
                                     .italic()
                                     .padding(.vertical, 4)
                             } else {
                                 Text("Chưa có ghi chú nào cho bài tập này. Nhấn 'Thêm ghi chú' để ghi lời dặn hoặc lưu ý.")
-                                    .font(.system(size: 13.5))
+                                    .font(.system(size: 14.5))
                                     .foregroundStyle(Color.platformTextTertiary)
                                     .italic()
                                     .padding(.vertical, 4)
@@ -336,9 +336,9 @@ struct HomeworkReaderPane: View {
                                 } label: {
                                     HStack(spacing: 8) {
                                         Image(systemName: "square.and.pencil")
-                                            .font(.system(size: 15.5, weight: .bold))
+                                            .font(.system(size: 16.5, weight: .bold))
                                         Text("Chỉnh sửa việc cần làm")
-                                            .font(.system(size: 15, weight: .bold))
+                                            .font(.system(size: 16, weight: .bold))
                                             .lineLimit(1)
                                             .minimumScaleFactor(0.85)
                                     }
@@ -360,14 +360,14 @@ struct HomeworkReaderPane: View {
                                 } label: {
                                     HStack(spacing: 8) {
                                         Image(systemName: "arrow.up.right.square.fill")
-                                            .font(.system(size: 15.5, weight: .bold))
+                                            .font(.system(size: 16.5, weight: .bold))
                                         Text("Mở bài tập trên Classroom")
-                                            .font(.system(size: 15, weight: .bold))
+                                            .font(.system(size: 16, weight: .bold))
                                             .lineLimit(1)
                                             .minimumScaleFactor(0.85)
                                         #if os(macOS)
                                         Text("(⌘O)")
-                                            .font(.system(size: 12, weight: .medium))
+                                            .font(.system(size: 13, weight: .medium))
                                             .opacity(0.85)
                                         #endif
                                     }
@@ -588,14 +588,14 @@ struct HomeworkReaderPane: View {
     private func readerStatusBadge(for item: Coursework) -> some View {
         HStack(spacing: 5) {
             Image(systemName: item.isCompleted ? "checkmark.circle.fill" : (item.isOverdue ? "exclamationmark.circle.fill" : "clock.fill"))
-                .font(.system(size: 12.5, weight: .bold))
+                .font(.system(size: 13.5, weight: .bold))
             Text(item.statusTitle.uppercased())
-                .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                .font(.system(size: 13.5, weight: .bold, design: .rounded))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 5.5)
         .background(
             (item.isCompleted ? Color(red: 0.12, green: 0.62, blue: 0.35) : (item.isOverdue ? Color(red: 0.88, green: 0.22, blue: 0.20) : Color(red: 0.90, green: 0.48, blue: 0.08)))
                 .opacity(0.12)
@@ -615,26 +615,26 @@ struct HomeworkReaderPane: View {
             HStack(spacing: 5) {
                 if #available(macOS 14.0, iOS 17.0, *) {
                     Image(systemName: item.isCompleted ? "arrow.uturn.backward" : "checkmark")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .symbolEffect(.bounce, value: item.isCompleted)
                 } else {
                     Image(systemName: item.isCompleted ? "arrow.uturn.backward" : "checkmark")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                 }
                 Text(item.isCompleted ? "Chưa nộp" : "Đã nộp")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
                 #if os(macOS)
                 Text("(Space)")
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                     .foregroundStyle(Color.platformTextTertiary)
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
                 #endif
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 5.5)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(Color.platformControlBackground)
@@ -656,21 +656,21 @@ struct HomeworkReaderPane: View {
             HStack(spacing: 5) {
                 if #available(macOS 14.0, iOS 17.0, *) {
                     Image(systemName: copyFeedbackMessage != nil ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 12))
+                        .font(.system(size: 13))
                         .foregroundStyle(copyFeedbackMessage != nil ? Color.green : Color.secondary)
                         .symbolEffect(.bounce, value: copyFeedbackMessage != nil)
                 } else {
                     Image(systemName: copyFeedbackMessage != nil ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 12))
+                        .font(.system(size: 13))
                         .foregroundStyle(copyFeedbackMessage != nil ? Color.green : Color.secondary)
                 }
                 Text(copyFeedbackMessage ?? "Sao chép đề")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 5.5)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(Color.platformControlBackground)
@@ -697,12 +697,12 @@ struct HomeworkReaderPane: View {
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "pencil")
-                            .font(.system(size: 12, weight: .bold))
+                            .font(.system(size: 13, weight: .bold))
                         Text("Chỉnh sửa")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 5.5)
                     .background(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .fill(Color.platformControlBackground)
@@ -733,34 +733,34 @@ struct MetaInfoCard: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 7) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(tint.opacity(0.12))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .stroke(tint.opacity(0.22), lineWidth: 0.5)
                         )
-                        .frame(width: 28, height: 28)
+                        .frame(width: 32, height: 32)
 
                     Image(systemName: icon)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 14.5, weight: .semibold))
                         .foregroundStyle(tint)
                 }
 
                 Text(label)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Color.platformTextSecondary)
                     .lineLimit(1)
             }
 
             Text(value)
-                .font(.system(size: 15.5, weight: .bold, design: .rounded))
+                .font(.system(size: 17, weight: .bold, design: .rounded))
                 .foregroundStyle(Color.platformTextPrimary)
                 .lineLimit(2)
                 .minimumScaleFactor(0.85)
                 .contentTransition(.numericText())
         }
-        .padding(.horizontal, 13)
-        .padding(.vertical, 11)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -800,28 +800,28 @@ struct BatchSelectedSummaryView: View {
 
             VStack(spacing: 5) {
                 Text("Đã chọn \(selectedItems.count) bài tập")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.platformTextPrimary)
 
                 Text("Bạn có thể hoàn thành hàng loạt hoặc bỏ chọn các bài này.")
-                    .font(.system(size: 12))
+                    .font(.system(size: 14))
                     .foregroundStyle(Color.platformTextSecondary)
             }
 
             VStack(spacing: 7) {
                 ForEach(selectedItems.prefix(5)) { item in
                     HStack(spacing: 8) {
-                        SubjectArtBadgeView(courseName: item.courseName, title: item.title, size: 18)
+                        SubjectArtBadgeView(courseName: item.courseName, title: item.title, size: 20)
 
                         Text(item.title)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(Color.platformTextPrimary)
                             .lineLimit(1)
 
                         Spacer()
 
                         Text(item.compactDueString)
-                            .font(.system(size: 10.5))
+                            .font(.system(size: 12))
                             .foregroundStyle(Color.platformTextSecondary)
                     }
                     .padding(.horizontal, 12)
@@ -912,14 +912,14 @@ struct HomeworkReaderEmptyStateView: View {
 
             VStack(spacing: 6) {
                 Text("Chọn một bài tập từ danh sách bên trái")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .font(.system(size: 19, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.platformTextPrimary)
 
                 Text("Toàn bộ nội dung, hướng dẫn và hạn nộp chi tiết sẽ hiển thị tại đây")
-                    .font(.system(size: 13.5))
+                    .font(.system(size: 15))
                     .foregroundStyle(Color.platformTextSecondary)
                     .multilineTextAlignment(.center)
-                    .frame(maxWidth: 340)
+                    .frame(maxWidth: 360)
             }
 
             #if os(macOS)
@@ -995,12 +995,12 @@ struct KeyboardShortcutPill: View {
     var body: some View {
         HStack(spacing: 5) {
             Text(shortcut)
-                .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .foregroundStyle(Color.platformTextPrimary)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: true)
-                .padding(.horizontal, 5.5)
-                .padding(.vertical, 2.5)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
                 .background(
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .fill(Color.platformControlBackground)
@@ -1012,7 +1012,7 @@ struct KeyboardShortcutPill: View {
                 .shadow(color: Color.black.opacity(0.02), radius: 1, x: 0, y: 1)
 
             Text(label)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(Color.platformTextSecondary)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: true)

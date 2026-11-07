@@ -102,7 +102,7 @@ fun SettingsDialog(
                     Text(
                         text = "Cài đặt & Tài khoản",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
                         color = ChunkyColor.TextPrimary,
                         modifier = Modifier.weight(1f)
                     )
@@ -122,35 +122,35 @@ fun SettingsDialog(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         EmberFlameCanvas(
-                            size = 44.dp,
+                            size = 48.dp,
                             emotion = if (isAuthenticated) EmberEmotion.NORMAL else EmberEmotion.SLEEPING
                         )
 
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(14.dp))
 
                         Column(modifier = Modifier.weight(1f)) {
                             if (isAuthenticated && !userEmail.isNullOrBlank()) {
                                 Text(
                                     text = userName ?: "Google Classroom User",
                                     fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp,
+                                    fontSize = 15.5.sp,
                                     color = ChunkyColor.TextPrimary
                                 )
                                 Text(
                                     text = userEmail,
-                                    fontSize = 12.sp,
+                                    fontSize = 13.5.sp,
                                     color = ChunkyColor.TextMuted
                                 )
                             } else {
                                 Text(
                                     text = "Chưa kết nối tài khoản",
                                     fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp,
+                                    fontSize = 15.5.sp,
                                     color = ChunkyColor.TextPrimary
                                 )
                                 Text(
                                     text = "Đang xem dữ liệu mẫu",
-                                    fontSize = 12.sp,
+                                    fontSize = 13.5.sp,
                                     color = ChunkyColor.TextMuted
                                 )
                             }
@@ -176,9 +176,9 @@ fun SettingsDialog(
                                     modifier = Modifier.size(16.dp)
                                 )
                             } else {
-                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(17.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Đồng bộ ngay", fontWeight = FontWeight.SemiBold)
+                                Text("Đồng bộ ngay", fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
                             }
                         }
 
@@ -188,7 +188,7 @@ fun SettingsDialog(
                             onClick = { showLogoutConfirmation = true },
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Đăng xuất", color = ChunkyColor.UrgentAccent)
+                            Text("Đăng xuất", color = ChunkyColor.UrgentAccent, fontSize = 14.5.sp)
                         }
                     }
                 } else {
@@ -198,7 +198,7 @@ fun SettingsDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.ActionBlue),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Đăng nhập bằng Google", fontWeight = FontWeight.Bold)
+                        Text("Đăng nhập bằng Google", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     }
                 }
 
@@ -231,12 +231,12 @@ fun SettingsDialog(
                             Text(
                                 text = "Tùy chọn nâng cao",
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
+                                fontSize = 15.sp,
                                 color = ChunkyColor.TextPrimary
                             )
                             Text(
                                 text = "Cấu hình Google Client ID riêng",
-                                fontSize = 12.sp,
+                                fontSize = 13.sp,
                                 color = ChunkyColor.TextMuted
                             )
                         }

@@ -37,22 +37,22 @@ fun SubjectBadgePill(
             .clip(BadgeShape)
             .background(theme.backgroundColor, shape = BadgeShape)
             .border(1.dp, theme.borderColor, BadgeShape)
-            .padding(horizontal = 7.dp, vertical = 3.5.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.5.dp)
     ) {
         Icon(
             painter = painterResource(id = theme.iconRes),
             contentDescription = null,
             tint = theme.textColor,
-            modifier = Modifier.size(13.dp)
+            modifier = Modifier.size(14.dp)
         )
         Text(
             text = theme.badgeCode,
             color = theme.textColor,
             fontFamily = BeVietnamProFontFamily,
             fontWeight = FontWeight.Bold,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             letterSpacing = 0.4.sp,
             maxLines = 1,
             softWrap = false

@@ -197,6 +197,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                     Spacer(modifier = GlanceModifier.height(6.dp))
                     Box(
                         modifier = GlanceModifier
+                            .defaultWeight()
                             .fillMaxWidth()
                             .background(ImageProvider(R.drawable.bg_widget_card))
                             .padding(horizontal = 8.dp, vertical = 8.dp),
@@ -211,18 +212,18 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextPrimary),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 13.5.sp,
+                                    fontSize = 15.sp,
                                     fontFamily = WidgetRoundedFamily
                                 )
                             )
-                            Spacer(modifier = GlanceModifier.height(2.dp))
+                            Spacer(modifier = GlanceModifier.height(3.dp))
                             Text(
                                 text = "Chạm để mở",
                                 maxLines = 1,
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.ActionBlue),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 11.5.sp
+                                    fontSize = 13.sp
                                 )
                             )
                         }
@@ -236,11 +237,11 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 88, EmberEmotion.NORMAL)
+                    val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 92, EmberEmotion.NORMAL)
                     Image(
                         provider = ImageProvider(emberBitmap),
                         contentDescription = "Ember mascot",
-                        modifier = GlanceModifier.size(88.dp)
+                        modifier = GlanceModifier.size(92.dp)
                     )
                     Spacer(modifier = GlanceModifier.height(10.dp))
                     Text(
@@ -248,7 +249,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                         style = TextStyle(
                             color = ColorProvider(Color.White),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp,
+                            fontSize = 24.sp,
                             fontFamily = WidgetRoundedFamily
                         )
                     )
@@ -258,7 +259,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                         style = TextStyle(
                             color = ColorProvider(ChunkyColor.ButterYellow),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = 15.5.sp
                         )
                     )
                 }
@@ -270,15 +271,15 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
-                        modifier = GlanceModifier.width(108.dp).fillMaxHeight(),
+                        modifier = GlanceModifier.width(102.dp).fillMaxHeight(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 96, EmberEmotion.NORMAL)
+                        val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 94, EmberEmotion.NORMAL)
                         Image(
                             provider = ImageProvider(emberBitmap),
                             contentDescription = "Ember mascot",
-                            modifier = GlanceModifier.size(96.dp)
+                            modifier = GlanceModifier.size(94.dp)
                         )
                     }
 
@@ -299,7 +300,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             Image(
                                 provider = ImageProvider(R.drawable.ic_widget_person),
                                 contentDescription = "Sign in",
-                                modifier = GlanceModifier.size(36.dp)
+                                modifier = GlanceModifier.size(38.dp)
                             )
                             Spacer(modifier = GlanceModifier.height(6.dp))
                             Text(
@@ -307,7 +308,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextPrimary),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp,
+                                    fontSize = 20.sp,
                                     fontFamily = WidgetRoundedFamily
                                 )
                             )
@@ -318,7 +319,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 style = TextStyle(
                                     color = ColorProvider(ChunkyColor.TextMuted),
                                     fontWeight = FontWeight.Medium,
-                                    fontSize = 13.sp
+                                    fontSize = 14.5.sp
                                 )
                             )
                         }
@@ -355,7 +356,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                         style = TextStyle(
                             color = ColorProvider(Color.White),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 34.sp,
+                            fontSize = 36.sp,
                             fontFamily = WidgetRoundedFamily
                         )
                     )
@@ -365,7 +366,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_seal_check),
                             contentDescription = "Completed",
-                            modifier = GlanceModifier.size(20.dp)
+                            modifier = GlanceModifier.size(22.dp)
                         )
                     } else {
                         Text(
@@ -374,18 +375,18 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
+                                fontSize = 13.5.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
                     }
                 }
 
-                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 56, emotion)
+                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 54, emotion)
                 Image(
                     provider = ImageProvider(emberBitmap),
                     contentDescription = "Ember mascot",
-                    modifier = GlanceModifier.size(56.dp)
+                    modifier = GlanceModifier.size(54.dp)
                 )
             }
 
@@ -407,7 +408,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_sparkles),
                             contentDescription = "Done",
-                            modifier = GlanceModifier.size(24.dp)
+                            modifier = GlanceModifier.size(26.dp)
                         )
                         Spacer(modifier = GlanceModifier.height(4.dp))
                         Text(
@@ -416,7 +417,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.TextPrimary),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
+                                fontSize = 17.5.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
@@ -435,15 +436,15 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                         ) {
                             Box(
                                 modifier = GlanceModifier
-                                    .size(26.dp)
-                                    .cornerRadius(7.dp)
+                                    .size(28.dp)
+                                    .cornerRadius(8.dp)
                                     .background(theme.color.copy(alpha = 0.16f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Image(
                                     provider = ImageProvider(theme.iconRes),
                                     contentDescription = null,
-                                    modifier = GlanceModifier.size(15.dp)
+                                    modifier = GlanceModifier.size(16.dp)
                                 )
                             }
                             Spacer(modifier = GlanceModifier.width(6.dp))
@@ -454,7 +455,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 style = TextStyle(
                                     color = ColorProvider(theme.textColor),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 13.5.sp
+                                    fontSize = 14.5.sp
                                 )
                             )
                             Spacer(modifier = GlanceModifier.width(4.dp))
@@ -462,7 +463,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 Image(
                                     provider = ImageProvider(R.drawable.ic_widget_check_circle),
                                     contentDescription = "Done",
-                                    modifier = GlanceModifier.size(16.dp)
+                                    modifier = GlanceModifier.size(17.dp)
                                 )
                             } else {
                                 val labelText = formatDeadlinePill(item)
@@ -471,7 +472,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                     modifier = GlanceModifier
                                         .cornerRadius(6.dp)
                                         .background(badgeColors.background)
-                                        .padding(horizontal = 6.dp, vertical = 2.5.dp)
+                                        .padding(horizontal = 7.dp, vertical = 3.dp)
                                 ) {
                                     Text(
                                         text = labelText,
@@ -479,7 +480,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                         style = TextStyle(
                                             color = ColorProvider(badgeColors.text),
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 11.sp
+                                            fontSize = 12.sp
                                         )
                                     )
                                 }
@@ -494,7 +495,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             style = TextStyle(
                                 color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 17.5.sp,
+                                fontSize = 19.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
@@ -512,15 +513,15 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             ) {
                                 Box(
                                     modifier = GlanceModifier
-                                        .size(26.dp)
-                                        .cornerRadius(7.dp)
+                                        .size(28.dp)
+                                        .cornerRadius(8.dp)
                                         .background(theme.color.copy(alpha = 0.16f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Image(
                                         provider = ImageProvider(theme.iconRes),
                                         contentDescription = null,
-                                        modifier = GlanceModifier.size(15.dp)
+                                        modifier = GlanceModifier.size(16.dp)
                                     )
                                 }
                                 Spacer(modifier = GlanceModifier.width(7.dp))
@@ -531,7 +532,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                     style = TextStyle(
                                         color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp,
+                                        fontSize = 16.sp,
                                         fontFamily = WidgetRoundedFamily
                                     )
                                 )
@@ -540,7 +541,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                     Image(
                                         provider = ImageProvider(R.drawable.ic_widget_check_circle),
                                         contentDescription = "Done",
-                                        modifier = GlanceModifier.size(15.dp)
+                                        modifier = GlanceModifier.size(16.dp)
                                     )
                                 } else {
                                     val badgeColors = getWidgetBadgeColors(item)
@@ -548,7 +549,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                         modifier = GlanceModifier
                                             .cornerRadius(6.dp)
                                             .background(badgeColors.background)
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            .padding(horizontal = 6.5.dp, vertical = 2.5.dp)
                                     ) {
                                         Text(
                                             text = formatDeadlinePill(item),
@@ -556,7 +557,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                             style = TextStyle(
                                                 color = ColorProvider(badgeColors.text),
                                                 fontWeight = FontWeight.Bold,
-                                                fontSize = 10.5.sp
+                                                fontSize = 11.5.sp
                                             )
                                         )
                                     }
@@ -590,7 +591,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
-                modifier = GlanceModifier.width(110.dp).fillMaxHeight(),
+                modifier = GlanceModifier.width(104.dp).fillMaxHeight(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -602,11 +603,11 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                         style = TextStyle(
                             color = ColorProvider(Color.White),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 44.sp,
+                            fontSize = 46.sp,
                             fontFamily = WidgetRoundedFamily
                         )
                     )
-                    Spacer(modifier = GlanceModifier.width(6.dp))
+                    Spacer(modifier = GlanceModifier.width(5.dp))
                     if (activeItems.isEmpty() && courseworkList.isNotEmpty()) {
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_seal_check),
@@ -620,7 +621,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
+                                fontSize = 13.5.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
@@ -629,22 +630,22 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
 
                 Spacer(modifier = GlanceModifier.defaultWeight())
 
-                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 96, emotion)
+                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 92, emotion)
                 Image(
                     provider = ImageProvider(emberBitmap),
                     contentDescription = "Ember mascot",
-                    modifier = GlanceModifier.size(96.dp)
+                    modifier = GlanceModifier.size(92.dp)
                 )
             }
 
-            Spacer(modifier = GlanceModifier.width(8.dp))
+            Spacer(modifier = GlanceModifier.width(6.dp))
 
             Box(
                 modifier = GlanceModifier
                     .defaultWeight()
                     .fillMaxHeight()
                     .background(ImageProvider(R.drawable.bg_widget_card))
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .padding(horizontal = 12.dp, vertical = 9.dp)
             ) {
                 if (displayItems.isEmpty()) {
                     Column(
@@ -655,7 +656,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_sparkles),
                             contentDescription = "Free day",
-                            modifier = GlanceModifier.size(38.dp)
+                            modifier = GlanceModifier.size(40.dp)
                         )
                         Spacer(modifier = GlanceModifier.height(6.dp))
                         val emptyTitle = if (sectionTitle == "HÔM NAY") "Hôm nay hết bài rồi!" else "Ngày mai không có bài!"
@@ -665,18 +666,18 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.TextPrimary),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 21.sp,
+                                fontSize = 22.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
-                        Spacer(modifier = GlanceModifier.height(2.dp))
+                        Spacer(modifier = GlanceModifier.height(3.dp))
                         Text(
                             text = "Không còn bài tập cần nộp",
                             maxLines = 1,
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.TextMuted),
                                 fontWeight = FontWeight.Medium,
-                                fontSize = 13.5.sp
+                                fontSize = 15.sp
                             )
                         )
                     }
@@ -694,7 +695,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                         ) {
                             Box(
                                 modifier = GlanceModifier
-                                    .size(42.dp)
+                                    .size(44.dp)
                                     .cornerRadius(12.dp)
                                     .background(theme.color.copy(alpha = 0.16f)),
                                 contentAlignment = Alignment.Center
@@ -702,7 +703,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 Image(
                                     provider = ImageProvider(theme.iconRes),
                                     contentDescription = null,
-                                    modifier = GlanceModifier.size(24.dp)
+                                    modifier = GlanceModifier.size(25.dp)
                                 )
                             }
                             Spacer(modifier = GlanceModifier.width(10.dp))
@@ -713,7 +714,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 style = TextStyle(
                                     color = ColorProvider(theme.textColor),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 17.sp,
+                                    fontSize = 18.5.sp,
                                     fontFamily = WidgetRoundedFamily
                                 )
                             )
@@ -730,7 +731,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                         style = TextStyle(
                                             color = ColorProvider(ChunkyColor.CompletedBadgeText),
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp,
+                                            fontSize = 14.sp,
                                             fontFamily = WidgetRoundedFamily
                                         )
                                     )
@@ -748,7 +749,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                         style = TextStyle(
                                             color = ColorProvider(badgeColors.text),
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp,
+                                            fontSize = 14.sp,
                                             fontFamily = WidgetRoundedFamily
                                         )
                                     )
@@ -764,7 +765,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             style = TextStyle(
                                 color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 24.sp,
+                                fontSize = 25.5.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
@@ -772,11 +773,11 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                 } else {
                     val itemsToShow = displayItems.take(3)
                     val isTwoItems = itemsToShow.size <= 2
-                    val badgeSize = if (isTwoItems) 38 else 32
-                    val iconSize = if (isTwoItems) 22 else 18
-                    val titleFontSize = if (isTwoItems) 18.0 else 16.0
-                    val subFontSize = if (isTwoItems) 13.5 else 12.0
-                    val tagFontSize = if (isTwoItems) 12.5 else 11.5
+                    val badgeSize = if (isTwoItems) 40 else 34
+                    val iconSize = if (isTwoItems) 22 else 19
+                    val titleFontSize = if (isTwoItems) 19.5 else 17.0
+                    val subFontSize = if (isTwoItems) 14.5 else 13.0
+                    val tagFontSize = if (isTwoItems) 13.5 else 12.5
 
                     Column(
                         modifier = GlanceModifier.fillMaxSize()
@@ -829,7 +830,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                     Image(
                                         provider = ImageProvider(R.drawable.ic_widget_check_circle),
                                         contentDescription = "Done",
-                                        modifier = GlanceModifier.size(18.dp)
+                                        modifier = GlanceModifier.size(19.dp)
                                     )
                                 } else {
                                     val timeText = formatDeadlinePill(item)
@@ -838,7 +839,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                         modifier = GlanceModifier
                                             .cornerRadius(7.dp)
                                             .background(badgeColors.background)
-                                            .padding(horizontal = 8.dp, vertical = 3.5.dp)
+                                            .padding(horizontal = 8.5.dp, vertical = 3.5.dp)
                                     ) {
                                         Text(
                                             text = timeText,
@@ -884,11 +885,11 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 88, emotion)
+                val emberBitmap = EmberWidgetBitmapHelper.getEmberBitmap(context, 90, emotion)
                 Image(
                     provider = ImageProvider(emberBitmap),
                     contentDescription = "Ember mascot",
-                    modifier = GlanceModifier.size(88.dp)
+                    modifier = GlanceModifier.size(90.dp)
                 )
 
                 Spacer(modifier = GlanceModifier.width(14.dp))
@@ -900,7 +901,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             style = TextStyle(
                                 color = ColorProvider(Color.White),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 46.sp,
+                                fontSize = 48.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
@@ -910,7 +911,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.ButterYellow),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
+                                fontSize = 18.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
@@ -923,7 +924,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             modifier = GlanceModifier
                                 .cornerRadius(8.dp)
                                 .background(Color.White.copy(alpha = 0.24f))
-                                .padding(horizontal = 9.dp, vertical = 3.5.dp)
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             val summaryText = if (completedItems.isNotEmpty()) {
                                 "$sectionCapsule • Đã xong ${completedItems.size}"
@@ -935,7 +936,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 style = TextStyle(
                                     color = ColorProvider(Color.White),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
+                                    fontSize = 13.5.sp
                                 )
                             )
                         }
@@ -962,7 +963,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_sparkles),
                             contentDescription = "Great",
-                            modifier = GlanceModifier.size(44.dp)
+                            modifier = GlanceModifier.size(48.dp)
                         )
                         Spacer(modifier = GlanceModifier.height(8.dp))
                         val emptyTitle = if (sectionTitle == "HÔM NAY") "Hôm nay hết bài rồi!" else "Ngày mai không có bài!"
@@ -971,7 +972,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.TextPrimary),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 22.sp,
+                                fontSize = 24.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
@@ -981,7 +982,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             style = TextStyle(
                                 color = ColorProvider(ChunkyColor.TextMuted),
                                 fontWeight = FontWeight.Medium,
-                                fontSize = 14.5.sp
+                                fontSize = 16.sp
                             )
                         )
                     }
@@ -999,7 +1000,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                         ) {
                             Box(
                                 modifier = GlanceModifier
-                                    .size(48.dp)
+                                    .size(52.dp)
                                     .cornerRadius(14.dp)
                                     .background(theme.color.copy(alpha = 0.16f)),
                                 contentAlignment = Alignment.Center
@@ -1007,7 +1008,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 Image(
                                     provider = ImageProvider(theme.iconRes),
                                     contentDescription = null,
-                                    modifier = GlanceModifier.size(26.dp)
+                                    modifier = GlanceModifier.size(28.dp)
                                 )
                             }
                             Spacer(modifier = GlanceModifier.width(12.dp))
@@ -1018,7 +1019,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 style = TextStyle(
                                     color = ColorProvider(theme.textColor),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 18.5.sp,
+                                    fontSize = 20.sp,
                                     fontFamily = WidgetRoundedFamily
                                 )
                             )
@@ -1035,7 +1036,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                         style = TextStyle(
                                             color = ColorProvider(ChunkyColor.CompletedBadgeText),
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 13.5.sp,
+                                            fontSize = 14.5.sp,
                                             fontFamily = WidgetRoundedFamily
                                         )
                                     )
@@ -1053,7 +1054,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                         style = TextStyle(
                                             color = ColorProvider(badgeColors.text),
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 13.5.sp,
+                                            fontSize = 14.5.sp,
                                             fontFamily = WidgetRoundedFamily
                                         )
                                     )
@@ -1069,19 +1070,39 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                             style = TextStyle(
                                 color = ColorProvider(if (item.isCompleted) ChunkyColor.TextMuted else ChunkyColor.TextPrimary),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 28.sp,
+                                fontSize = 30.sp,
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
                     }
                 } else {
                     val itemsToShow = displayItems.take(4)
-                    val isCompactList = itemsToShow.size <= 3
-                    val badgeSize = if (isCompactList) 42 else 36
-                    val iconSize = if (isCompactList) 22 else 20
-                    val titleFontSize = if (isCompactList) 18.5 else 17.0
-                    val subFontSize = if (isCompactList) 14.0 else 13.0
-                    val tagFontSize = if (isCompactList) 13.0 else 12.0
+                    val count = itemsToShow.size
+                    val badgeSize = when (count) {
+                        2 -> 46
+                        3 -> 42
+                        else -> 38
+                    }
+                    val iconSize = when (count) {
+                        2 -> 25
+                        3 -> 22
+                        else -> 20
+                    }
+                    val titleFontSize = when (count) {
+                        2 -> 21.0
+                        3 -> 19.5
+                        else -> 18.0
+                    }
+                    val subFontSize = when (count) {
+                        2 -> 15.5
+                        3 -> 14.5
+                        else -> 13.5
+                    }
+                    val tagFontSize = when (count) {
+                        2 -> 14.0
+                        3 -> 13.5
+                        else -> 12.5
+                    }
 
                     Column(
                         modifier = GlanceModifier.fillMaxSize()
@@ -1095,7 +1116,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 Box(
                                     modifier = GlanceModifier
                                         .size(badgeSize.dp)
-                                        .cornerRadius(if (isCompactList) 12.dp else 10.dp)
+                                        .cornerRadius(if (count <= 3) 12.dp else 10.dp)
                                         .background(theme.color.copy(alpha = 0.16f)),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -1132,7 +1153,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                     Image(
                                         provider = ImageProvider(R.drawable.ic_widget_check_circle),
                                         contentDescription = "Done",
-                                        modifier = GlanceModifier.size(20.dp)
+                                        modifier = GlanceModifier.size(22.dp)
                                     )
                                 } else {
                                     val timeText = formatDeadlinePill(item)
@@ -1141,7 +1162,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                         modifier = GlanceModifier
                                             .cornerRadius(8.dp)
                                             .background(badgeColors.background)
-                                            .padding(horizontal = 9.dp, vertical = 4.dp)
+                                            .padding(horizontal = 9.5.dp, vertical = 4.5.dp)
                                     ) {
                                         Text(
                                             text = timeText,

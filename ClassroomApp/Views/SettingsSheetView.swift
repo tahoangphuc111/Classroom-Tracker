@@ -105,10 +105,10 @@ struct SettingsSheetView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Cài đặt")
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.platformTextPrimary)
                     Text("Tài khoản, báo bài buổi tối và cấu hình hệ thống")
-                        .font(.system(size: 12))
+                        .font(.system(size: 13.5))
                         .foregroundStyle(Color.platformTextSecondary)
                 }
             }
@@ -159,16 +159,16 @@ struct SettingsSheetView: View {
                     if authService.isAuthenticated {
                         HStack(spacing: 12) {
                             Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 38))
+                                .font(.system(size: 40))
                                 .foregroundStyle(Color.blue)
 
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(authService.currentUserName ?? "Tài khoản Google")
-                                    .font(.system(size: 14, weight: .semibold))
+                                    .font(.system(size: 15.5, weight: .semibold))
                                     .foregroundStyle(.primary)
 
                                 Text(authService.currentUserEmail ?? "Không rõ")
-                                    .font(.system(size: 12))
+                                    .font(.system(size: 13.5))
                                     .foregroundStyle(.secondary)
                             }
 
@@ -287,12 +287,12 @@ struct SettingsSheetView: View {
 
                         VStack(alignment: .leading, spacing: 5) {
                             Text("Xem trước thông báo:")
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(.system(size: 12.5, weight: .semibold))
                                 .foregroundStyle(.secondary)
                             Text(reminderService.previewNotificationText())
-                                .font(.system(size: 12.5))
+                                .font(.system(size: 14))
                                 .foregroundStyle(.primary)
-                                .padding(9)
+                                .padding(10)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .background(Color.platformSubtleFill)
                                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))

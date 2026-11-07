@@ -83,12 +83,12 @@ public struct LargeWidgetView: View {
                         VStack(alignment: .leading, spacing: 4.5) {
                             HStack(alignment: .firstTextBaseline, spacing: 7) {
                                 Text("\(activeItems.count)")
-                                    .font(WidgetFontSystem.counter(size: 40))
+                                    .font(WidgetFontSystem.counter(size: 44))
                                     .foregroundStyle(Color.white)
                                     .shadow(color: Color.black.opacity(0.14), radius: 0, x: 0, y: 1.5)
 
                                 Text(activeItems.count == 0 ? "HOÀN TẤT" : "CẦN NỘP")
-                                    .font(WidgetFontSystem.sectionHeader(size: 15))
+                                    .font(WidgetFontSystem.sectionHeader(size: 17))
                                     .tracking(0.0)
                                     .foregroundStyle(ChunkyTheme.butterYellow)
                             }
@@ -118,7 +118,7 @@ public struct LargeWidgetView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(alignment: .center) {
                             Text(sectionHeaderTitle)
-                                .font(WidgetFontSystem.sectionHeader(size: 10.5))
+                                .font(WidgetFontSystem.sectionHeader(size: 12))
                                 .tracking(0.0)
                                 .foregroundStyle(ChunkyTheme.textMuted)
 
@@ -126,9 +126,9 @@ public struct LargeWidgetView: View {
 
                             if !activeItems.isEmpty {
                                 Text("\(activeItems.count)")
-                                    .font(WidgetFontSystem.sectionHeader(size: 10))
+                                    .font(WidgetFontSystem.sectionHeader(size: 11))
                                     .foregroundStyle(ChunkyTheme.urgentAccent)
-                                    .padding(.horizontal, 7)
+                                    .padding(.horizontal, 7.5)
                                     .padding(.vertical, 2)
                                     .background(ChunkyTheme.urgentAccent.opacity(0.12))
                                     .clipShape(Capsule())
@@ -153,9 +153,9 @@ public struct LargeWidgetView: View {
 
                             let rowHeight: CGFloat = {
                                 switch count {
-                                case 2: return 72
-                                case 3: return 58
-                                default: return 46
+                                case 2: return 74
+                                case 3: return 60
+                                default: return 48
                                 }
                             }()
 
@@ -163,31 +163,31 @@ public struct LargeWidgetView: View {
                                 switch count {
                                 case 2: return 44
                                 case 3: return 38
-                                default: return 32
+                                default: return 34
                                 }
                             }()
 
                             let iconSize: CGFloat = {
                                 switch count {
                                 case 2: return 22
-                                case 3: return 18
-                                default: return 15
+                                case 3: return 19
+                                default: return 16
                                 }
                             }()
 
                             let titleFontSize: CGFloat = {
                                 switch count {
-                                case 2: return 17.5
-                                case 3: return 15.5
-                                default: return 14
+                                case 2: return 19
+                                case 3: return 17
+                                default: return 15.5
                                 }
                             }()
 
                             let tagFontSize: CGFloat = {
                                 switch count {
-                                case 2: return 12
-                                case 3: return 11
-                                default: return 10
+                                case 2: return 13
+                                case 3: return 12
+                                default: return 11.5
                                 }
                             }()
 
@@ -218,7 +218,7 @@ public struct LargeWidgetView: View {
 
                                                     if !subHeadline.isEmpty {
                                                         Text(subHeadline)
-                                                            .font(WidgetFontSystem.meta(size: max(9.5, titleFontSize - 3.5)))
+                                                            .font(WidgetFontSystem.meta(size: max(11, titleFontSize - 3.0)))
                                                             .foregroundStyle(ChunkyTheme.textMuted)
                                                             .lineLimit(1)
                                                             .minimumScaleFactor(0.85)
@@ -265,11 +265,11 @@ public struct LargeWidgetView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("BÁO BÀI NGÀY MAI")
-                        .font(WidgetFontSystem.sectionHeader(size: 13))
+                        .font(WidgetFontSystem.sectionHeader(size: 14))
                         .foregroundStyle(ChunkyTheme.butterYellow)
 
                     Text("Chưa đăng nhập")
-                        .font(WidgetFontSystem.counter(size: 24))
+                        .font(WidgetFontSystem.counter(size: 26))
                         .foregroundStyle(Color.white)
                         .shadow(color: Color.black.opacity(0.14), radius: 0, x: 0, y: 1.5)
                 }
@@ -289,16 +289,16 @@ public struct LargeWidgetView: View {
 
                 VStack(spacing: 12) {
                     Image(systemName: "person.crop.circle.badge.plus")
-                        .font(.system(size: 42, weight: .semibold))
+                        .font(.system(size: 44, weight: .semibold))
                         .foregroundStyle(ChunkyTheme.pillBlue)
 
-                    VStack(spacing: 4) {
+                    VStack(spacing: 5) {
                         Text("Chạm để đăng nhập")
-                            .font(WidgetFontSystem.courseTitle(size: 15))
+                            .font(WidgetFontSystem.courseTitle(size: 17))
                             .foregroundStyle(ChunkyTheme.textPrimary)
 
                         Text("Đăng nhập tài khoản Google Classroom để theo dõi bài tập cần hoàn thành cho ngày mai.")
-                            .font(WidgetFontSystem.meta(size: 11.5))
+                            .font(WidgetFontSystem.meta(size: 13))
                             .foregroundStyle(ChunkyTheme.textMuted)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 24)
@@ -350,22 +350,22 @@ public struct LargeWidgetView: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(subHeadline)
-                            .font(WidgetFontSystem.courseTitle(size: 16.5))
+                            .font(WidgetFontSystem.courseTitle(size: 18))
                             .foregroundStyle(themeColor)
                             .lineLimit(1)
 
                         HStack(spacing: 5) {
                             Image(systemName: "calendar.badge.clock")
-                                .font(.system(size: 10, weight: .semibold))
+                                .font(.system(size: 11, weight: .semibold))
                             Text(item.dayAndTimeString)
-                                .font(WidgetFontSystem.meta(size: 11))
+                                .font(WidgetFontSystem.meta(size: 12.5))
                         }
                         .foregroundStyle(ChunkyTheme.textMuted)
                     }
 
                     Spacer(minLength: 6)
 
-                    statusTag(for: item, fontSize: 12)
+                    statusTag(for: item, fontSize: 13.5)
                 }
 
                 Rectangle()
@@ -373,7 +373,7 @@ public struct LargeWidgetView: View {
                     .frame(height: 0.8)
 
                 Text(mainHeadline)
-                    .font(WidgetFontSystem.courseTitle(size: 19.5))
+                    .font(WidgetFontSystem.courseTitle(size: 22))
                     .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
                     .lineLimit(3)
                     .lineSpacing(3)
@@ -381,16 +381,16 @@ public struct LargeWidgetView: View {
 
                 if !descSnippet.isEmpty && descSnippet != mainHeadline {
                     Text(descSnippet)
-                        .font(WidgetFontSystem.meta(size: 13))
+                        .font(WidgetFontSystem.meta(size: 14.5))
                         .foregroundStyle(ChunkyTheme.textMuted)
                         .lineLimit(4)
                         .lineSpacing(2.5)
                 } else {
                     HStack(spacing: 6) {
                         Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "info.circle.fill")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                         Text(item.isCompleted ? "Bài tập đã được đánh dấu hoàn thành" : "Chạm để xem chi tiết bài tập và nộp bài")
-                            .font(WidgetFontSystem.meta(size: 12.5))
+                            .font(WidgetFontSystem.meta(size: 14))
                     }
                     .foregroundStyle(ChunkyTheme.textMuted)
                 }
@@ -410,18 +410,18 @@ public struct LargeWidgetView: View {
             Spacer()
             HStack(spacing: 8) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
                 Text("Ngày mai không có bài!")
-                    .font(WidgetFontSystem.sectionHeader(size: 20))
+                    .font(WidgetFontSystem.sectionHeader(size: 22))
                     .tracking(0.0)
                     .foregroundStyle(ChunkyTheme.textPrimary)
                 Image(systemName: "sparkles")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(Color(red: 0.95, green: 0.58, blue: 0.10))
             }
             Text("Tất cả bài tập đều đã làm xong.")
-                .font(WidgetFontSystem.meta(size: 13))
+                .font(WidgetFontSystem.meta(size: 14.5))
                 .tracking(0.0)
                 .foregroundStyle(ChunkyTheme.textMuted)
             Spacer()
@@ -439,8 +439,8 @@ public struct LargeWidgetView: View {
             Text(item.compactDueString)
                 .font(WidgetFontSystem.statusTag(size: fontSize))
                 .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3.5)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
                 .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.04))
                 .clipShape(Capsule())
         }
@@ -448,13 +448,13 @@ public struct LargeWidgetView: View {
 
     @ViewBuilder
     private func summaryCapsule(label: String, isUrgent: Bool, isSuccess: Bool = false) -> some View {
-        HStack(spacing: 3.5) {
+        HStack(spacing: 4) {
             if isSuccess {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
             }
             Text(label)
-                .font(WidgetFontSystem.meta(size: 9))
+                .font(WidgetFontSystem.meta(size: 10.5))
                 .tracking(0.0)
         }
         .foregroundStyle(Color.white)

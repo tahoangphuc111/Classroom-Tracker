@@ -1,6 +1,9 @@
 import Foundation
 import WidgetKit
 import os
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public final class ClassroomStorage: @unchecked Sendable {
     public static let shared = ClassroomStorage()

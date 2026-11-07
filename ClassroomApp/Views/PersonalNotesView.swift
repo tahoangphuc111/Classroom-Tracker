@@ -262,17 +262,17 @@ public struct PersonalNotesView: View {
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "line.3.horizontal.decrease.circle")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                         Text(selectedCourseId != nil ? (courses.first(where: { $0.id == selectedCourseId })?.name ?? "Môn học") : "Môn học")
                             .lineLimit(1)
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(selectedCourseId != nil ? Color.blue.opacity(0.8) : Color.secondary)
                     }
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(selectedCourseId != nil ? Color.blue : Color.platformTextPrimary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 6.5)
                     .background(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .fill(selectedCourseId != nil ? Color.blue.opacity(0.12) : Color.platformControlBackground)
@@ -290,7 +290,7 @@ public struct PersonalNotesView: View {
                         selectedCourseId = nil
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 13))
+                            .font(.system(size: 14))
                             .foregroundStyle(Color.secondary)
                     }
                     .buttonStyle(.plain)
@@ -307,10 +307,10 @@ public struct PersonalNotesView: View {
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                 if !compact {
                     Text("Thêm ghi chú")
-                        .font(.system(size: 13.5, weight: .semibold))
+                        .font(.system(size: 14.5, weight: .semibold))
                 }
             }
         }
@@ -363,12 +363,12 @@ public struct PersonalNotesView: View {
     private var singleLineQuickTodoBar: some View {
         HStack(spacing: 8) {
             Image(systemName: "checkmark.circle")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Color.blue)
 
             TextField("Thêm việc cần làm nhanh...", text: $quickTodoTitle)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13.5))
+                .font(.system(size: 15))
                 .submitLabel(.done)
                 .onSubmit {
                     submitQuickTodo()
@@ -386,7 +386,7 @@ public struct PersonalNotesView: View {
             quickTodoSubmitButton
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 9)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color.platformControlBackground)
@@ -401,12 +401,12 @@ public struct PersonalNotesView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Color.blue)
 
                 TextField("Thêm việc cần làm nhanh...", text: $quickTodoTitle)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 13.5))
+                    .font(.system(size: 15))
                     .submitLabel(.done)
                     .onSubmit {
                         submitQuickTodo()
@@ -427,7 +427,7 @@ public struct PersonalNotesView: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 9)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color.platformControlBackground)
@@ -469,7 +469,7 @@ public struct PersonalNotesView: View {
             )
         } label: {
             Image(systemName: "square.and.pencil")
-                .font(.system(size: 13))
+                .font(.system(size: 14))
                 .foregroundStyle(Color.secondary)
                 .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
@@ -486,14 +486,14 @@ public struct PersonalNotesView: View {
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "calendar")
-                    .font(.system(size: 10.5))
+                    .font(.system(size: 11.5))
                 Text(quickTodoDue.rawValue)
-                    .font(.system(size: 11.5, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 7.5, weight: .bold))
+                    .font(.system(size: 8.5, weight: .bold))
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4.5)
             .background(Color.platformSubtleFill)
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
@@ -513,7 +513,7 @@ public struct PersonalNotesView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "book")
-                        .font(.system(size: 10.5))
+                        .font(.system(size: 11.5))
                     let labelText: String = {
                         if let id = quickTodoCourseId {
                             if id.isEmpty { return "Không gắn môn" }
@@ -524,13 +524,13 @@ public struct PersonalNotesView: View {
                         return "Môn"
                     }()
                     Text(labelText)
-                        .font(.system(size: 11.5, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .lineLimit(1)
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 7.5, weight: .bold))
+                        .font(.system(size: 8.5, weight: .bold))
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4.5)
                 .background(Color.platformSubtleFill)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             }
@@ -734,14 +734,14 @@ public struct PersonalNotesView: View {
                 .scaleEffect(emptyAppeared ? 1.0 : 0.88)
 
             Text(info.title)
-                .font(.system(size: 17, weight: .bold))
+                .font(.system(size: 18.5, weight: .bold))
                 .foregroundStyle(Color.platformTextPrimary)
 
             Text(info.subtitle)
-                .font(.system(size: 13.5))
+                .font(.system(size: 15))
                 .foregroundStyle(Color.platformTextSecondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 340)
+                .frame(maxWidth: 360)
 
             if let buttonTitle = info.buttonTitle, let buttonAction = info.buttonAction {
                 Button {
@@ -750,10 +750,10 @@ public struct PersonalNotesView: View {
                     HStack(spacing: 6) {
                         if info.icon == "checklist" {
                             Image(systemName: "plus")
-                                .font(.system(size: 13, weight: .bold))
+                                .font(.system(size: 14, weight: .bold))
                         }
                         Text(buttonTitle)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -844,7 +844,7 @@ private struct PersonalNoteRowCard: View, Equatable {
             VStack(alignment: .leading, spacing: 6) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(note.title)
-                        .font(.system(size: 15.5, weight: .bold))
+                        .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(note.isCompleted ? Color.platformTextSecondary : Color.platformTextPrimary)
                         .strikethrough(note.isCompleted, color: Color.platformTextTertiary)
                         .opacity(note.isCompleted ? 0.72 : 1.0)
@@ -857,10 +857,10 @@ private struct PersonalNoteRowCard: View, Equatable {
                         HStack(spacing: 6) {
                             if let courseName = note.courseName, !courseName.isEmpty {
                                 Text(courseName)
-                                    .font(.system(size: 11, weight: .semibold))
+                                    .font(.system(size: 12.5, weight: .semibold))
                                     .foregroundStyle(Color.blue)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2.5)
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 3)
                                     .background(Color.blue.opacity(0.1))
                                     .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                                     .lineLimit(1)
@@ -882,26 +882,26 @@ private struct PersonalNoteRowCard: View, Equatable {
 
                         HStack(spacing: 4) {
                             Image(systemName: isAllDone ? "checkmark.circle.fill" : "checklist")
-                                .font(.system(size: 11, weight: .bold))
+                                .font(.system(size: 12, weight: .bold))
                             Text("\(doneCount)/\(totalCount) việc")
-                                .font(.system(size: 11.5, weight: .semibold))
+                                .font(.system(size: 13, weight: .semibold))
                         }
                         .foregroundStyle(isAllDone ? Color.green : Color.blue)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2.5)
                         .background((isAllDone ? Color.green : Color.blue).opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
 
                         if totalCount > 1 {
                             Capsule()
                                 .fill(Color.primary.opacity(0.08))
-                                .frame(width: 64, height: 4)
+                                .frame(width: 64, height: 4.5)
                                 .overlay(alignment: .leading) {
                                     Capsule()
                                         .fill(isAllDone ? Color.green : Color.blue)
                                         .frame(
                                             width: max(0, min(64, 64 * CGFloat(max(0.0, min(1.0, note.checklistProgress))))),
-                                            height: 4
+                                            height: 4.5
                                         )
                                 }
                                 .animation(.spring(response: 0.35, dampingFraction: 0.8), value: note.checklistProgress)
@@ -909,7 +909,7 @@ private struct PersonalNoteRowCard: View, Equatable {
                     }
                     .padding(.top, 2)
 
-                    VStack(alignment: .leading, spacing: 4.5) {
+                    VStack(alignment: .leading, spacing: 5) {
                         ForEach(note.checklist.prefix(4)) { item in
                             Button {
                                 PlatformHaptics.trigger()
@@ -918,19 +918,19 @@ private struct PersonalNoteRowCard: View, Equatable {
                                 HStack(spacing: 7) {
                                     if #available(macOS 14.0, iOS 17.0, *) {
                                         Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 13, weight: .semibold))
+                                            .font(.system(size: 14.5, weight: .semibold))
                                             .foregroundStyle(item.isCompleted ? Color.green : Color.secondary.opacity(0.6))
-                                            .frame(width: 16, height: 16)
+                                            .frame(width: 17, height: 17)
                                             .symbolEffect(.bounce, value: item.isCompleted)
                                     } else {
                                         Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 13, weight: .semibold))
+                                            .font(.system(size: 14.5, weight: .semibold))
                                             .foregroundStyle(item.isCompleted ? Color.green : Color.secondary.opacity(0.6))
-                                            .frame(width: 16, height: 16)
+                                            .frame(width: 17, height: 17)
                                     }
 
                                     Text(item.title)
-                                        .font(.system(size: 13))
+                                        .font(.system(size: 14.5))
                                         .foregroundStyle(item.isCompleted ? Color.platformTextTertiary : Color.platformTextSecondary)
                                         .strikethrough(item.isCompleted, color: Color.platformTextTertiary)
                                         .lineLimit(1)
@@ -949,9 +949,9 @@ private struct PersonalNoteRowCard: View, Equatable {
                                 onEdit()
                             } label: {
                                 Text("+ \(note.checklist.count - 4) mục khác...")
-                                    .font(.system(size: 11.5, weight: .medium))
+                                    .font(.system(size: 13, weight: .medium))
                                     .foregroundStyle(Color.secondary)
-                                    .padding(.leading, 23)
+                                    .padding(.leading, 24)
                             }
                             .buttonStyle(.plain)
                         }
@@ -961,7 +961,7 @@ private struct PersonalNoteRowCard: View, Equatable {
 
                 if !note.content.isEmpty {
                     Text(note.content)
-                        .font(.system(size: 13.5))
+                        .font(.system(size: 15))
                         .foregroundStyle(note.isCompleted ? Color.platformTextTertiary : Color.platformTextSecondary)
                         .opacity(note.isCompleted ? 0.7 : 1.0)
                         .lineLimit(2)
@@ -1035,34 +1035,34 @@ private struct PersonalNoteRowCard: View, Equatable {
         let calendar = ClassroomDateFormatters.gregorianCalendar
         if calendar.isDateInTomorrow(date) {
             Text("Ngày mai")
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: 12.5, weight: .bold))
                 .foregroundStyle(Color.blue)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: true)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2.5)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
                 .background(Color.blue.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                 .layoutPriority(1)
         } else if calendar.isDateInToday(date) {
             Text("Hôm nay")
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: 12.5, weight: .bold))
                 .foregroundStyle(Color.orange)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: true)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2.5)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
                 .background(Color.orange.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                 .layoutPriority(1)
         } else {
             Text(formattedDateString(from: date))
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 12.5, weight: .medium))
                 .foregroundStyle(Color.secondary)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: true)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2.5)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
                 .background(Color.primary.opacity(0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                 .layoutPriority(1)
@@ -1139,7 +1139,7 @@ public struct CreateOrEditNoteSheet: View {
                 Section("Tiêu đề") {
                     TextField("", text: $title, prompt: Text("Tiêu đề việc cần làm..."))
                         .textFieldStyle(.plain)
-                        .font(.system(size: 14.5, weight: .medium))
+                        .font(.system(size: 16, weight: .medium))
                         .focused($focusedField, equals: .title)
                         .onSubmit {
                             focusedField = .newChecklistItem
@@ -1157,7 +1157,7 @@ public struct CreateOrEditNoteSheet: View {
                             } label: {
                                 if #available(macOS 14.0, iOS 17.0, *) {
                                     Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                                        .font(.system(size: 16, weight: .semibold))
+                                        .font(.system(size: 17, weight: .semibold))
                                         .foregroundStyle(item.isCompleted ? Color.green : Color.secondary)
                                         .symbolEffect(.bounce, value: item.isCompleted)
                                         #if os(iOS)
@@ -1168,7 +1168,7 @@ public struct CreateOrEditNoteSheet: View {
                                         .contentShape(Rectangle())
                                 } else {
                                     Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                                        .font(.system(size: 16, weight: .semibold))
+                                        .font(.system(size: 17, weight: .semibold))
                                         .foregroundStyle(item.isCompleted ? Color.green : Color.secondary)
                                         #if os(iOS)
                                         .frame(width: 44, height: 44)
@@ -1182,7 +1182,7 @@ public struct CreateOrEditNoteSheet: View {
 
                             TextField("", text: $item.title, prompt: Text("Nội dung mục..."))
                                 .textFieldStyle(.plain)
-                                .font(.system(size: 14))
+                                .font(.system(size: 15))
                                 .strikethrough(item.isCompleted, color: Color.secondary.opacity(0.7))
                                 .foregroundStyle(item.isCompleted ? Color.secondary : Color.platformTextPrimary)
                                 .onSubmit {
@@ -1196,7 +1196,7 @@ public struct CreateOrEditNoteSheet: View {
                                 }
                             } label: {
                                 Image(systemName: "trash")
-                                    .font(.system(size: 13))
+                                    .font(.system(size: 14))
                                     .foregroundStyle(.secondary.opacity(0.7))
                                     #if os(iOS)
                                     .frame(width: 44, height: 44)
@@ -1218,12 +1218,12 @@ public struct CreateOrEditNoteSheet: View {
 
                     HStack(spacing: 8) {
                         Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(Color.blue)
 
                         TextField("", text: $newChecklistItemTitle, prompt: Text("Thêm việc cần làm (nhấn Enter)..."))
                             .textFieldStyle(.plain)
-                            .font(.system(size: 14))
+                            .font(.system(size: 15))
                             .focused($focusedField, equals: .newChecklistItem)
                             .onSubmit {
                                 addChecklistItem()
@@ -1245,7 +1245,7 @@ public struct CreateOrEditNoteSheet: View {
                         if !checklist.isEmpty {
                             let done = checklist.filter(\.isCompleted).count
                             Text("\(done)/\(checklist.count) việc")
-                                .font(.system(size: 11.5, weight: .semibold))
+                                .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(done == checklist.count ? Color.green : Color.secondary)
                         }
                     }
@@ -1255,14 +1255,14 @@ public struct CreateOrEditNoteSheet: View {
                     ZStack(alignment: .topLeading) {
                         if content.isEmpty {
                             Text("Nhập chi tiết, tài liệu tham khảo hoặc dặn dò...")
-                                .font(.system(size: 14))
+                                .font(.system(size: 15.5))
                                 .foregroundStyle(Color.secondary.opacity(0.6))
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 8)
                                 .allowsHitTesting(false)
                         }
                         TextEditor(text: $content)
-                            .font(.system(size: 14))
+                            .font(.system(size: 15.5))
                             .lineSpacing(4)
                             .frame(minHeight: 80)
                             #if os(macOS)

@@ -498,14 +498,14 @@ public struct ClassroomSubjectBanner: View {
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
-                        SubjectArtBadgeView(courseName: item.courseName, size: 24)
+                        SubjectArtBadgeView(courseName: item.courseName, size: 26)
                         Text(item.courseName)
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(size: 16.5, weight: .bold))
                             .foregroundStyle(.white.opacity(0.95))
                     }
 
                     Text(item.title)
-                        .font(.system(size: 19.5, weight: .bold))
+                        .font(.system(size: 21.5, weight: .bold))
                         .foregroundStyle(.white)
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
@@ -513,13 +513,13 @@ public struct ClassroomSubjectBanner: View {
 
                     HStack(spacing: 5) {
                         Image(systemName: "calendar")
-                            .font(.system(size: 11.5, weight: .semibold))
+                            .font(.system(size: 12.5, weight: .semibold))
                         Text(item.formattedFullDueDate)
-                            .font(.system(size: 13.5, weight: .semibold))
+                            .font(.system(size: 14.5, weight: .semibold))
                     }
                     .foregroundStyle(.white.opacity(0.92))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 3.5)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
                     .background(Color.black.opacity(0.18))
                     .clipShape(Capsule())
                 }
@@ -629,10 +629,10 @@ public struct CourseTagView: View {
         let visualTheme = SubjectArtHelper.theme(for: name)
         HStack(spacing: 4) {
             Image(systemName: visualTheme.icon)
-                .font(.system(size: 9.5, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(visualTheme.themeColor)
             Text(name)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
@@ -683,20 +683,20 @@ public struct DueBadgeView: View, Equatable {
         HStack(spacing: 4) {
             if item.isCompleted {
                 Image(systemName: "checkmark")
-                    .font(.system(size: compact ? 10.5 : 11.5, weight: .bold))
+                    .font(.system(size: compact ? 11.5 : 12.5, weight: .bold))
             } else if item.isOverdue || item.isPast {
                 Image(systemName: "exclamationmark.circle")
-                    .font(.system(size: compact ? 10.5 : 11.5, weight: .semibold))
+                    .font(.system(size: compact ? 11.5 : 12.5, weight: .semibold))
             } else {
                 Image(systemName: "clock")
-                    .font(.system(size: compact ? 10.5 : 11.5, weight: .semibold))
+                    .font(.system(size: compact ? 11.5 : 12.5, weight: .semibold))
             }
 
             Text(badgeText)
-                .font(.system(size: compact ? 12.5 : 13.5, weight: .semibold, design: .rounded))
+                .font(.system(size: compact ? 13.5 : 14.5, weight: .semibold, design: .rounded))
         }
         .foregroundStyle(badgeColor)
-        .padding(.horizontal, compact ? 8 : 10)
+        .padding(.horizontal, compact ? 8.5 : 10.5)
         .padding(.vertical, compact ? 4 : 5)
         .appleLiquidGlassSurface(
             style: .tint(badgeColor.opacity(0.14)),
@@ -717,15 +717,15 @@ public struct WidgetEmptyStateView: View {
 
     public var body: some View {
         HStack(spacing: 12) {
-            ChunkyEmberCharacterView(emotion: .sleeping, size: 48)
+            ChunkyEmberCharacterView(emotion: .sleeping, size: 52)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 2.5) {
                 Text("Ngày mai không có bài!")
-                    .font(.system(size: 14, weight: .heavy, design: .rounded))
+                    .font(.system(size: 16, weight: .heavy, design: .rounded))
                     .foregroundStyle(ChunkyTheme.textPrimary)
 
                 Text("Tất cả bài tập đã hoàn thành.")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
                     .lineSpacing(2)
                     .foregroundStyle(ChunkyTheme.textMuted)
             }

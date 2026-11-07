@@ -24,17 +24,17 @@ struct CourseSelectionRow: View, Equatable {
                         .foregroundStyle(course.isSelectedForWidget ? Color.blue : Color.secondary.opacity(0.45))
                 }
 
-                SubjectArtBadgeView(courseName: course.name, size: 26)
+                SubjectArtBadgeView(courseName: course.name, size: 28)
 
                 VStack(alignment: .leading, spacing: 2.5) {
                     Text(course.name)
-                        .font(.system(size: 14.5, weight: .semibold))
+                        .font(.system(size: 15.5, weight: .semibold))
                         .foregroundStyle(Color.platformTextPrimary)
                         .lineLimit(1)
 
                     if let section = course.section, !section.isEmpty {
                         Text(section)
-                            .font(.system(size: 12))
+                            .font(.system(size: 13))
                             .foregroundStyle(Color.platformTextSecondary)
                             .lineLimit(1)
                     }
