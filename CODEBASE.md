@@ -61,7 +61,7 @@ flowchart TD
     CheckTodayCompleted -- No --> ShowEmpty[Display Empty State: 'Ngày mai rảnh rồi!']
 ```
 
-1. **Tomorrow's bucket**: Coursework and standalone personal notes due tomorrow (`dueDate >= startOfTomorrow && dueDate < startOfDayAfter`).
+1. **Tomorrow's bucket**: Coursework and standalone personal notes due tomorrow (`dueDate >= startOfTomorrow && dueDate < startOfDayAfter`). Completed tasks due tomorrow remain anchored in this tier alongside incomplete tasks when `includeCompleted == true`, preventing premature fallback.
 2. **Incomplete tasks due today**: Tasks with `dueDate >= now && dueDate < startOfTomorrow` where `!isCompleted`.
 3. **Nearest upcoming tasks**: Tasks due further out (`dueDate >= startOfDayAfter`), sorted chronologically.
 4. **Undated tasks**: Assignments without a specified due date (`dueDate == null`).
@@ -249,7 +249,7 @@ Vietnamese students search using mixed diacritics (e.g. `"giai tich"`, `"toán"`
 
 ### Search Relevance Scoring Matrix
 
-Search queries are tokenized and scored using a weighted multi-tier algorithm:
+Search queries are tokenized on whitespace and punctuation delimiters (`,`, `-`, `/`, `:`, `(`, `)`, `;`, `[`, `]`, `.`, `+`) and scored using a weighted multi-tier algorithm:
 
 | Match Type | Target Field | Points |
 |---|---|---|
@@ -261,37 +261,60 @@ Search queries are tokenized and scored using a weighted multi-tier algorithm:
 | **Substring Match** | Course Name | **+40** |
 | **Token Word Boundary** | Title (preceded or followed by word boundary) | **+45** (+30 base + 15 bonus) |
 | **Token Match** | Course Name | **+15** |
+| **Checklist Match** | Personal Note Checklist Items (`checklistTitles`) | **+10** |
 | **Token Match** | Content / Description | **+5** |
 
 ### Subject Taxonomy & Classification (`SubjectArtHelper`)
 
-Course titles on Google Classroom vary wildly between schools. `SubjectArtHelper` categorizes course titles into 12 core academic subjects and assigns semantic badges and themes:
+Course titles on Google Classroom vary wildly between schools. `SubjectArtHelper` categorizes course titles strictly into the **11 core Vietnamese High School curriculum subjects (Chương trình GDPT)**, falling back to `.other` for any non-curriculum course:
 
 ```
-┌────────────────────┬───────────┬───────────────────┬────────────────────────────────────────┐
-│ Subject            │ Badge     │ Theme Color       │ Key Word Boundaries & Exclusions       │
-├────────────────────┼───────────┼───────────────────┼────────────────────────────────────────┤
-│ Mathematics        │ TOÁ       │ Blue (#2563EB)    │ toán, đại số, giải tích, hình học       │
-│ Physics            │ LÝ        │ Violet (#7C3AED)  │ vật lý, lí. Exclude: quản lý, xử lý    │
-│ Chemistry          │ HOÁ       │ Amber (#D97706)   │ hóa học. Exclude: văn hóa, hóa đơn     │
-│ Biology            │ SINH      │ Green (#059669)   │ sinh học, di truyền, tế bào            │
-│ Literature         │ VĂN       │ Rose (#E11D48)    │ ngữ văn, văn học, tập làm văn          │
-│ English            │ ANH       │ Indigo (#4F46E5)  │ tiếng anh, english, ielts, toefl       │
-│ History            │ SỬ        │ Red (#DC2626)     │ lịch sử. Exclude: sử dụng, lịch sự     │
-│ Geography          │ ĐỊA       │ Orange (#EA580C)  │ địa lý, địa lí. Exclude: địa điểm, địa chỉ, media │
-│ Computer Science   │ TIN       │ Cyan (#0891B2)    │ tin học, lập trình, python, c++, it    │
-│ Civics             │ GDCD      │ Teal (#0D9488)    │ gdcd, công dân, kinh tế pháp luật      │
-│ Economics          │ KTẾ       │ Emerald (#047857) │ kinh tế, tài chính, kế toán            │
-│ Technology / Art   │ TKẾ / BTH │ Slate (#475569)   │ công nghệ, mỹ thuật, đồ họa            │
-└────────────────────┴───────────┴───────────────────┴────────────────────────────────────────┘
+┌────────────────────┬───────────┬───────────────────┬────────────────────────────────────────────────────────┐
+│ Subject            │ Badge     │ Theme Color       │ Key Word Boundaries & Guard Exclusions                 │
+├────────────────────┼───────────┼───────────────────┼────────────────────────────────────────────────────────┤
+│ Tin học (CS)       │ TIN       │ Cyan (#14AD8A)    │ tin học, lập trình, cntt, it, ctdl, c++, python, csdl. │
+│                    │           │                   │ Guard: thông tin, bản tin, tin tức, niềm tin, tự       │
+│ Toán (Math)        │ TOÁ       │ Amber (#F2991A)   │ toán, giải tích, đại số, hình học, xác suất, thống kê. │
+│                    │           │                   │ Guard: điện toán, an toàn, thanh toán, hoàn toàn       │
+│ Tiếng Anh (English)│ ANH       │ Blue (#2694EB)    │ tiếng anh, english, ielts, toeic, toefl.               │
+│                    │           │                   │ Guard: hình ảnh, âm thanh, thầy, cô, gv                │
+│ Ngữ văn (Lit)      │ VĂN       │ Coral (#EB6138)   │ ngữ văn, tiếng việt, văn.                              │
+│                    │           │                   │ Guard: văn phòng, văn hóa/văn hoá, văn minh, luận văn  │
+│ Vật lý (Physics)   │ LÝ        │ Violet (#7361E0)  │ vật lý/vật lí, cơ học, nhiệt học, quang học, điện từ.  │
+│                    │           │                   │ Guard: quản lý, xử lý, tâm lý, pháp lý, địa lý, hợp lý │
+│ Hóa học (Chem)     │ HOÁ       │ Pink (#DC47AD)    │ hóa học/hoá học, hóa hữu cơ, hóa vô cơ, hóa đại cương. │
+│                    │           │                   │ Guard: tự động hóa, văn hóa, hóa đơn, hòa bình, hóa thân│
+│ Sinh học (Biology) │ SINH      │ Green (#33B866)   │ sinh học, di truyền, tế bào, vi sinh, sinh thái.       │
+│                    │           │                   │ Guard: học sinh, sinh viên, sinh hoạt                  │
+│ Lịch sử (History)  │ SỬ        │ Red-Amber (#D98529│ lịch sử, sử 10-12.                                     │
+│                    │           │                   │ Guard: sử dụng, lịch sự, lịch sự trong giao tiếp       │
+│ GDQP (Defense Edu) │ GDQP      │ Forest (#299447)  │ giáo dục quốc phòng, gdqp, an ninh quốc phòng, quân sự │
+│ GDĐP (Local Edu)   │ GDĐP      │ Teal (#0D9488)    │ giáo dục địa phương, gddp, gdđp, giáo dục đp           │
+│ HĐTN (Experiential)│ HĐTN      │ Orange (#F26C1F)  │ hoạt động trải nghiệm, hdtn, hđtn, hướng nghiệp,       │
+│                    │           │                   │ sinh hoạt dưới cờ, sinh hoạt lớp                       │
+│ Khác (Other)       │ Prefix/MÔN│ Slate (#6685A3)   │ Fallback: Geography, Economics, Networking, Art, etc.  │
+└────────────────────┴───────────┴───────────────────┴────────────────────────────────────────────────────────┘
 ```
+
+#### Deterministic Static Badge Codes & Memory Efficiency
+- All 11 curriculum subjects have static, compile-time $O(1)$ badge codes (`TIN`, `TOÁ`, `ANH`, `VĂN`, `LÝ`, `HOÁ`, `SINH`, `SỬ`, `GDQP`, `GDĐP`, `HĐTN`).
+- Only `.other` computes dynamic badges based on the first 3 characters of course/title or falls back to `MÔN`.
+- On Android, `SubjectArtHelper.theme(...)` reuses pre-allocated `STANDARD_THEMES[cat.ordinal]` instances with zero object allocation during list scrolling.
+
+#### Homeroom Class & Assignment Title Priority
+In Vietnamese high schools, homeroom teachers frequently create a single Google Classroom for the entire class (e.g. `"11 Tin"` or `"12 Chuyên Anh"`), and subject teachers post assignments inside it (e.g. `"Toán (tuần 7)"`, `"Lý bài tập 10"`).
+- `SubjectArtHelper.category(courseName, title)` prioritizes explicit subject identifiers in the assignment `title` over generic homeroom class names.
+- Example: Course `"11 Tin"` with title `"Toán (tuần 7)"` cleanly classifies as **`MATH`** (`TOÁ`), not `COMPUTER_SCIENCE`.
 
 #### Strict False Positive Guards
 Vietnamese compound words can easily cause misclassification:
-- `"LÝ"` must **NOT** match `"quản lý"` (management), `"xử lý"` (processing), or `"tâm lý"` (psychology).
-- `"HOÁ"` must **NOT** match `"văn hóa"` (culture), `"hóa đơn"` (invoice), or `"tiêu hóa"` (digestion).
-- `"SỬ"` must **NOT** match `"sử dụng"` (usage), `"lịch sự"` (polite), or `"đối xử"` (treatment).
-- `"ĐỊA"` must **NOT** match `"địa điểm"` (location), `"địa chỉ"` (address), or `"media"`.
+- `"LÝ"` must **NOT** match `"quản lý"` (management), `"xử lý"` (processing), `"tâm lý"` (psychology), or `"địa lý"` (geography).
+- `"HOÁ"` must **NOT** match `"văn hóa"` / `"văn hoá"` (culture), `"hóa đơn"` (invoice), `"tự động hóa"` (automation), or `"hòa bình"` (peace).
+- `"SỬ"` must **NOT** match `"sử dụng"` (usage), `"lịch sự"` (polite), or `"lịch sự trong giao tiếp"`.
+- `"VĂN"` must **NOT** match `"văn phòng"` (office), `"văn hóa"` (culture), `"văn minh"` (civilization), or `"luận văn"` (thesis).
+- `"ANH"` must **NOT** match `"hình ảnh"` (image), `"âm thanh"` (audio), `"thầy"`, `"cô"`, or `"gv"` (teacher names).
+- `"TIN"` must **NOT** match `"thông tin"` (information), `"bản tin"` (newsletter), `"tin tức"` (news), or `"niềm tin"` (trust).
+- `"TOÁN"` must **NOT** match `"điện toán"` (computing), `"an toàn"` (safety), `"thanh toán"` (payment), or `"hoàn toàn"` (completely).
 
 ---
 
