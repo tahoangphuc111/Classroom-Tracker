@@ -278,7 +278,6 @@ public struct ContentView: View {
     @State private var showSettingsModal: Bool = false
     @State private var showLogoutConfirmation: Bool = false
     @State private var clientIdInput: String = ""
-    @State private var clientSecretInput: String = ""
     @State private var isSigningIn: Bool = false
     @State private var errorMessage: String? = nil
     @State private var isDemoMode: Bool = false
@@ -745,7 +744,6 @@ public struct ContentView: View {
         }
         .onAppear {
             clientIdInput = authService.configuredClientId
-            clientSecretInput = authService.configuredClientSecret
             refreshData()
             hasInitialLoadHappened = true
 
@@ -843,7 +841,6 @@ public struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenLoginOrSettings"))) { _ in
             if !authService.isAuthenticated {
                 clientIdInput = authService.configuredClientId
-                clientSecretInput = authService.configuredClientSecret
                 showSettingsModal = true
             }
         }
@@ -879,7 +876,6 @@ public struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenSettingsModal"))) { _ in
             clientIdInput = authService.configuredClientId
-            clientSecretInput = authService.configuredClientSecret
             showSettingsModal = true
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TriggerSync"))) { _ in
@@ -994,20 +990,10 @@ public struct ContentView: View {
                                     .font(.system(size: 11.5, design: .monospaced))
                             }
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Client Secret (Tùy chọn):")
-                                    .font(.system(size: 11.5, weight: .medium))
-                                SecureField("Google Client Secret", text: $clientSecretInput)
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(size: 11.5, design: .monospaced))
-                            }
-
                             HStack {
                                 Button("Mặc định") {
                                     clientIdInput = GoogleOAuthService.bundledClientId
-                                    clientSecretInput = GoogleOAuthService.bundledClientSecret
-                                    authService.configuredClientId = GoogleOAuthService.bundledClientId
-                                    authService.configuredClientSecret = GoogleOAuthService.bundledClientSecret
+                                    authService.resetToDefaultOAuthCredentials()
                                 }
                                 .font(.system(size: 11.5))
 
@@ -1015,7 +1001,6 @@ public struct ContentView: View {
 
                                 Button("Lưu") {
                                     authService.configuredClientId = clientIdInput
-                                    authService.configuredClientSecret = clientSecretInput
                                     showToast(title: "Đã lưu cấu hình OAuth", icon: "checkmark.circle.fill", tint: .green)
                                 }
                                 .font(.system(size: 11.5, weight: .semibold))
@@ -1869,7 +1854,6 @@ public struct ContentView: View {
             ToolbarItem {
                 Button {
                     clientIdInput = authService.configuredClientId
-                    clientSecretInput = authService.configuredClientSecret
                     showSettingsModal = true
                 } label: {
                     Image(systemName: "gearshape")
@@ -2257,7 +2241,6 @@ public struct ContentView: View {
                     Button {
                         triggerHapticFeedback()
                         clientIdInput = authService.configuredClientId
-                        clientSecretInput = authService.configuredClientSecret
                         showSettingsModal = true
                     } label: {
                         Image(systemName: "gearshape")
@@ -3125,7 +3108,6 @@ public struct ContentView: View {
             showLogoutConfirmation: $showLogoutConfirmation,
             isDemoMode: $isDemoMode,
             clientIdInput: $clientIdInput,
-            clientSecretInput: $clientSecretInput,
             isAdvancedSettingsExpanded: $isAdvancedSettingsExpanded,
             onRefreshData: {
                 refreshData()

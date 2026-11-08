@@ -96,7 +96,8 @@ struct HomeworkReaderPane: View {
                             }
 
                             if let desc = item.description, !desc.isEmpty {
-                                Text(desc)
+                                let attributedDesc: AttributedString = (try? AttributedString(markdown: desc, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(desc)
+                                Text(attributedDesc)
                                     .font(.system(size: 17, weight: .regular))
                                     .lineSpacing(6.5)
                                     .foregroundStyle(Color.platformTextPrimary)

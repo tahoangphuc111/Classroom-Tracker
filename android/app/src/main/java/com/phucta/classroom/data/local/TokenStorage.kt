@@ -67,6 +67,7 @@ class TokenStorage(context: Context) {
         private const val KEY_AUTH_VERIFIER = "auth_verifier"
         private const val KEY_AUTH_REDIRECT_URI = "auth_redirect_uri"
         private const val KEY_AUTH_STATE = "auth_state"
+        private const val KEY_CUSTOM_CLIENT_SECRET = "custom_client_secret"
     }
 
     fun saveAuthFlowState(verifier: String, redirectUri: String, state: String? = null) {
@@ -166,5 +167,27 @@ class TokenStorage(context: Context) {
             return !tokens.refreshToken.isNullOrBlank()
         }
         return true
+    }
+
+    fun saveCustomClientSecret(secret: String?) {
+        try {
+            val editor = prefs.edit()
+            if (!secret.isNullOrBlank()) {
+                editor.putString(KEY_CUSTOM_CLIENT_SECRET, secret.trim())
+            } else {
+                editor.remove(KEY_CUSTOM_CLIENT_SECRET)
+            }
+            editor.commit()
+        } catch (e: Exception) {
+            android.util.Log.e("TokenStorage", "saveCustomClientSecret error", e)
+        }
+    }
+
+    fun loadCustomClientSecret(): String? {
+        return try {
+            prefs.getString(KEY_CUSTOM_CLIENT_SECRET, null)?.takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            null
+        }
     }
 }

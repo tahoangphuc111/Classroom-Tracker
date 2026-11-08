@@ -145,7 +145,10 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     }
 
     public var destinationURL: URL {
-        if let link = alternateLink, let url = URL(string: link) {
+        if let link = alternateLink,
+           let url = URL(string: link),
+           let scheme = url.scheme?.lowercased(),
+           scheme == "https" || scheme == "http" {
             return url
         }
         return URL(string: "https://classroom.google.com") ?? URL(fileURLWithPath: "/")

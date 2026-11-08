@@ -23,6 +23,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
+import org.koin.android.ext.android.get
+import org.koin.android.ext.koin.androidContext
+import org.koin.android.ext.koin.androidLogger
+import org.koin.core.context.startKoin
+import org.koin.core.logger.Level
+import com.phucta.classroom.di.appModule
 import java.util.concurrent.TimeUnit
 
 class ClassroomApplication : Application() {
@@ -37,13 +43,7 @@ class ClassroomApplication : Application() {
     lateinit var repository: ClassroomRepository
         private set
 
-    val okHttpClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .writeTimeout(20, TimeUnit.SECONDS)
-            .build()
-    }
+    val okHttpClient: OkHttpClient by lazy { get() }
 
     private val applicationScope = CoroutineScope(
         SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
@@ -54,12 +54,17 @@ class ClassroomApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        database = ClassroomDatabase.getInstance(this)
-        preferences = ClassroomPreferences(this)
-        tokenStorage = TokenStorage(this)
-        oauthManager = GoogleOAuthManager(this, preferences, tokenStorage, okHttpClient)
-        val apiService = ClassroomApiService(okHttpClient)
-        repository = ClassroomRepository(this, database, preferences, oauthManager, apiService)
+        startKoin {
+            androidLogger(Level.ERROR)
+            androidContext(this@ClassroomApplication)
+            modules(appModule)
+        }
+
+        database = get()
+        preferences = get()
+        tokenStorage = get()
+        oauthManager = get()
+        repository = get()
 
         applicationScope.launch {
             repository.ensureInitialData()

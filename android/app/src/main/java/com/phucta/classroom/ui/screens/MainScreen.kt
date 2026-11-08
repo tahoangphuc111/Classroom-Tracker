@@ -43,7 +43,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import coil.compose.AsyncImage
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
@@ -178,8 +180,8 @@ fun MainScreen() {
     val isAuthenticated by oauthManager.isAuthenticated.collectAsStateWithLifecycle()
     val userEmail by preferences.userEmailFlow.collectAsStateWithLifecycle(initialValue = null)
     val userName by preferences.userNameFlow.collectAsStateWithLifecycle(initialValue = null)
+    val userAvatar by preferences.userAvatarFlow.collectAsStateWithLifecycle(initialValue = null)
     val customClientId by preferences.customClientIdFlow.collectAsStateWithLifecycle(initialValue = null)
-    val customClientSecret by preferences.customClientSecretFlow.collectAsStateWithLifecycle(initialValue = null)
 
     LaunchedEffect(syncErrorMessage) {
         syncErrorMessage?.let { message ->
@@ -418,6 +420,7 @@ fun MainScreen() {
                         currentDayEpoch = currentDayEpoch,
                         isAnyCourseFiltered = isAnyCourseFiltered,
                         isSyncing = isSyncing,
+                        userAvatar = userAvatar,
                         onOpenDrawer = { scope.launch { drawerState.open() } },
                         onSyncClick = {
                             scope.launch {
@@ -608,9 +611,9 @@ fun MainScreen() {
             isAuthenticated = isAuthenticated,
             userEmail = userEmail,
             userName = userName,
+            userAvatar = userAvatar,
             isSyncing = isSyncing,
             initialClientId = customClientId,
-            initialClientSecret = customClientSecret,
             onDismiss = { showSettingsDialog = false },
             onSignIn = {
                 scope.launch {
@@ -640,10 +643,10 @@ fun MainScreen() {
                     }
                 }
             },
-            onSaveCustomCredentials = { customId, customSecret ->
+            onSaveCustomCredentials = { customId ->
                 scope.launch {
                     try {
-                        preferences.saveCustomCredentials(customId, customSecret)
+                        preferences.saveCustomCredentials(customId, null)
                     } catch (e: Exception) {
                         snackbarHostState.showSnackbar("Không thể lưu cấu hình: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
                     }
@@ -814,6 +817,7 @@ private fun MainTopAppBar(
     currentDayEpoch: Long,
     isAnyCourseFiltered: Boolean,
     isSyncing: Boolean,
+    userAvatar: String? = null,
     onOpenDrawer: () -> Unit,
     onSyncClick: () -> Unit,
     onOpenSettings: () -> Unit
@@ -872,7 +876,18 @@ private fun MainTopAppBar(
                 onSyncClick = onSyncClick
             )
             IconButton(onClick = onOpenSettings) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = ChunkyColor.TextPrimary)
+                if (!userAvatar.isNullOrBlank()) {
+                    AsyncImage(
+                        model = userAvatar,
+                        contentDescription = "Settings",
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .border(1.dp, ChunkyColor.CardBorder, CircleShape)
+                    )
+                } else {
+                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = ChunkyColor.TextPrimary)
+                }
             }
         }
     )

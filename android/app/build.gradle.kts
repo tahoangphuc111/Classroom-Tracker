@@ -145,6 +145,13 @@ dependencies {
     // Chrome Custom Tabs (OAuth)
     implementation(libs.androidx.browser)
 
+    // Image Loading
+    implementation(libs.coil.compose)
+
+    // Dependency Injection (Koin)
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
+
     // Network & Serialization
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)

@@ -35,6 +35,7 @@ public final class ClassroomStorage: @unchecked Sendable {
 
     private static let jsonEncoder = JSONEncoder()
     private static let jsonDecoder = JSONDecoder()
+    private static let storageFileProtectionOption: Data.WritingOptions = .completeFileProtectionUnlessOpen
 
     private var cachedCourses: [Course]?
     private var cachedCoursesTimestamp: Double = 0
@@ -107,11 +108,11 @@ public final class ClassroomStorage: @unchecked Sendable {
 
                 coordinator.coordinate(writingItemAt: fileURL, options: [], error: &coordError) { targetURL in
                     do {
-                        try data.write(to: targetURL, options: .atomic)
+                        try data.write(to: targetURL, options: [.atomic, Self.storageFileProtectionOption])
                         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
                         writeSuccess = true
                     } catch {
-                        if (try? data.write(to: targetURL, options: [])) != nil {
+                        if (try? data.write(to: targetURL, options: [Self.storageFileProtectionOption])) != nil {
                             try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
                             writeSuccess = true
                         }
@@ -120,10 +121,10 @@ public final class ClassroomStorage: @unchecked Sendable {
 
                 if !writeSuccess && coordError != nil {
                     do {
-                        try data.write(to: fileURL, options: .atomic)
+                        try data.write(to: fileURL, options: [.atomic, Self.storageFileProtectionOption])
                         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
                     } catch {
-                        try data.write(to: fileURL, options: [])
+                        try? data.write(to: fileURL, options: [Self.storageFileProtectionOption])
                         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
                     }
                 }

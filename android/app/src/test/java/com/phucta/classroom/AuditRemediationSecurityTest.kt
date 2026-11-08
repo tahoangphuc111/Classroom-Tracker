@@ -3,6 +3,7 @@ package com.phucta.classroom
 import com.phucta.classroom.data.local.ClassroomPreferences
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.SubmissionStatus
+import com.phucta.classroom.data.remote.GoogleOAuthManager
 import com.phucta.classroom.data.repository.ClassroomRepository
 import com.phucta.classroom.domain.BaoBaiBucketingUtils
 import com.phucta.classroom.ui.components.SubjectArtHelper
@@ -23,6 +24,23 @@ class AuditRemediationSecurityTest {
             "",
             ClassroomPreferences.BUNDLED_CLIENT_SECRET
         )
+    }
+
+    @Test
+    fun testSEC02_BundledSecretObfuscationAndDeobfuscation() {
+        val originalSecret = "GOCSPX-TestSecret123"
+        val mask: Byte = 0x5A
+        val obfuscated = ByteArray(originalSecret.length) { i ->
+            (originalSecret[i].code.toByte().toInt() xor mask.toInt()).toByte()
+        }
+
+        GoogleOAuthManager.BUNDLED_SECRET_OBFUSCATED = obfuscated
+        try {
+            val resolved = GoogleOAuthManager.getEffectiveBundledSecret()
+            assertEquals("De-obfuscated secret must match original", originalSecret, resolved)
+        } finally {
+            GoogleOAuthManager.BUNDLED_SECRET_OBFUSCATED = byteArrayOf()
+        }
     }
 
     @Test
@@ -169,5 +187,67 @@ class AuditRemediationSecurityTest {
         assertFalse("Missing state must be rejected", validateState(null, expectedState))
         assertFalse("Blank state must be rejected", validateState("", expectedState))
         assertFalse("Mismatched attacker state must be rejected", validateState("attacker_state_67890", expectedState))
+    }
+
+    @Test
+    fun testSEC06_DestinationURL_RejectsUnsafeSchemes() {
+        val safeItem = Coursework(
+            id = "cw_safe_link",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "Bài tập",
+            alternateLink = "https://classroom.google.com/c/123/a/456"
+        )
+        assertEquals("https://classroom.google.com/c/123/a/456", safeItem.destinationURL)
+
+        val jsItem = Coursework(
+            id = "cw_xss_link",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "XSS Test",
+            alternateLink = "javascript:alert(document.cookie)"
+        )
+        assertEquals(
+            "Unsafe javascript scheme must fall back to default Google Classroom URL",
+            "https://classroom.google.com",
+            jsItem.destinationURL
+        )
+
+        val fileItem = Coursework(
+            id = "cw_file_link",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "File Scheme Test",
+            alternateLink = "file:///data/data/com.phucta.classroom/databases/classroom_tracker.db"
+        )
+        assertEquals(
+            "Unsafe file scheme must fall back to default Google Classroom URL",
+            "https://classroom.google.com",
+            fileItem.destinationURL
+        )
+
+        val emptyLinkItem = Coursework(
+            id = "cw_empty_link",
+            courseId = "c1",
+            courseName = "Toán",
+            title = "Empty Link Test",
+            alternateLink = ""
+        )
+        assertEquals("https://classroom.google.com", emptyLinkItem.destinationURL)
+    }
+
+    @Test
+    fun testSEC07_DataExtractionRulesAndBackupRulesExcludeSensitiveStorage() {
+        val dataExtractionFile = java.io.File("src/main/res/xml/data_extraction_rules.xml")
+        assertTrue("data_extraction_rules.xml must exist", dataExtractionFile.exists())
+        val dataExtractionContent = dataExtractionFile.readText()
+        assertTrue("data_extraction_rules must exclude sharedpref", dataExtractionContent.contains("""exclude domain="sharedpref""""))
+        assertTrue("data_extraction_rules must exclude database", dataExtractionContent.contains("""exclude domain="database""""))
+
+        val backupRulesFile = java.io.File("src/main/res/xml/backup_rules.xml")
+        assertTrue("backup_rules.xml must exist", backupRulesFile.exists())
+        val backupRulesContent = backupRulesFile.readText()
+        assertTrue("backup_rules must exclude sharedpref", backupRulesContent.contains("""exclude domain="sharedpref""""))
+        assertTrue("backup_rules must exclude database", backupRulesContent.contains("""exclude domain="database""""))
     }
 }

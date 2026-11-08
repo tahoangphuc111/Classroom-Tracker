@@ -44,6 +44,22 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
     public static let shared = LoopbackOAuthServer()
     private init() {}
 
+    public static func sanitizeForHtml(_ string: String) -> String {
+        return string
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
+    }
+
+    public static func sanitizeOAuthError(_ string: String) -> String {
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_- ."))
+        let filtered = string.unicodeScalars.filter { allowed.contains($0) }
+        let cleaned = String(String.UnicodeScalarView(filtered)).trimmingCharacters(in: .whitespaces)
+        return cleaned.isEmpty ? "access_denied" : String(cleaned.prefix(64))
+    }
+
     private final class ContinuationGuard: @unchecked Sendable {
         private let lock = NSLock()
         private var isResumed = false
@@ -154,22 +170,23 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
 
                         var buffer = [CChar](repeating: 0, count: 4096)
                         let bytesRead = recv(clientFd, &buffer, buffer.count - 1, 0)
-                    if bytesRead <= 0 {
-                        Darwin.close(clientFd)
-                        continue
-                    }
-
-                    let requestString = String(cString: buffer)
-
-                    // Validate Host header to protect against DNS rebinding / host spoofing
-                    let lines = requestString.components(separatedBy: "\r\n")
-                    var hostHeader: String?
-                    for line in lines {
-                        if line.lowercased().hasPrefix("host:") {
-                            hostHeader = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
-                            break
+                        if bytesRead <= 0 {
+                            Darwin.close(clientFd)
+                            continue
                         }
-                    }
+                        buffer[bytesRead] = 0
+
+                        let requestString = String(cString: buffer)
+
+                        // Validate Host header to protect against DNS rebinding / host spoofing
+                        let lines = requestString.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        var hostHeader: String?
+                        for line in lines {
+                            if line.lowercased().hasPrefix("host:") {
+                                hostHeader = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
+                                break
+                            }
+                        }
                     let validHosts = ["127.0.0.1:\(port)", "localhost:\(port)", "127.0.0.1", "localhost"]
                     guard let host = hostHeader, validHosts.contains(host) else {
                         let forbiddenResponse = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
@@ -238,12 +255,17 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                     }
 
                     if let oauthError {
+                        let safeError = Self.sanitizeOAuthError(oauthError)
+                        let escapedError = Self.sanitizeForHtml(safeError)
+                        let encodedErrorForUrl = safeError.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "oauth_error"
+
                         let errorHtml = """
                         <!DOCTYPE html>
                         <html lang="vi">
                         <head>
                           <meta charset="utf-8">
                           <meta name="viewport" content="width=device-width, initial-scale=1">
+                          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'none'; frame-ancestors 'none'">
                           <title>Classroom Tracker - Đăng nhập không thành công</title>
                           <style>
                             body {
@@ -284,26 +306,26 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
                             </div>
                             <h1>Đăng nhập không thành công</h1>
-                            <p>Đăng nhập bị từ chối (\(oauthError)). Bạn có thể đóng tab này và thử lại trong ứng dụng.</p>
+                            <p>Đăng nhập bị từ chối (\(escapedError)). Bạn có thể đóng tab này và thử lại trong ứng dụng.</p>
                             <div class="badge">Đã hủy hoặc có lỗi</div>
                             <script>
                               setTimeout(function() {
-                                window.location.href = "classroomwidget://auth-complete?error=" + encodeURIComponent("\(oauthError)");
+                                window.location.href = "classroomwidget://auth-complete?error=" + "\(encodedErrorForUrl)";
                               }, 800);
                             </script>
                             <div style="margin-top: 18px;">
-                              <a href="classroomwidget://auth-complete?error=\(oauthError)" style="color: #ef4444; font-size: 13px; text-decoration: underline;">Quay lại Classroom Tracker</a>
+                              <a href="classroomwidget://auth-complete?error=\(encodedErrorForUrl)" style="color: #ef4444; font-size: 13px; text-decoration: underline;">Quay lại Classroom Tracker</a>
                             </div>
                           </div>
                         </body>
                         </html>
                         """
-                        let errorResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(errorHtml.utf8.count)\r\nConnection: close\r\n\r\n\(errorHtml)"
+                        let errorResponse = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(errorHtml.utf8.count)\r\nContent-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'none'; frame-ancestors 'none'\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nConnection: close\r\n\r\n\(errorHtml)"
                         _ = errorResponse.withCString { send(clientFd, $0, strlen($0), 0) }
                         Darwin.close(clientFd)
                         server.handle.close()
                         resumeGuard.resumeOnce(
-                            throwing: NSError(domain: "LoopbackOAuthServer", code: -7, userInfo: [NSLocalizedDescriptionKey: "Đăng nhập Google bị hủy: \(oauthError)"]),
+                            throwing: NSError(domain: "LoopbackOAuthServer", code: -7, userInfo: [NSLocalizedDescriptionKey: "Đăng nhập Google bị hủy: \(safeError)"]),
                             continuation: continuation
                         )
                         return
@@ -316,6 +338,7 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                         <head>
                           <meta charset="utf-8">
                           <meta name="viewport" content="width=device-width, initial-scale=1">
+                          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'none'; frame-ancestors 'none'">
                           <title>Classroom Tracker - Đăng nhập thành công</title>
                           <style>
                             body {
@@ -371,7 +394,7 @@ public final class LoopbackOAuthServer: @unchecked Sendable {
                         </html>
                         """
 
-                        let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(html.utf8.count)\r\nConnection: close\r\n\r\n\(html)"
+                        let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(html.utf8.count)\r\nContent-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'none'; frame-ancestors 'none'\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nConnection: close\r\n\r\n\(html)"
                         _ = response.withCString { send(clientFd, $0, strlen($0), 0) }
 
                         Darwin.close(clientFd)

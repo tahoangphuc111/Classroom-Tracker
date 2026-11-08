@@ -38,7 +38,17 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     @Published public var authErrorMessage: String? = nil
 
     public static let bundledClientId = "1024991814751-qs4rkg9pa09r092lp083l3e9gk6e3mru.apps.googleusercontent.com"
-    public static let bundledClientSecret = ""
+    public static var bundledClientSecret: String = ""
+    public static var bundledSecretObfuscatedBytes: [UInt8] = []
+    private static let bundledSecretMaskKey: UInt8 = 0x5A
+
+    public static var effectiveBundledClientSecret: String {
+        if !bundledSecretObfuscatedBytes.isEmpty {
+            let decoded = bundledSecretObfuscatedBytes.map { $0 ^ bundledSecretMaskKey }
+            return String(bytes: decoded, encoding: .utf8) ?? ""
+        }
+        return bundledClientSecret
+    }
 
     public static let defaultClientIdKey = "google_oauth_client_id"
     public static let defaultClientSecretKey = "google_oauth_client_secret"
@@ -47,6 +57,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     private nonisolated static let jsonDecoder = JSONDecoder()
     private nonisolated static let jsonEncoder = JSONEncoder()
     private var inMemoryTokens: OAuthTokens?
+    private var inMemoryCustomClientSecret: String?
 
     private let scopes = [
         "openid",
@@ -96,24 +107,65 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             return Self.bundledClientId
         }
         set {
-            UserDefaults.standard.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Self.defaultClientIdKey)
+            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty || trimmed == Self.bundledClientId {
+                UserDefaults.standard.removeObject(forKey: Self.defaultClientIdKey)
+            } else {
+                UserDefaults.standard.set(trimmed, forKey: Self.defaultClientIdKey)
+            }
         }
     }
 
+    private static let clientSecretKeychainAccount = "google_oauth_custom_client_secret"
+
     public var configuredClientSecret: String {
         get {
-            let stored = UserDefaults.standard.string(forKey: Self.defaultClientSecretKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let stored, !stored.isEmpty {
-                return stored
+            if let inMemory = inMemoryCustomClientSecret {
+                return inMemory == Self.effectiveBundledClientSecret ? "" : inMemory
             }
-            if configuredClientId == Self.bundledClientId {
-                return Self.bundledClientSecret
+            if let secret = loadStringSecretFromKeychain(account: Self.clientSecretKeychainAccount),
+               !secret.isEmpty, secret != Self.effectiveBundledClientSecret {
+                self.inMemoryCustomClientSecret = secret
+                return secret
+            }
+            if let stored = UserDefaults.standard.string(forKey: Self.defaultClientSecretKey)?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !stored.isEmpty, stored != Self.effectiveBundledClientSecret {
+                saveStringSecretToKeychain(secret: stored, account: Self.clientSecretKeychainAccount)
+                UserDefaults.standard.removeObject(forKey: Self.defaultClientSecretKey)
+                self.inMemoryCustomClientSecret = stored
+                return stored
             }
             return ""
         }
         set {
-            UserDefaults.standard.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Self.defaultClientSecretKey)
+            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            UserDefaults.standard.removeObject(forKey: Self.defaultClientSecretKey)
+            if trimmed.isEmpty || trimmed == Self.effectiveBundledClientSecret {
+                self.inMemoryCustomClientSecret = nil
+                deleteStringSecretFromKeychain(account: Self.clientSecretKeychainAccount)
+            } else {
+                self.inMemoryCustomClientSecret = trimmed
+                saveStringSecretToKeychain(secret: trimmed, account: Self.clientSecretKeychainAccount)
+            }
         }
+    }
+
+    public var effectiveClientSecretForTokenExchange: String {
+        let custom = configuredClientSecret
+        if !custom.isEmpty {
+            return custom
+        }
+        if configuredClientId == Self.bundledClientId {
+            return Self.effectiveBundledClientSecret
+        }
+        return ""
+    }
+
+    public func resetToDefaultOAuthCredentials() {
+        self.inMemoryCustomClientSecret = nil
+        UserDefaults.standard.removeObject(forKey: Self.defaultClientIdKey)
+        UserDefaults.standard.removeObject(forKey: Self.defaultClientSecretKey)
+        deleteStringSecretFromKeychain(account: Self.clientSecretKeychainAccount)
     }
 
     public func checkStoredAuthentication() {
@@ -217,6 +269,15 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         }
 
         if let error {
+            if let expectedState = self.pendingState, !expectedState.isEmpty {
+                guard let state, state == expectedState else {
+                    self.pendingState = nil
+                    clearPendingVerifier()
+                    return false
+                }
+            }
+            self.pendingState = nil
+            clearPendingVerifier()
             self.authErrorMessage = "Đăng nhập Google thất bại: \(error)"
             return false
         }
@@ -495,7 +556,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             bodyParams["code_verifier"] = trimmedVerifier
         }
 
-        let clientSecret = configuredClientSecret
+        let clientSecret = effectiveClientSecretForTokenExchange
         if !clientSecret.isEmpty {
             bodyParams["client_secret"] = clientSecret
         }
@@ -593,7 +654,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
                 "grant_type": "refresh_token"
             ]
 
-            let clientSecret = self.configuredClientSecret
+            let clientSecret = self.effectiveClientSecretForTokenExchange
             if !clientSecret.isEmpty {
                 bodyParams["client_secret"] = clientSecret
             }
@@ -765,20 +826,13 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
                 kSecAttrService as String: keychainService,
                 kSecAttrAccount as String: "google_tokens",
                 kSecValueData as String: data,
-                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
                 kSecAttrAccessGroup as String: group
             ]
             #if os(macOS)
             query[kSecUseDataProtectionKeychain as String] = true
             #endif
-            var status = SecItemAdd(query as CFDictionary, nil)
-            #if os(macOS)
-            if status != errSecSuccess {
-                var legacyQuery = query
-                legacyQuery.removeValue(forKey: kSecUseDataProtectionKeychain as String)
-                status = SecItemAdd(legacyQuery as CFDictionary, nil)
-            }
-            #endif
+            let status = SecItemAdd(query as CFDictionary, nil)
             if status == errSecSuccess {
                 saved = true
                 break
@@ -791,19 +845,12 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
                 kSecAttrService as String: keychainService,
                 kSecAttrAccount as String: "google_tokens",
                 kSecValueData as String: data,
-                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
             ]
             #if os(macOS)
             query[kSecUseDataProtectionKeychain as String] = true
             #endif
-            var status = SecItemAdd(query as CFDictionary, nil)
-            #if os(macOS)
-            if status != errSecSuccess {
-                var legacyQuery = query
-                legacyQuery.removeValue(forKey: kSecUseDataProtectionKeychain as String)
-                status = SecItemAdd(legacyQuery as CFDictionary, nil)
-            }
-            #endif
+            _ = SecItemAdd(query as CFDictionary, nil)
         }
     }
 
@@ -821,14 +868,11 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
                 kSecMatchLimit as String: kSecMatchLimitOne,
                 kSecAttrAccessGroup as String: group
             ]
-            var item: CFTypeRef?
-            var status = SecItemCopyMatching(query as CFDictionary, &item)
             #if os(macOS)
-            if status != errSecSuccess {
-                query[kSecUseDataProtectionKeychain as String] = true
-                status = SecItemCopyMatching(query as CFDictionary, &item)
-            }
+            query[kSecUseDataProtectionKeychain as String] = true
             #endif
+            var item: CFTypeRef?
+            let status = SecItemCopyMatching(query as CFDictionary, &item)
             if status == errSecSuccess, let data = item as? Data {
                 if let decoded = try? Self.jsonDecoder.decode(OAuthTokens.self, from: data) {
                     self.inMemoryTokens = decoded
@@ -844,14 +888,11 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
-        var item: CFTypeRef?
-        var status = SecItemCopyMatching(query as CFDictionary, &item)
         #if os(macOS)
-        if status != errSecSuccess {
-            query[kSecUseDataProtectionKeychain as String] = true
-            status = SecItemCopyMatching(query as CFDictionary, &item)
-        }
+        query[kSecUseDataProtectionKeychain as String] = true
         #endif
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
         if status == errSecSuccess, let data = item as? Data {
             if let decoded = try? Self.jsonDecoder.decode(OAuthTokens.self, from: data) {
                 self.inMemoryTokens = decoded
@@ -874,10 +915,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             query[kSecUseDataProtectionKeychain as String] = true
             #endif
             SecItemDelete(query as CFDictionary)
-            #if os(macOS)
-            query.removeValue(forKey: kSecUseDataProtectionKeychain as String)
-            SecItemDelete(query as CFDictionary)
-            #endif
         }
 
         var query: [String: Any] = [
@@ -889,10 +926,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         query[kSecUseDataProtectionKeychain as String] = true
         #endif
         SecItemDelete(query as CFDictionary)
-        #if os(macOS)
-        query.removeValue(forKey: kSecUseDataProtectionKeychain as String)
-        SecItemDelete(query as CFDictionary)
-        #endif
     }
 
     private func deleteTokensFromKeychain() {
@@ -906,6 +939,109 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             try? FileManager.default.removeItem(at: fileURL)
         }
         deleteKeychainOnly()
+    }
+
+    private func saveStringSecretToKeychain(secret: String, account: String) {
+        guard let data = secret.data(using: .utf8) else { return }
+        deleteStringSecretFromKeychain(account: account)
+
+        var saved = false
+        for group in keychainAccessGroupCandidates {
+            var query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: keychainService,
+                kSecAttrAccount as String: account,
+                kSecValueData as String: data,
+                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+                kSecAttrAccessGroup as String: group
+            ]
+            #if os(macOS)
+            query[kSecUseDataProtectionKeychain as String] = true
+            #endif
+            let status = SecItemAdd(query as CFDictionary, nil)
+            if status == errSecSuccess {
+                saved = true
+                break
+            }
+        }
+
+        if !saved {
+            var query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: keychainService,
+                kSecAttrAccount as String: account,
+                kSecValueData as String: data,
+                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            ]
+            #if os(macOS)
+            query[kSecUseDataProtectionKeychain as String] = true
+            #endif
+            _ = SecItemAdd(query as CFDictionary, nil)
+        }
+    }
+
+    private func loadStringSecretFromKeychain(account: String) -> String? {
+        for group in keychainAccessGroupCandidates {
+            var query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: keychainService,
+                kSecAttrAccount as String: account,
+                kSecReturnData as String: true,
+                kSecMatchLimit as String: kSecMatchLimitOne,
+                kSecAttrAccessGroup as String: group
+            ]
+            #if os(macOS)
+            query[kSecUseDataProtectionKeychain as String] = true
+            #endif
+            var item: CFTypeRef?
+            let status = SecItemCopyMatching(query as CFDictionary, &item)
+            if status == errSecSuccess, let data = item as? Data, let str = String(data: data, encoding: .utf8) {
+                return str
+            }
+        }
+
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        #if os(macOS)
+        query[kSecUseDataProtectionKeychain as String] = true
+        #endif
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        if status == errSecSuccess, let data = item as? Data, let str = String(data: data, encoding: .utf8) {
+            return str
+        }
+
+        return nil
+    }
+
+    private func deleteStringSecretFromKeychain(account: String) {
+        for group in keychainAccessGroupCandidates {
+            var query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: keychainService,
+                kSecAttrAccount as String: account,
+                kSecAttrAccessGroup as String: group
+            ]
+            #if os(macOS)
+            query[kSecUseDataProtectionKeychain as String] = true
+            #endif
+            SecItemDelete(query as CFDictionary)
+        }
+
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: account
+        ]
+        #if os(macOS)
+        query[kSecUseDataProtectionKeychain as String] = true
+        #endif
+        SecItemDelete(query as CFDictionary)
     }
 }
 

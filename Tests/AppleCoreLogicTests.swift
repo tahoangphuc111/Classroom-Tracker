@@ -1089,6 +1089,65 @@ struct TestRunner {
             // Test static comparators
             assertCondition(Coursework.compareByDueDateAscending(c1, c3) == true, "c1 with due date must be before c3 with no due date in ascending order")
             assertCondition(Coursework.compareByDueDateDescending(c1, c3) == true, "c1 with due date must be before c3 with no due date in descending order")
+
+            let auth = GoogleOAuthService.shared
+            auth.resetToDefaultOAuthCredentials()
+
+            assertCondition(auth.configuredClientSecret.isEmpty, "configuredClientSecret must be empty by default")
+
+            let testMask: UInt8 = 0x5A
+            let testSecret = "GOCSPX-SwiftObfuscationTestSecret"
+            let obfuscatedBytes = testSecret.utf8.map { $0 ^ testMask }
+            GoogleOAuthService.bundledSecretObfuscatedBytes = obfuscatedBytes
+
+            assertCondition(auth.configuredClientSecret.isEmpty, "configuredClientSecret must not leak bundled secret")
+            assertCondition(auth.effectiveClientSecretForTokenExchange == testSecret, "effectiveClientSecretForTokenExchange must decode secret for token exchange")
+
+            auth.configuredClientSecret = "custom-user-secret"
+            assertCondition(auth.configuredClientSecret == "custom-user-secret", "Custom user secret must be readable")
+
+            auth.configuredClientSecret = testSecret
+            assertCondition(auth.configuredClientSecret.isEmpty, "Setting configuredClientSecret to bundled secret must reset it")
+
+            auth.resetToDefaultOAuthCredentials()
+            assertCondition(auth.configuredClientSecret.isEmpty, "resetToDefaultOAuthCredentials must clear client secret")
+
+            GoogleOAuthService.bundledSecretObfuscatedBytes = []
+
+            // Security: Safe URL scheme validation
+            let safeItem = Coursework(
+                id: "sec1",
+                courseId: "c1",
+                courseName: "Toán",
+                title: "Safe URL",
+                alternateLink: "https://classroom.google.com/c/123/a/456"
+            )
+            assertCondition(safeItem.destinationURL.absoluteString == "https://classroom.google.com/c/123/a/456", "Safe https link must be preserved")
+
+            let maliciousJsItem = Coursework(
+                id: "sec2",
+                courseId: "c1",
+                courseName: "Toán",
+                title: "Malicious JS",
+                alternateLink: "javascript:alert(1)"
+            )
+            assertCondition(maliciousJsItem.destinationURL.absoluteString == "https://classroom.google.com", "Unsafe javascript: scheme must fall back to default Google Classroom URL")
+
+            let maliciousFileItem = Coursework(
+                id: "sec3",
+                courseId: "c1",
+                courseName: "Toán",
+                title: "Malicious File",
+                alternateLink: "file:///etc/passwd"
+            )
+            assertCondition(maliciousFileItem.destinationURL.absoluteString == "https://classroom.google.com", "Unsafe file: scheme must fall back to default Google Classroom URL")
+
+            // Security: Loopback OAuth Server HTML and Error Sanitization
+            let xssError = LoopbackOAuthServer.sanitizeOAuthError("<script>alert(1)</script>")
+            assertCondition(!xssError.contains("<") && !xssError.contains(">"), "OAuth error must sanitize HTML tag characters")
+
+            let htmlEscaped = LoopbackOAuthServer.sanitizeForHtml("<script>\"'&</script>")
+            assertCondition(htmlEscaped == "&lt;script&gt;&quot;&#39;&amp;&lt;/script&gt;", "sanitizeForHtml must escape all dangerous HTML entities")
         }
 
         print("=== All Apple Core Logic Tests Passed Successfully! ===")

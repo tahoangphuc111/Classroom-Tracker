@@ -10,7 +10,6 @@ struct SettingsSheetView: View {
     @Binding var showLogoutConfirmation: Bool
     @Binding var isDemoMode: Bool
     @Binding var clientIdInput: String
-    @Binding var clientSecretInput: String
     @Binding var isAdvancedSettingsExpanded: Bool
 
     let onRefreshData: () -> Void
@@ -460,21 +459,10 @@ struct SettingsSheetView: View {
                                             .font(.system(size: 12, design: .monospaced))
                                     }
 
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Client Secret (Tùy chọn):")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        SecureField("Google Client Secret", text: $clientSecretInput)
-                                            .textFieldStyle(.roundedBorder)
-                                            .font(.system(size: 12, design: .monospaced))
-                                    }
-
                                     HStack {
                                         Button("Khôi phục mặc định") {
                                             clientIdInput = GoogleOAuthService.bundledClientId
-                                             clientSecretInput = GoogleOAuthService.bundledClientSecret
-                                            authService.configuredClientId = GoogleOAuthService.bundledClientId
-                                            authService.configuredClientSecret = GoogleOAuthService.bundledClientSecret
+                                            authService.resetToDefaultOAuthCredentials()
                                             onShowToast(
                                                 "Đã khôi phục Client ID mặc định",
                                                 nil,
@@ -488,7 +476,6 @@ struct SettingsSheetView: View {
 
                                         Button("Lưu Client ID riêng") {
                                             authService.configuredClientId = clientIdInput
-                                            authService.configuredClientSecret = clientSecretInput
                                             onShowToast(
                                                 "Đã lưu cấu hình Client ID",
                                                 nil,

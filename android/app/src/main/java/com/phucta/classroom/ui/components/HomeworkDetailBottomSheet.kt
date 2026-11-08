@@ -38,6 +38,11 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Grade
 import androidx.compose.material.icons.filled.OpenInBrowser
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import java.util.regex.Pattern
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -321,7 +326,7 @@ fun HomeworkDetailBottomSheet(
             ) {
                 if (!description.isNullOrBlank()) {
                     Text(
-                        text = description,
+                        text = buildClickableUrlString(description, ChunkyColor.SkyBottom),
                         color = ChunkyColor.TextPrimary,
                         fontSize = 15.5.sp,
                         lineHeight = 23.sp
@@ -922,6 +927,43 @@ fun HomeworkDetailBottomSheet(
                     }
                 }
             }
+        }
+    }
+}
+
+private val URL_REGEX = Pattern.compile("https?://[a-zA-Z0-9-._~:/?#\\[\\]@!$&'()*+,;=%]+")
+
+internal fun buildClickableUrlString(text: String, linkColor: androidx.compose.ui.graphics.Color): androidx.compose.ui.text.AnnotatedString {
+    return buildAnnotatedString {
+        val matcher = URL_REGEX.matcher(text)
+        var lastIndex = 0
+        while (matcher.find()) {
+            val start = matcher.start()
+            val end = matcher.end()
+            if (start > lastIndex) {
+                append(text.substring(lastIndex, start))
+            }
+            val matchedUrl = matcher.group()
+            var cleanUrl = matchedUrl
+            var trailingPunctuation = ""
+            while (cleanUrl.isNotEmpty() && (cleanUrl.endsWith(".") || cleanUrl.endsWith(",") || cleanUrl.endsWith(";") || cleanUrl.endsWith("!") || cleanUrl.endsWith("?"))) {
+                trailingPunctuation = cleanUrl.takeLast(1) + trailingPunctuation
+                cleanUrl = cleanUrl.dropLast(1)
+            }
+            if (cleanUrl.endsWith(")") && cleanUrl.count { it == '(' } < cleanUrl.count { it == ')' }) {
+                trailingPunctuation = cleanUrl.takeLast(1) + trailingPunctuation
+                cleanUrl = cleanUrl.dropLast(1)
+            }
+            pushLink(LinkAnnotation.Url(cleanUrl, TextLinkStyles(style = SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline))))
+            append(cleanUrl)
+            pop()
+            if (trailingPunctuation.isNotEmpty()) {
+                append(trailingPunctuation)
+            }
+            lastIndex = end
+        }
+        if (lastIndex < text.length) {
+            append(text.substring(lastIndex))
         }
     }
 }

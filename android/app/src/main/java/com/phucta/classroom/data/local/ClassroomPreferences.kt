@@ -19,6 +19,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 class ClassroomPreferences(context: Context) {
     private val appContext = context.applicationContext
+    private val tokenStorage: TokenStorage by lazy { TokenStorage(appContext) }
 
     companion object {
         val KEY_USER_EMAIL = stringPreferencesKey("cached_user_email")
@@ -42,6 +43,8 @@ class ClassroomPreferences(context: Context) {
             }
         }
 
+    private val _customClientSecretFlow = kotlinx.coroutines.flow.MutableStateFlow<String?>(tokenStorage.loadCustomClientSecret())
+
     val userEmailFlow: Flow<String?> = safePreferencesFlow.map { it[KEY_USER_EMAIL] }
     val userNameFlow: Flow<String?> = safePreferencesFlow.map { it[KEY_USER_NAME] }
     val userAvatarFlow: Flow<String?> = safePreferencesFlow.map { it[KEY_USER_AVATAR] }
@@ -53,13 +56,12 @@ class ClassroomPreferences(context: Context) {
         if (!custom.isNullOrBlank()) custom else BUNDLED_CLIENT_ID
     }
 
-    val clientSecretFlow: Flow<String> = safePreferencesFlow.map {
-        val custom = it[KEY_CUSTOM_CLIENT_SECRET]
-        if (!custom.isNullOrBlank()) custom else BUNDLED_CLIENT_SECRET
+    val clientSecretFlow: Flow<String> = _customClientSecretFlow.map {
+        if (!it.isNullOrBlank()) it else BUNDLED_CLIENT_SECRET
     }
 
     val customClientIdFlow: Flow<String?> = safePreferencesFlow.map { it[KEY_CUSTOM_CLIENT_ID] }
-    val customClientSecretFlow: Flow<String?> = safePreferencesFlow.map { it[KEY_CUSTOM_CLIENT_SECRET] }
+    val customClientSecretFlow: Flow<String?> = _customClientSecretFlow
 
     suspend fun saveUserProfile(email: String?, name: String?, avatar: String?) {
         appContext.dataStore.edit { prefs ->
@@ -75,9 +77,19 @@ class ClassroomPreferences(context: Context) {
     }
 
     suspend fun saveCustomCredentials(clientId: String?, clientSecret: String?) {
+        val trimmedSecret = clientSecret?.trim()
+        val effectiveSecret = if (!trimmedSecret.isNullOrBlank() && trimmedSecret != BUNDLED_CLIENT_SECRET) trimmedSecret else null
+        tokenStorage.saveCustomClientSecret(effectiveSecret)
+        _customClientSecretFlow.value = effectiveSecret
+
         appContext.dataStore.edit { prefs ->
-            if (!clientId.isNullOrBlank()) prefs[KEY_CUSTOM_CLIENT_ID] = clientId.trim() else prefs.remove(KEY_CUSTOM_CLIENT_ID)
-            if (!clientSecret.isNullOrBlank()) prefs[KEY_CUSTOM_CLIENT_SECRET] = clientSecret.trim() else prefs.remove(KEY_CUSTOM_CLIENT_SECRET)
+            val trimmedId = clientId?.trim()
+            if (!trimmedId.isNullOrBlank() && trimmedId != BUNDLED_CLIENT_ID) {
+                prefs[KEY_CUSTOM_CLIENT_ID] = trimmedId
+            } else {
+                prefs.remove(KEY_CUSTOM_CLIENT_ID)
+            }
+            prefs.remove(KEY_CUSTOM_CLIENT_SECRET)
         }
     }
 
@@ -87,16 +99,29 @@ class ClassroomPreferences(context: Context) {
     }
 
     suspend fun getEffectiveClientSecret(): String {
+        val encryptedSecret = tokenStorage.loadCustomClientSecret()
+        if (!encryptedSecret.isNullOrBlank()) {
+            return encryptedSecret
+        }
         val stored = safePreferencesFlow.first()[KEY_CUSTOM_CLIENT_SECRET]
-        return if (!stored.isNullOrBlank()) stored else BUNDLED_CLIENT_SECRET
+        if (!stored.isNullOrBlank() && stored != BUNDLED_CLIENT_SECRET) {
+            tokenStorage.saveCustomClientSecret(stored)
+            _customClientSecretFlow.value = stored
+            appContext.dataStore.edit { it.remove(KEY_CUSTOM_CLIENT_SECRET) }
+            return stored
+        }
+        return ""
     }
 
     suspend fun clear() {
+        tokenStorage.saveCustomClientSecret(null)
+        _customClientSecretFlow.value = null
         appContext.dataStore.edit { prefs ->
             prefs.remove(KEY_USER_EMAIL)
             prefs.remove(KEY_USER_NAME)
             prefs.remove(KEY_USER_AVATAR)
             prefs.remove(KEY_LAST_SYNC_TIMESTAMP)
+            prefs.remove(KEY_CUSTOM_CLIENT_SECRET)
             prefs[KEY_HAS_USER_LOGGED_IN] = false
         }
     }

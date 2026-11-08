@@ -42,7 +42,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import coil.compose.AsyncImage
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Tune
@@ -60,17 +62,16 @@ fun SettingsDialog(
     isAuthenticated: Boolean,
     userEmail: String?,
     userName: String?,
+    userAvatar: String? = null,
     isSyncing: Boolean,
     initialClientId: String? = null,
-    initialClientSecret: String? = null,
     onDismiss: () -> Unit,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onSyncNow: () -> Unit,
-    onSaveCustomCredentials: (String?, String?) -> Unit
+    onSaveCustomCredentials: (String?) -> Unit
 ) {
     var customClientId by remember(initialClientId) { mutableStateOf(initialClientId ?: "") }
-    var customClientSecret by remember(initialClientSecret) { mutableStateOf(initialClientSecret ?: "") }
     var isAdvancedExpanded by remember { mutableStateOf(false) }
     var credentialsMessage by remember { mutableStateOf<String?>(null) }
     var showLogoutConfirmation by remember { mutableStateOf(false) }
@@ -121,10 +122,21 @@ fun SettingsDialog(
                         .padding(16.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        EmberFlameCanvas(
-                            size = 48.dp,
-                            emotion = if (isAuthenticated) EmberEmotion.NORMAL else EmberEmotion.SLEEPING
-                        )
+                        if (isAuthenticated && !userAvatar.isNullOrBlank()) {
+                            AsyncImage(
+                                model = userAvatar,
+                                contentDescription = "User Avatar",
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .border(1.5.dp, ChunkyColor.CardBorder, CircleShape)
+                            )
+                        } else {
+                            EmberFlameCanvas(
+                                size = 48.dp,
+                                emotion = if (isAuthenticated) EmberEmotion.NORMAL else EmberEmotion.SLEEPING
+                            )
+                        }
 
                         Spacer(modifier = Modifier.width(14.dp))
 
@@ -284,26 +296,6 @@ fun SettingsDialog(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        OutlinedTextField(
-                            value = customClientSecret,
-                            onValueChange = {
-                                customClientSecret = it
-                                credentialsMessage = null
-                            },
-                            label = { Text("Client Secret (Tùy chọn)") },
-                            placeholder = { Text("Để trống nếu dùng mặc định", fontSize = 12.sp) },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = ChunkyColor.SkyBottom,
-                                unfocusedBorderColor = ChunkyColor.CardBorder,
-                                focusedLabelColor = ChunkyColor.SkyBottom
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
                         credentialsMessage?.let { msg ->
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
@@ -323,8 +315,7 @@ fun SettingsDialog(
                             OutlinedButton(
                                 onClick = {
                                     customClientId = ""
-                                    customClientSecret = ""
-                                    onSaveCustomCredentials(null, null)
+                                    onSaveCustomCredentials(null)
                                     credentialsMessage = "Đã khôi phục Client ID mặc định"
                                 },
                                 shape = RoundedCornerShape(12.dp),
@@ -337,10 +328,7 @@ fun SettingsDialog(
 
                             Button(
                                 onClick = {
-                                    onSaveCustomCredentials(
-                                        customClientId.ifBlank { null },
-                                        customClientSecret.ifBlank { null }
-                                    )
+                                    onSaveCustomCredentials(customClientId.ifBlank { null })
                                     credentialsMessage = "Đã lưu cấu hình Client ID"
                                 },
                                 modifier = Modifier.weight(1f),

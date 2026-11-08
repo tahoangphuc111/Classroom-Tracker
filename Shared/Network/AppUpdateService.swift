@@ -1,4 +1,5 @@
 import Foundation
+import Security
 #if canImport(AppKit)
 import AppKit
 #elseif canImport(UIKit)
@@ -27,13 +28,79 @@ public final class AppUpdateService: ObservableObject {
     private var latestAssetId: Int? = nil
     private var latestDownloadUrl: URL? = nil
 
+    private let keychainService = "com.phucta.classroomwidget.github"
+    private let githubTokenAccount = "github_personal_access_token"
+
     public var githubToken: String {
         get {
-            UserDefaults.standard.string(forKey: tokenKey) ?? ""
+            if let token = loadTokenFromKeychain(), !token.isEmpty {
+                return token
+            }
+            // Migrate legacy UserDefaults token if present
+            if let legacy = UserDefaults.standard.string(forKey: tokenKey)?.trimmingCharacters(in: .whitespacesAndNewlines), !legacy.isEmpty {
+                saveTokenToKeychain(token: legacy)
+                UserDefaults.standard.removeObject(forKey: tokenKey)
+                return legacy
+            }
+            return ""
         }
         set {
-            UserDefaults.standard.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: tokenKey)
+            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            UserDefaults.standard.removeObject(forKey: tokenKey)
+            if trimmed.isEmpty {
+                deleteTokenFromKeychain()
+            } else {
+                saveTokenToKeychain(token: trimmed)
+            }
         }
+    }
+
+    private func saveTokenToKeychain(token: String) {
+        guard let data = token.data(using: .utf8) else { return }
+        deleteTokenFromKeychain()
+
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: githubTokenAccount,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        ]
+        #if os(macOS)
+        query[kSecUseDataProtectionKeychain as String] = true
+        #endif
+        _ = SecItemAdd(query as CFDictionary, nil)
+    }
+
+    private func loadTokenFromKeychain() -> String? {
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: githubTokenAccount,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        #if os(macOS)
+        query[kSecUseDataProtectionKeychain as String] = true
+        #endif
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        if status == errSecSuccess, let data = item as? Data, let token = String(data: data, encoding: .utf8) {
+            return token
+        }
+        return nil
+    }
+
+    private func deleteTokenFromKeychain() {
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: githubTokenAccount
+        ]
+        #if os(macOS)
+        query[kSecUseDataProtectionKeychain as String] = true
+        #endif
+        SecItemDelete(query as CFDictionary)
     }
 
     public var currentVersion: String {

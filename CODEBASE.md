@@ -548,17 +548,11 @@ The standalone Swift test suite verifies bucketing, local completion overrides, 
 
 ```bash
 swiftc Tests/AppleCoreLogicTests.swift \
-  Shared/Models/Course.swift \
-  Shared/Models/Coursework.swift \
-  Shared/Models/PersonalNote.swift \
-  Shared/Models/BaoBaiShareHelper.swift \
-  Shared/Storage/ClassroomStorage.swift \
+  Shared/Models/*.swift \
+  Shared/Storage/*.swift \
   Shared/PlatformUICompat.swift \
-  Shared/WidgetViews/ChunkyTheme.swift \
-  Shared/WidgetViews/AppleLiquidGlass.swift \
-  Shared/WidgetViews/WidgetVectorArt.swift \
-  Shared/WidgetViews/ChunkyEmberCharacterView.swift \
-  Shared/WidgetViews/WidgetSharedViews.swift \
+  Shared/WidgetViews/*.swift \
+  Shared/Network/*.swift \
   -o /tmp/test_runner && /tmp/test_runner
 ```
 

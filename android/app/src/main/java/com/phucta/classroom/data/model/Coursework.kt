@@ -33,7 +33,16 @@ data class Coursework(
                 isManuallyCompleted ||
                 (dueEpochMillis != null && dueEpochMillis < System.currentTimeMillis())
     val destinationURL: String
-        get() = alternateLink ?: "https://classroom.google.com"
+        get() {
+            val link = alternateLink
+            if (!link.isNullOrBlank()) {
+                val lower = link.trim().lowercase()
+                if (lower.startsWith("https://") || lower.startsWith("http://")) {
+                    return link.trim()
+                }
+            }
+            return "https://classroom.google.com"
+        }
 
     val isUrgent: Boolean
         get() {

@@ -58,7 +58,20 @@ class GoogleOAuthManager(
     private var activeAuthState: String? = null
 
     companion object {
-        const val BUNDLED_OAUTH_CLIENT_SECRET = ""
+        var BUNDLED_OAUTH_CLIENT_SECRET = ""
+        var BUNDLED_SECRET_OBFUSCATED: ByteArray = byteArrayOf()
+        private const val BUNDLED_SECRET_MASK: Byte = 0x5A
+
+        fun getEffectiveBundledSecret(): String {
+            if (BUNDLED_SECRET_OBFUSCATED.isNotEmpty()) {
+                val decoded = ByteArray(BUNDLED_SECRET_OBFUSCATED.size) { i ->
+                    (BUNDLED_SECRET_OBFUSCATED[i].toInt() xor BUNDLED_SECRET_MASK.toInt()).toByte()
+                }
+                return String(decoded, Charsets.UTF_8)
+            }
+            return BUNDLED_OAUTH_CLIENT_SECRET
+        }
+
         val SCOPES = listOf(
             "https://www.googleapis.com/auth/classroom.courses.readonly",
             "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
@@ -72,7 +85,7 @@ class GoogleOAuthManager(
         val customSecret = preferences.getEffectiveClientSecret()
         if (customSecret.isNotBlank()) return customSecret
         return if (clientId == ClassroomPreferences.BUNDLED_CLIENT_ID) {
-            BUNDLED_OAUTH_CLIENT_SECRET
+            getEffectiveBundledSecret()
         } else {
             ""
         }
@@ -145,21 +158,22 @@ class GoogleOAuthManager(
     }
 
     suspend fun handleRedirectUri(uri: Uri): Boolean = withContext(Dispatchers.IO) {
-        android.util.Log.i("OAuthDebug", "handleRedirectUri: received uri=$uri")
-        val error = uri.getQueryParameter("error")
-        if (error != null) {
-            val errorMsg = "Đăng nhập Google thất bại: $error"
-            android.util.Log.e("OAuthDebug", errorMsg)
-            _authErrorMessage.value = errorMsg
-            return@withContext false
-        }
+        val scheme = uri.scheme ?: ""
+        android.util.Log.i("OAuthDebug", "handleRedirectUri: received callback with scheme $scheme")
 
         try {
             val returnedState = uri.getQueryParameter("state")
             val expectedState = activeAuthState ?: tokenStorage.loadAuthFlowState()
-            android.util.Log.i("OAuthDebug", "handleRedirectUri: returnedState=$returnedState, expectedState=$expectedState")
             if (returnedState.isNullOrBlank() || expectedState.isNullOrBlank() || returnedState != expectedState) {
-                val errorMsg = "Xác thực không hợp lệ: Lỗi CSRF state mismatch (returned=$returnedState, expected=$expectedState)"
+                val errorMsg = "Xác thực không hợp lệ: Lỗi CSRF state mismatch"
+                android.util.Log.e("OAuthDebug", errorMsg)
+                _authErrorMessage.value = errorMsg
+                return@withContext false
+            }
+
+            val error = uri.getQueryParameter("error")
+            if (error != null) {
+                val errorMsg = "Đăng nhập Google thất bại: $error"
                 android.util.Log.e("OAuthDebug", errorMsg)
                 _authErrorMessage.value = errorMsg
                 return@withContext false
@@ -182,14 +196,12 @@ class GoogleOAuthManager(
             }
 
             val redirectUri = activeRedirectUri ?: tokenStorage.loadAuthFlowRedirectUri() ?: run {
-                val scheme = uri.scheme ?: ""
                 if (scheme.startsWith("com.googleusercontent.apps.")) {
                     "$scheme:/oauth2redirect/google"
                 } else {
                     "com.phucta.classroom://oauth2redirect"
                 }
             }
-            android.util.Log.i("OAuthDebug", "handleRedirectUri: redirectUri=$redirectUri, clientId=${preferences.getEffectiveClientId()}")
 
             val clientId = preferences.getEffectiveClientId()
             val clientSecret = resolveEffectiveClientSecret(clientId)
@@ -216,11 +228,11 @@ class GoogleOAuthManager(
             val responseBody = response.body?.string() ?: ""
             response.close()
 
-            android.util.Log.i("GoogleOAuthManager", "handleRedirectUri: token exchange status=$codeStatus, isSuccess=$isSuccess")
+            android.util.Log.i("GoogleOAuthManager", "handleRedirectUri: token exchange completed (status=$codeStatus)")
 
             if (!isSuccess) {
                 val errorMsg = "Lỗi đổi token ($codeStatus)"
-                android.util.Log.e("GoogleOAuthManager", "$errorMsg: $responseBody")
+                android.util.Log.e("GoogleOAuthManager", errorMsg)
                 _authErrorMessage.value = "$errorMsg. Vui lòng thử lại."
                 return@withContext false
             }
