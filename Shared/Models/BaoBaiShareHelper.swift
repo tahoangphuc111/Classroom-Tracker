@@ -28,7 +28,7 @@ public enum BaoBaiShareHelper {
         } else if hasTodayTasks {
             return now
         } else {
-            return items.first?.dueDate ?? (calendar.date(byAdding: .day, value: 1, to: now) ?? now)
+            return items.first(where: { $0.dueDate != nil })?.dueDate ?? (calendar.date(byAdding: .day, value: 1, to: now) ?? now)
         }
     }
 

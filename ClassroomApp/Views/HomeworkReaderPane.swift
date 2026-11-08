@@ -28,6 +28,7 @@ struct HomeworkReaderPane: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
 
+    @ViewBuilder
     var body: some View {
         Group {
             if selectedCourseworkIds.count > 1 {
@@ -395,7 +396,11 @@ struct HomeworkReaderPane: View {
                     .padding(24)
                     #endif
                 }
+                #if os(iOS)
+                .background(Color.clear)
+                #else
                 .background(Color.platformWindowBackground)
+                #endif
                 .id(item.id)
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .offset(y: 6)),
@@ -898,7 +903,11 @@ struct BatchSelectedSummaryView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if os(iOS)
+        .background(Color.clear)
+        #else
         .background(Color.platformWindowBackground)
+        #endif
     }
 }
 

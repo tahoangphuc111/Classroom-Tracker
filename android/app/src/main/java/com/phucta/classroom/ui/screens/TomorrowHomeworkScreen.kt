@@ -263,7 +263,7 @@ fun TomorrowHomeworkScreen(
                     val onToggle = remember(item.id) {
                         { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
                     }
-                    val onClickCard = remember(item) {
+                    val onClickCard = remember(item.id) {
                         { currentOnSelectAssignment(item) }
                     }
                     AssignmentCard(
@@ -303,7 +303,7 @@ fun TomorrowHomeworkScreen(
                     val onToggle = remember(item.id) {
                         { completed: Boolean -> currentOnToggleCompletion(item.id, completed) }
                     }
-                    val onClickCard = remember(item) {
+                    val onClickCard = remember(item.id) {
                         { currentOnSelectAssignment(item) }
                     }
                     AssignmentCard(

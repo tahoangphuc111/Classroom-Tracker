@@ -144,6 +144,16 @@ private final class AssignmentListCache {
         }
     }
 
+    final class TomorrowGroupsResult {
+        let groupedPending: [(courseName: String, items: [Coursework])]
+        let completedItems: [Coursework]
+
+        init(groupedPending: [(courseName: String, items: [Coursework])], completedItems: [Coursework]) {
+            self.groupedPending = groupedPending
+            self.completedItems = completedItems
+        }
+    }
+
     private var lastCategory: ContentView.AppFilterCategory?
     private var lastSearchText: String = ""
     private var lastSubjectFilter: String = ""
@@ -157,6 +167,11 @@ private final class AssignmentListCache {
     private var lastSectionsSubjectFilter: String = ""
     private var lastSectionsCourseworkVersion: Int = -1
     private var cachedSections: CategorizedSectionsResult = CategorizedSectionsResult(todays: [], tomorrows: [], laters: [], noDueDates: [])
+
+    private var lastTomorrowListCount: Int = -1
+    private var lastTomorrowSearchText: String = ""
+    private var lastTomorrowCourseworkVersion: Int = -1
+    private var cachedTomorrowGroups: TomorrowGroupsResult = TomorrowGroupsResult(groupedPending: [], completedItems: [])
 
     func filteredList(
         category: ContentView.AppFilterCategory,
@@ -212,6 +227,25 @@ private final class AssignmentListCache {
         )
         return result
     }
+
+    func tomorrowGroups(
+        list: [Coursework],
+        searchText: String,
+        courseworkVersion: Int,
+        compute: () -> TomorrowGroupsResult
+    ) -> TomorrowGroupsResult {
+        if lastTomorrowListCount == list.count &&
+            lastTomorrowSearchText == searchText &&
+            lastTomorrowCourseworkVersion == courseworkVersion {
+            return cachedTomorrowGroups
+        }
+        let result = compute()
+        lastTomorrowListCount = list.count
+        lastTomorrowSearchText = searchText
+        lastTomorrowCourseworkVersion = courseworkVersion
+        cachedTomorrowGroups = result
+        return result
+    }
 }
 
 public struct ContentView: View {
@@ -229,6 +263,7 @@ public struct ContentView: View {
     @State private var courseworkNoteEditingText: String = ""
     @State private var courseworkNoteToEditCourseworkId: String? = nil
     @State private var buckets = CourseworkBuckets()
+    @State private var cachedBaoBaiShareText: String = ""
     @State private var availableSubjectPills: [String] = ["Tất cả"]
     @State private var completedDisplayLimit: Int = 30
     @State private var noteCourseworkIds: Set<String> = []
@@ -437,6 +472,12 @@ public struct ContentView: View {
             completed: comp
         )
 
+        self.cachedBaoBaiShareText = BaoBaiShareHelper.formatBaoBaiText(
+            items: self.buckets.tomorrow,
+            hasTomorrowTasks: !self.buckets.tomorrowStrict.isEmpty,
+            hasTodayTasks: !self.buckets.today.isEmpty
+        )
+
         self.courseworkVersion &+= 1
 
         updateAvailableSubjectPills()
@@ -570,9 +611,13 @@ public struct ContentView: View {
             let index = item.searchIndex
             var matchesAll = true
             for t in 0..<tokenCount {
-                if !index.contains(tokens[t]) {
-                    matchesAll = false
-                    break
+                let tok = tokens[t]
+                if !index.contains(tok) {
+                    let altTok = cleanTelexKeystrokes(tok)
+                    if altTok == tok || !index.contains(altTok) {
+                        matchesAll = false
+                        break
+                    }
                 }
             }
             if matchesAll {
@@ -654,6 +699,28 @@ public struct ContentView: View {
             }
 
             return (todays, tomorrows, laters, noDueDates)
+        }
+    }
+
+    private func tomorrowGroups(for list: [Coursework]) -> AssignmentListCache.TomorrowGroupsResult {
+        listCache.tomorrowGroups(
+            list: list,
+            searchText: searchText,
+            courseworkVersion: courseworkVersion
+        ) {
+            let pendingItems = list.filter { !$0.isCompleted }
+            let completedItems = list.filter { $0.isCompleted }
+            var grouped: [(courseName: String, items: [Coursework])] = []
+            if !pendingItems.isEmpty {
+                let dict = Dictionary(grouping: pendingItems, by: { $0.courseName.isEmpty ? "Chung" : $0.courseName })
+                let sortedKeys = dict.keys.sorted()
+                for key in sortedKeys {
+                    if let items = dict[key] {
+                        grouped.append((courseName: key, items: items))
+                    }
+                }
+            }
+            return AssignmentListCache.TomorrowGroupsResult(groupedPending: grouped, completedItems: completedItems)
         }
     }
 
@@ -890,22 +957,6 @@ public struct ContentView: View {
                     }
                     .buttonStyle(SpringPressButtonStyle())
                     .disabled(isSigningIn)
-
-                    Button {
-                        triggerHapticFeedback()
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                            ClassroomStorage.shared.populateMockDataManually()
-                            refreshData()
-                            isDemoMode = true
-                            autoSelectFirstItem()
-                        }
-                    } label: {
-                        Text("Xem thử dữ liệu mẫu")
-                            .font(.system(size: 14.5, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .padding(.vertical, 4)
-                    }
-                    .buttonStyle(SpringPressButtonStyle())
                 }
                 .frame(maxWidth: 320)
                 .opacity(welcomeAppeared ? 1 : 0)
@@ -1046,10 +1097,13 @@ public struct ContentView: View {
             },
             set: { newCategory in
                 if selectedFilter != newCategory {
+                    triggerHapticFeedback()
                     if !searchText.isEmpty {
                         searchText = ""
                     }
-                    selectedFilter = newCategory
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                        selectedFilter = newCategory
+                    }
                 }
             }
         )
@@ -1103,14 +1157,28 @@ public struct ContentView: View {
                 homeworkReaderPane
                     .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
                     .navigationBarTitleDisplayMode(.inline)
+                    .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+                    .toolbarBackground(.visible, for: .navigationBar)
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Xong") { showMobileDetailSheet = false }
+                            Button("Xong") {
+                                triggerHapticFeedback()
+                                showMobileDetailSheet = false
+                            }
+                            .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
+                            .font(.system(size: 15, weight: .semibold))
                         }
                     }
             }
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+            .presentationBackground {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .appleLiquidGlassSurface(style: .regular, in: Rectangle()) {
+                        Color.platformWindowBackground.opacity(0.85)
+                    }
+            }
         }
     }
 
@@ -1469,14 +1537,28 @@ public struct ContentView: View {
                             homeworkReaderPane
                                 .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
                                 .navigationBarTitleDisplayMode(.inline)
+                                .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+                                .toolbarBackground(.visible, for: .navigationBar)
                                 .toolbar {
                                     ToolbarItem(placement: .confirmationAction) {
-                                        Button("Xong") { showMobileDetailSheet = false }
+                                        Button("Xong") {
+                                            triggerHapticFeedback()
+                                            showMobileDetailSheet = false
+                                        }
+                                        .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
+                                        .font(.system(size: 15, weight: .semibold))
                                     }
                                 }
                         }
                         .presentationDetents([.medium, .large])
                         .presentationDragIndicator(.visible)
+                        .presentationBackground {
+                            Rectangle()
+                                .fill(.ultraThinMaterial)
+                                .appleLiquidGlassSurface(style: .regular, in: Rectangle()) {
+                                    Color.platformWindowBackground.opacity(0.85)
+                                }
+                        }
                     }
                 }
                 #else
@@ -1715,6 +1797,7 @@ public struct ContentView: View {
 
             HStack(spacing: 6) {
                     Button {
+                        triggerHapticFeedback()
                         showCompactCourseFilterSheet = true
                     } label: {
                         HStack(spacing: 4) {
@@ -1734,7 +1817,7 @@ public struct ContentView: View {
                             Capsule().stroke(Color.platformCardBorder, lineWidth: 0.8)
                         )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
                     .fixedSize()
 
                     if category == .widgetPreview {
@@ -1778,6 +1861,7 @@ public struct ContentView: View {
                                     .font(.system(size: 13.5, weight: .bold, design: .rounded))
                                     .foregroundStyle(categoryIconColor(category))
                                     .lineLimit(1)
+                                    .contentTransition(.numericText())
                             }
                             .padding(.horizontal, 9.5)
                             .padding(.vertical, 5)
@@ -1797,6 +1881,7 @@ public struct ContentView: View {
                                     .font(.system(size: 13.5, weight: .bold, design: .rounded))
                                     .foregroundStyle(categoryIconColor(category))
                                     .lineLimit(1)
+                                    .contentTransition(.numericText())
                             }
                             .padding(.horizontal, 9.5)
                             .padding(.vertical, 5)
@@ -1828,6 +1913,7 @@ public struct ContentView: View {
                             .padding(5)
                     } else if authService.isAuthenticated {
                         Button {
+                            triggerHapticFeedback()
                             Task {
                                 await apiService.syncAll()
                                 withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
@@ -1846,11 +1932,12 @@ public struct ContentView: View {
                                     Circle().stroke(Color.platformCardBorder, lineWidth: 0.8)
                                 )
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SpringPressButtonStyle(scale: 0.92, pressedOpacity: 0.84))
                         .fixedSize()
                     }
 
                     Button {
+                        triggerHapticFeedback()
                         clientIdInput = authService.configuredClientId
                         clientSecretInput = authService.configuredClientSecret
                         showSettingsModal = true
@@ -1866,7 +1953,7 @@ public struct ContentView: View {
                                 Circle().stroke(Color.platformCardBorder, lineWidth: 0.8)
                             )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SpringPressButtonStyle(scale: 0.92, pressedOpacity: 0.84))
                     .fixedSize()
                 }
             }
@@ -2078,10 +2165,11 @@ public struct ContentView: View {
         .id(item.id)
     }
 
+    @ViewBuilder
     private func assignmentListPane(isWide: Bool = true, category: AppFilterCategory? = nil) -> some View {
         let activeCategory = category ?? selectedFilter
         let list = currentFilteredList(for: activeCategory)
-        return VStack(spacing: 0) {
+        VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 14.5, weight: .medium))
@@ -2318,34 +2406,29 @@ public struct ContentView: View {
                                 TomorrowHeroBanner()
                                 TomorrowProgressHeroCard(
                                     totalCount: buckets.tomorrow.count,
-                                    completedCount: buckets.tomorrow.filter(\.isCompleted).count,
+                                    completedCount: max(0, buckets.tomorrow.count - buckets.tomorrowPendingCount),
                                     hasTomorrowTasks: !buckets.tomorrowStrict.isEmpty,
                                     hasTodayTasks: !buckets.today.isEmpty,
                                     shareText: formattedBaoBaiShareText
                                 )
                             }
 
-                            let pendingItems = list.filter { !$0.isCompleted }
-                            let completedItems = list.filter { $0.isCompleted }
+                            let groups = tomorrowGroups(for: list)
 
-                            if !pendingItems.isEmpty {
-                                let groupedPending = Dictionary(grouping: pendingItems, by: { $0.courseName.isEmpty ? "Chung" : $0.courseName })
-                                let sortedCourses = groupedPending.keys.sorted()
+                            if !groups.groupedPending.isEmpty {
+                                ForEach(groups.groupedPending, id: \.courseName) { group in
+                                    SubjectGroupHeaderRow(courseName: group.courseName, count: group.items.count)
 
-                                ForEach(sortedCourses, id: \.self) { courseName in
-                                    let courseItems = groupedPending[courseName] ?? []
-                                    SubjectGroupHeaderRow(courseName: courseName, count: courseItems.count)
-
-                                    ForEach(courseItems) { item in
+                                    ForEach(group.items) { item in
                                         assignmentItemRow(item: item, isWide: isWide)
                                     }
                                 }
                             }
 
-                            if !completedItems.isEmpty {
-                                CompletedSectionHeaderRow(count: completedItems.count)
+                            if !groups.completedItems.isEmpty {
+                                CompletedSectionHeaderRow(count: groups.completedItems.count)
 
-                                ForEach(completedItems) { item in
+                                ForEach(groups.completedItems) { item in
                                     assignmentItemRow(item: item, isWide: isWide)
                                 }
                             }
@@ -2442,6 +2525,7 @@ public struct ContentView: View {
                 }
                 .refreshable {
                     if authService.isAuthenticated {
+                        triggerHapticFeedback()
                         await apiService.syncAll()
                         withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
                             refreshData()
@@ -2458,7 +2542,10 @@ public struct ContentView: View {
     }
 
     private var formattedBaoBaiShareText: String {
-        BaoBaiShareHelper.formatBaoBaiText(
+        if !cachedBaoBaiShareText.isEmpty {
+            return cachedBaoBaiShareText
+        }
+        return BaoBaiShareHelper.formatBaoBaiText(
             items: buckets.tomorrow,
             hasTomorrowTasks: !buckets.tomorrowStrict.isEmpty,
             hasTodayTasks: !buckets.today.isEmpty

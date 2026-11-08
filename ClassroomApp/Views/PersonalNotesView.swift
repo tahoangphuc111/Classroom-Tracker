@@ -98,9 +98,13 @@ public struct PersonalNotesView: View {
                     let index = note.searchIndex
                     var matchesAll = true
                     for t in 0..<tokenCount {
-                        if !index.contains(tokens[t]) {
-                            matchesAll = false
-                            break
+                        let tok = tokens[t]
+                        if !index.contains(tok) {
+                            let altTok = cleanTelexKeystrokes(tok)
+                            if altTok == tok || !index.contains(altTok) {
+                                matchesAll = false
+                                break
+                            }
                         }
                     }
                     if matchesAll {
@@ -838,7 +842,7 @@ private struct PersonalNoteRowCard: View, Equatable {
                 #endif
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SpringPressButtonStyle(scale: 0.92, pressedOpacity: 0.88))
             .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: 6) {
@@ -972,6 +976,7 @@ private struct PersonalNoteRowCard: View, Equatable {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .onTapGesture {
+                PlatformHaptics.trigger()
                 onEdit()
             }
 
@@ -1298,6 +1303,11 @@ public struct CreateOrEditNoteSheet: View {
             .formStyle(.grouped)
             #if os(iOS)
             .scrollDismissesKeyboard(.interactively)
+            .scrollContentBackground(.hidden)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            #else
+            .scrollContentBackground(.hidden)
             #endif
             .navigationTitle(existingNote == nil ? "Ghi chú mới" : "Chỉnh sửa ghi chú")
             #if os(iOS)
@@ -1306,14 +1316,15 @@ public struct CreateOrEditNoteSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Huỷ", action: onCancel)
+                        .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
                         .keyboardShortcut(.cancelAction)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Lưu") {
                         save()
                     }
+                    .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
                     .keyboardShortcut(.return, modifiers: [.command])
-                    .buttonStyle(.borderedProminent)
                     .tint(Color.blue)
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
@@ -1355,6 +1366,13 @@ public struct CreateOrEditNoteSheet: View {
         #elseif os(iOS)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .presentationBackground {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .appleLiquidGlassSurface(style: .regular, in: Rectangle()) {
+                    Color.platformWindowBackground.opacity(0.85)
+                }
+        }
         #endif
     }
 

@@ -66,6 +66,8 @@ private val StrikethroughLineColor = ChunkyColor.TextMuted.copy(alpha = 0.85f)
 private val CardShape = RoundedCornerShape(16.dp)
 private val CardEndShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
 
+private class CachedTextLine(val left: Float, val right: Float, val y: Float)
+
 private val CardPressSpring = spring<Float>(
     dampingRatio = Spring.DampingRatioMediumBouncy,
     stiffness = 400f
@@ -176,9 +178,21 @@ fun AssignmentCard(
         }
     }
 
-    val textLayoutResultHolder = remember(coursework.id, coursework.title) { arrayOfNulls<TextLayoutResult>(1) }
-    val onTextLayout: (TextLayoutResult) -> Unit = remember(textLayoutResultHolder) {
-        { textLayoutResultHolder[0] = it }
+    val cachedLines = remember(coursework.id, coursework.title) { ArrayList<CachedTextLine>(2) }
+    val onTextLayout: (TextLayoutResult) -> Unit = remember(cachedLines) {
+        { layout ->
+            cachedLines.clear()
+            val count = layout.lineCount
+            for (i in 0 until count) {
+                cachedLines.add(
+                    CachedTextLine(
+                        layout.getLineLeft(i),
+                        layout.getLineRight(i),
+                        (layout.getLineTop(i) + layout.getLineBottom(i)) / 2f
+                    )
+                )
+            }
+        }
     }
 
     val onCheckboxClick = remember(isCompleted, onToggleCompletion, view) {
@@ -311,19 +325,15 @@ fun AssignmentCard(
                                 drawContent()
                                 val progress = completionProgress.value
                                 if (progress > 0.001f) {
-                                    val layout = textLayoutResultHolder[0]
-                                    if (layout != null) {
-                                        for (i in 0 until layout.lineCount) {
-                                            val lineTop = layout.getLineTop(i)
-                                            val lineBottom = layout.getLineBottom(i)
-                                            val lineLeft = layout.getLineLeft(i)
-                                            val lineRight = layout.getLineRight(i)
-                                            val y = (lineTop + lineBottom) / 2f
-                                            val endX = lineLeft + (lineRight - lineLeft) * progress
+                                    val lines = cachedLines
+                                    if (lines.isNotEmpty()) {
+                                        for (i in 0 until lines.size) {
+                                            val line = lines[i]
+                                            val endX = line.left + (line.right - line.left) * progress
                                             drawLine(
                                                 color = StrikethroughLineColor,
-                                                start = Offset(lineLeft, y),
-                                                end = Offset(endX, y),
+                                                start = Offset(line.left, line.y),
+                                                end = Offset(endX, line.y),
                                                 strokeWidth = strokeWidthPx,
                                                 cap = StrokeCap.Round
                                             )

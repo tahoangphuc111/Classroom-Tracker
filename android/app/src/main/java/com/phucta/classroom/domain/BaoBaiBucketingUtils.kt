@@ -112,9 +112,13 @@ object BaoBaiBucketingUtils {
                 val idx = item.searchIndex
                 var matchesAll = true
                 for (t in 0 until tokenCount) {
-                    if (!idx.contains(searchTokens[t])) {
-                        matchesAll = false
-                        break
+                    val tok = searchTokens[t]
+                    if (!idx.contains(tok)) {
+                        val altTok = com.phucta.classroom.data.model.cleanTelexKeystrokes(tok)
+                        if (altTok == tok || !idx.contains(altTok)) {
+                            matchesAll = false
+                            break
+                        }
                     }
                 }
                 if (matchesAll) {

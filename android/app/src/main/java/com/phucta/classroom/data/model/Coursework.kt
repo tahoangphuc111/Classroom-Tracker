@@ -86,11 +86,13 @@ data class Coursework(
             return buildNormalizedSearchIndex(normTitle, normCourse, description)
         }
         fun buildNormalizedSearchIndex(normTitle: String, normCourse: String, description: String?): String {
-            return if (description.isNullOrBlank()) {
+            val base = if (description.isNullOrBlank()) {
                 "$normTitle $normCourse"
             } else {
                 "$normTitle $normCourse ${description.normalizeForVietnameseSearch()}"
             }
+            val extra = expandVietnameseAcronyms(base)
+            return if (extra.isEmpty()) base else "$base $extra"
         }
     }
 }

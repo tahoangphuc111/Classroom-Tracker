@@ -27,10 +27,19 @@ struct CompactCourseFilterSheet: View {
                             CourseSelectionRow(
                                 course: course,
                                 onToggle: {
-                                    onToggleCourse(course.id)
+                                    PlatformHaptics.trigger()
+                                    withAnimation(.spring(response: 0.26, dampingFraction: 0.8)) {
+                                        onToggleCourse(course.id)
+                                    }
                                 }
                             )
                             .equatable()
+                            #if os(iOS)
+                            .listRowBackground(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(Color.platformControlBackground.opacity(0.72))
+                            )
+                            #endif
                         }
                     } header: {
                         HStack {
@@ -38,9 +47,12 @@ struct CompactCourseFilterSheet: View {
                             Spacer()
                             let allSelected = courses.allSatisfy(\.isSelectedForWidget)
                             Button(allSelected ? "Bỏ chọn hết" : "Tất cả") {
-                                onToggleAllCourses()
+                                PlatformHaptics.trigger()
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                                    onToggleAllCourses()
+                                }
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(allSelected ? Color.secondary : Color.blue)
                             .padding(.horizontal, 9)
@@ -57,23 +69,34 @@ struct CompactCourseFilterSheet: View {
             }
             #if os(iOS)
             .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             #else
             .listStyle(.inset)
+            .scrollContentBackground(.hidden)
             #endif
             .navigationTitle("Lọc môn học")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Xong") {
+                        PlatformHaptics.trigger()
                         isPresented = false
                     }
-                    .font(.system(size: 14, weight: .semibold))
+                    .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
+                    .font(.system(size: 15, weight: .semibold))
                 }
             }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .presentationBackground {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .appleLiquidGlassSurface(style: .regular, in: Rectangle()) {
+                    Color.platformWindowBackground.opacity(0.85)
+                }
+        }
     }
 }

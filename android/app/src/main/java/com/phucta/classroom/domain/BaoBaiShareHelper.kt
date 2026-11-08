@@ -11,7 +11,7 @@ import java.util.Date
 import java.util.TimeZone
 
 object BaoBaiShareHelper {
-    private val headerDateFormat = SimpleDateFormat("EEEE, d/M", ClassroomDateUtils.VIETNAMESE_LOCALE)
+    private val headerDateFormat = SimpleDateFormat("EEEE, 'ngày' dd/MM", ClassroomDateUtils.VIETNAMESE_LOCALE)
     fun formatHeaderDate(dateEpochMillis: Long): String {
         val raw = synchronized(headerDateFormat) {
             headerDateFormat.timeZone = TimeZone.getDefault()

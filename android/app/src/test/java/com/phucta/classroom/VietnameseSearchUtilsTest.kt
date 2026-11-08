@@ -172,6 +172,12 @@ class VietnameseSearchUtilsTest {
 
         val tokensWithDashAndBrackets = com.phucta.classroom.data.model.tokenizeSearchQuery("Toán - Đại số (chương 1)".normalizeForVietnameseSearch())
         assertEquals(listOf("toan", "dai", "so", "chuong", "1"), tokensWithDashAndBrackets)
+
+        val tokensWithUnderscore = com.phucta.classroom.data.model.tokenizeSearchQuery("bai_tap_1".normalizeForVietnameseSearch())
+        assertEquals(listOf("bai", "tap", "1"), tokensWithUnderscore)
+
+        val tokensWithNbsp = com.phucta.classroom.data.model.tokenizeSearchQuery("Toán\u00A012".normalizeForVietnameseSearch())
+        assertEquals(listOf("toan", "12"), tokensWithNbsp)
     }
 
     @Test
@@ -193,5 +199,75 @@ class VietnameseSearchUtilsTest {
         val tokensCasio = com.phucta.classroom.data.model.tokenizeSearchQuery("Casio")
         val scoreCasio = note.searchRelevanceScore(tokensCasio, "casio")
         assertTrue("Checklist token match must produce positive score", scoreCasio > 0)
+    }
+
+    @Test
+    fun testSchoolAcronyms_ExpansionAndRelevance() {
+        val itemBtvn = com.phucta.classroom.data.model.Coursework(
+            id = "cw_btvn",
+            courseId = "c1",
+            courseName = "Toán 12",
+            title = "Bài tập về nhà tuần 5"
+        )
+        assertTrue("Search index must contain expanded acronym 'btvn'", itemBtvn.searchIndex.contains("btvn"))
+        val scoreBtvn = com.phucta.classroom.data.model.calculateSearchRelevance(
+            queryTokens = listOf("btvn"),
+            rawNormalizedQuery = "btvn",
+            title = itemBtvn.title,
+            courseName = itemBtvn.courseName
+        )
+        assertTrue("Searching acronym 'btvn' on 'Bài tập về nhà' must yield high score", scoreBtvn >= 70)
+
+        val itemReverseBtvn = com.phucta.classroom.data.model.Coursework(
+            id = "cw_rev_btvn",
+            courseId = "c1",
+            courseName = "Toán 12",
+            title = "BTVN số 3"
+        )
+        assertTrue("Search index of 'BTVN' must contain expanded phrase 'bai tap ve nha'", itemReverseBtvn.searchIndex.contains("bai tap ve nha"))
+
+        val itemKt = com.phucta.classroom.data.model.Coursework(
+            id = "cw_kt",
+            courseId = "c2",
+            courseName = "Vật lý",
+            title = "Kiểm tra 15 phút"
+        )
+        assertTrue("Search index must contain 'kt'", itemKt.searchIndex.contains("kt"))
+        assertTrue("Search index must contain '15p'", itemKt.searchIndex.contains("15p"))
+    }
+
+    @Test
+    fun testTelexTypingTolerance_AndTwoSidedWordBoundary() {
+        assertEquals("toan", com.phucta.classroom.data.model.cleanTelexKeystrokes("toans"))
+        assertEquals("bai", com.phucta.classroom.data.model.cleanTelexKeystrokes("baif"))
+        assertEquals("dai", com.phucta.classroom.data.model.cleanTelexKeystrokes("ddai"))
+
+        val itemBtvn = com.phucta.classroom.data.model.Coursework(
+            id = "cw_btvn",
+            courseId = "c1",
+            courseName = "Toán 12",
+            title = "Bài tập về nhà tuần 5"
+        )
+        val scoreTelex = com.phucta.classroom.data.model.calculateSearchRelevance(
+            queryTokens = listOf("toans"),
+            rawNormalizedQuery = "toans",
+            title = itemBtvn.title,
+            courseName = itemBtvn.courseName
+        )
+        assertTrue("Score for telex-slipped query 'toans' must be positive", scoreTelex > 0)
+
+        val itemTinh = com.phucta.classroom.data.model.Coursework(id = "cw_tinh", courseId = "c1", courseName = "GDCD", title = "Tinh thần tự học")
+        val itemTin = com.phucta.classroom.data.model.Coursework(id = "cw_tin", courseId = "c1", courseName = "Tin học", title = "Tin học văn phòng")
+
+        val scoreTinh = com.phucta.classroom.data.model.calculateSearchRelevance(listOf("tin"), "tin", itemTinh.title, itemTinh.courseName)
+        val scoreTin = com.phucta.classroom.data.model.calculateSearchRelevance(listOf("tin"), "tin", itemTin.title, itemTin.courseName)
+        assertTrue("Whole word match 'tin' in 'Tin học' must score higher than substring in 'Tinh thần'", scoreTin > scoreTinh)
+
+        val itemFullMatch = com.phucta.classroom.data.model.Coursework(id = "cw_full", courseId = "c1", courseName = "Toán 12", title = "Toán hình học không gian 12")
+        val itemPartialMatch = com.phucta.classroom.data.model.Coursework(id = "cw_part", courseId = "c1", courseName = "Toán 12", title = "Hình học phẳng ôn tập")
+        val multiTokens = listOf("toan", "hinh", "12")
+        val scoreFull = com.phucta.classroom.data.model.calculateSearchRelevance(multiTokens, "toan hinh 12", itemFullMatch.title, itemFullMatch.courseName)
+        val scorePart = com.phucta.classroom.data.model.calculateSearchRelevance(multiTokens, "toan hinh 12", itemPartialMatch.title, itemPartialMatch.courseName)
+        assertTrue("Full multi-token conjunction match must decisively beat partial match", scoreFull > scorePart + 50)
     }
 }

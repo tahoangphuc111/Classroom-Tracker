@@ -29,6 +29,21 @@ public struct SubjectArtHelper {
     private static var courseCategoryCache: [String: SubjectCategory] = [:]
     private static var categoryCache: [String: SubjectCategory] = [:]
 
+    private static let standardThemes: [SubjectCategory: VisualTheme] = [
+        .computerScience: VisualTheme(category: .computerScience, icon: "desktopcomputer", themeColor: Color(red: 0.08, green: 0.68, blue: 0.54), bannerBackground: Color(red: 0.06, green: 0.58, blue: 0.50)),
+        .math: VisualTheme(category: .math, icon: "function", themeColor: Color(red: 0.95, green: 0.60, blue: 0.10), bannerBackground: Color(red: 0.88, green: 0.50, blue: 0.08)),
+        .english: VisualTheme(category: .english, icon: "character.book.closed", themeColor: Color(red: 0.15, green: 0.58, blue: 0.92), bannerBackground: Color(red: 0.12, green: 0.48, blue: 0.88)),
+        .literature: VisualTheme(category: .literature, icon: "text.book.closed", themeColor: Color(red: 0.92, green: 0.38, blue: 0.22), bannerBackground: Color(red: 0.86, green: 0.34, blue: 0.20)),
+        .physics: VisualTheme(category: .physics, icon: "atom", themeColor: Color(red: 0.45, green: 0.38, blue: 0.88), bannerBackground: Color(red: 0.40, green: 0.34, blue: 0.84)),
+        .chemistry: VisualTheme(category: .chemistry, icon: "flask", themeColor: Color(red: 0.86, green: 0.28, blue: 0.68), bannerBackground: Color(red: 0.80, green: 0.24, blue: 0.60)),
+        .biology: VisualTheme(category: .biology, icon: "leaf", themeColor: Color(red: 0.20, green: 0.72, blue: 0.40), bannerBackground: Color(red: 0.14, green: 0.60, blue: 0.34)),
+        .history: VisualTheme(category: .history, icon: "clock.arrow.circlepath", themeColor: Color(red: 0.85, green: 0.52, blue: 0.16), bannerBackground: Color(red: 0.80, green: 0.46, blue: 0.14)),
+        .defenseEducation: VisualTheme(category: .defenseEducation, icon: "shield", themeColor: Color(red: 0.16, green: 0.58, blue: 0.28), bannerBackground: Color(red: 0.12, green: 0.50, blue: 0.22)),
+        .localEducation: VisualTheme(category: .localEducation, icon: "map", themeColor: Color(red: 0.05, green: 0.58, blue: 0.53), bannerBackground: Color(red: 0.04, green: 0.50, blue: 0.46)),
+        .experientialActivities: VisualTheme(category: .experientialActivities, icon: "sparkles", themeColor: Color(red: 0.95, green: 0.42, blue: 0.12), bannerBackground: Color(red: 0.88, green: 0.36, blue: 0.10)),
+        .other: VisualTheme(category: .other, icon: "book.closed", themeColor: Color(red: 0.40, green: 0.52, blue: 0.64), bannerBackground: Color(red: 0.30, green: 0.44, blue: 0.60))
+    ]
+
     public static func clearCaches() {
         cacheLock.lock()
         courseCategoryCache.removeAll(keepingCapacity: false)
@@ -75,14 +90,18 @@ public struct SubjectArtHelper {
         return computed
     }
 
+    public static func theme(for category: SubjectCategory) -> VisualTheme {
+        standardThemes[category] ?? VisualTheme(
+            category: category,
+            icon: icon(for: category),
+            themeColor: themeColor(for: category),
+            bannerBackground: bannerBackground(for: category)
+        )
+    }
+
     public static func theme(for courseName: String, title: String? = nil) -> VisualTheme {
         let cat = category(for: courseName, title: title)
-        return VisualTheme(
-            category: cat,
-            icon: icon(for: cat),
-            themeColor: themeColor(for: cat),
-            bannerBackground: bannerBackground(for: cat)
-        )
+        return theme(for: cat)
     }
 
     public static func badgeCode(for category: SubjectCategory, courseName: String = "", title: String? = nil) -> String {
@@ -148,7 +167,7 @@ public struct SubjectArtHelper {
     }
 
     private static let tokenMap: [Substring: TokenFlags] = [
-        "toan": .math, "math": .math, "maths": .math, "calculus": .math, "algebra": .math,
+        "toan": .math, "toán": .math, "math": .math, "maths": .math, "calculus": .math, "algebra": .math,
         "geometry": .math, "trigonometry": .math, "statistics": .math, "discrete": .math,
         "physics": .physics, "mechanics": .physics, "thermodynamics": .physics, "optics": .physics,
         "ly": .ly, "lý": .ly, "lí": .ly,
@@ -337,14 +356,16 @@ public struct SubjectArtHelper {
         }
 
         if let title, !title.isEmpty {
-            let titleLower = title.lowercased()
+            let titleNormalized = title.precomposedStringWithCanonicalMapping
+            let titleLower = titleNormalized.lowercased()
             let titleFlags = scanTokenFlags(in: titleLower)
             if let matched = matchCategory(text: titleLower, flags: titleFlags) {
                 return matched
             }
         }
 
-        let courseLower = courseName.lowercased()
+        let courseNormalized = courseName.precomposedStringWithCanonicalMapping
+        let courseLower = courseNormalized.lowercased()
         let courseFlags = scanTokenFlags(in: courseLower)
         if let matched = matchCategory(text: courseLower, flags: courseFlags) {
             return matched
@@ -375,20 +396,7 @@ public struct SubjectArtHelper {
     }
 
     public static func themeColor(for category: SubjectCategory) -> Color {
-        switch category {
-        case .computerScience: return Color(red: 0.08, green: 0.68, blue: 0.54)
-        case .math: return Color(red: 0.95, green: 0.60, blue: 0.10)
-        case .english: return Color(red: 0.15, green: 0.58, blue: 0.92)
-        case .literature: return Color(red: 0.92, green: 0.38, blue: 0.22)
-        case .physics: return Color(red: 0.45, green: 0.38, blue: 0.88)
-        case .chemistry: return Color(red: 0.86, green: 0.28, blue: 0.68)
-        case .biology: return Color(red: 0.20, green: 0.72, blue: 0.40)
-        case .history: return Color(red: 0.85, green: 0.52, blue: 0.16)
-        case .defenseEducation: return Color(red: 0.16, green: 0.58, blue: 0.28)
-        case .localEducation: return Color(red: 0.05, green: 0.58, blue: 0.53)
-        case .experientialActivities: return Color(red: 0.95, green: 0.42, blue: 0.12)
-        case .other: return Color(red: 0.40, green: 0.52, blue: 0.64)
-        }
+        standardThemes[category]?.themeColor ?? Color(red: 0.40, green: 0.52, blue: 0.64)
     }
 
     public static func themeColor(for courseName: String, title: String? = nil) -> Color {
@@ -700,7 +708,8 @@ public struct DueBadgeView: View, Equatable {
         .padding(.vertical, compact ? 4 : 5)
         .appleLiquidGlassSurface(
             style: .tint(badgeColor.opacity(0.14)),
-            in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+            in: RoundedRectangle(cornerRadius: 6, style: .continuous),
+            isEnabled: !compact
         ) {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(badgeColor.opacity(0.12))

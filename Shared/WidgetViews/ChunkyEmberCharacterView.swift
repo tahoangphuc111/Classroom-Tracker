@@ -330,14 +330,22 @@ public struct ChunkyEmberCharacterView: View {
         self.size = size
     }
 
+    private static let availableAssets: [EmberEmotion: Bool] = {
+        var map: [EmberEmotion: Bool] = [:]
+        for emotion in EmberEmotion.allCases {
+            #if os(macOS)
+            map[emotion] = NSImage(named: emotion.assetName) != nil
+            #elseif os(iOS)
+            map[emotion] = UIImage(named: emotion.assetName) != nil
+            #else
+            map[emotion] = false
+            #endif
+        }
+        return map
+    }()
+
     private var hasAssetImage: Bool {
-        #if os(macOS)
-        return NSImage(named: emotion.assetName) != nil
-        #elseif os(iOS)
-        return UIImage(named: emotion.assetName) != nil
-        #else
-        return false
-        #endif
+        Self.availableAssets[emotion] ?? false
     }
 
     public var body: some View {

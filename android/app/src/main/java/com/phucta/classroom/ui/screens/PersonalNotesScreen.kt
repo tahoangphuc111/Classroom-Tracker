@@ -126,6 +126,8 @@ import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
+private class CachedNoteTitleLine(val left: Float, val right: Float, val y: Float)
+
 private val NoteItemPlacementSpring = spring<IntOffset>(dampingRatio = 0.82f, stiffness = 380f)
 private val NoteItemFadeSpring = spring<Float>(dampingRatio = 0.82f, stiffness = 380f)
 
@@ -220,7 +222,12 @@ fun PersonalNotesScreen(
             }
             val matchesCourse = selectedCourseId == null || note.courseId == selectedCourseId
             val matchesSearch = if (searchTokens.isEmpty()) true else {
-                searchTokens.all { token -> note.searchIndex.contains(token) }
+                searchTokens.all { token ->
+                    note.searchIndex.contains(token) || run {
+                        val altTok = com.phucta.classroom.data.model.cleanTelexKeystrokes(token)
+                        altTok != token && note.searchIndex.contains(altTok)
+                    }
+                }
             }
             matchesStatus && matchesCourse && matchesSearch
         }
@@ -561,7 +568,22 @@ private fun PersonalNoteCard(
         }
     }
 
-    val titleLayoutResultHolder = remember(note.id, note.title) { arrayOfNulls<TextLayoutResult>(1) }
+    val cachedTitleLines = remember(note.id, note.title) { ArrayList<CachedNoteTitleLine>(2) }
+    val onTitleTextLayout: (TextLayoutResult) -> Unit = remember(cachedTitleLines) {
+        { layout ->
+            cachedTitleLines.clear()
+            val count = layout.lineCount
+            for (i in 0 until count) {
+                cachedTitleLines.add(
+                    CachedNoteTitleLine(
+                        layout.getLineLeft(i),
+                        layout.getLineRight(i),
+                        (layout.getLineTop(i) + layout.getLineBottom(i)) / 2f
+                    )
+                )
+            }
+        }
+    }
     val subjectTheme = remember(note.courseName) {
         note.courseName?.takeIf { it.isNotBlank() }?.let { SubjectArtHelper.theme(it) }
     }
@@ -689,7 +711,7 @@ private fun PersonalNoteCard(
                             fontSize = 17.5.sp,
                             lineHeight = 24.sp,
                             color = ChunkyColor.TextPrimary,
-                            onTextLayout = { titleLayoutResultHolder[0] = it },
+                            onTextLayout = onTitleTextLayout,
                             modifier = Modifier
                                 .weight(1f)
                                 .graphicsLayer {
@@ -702,19 +724,15 @@ private fun PersonalNoteCard(
                                         drawContent()
                                         val progress = completionProgress.value
                                         if (progress > 0.001f) {
-                                            val layout = titleLayoutResultHolder[0]
-                                            if (layout != null) {
-                                                for (i in 0 until layout.lineCount) {
-                                                    val lineTop = layout.getLineTop(i)
-                                                    val lineBottom = layout.getLineBottom(i)
-                                                    val lineLeft = layout.getLineLeft(i)
-                                                    val lineRight = layout.getLineRight(i)
-                                                    val y = (lineTop + lineBottom) / 2f
-                                                    val endX = lineLeft + (lineRight - lineLeft) * progress
+                                            val lines = cachedTitleLines
+                                            if (lines.isNotEmpty()) {
+                                                for (i in 0 until lines.size) {
+                                                    val line = lines[i]
+                                                    val endX = line.left + (line.right - line.left) * progress
                                                     drawLine(
                                                         color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
-                                                        start = Offset(lineLeft, y),
-                                                        end = Offset(endX, y),
+                                                        start = Offset(line.left, line.y),
+                                                        end = Offset(endX, line.y),
                                                         strokeWidth = strokeWidthPx,
                                                         cap = StrokeCap.Round
                                                     )

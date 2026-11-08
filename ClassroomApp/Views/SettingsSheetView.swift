@@ -57,7 +57,11 @@ struct SettingsSheetView: View {
         NavigationStack {
             formContent
                 .formStyle(.grouped)
+                .scrollContentBackground(.hidden)
                 .navigationTitle("Cài đặt")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
                 .confirmationDialog(
                     "Đăng xuất khỏi Google?",
                     isPresented: $showLogoutConfirmation,
@@ -78,14 +82,23 @@ struct SettingsSheetView: View {
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Xong") {
+                            onTriggerHaptic()
                             isPresented = false
                         }
+                        .buttonStyle(SpringPressButtonStyle(scale: 0.92, pressedOpacity: 0.88))
                         .keyboardShortcut(.defaultAction)
                         .fontWeight(.semibold)
                     }
                 }
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .appleLiquidGlassSurface(style: .regular, in: Rectangle()) {
+                    Color.platformWindowBackground.opacity(0.85)
+                }
         }
         #endif
     }
@@ -202,12 +215,21 @@ struct SettingsSheetView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "arrow.clockwise")
+                                    .rotationEffect(.degrees(apiService.isSyncing ? 360 : 0))
+                                    .animation(
+                                        apiService.isSyncing
+                                            ? .linear(duration: 0.9).repeatForever(autoreverses: false)
+                                            : .default,
+                                        value: apiService.isSyncing
+                                    )
                                 Text(apiService.isSyncing ? "Đang đồng bộ..." : "Đồng bộ bài tập ngay")
                             }
                         }
+                        .buttonStyle(SpringPressButtonStyle(scale: 0.96))
                         .disabled(apiService.isSyncing)
 
                         Button("Đăng xuất", role: .destructive) {
+                            onTriggerHaptic()
                             showLogoutConfirmation = true
                         }
                     } else {
@@ -223,6 +245,7 @@ struct SettingsSheetView: View {
                         .padding(.vertical, 4)
 
                         Button {
+                            onTriggerHaptic()
                             isPresented = false
                             onStartGoogleLogin()
                         } label: {
@@ -232,7 +255,7 @@ struct SettingsSheetView: View {
                             }
                             .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(SpringPressButtonStyle(scale: 0.96))
                     }
                 } header: {
                     Label("Tài khoản", systemImage: "person.crop.circle")
@@ -360,7 +383,14 @@ struct SettingsSheetView: View {
 
                 Section {
                     DisclosureGroup(
-                        isExpanded: $isAdvancedSettingsExpanded,
+                        isExpanded: Binding(
+                            get: { isAdvancedSettingsExpanded },
+                            set: { newValue in
+                                withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                                    isAdvancedSettingsExpanded = newValue
+                                }
+                            }
+                        ),
                         content: {
                             VStack(alignment: .leading, spacing: 14) {
                                 VStack(alignment: .leading, spacing: 6) {
@@ -373,6 +403,7 @@ struct SettingsSheetView: View {
                                         .foregroundStyle(.secondary)
 
                                     Button("Nạp lại dữ liệu mẫu (Hôm nay & mai)") {
+                                        onTriggerHaptic()
                                         ClassroomStorage.shared.saveCourses(ClassroomStorage.mockCourses)
                                         ClassroomStorage.shared.saveCoursework(ClassroomStorage.mockCoursework)
                                         onRefreshData()
@@ -384,6 +415,7 @@ struct SettingsSheetView: View {
                                             .purple
                                         )
                                     }
+                                    .buttonStyle(SpringPressButtonStyle(scale: 0.96))
                                     .font(.system(size: 12))
                                 }
 
@@ -505,8 +537,6 @@ struct SettingsSheetView: View {
                 }
             }
             .formStyle(.grouped)
-            #if os(macOS)
             .scrollContentBackground(.hidden)
-            #endif
         }
     }

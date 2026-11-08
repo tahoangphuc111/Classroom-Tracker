@@ -41,11 +41,13 @@ public struct TomorrowProgressHeroCard: View {
                     Text(isAllDone ? "Xuất sắc! Đã xong hết" : "Báo bài \(titleSuffix)")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.white)
+                        .contentTransition(.opacity)
 
                     Text(isAllDone ? "Đã hoàn thành toàn bộ bài tập \(titleSuffix)." : "Còn \(incompleteCount) bài tập cần nộp.")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Color.white.opacity(0.92))
                         .lineLimit(1)
+                        .contentTransition(.numericText())
                 }
 
                 Spacer(minLength: 4)
@@ -68,7 +70,7 @@ public struct TomorrowProgressHeroCard: View {
                             .stroke(Color.white.opacity(0.4), lineWidth: 0.8)
                     )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
             }
 
             VStack(spacing: 6) {
@@ -76,12 +78,14 @@ public struct TomorrowProgressHeroCard: View {
                     Text(isAllDone ? "Hoàn thành 100%!" : "Tiến độ: \(completedCount)/\(totalCount) bài tập")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(Color.white.opacity(0.95))
+                        .contentTransition(.numericText())
 
                     Spacer()
 
                     Text("\(Int(progressFraction * 100))%")
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundStyle(Color.white.opacity(0.90))
+                        .contentTransition(.numericText())
                 }
 
                 GeometryReader { geo in
@@ -100,6 +104,8 @@ public struct TomorrowProgressHeroCard: View {
             }
         }
         .padding(15)
+        .scaleEffect(isAllDone ? 1.015 : 1.0)
+        .animation(.spring(response: 0.38, dampingFraction: 0.70), value: isAllDone)
         .background(
             RoundedRectangle(cornerRadius: 13, style: .continuous)
                 .fill(ChunkyTheme.skyGradient)
@@ -116,36 +122,42 @@ public struct TomorrowProgressHeroCard: View {
 public struct TomorrowHeroBanner: View {
     public init() {}
 
-    public var body: some View {
+    private static let hasHeroImageAsset: Bool = {
         #if os(macOS)
-        let img = NSImage(named: "HeroBaoBai")
+        return NSImage(named: "HeroBaoBai") != nil
         #else
-        let img = UIImage(named: "HeroBaoBai")
+        return UIImage(named: "HeroBaoBai") != nil
         #endif
-        return Group {
-            if img != nil {
-                ZStack(alignment: .bottom) {
-                    Image("HeroBaoBai")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 128)
-                        .clipped()
+    }()
 
-                    LinearGradient(
-                        colors: [Color.clear, Color.platformWindowBackground.opacity(0.35)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .stroke(Color.platformCardBorder.opacity(0.7), lineWidth: 1)
+    private var hasHeroImage: Bool {
+        Self.hasHeroImageAsset
+    }
+
+    @ViewBuilder
+    public var body: some View {
+        if hasHeroImage {
+            ZStack(alignment: .bottom) {
+                Image("HeroBaoBai")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 128)
+                    .clipped()
+
+                LinearGradient(
+                    colors: [Color.clear, Color.platformWindowBackground.opacity(0.35)],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
-                .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
-                .padding(.bottom, 4)
             }
+            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .stroke(Color.platformCardBorder.opacity(0.7), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
+            .padding(.bottom, 4)
         }
     }
 }

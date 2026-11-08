@@ -99,11 +99,18 @@ public struct PersonalNote: Identifiable, Codable, Hashable, Sendable {
     }
 
     private static func buildSearchIndex(normTitle: String, normCourse: String, normContent: String, checklist: [ChecklistItem]) -> String {
+        let base: String
         if checklist.isEmpty {
-            return "\(normTitle) \(normContent) \(normCourse)"
+            base = "\(normTitle) \(normContent) \(normCourse)"
+        } else {
+            let checklistText = checklist.map(\.title).joined(separator: " ").normalizedForVietnameseSearch()
+            base = "\(normTitle) \(normContent) \(normCourse) \(checklistText)"
         }
-        let checklistText = checklist.map(\.title).joined(separator: " ").normalizedForVietnameseSearch()
-        return "\(normTitle) \(normContent) \(normCourse) \(checklistText)"
+        let extra = expandVietnameseAcronyms(normalizedText: base)
+        if !extra.isEmpty {
+            return "\(base) \(extra)"
+        }
+        return base
     }
 
     private static func buildSearchIndex(normTitle: String, normCourse: String, content: String, checklist: [ChecklistItem]) -> String {

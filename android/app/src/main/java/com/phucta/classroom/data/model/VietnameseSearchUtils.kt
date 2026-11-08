@@ -63,6 +63,8 @@ private val VIETNAMESE_CHAR_MAP: CharArray = run {
         map[code] = SKIP_COMBINING_MARK
     }
 
+    map[0x00A0] = ' '
+
     map
 }
 
@@ -133,9 +135,9 @@ private val COMMON_SYLLABLES: Map<String, String> = run {
 }
 
 private fun isSearchDelimiterChar(ch: Char): Boolean {
-    return ch <= ' ' || ch == '\u00A0' || ch == ',' || ch == ';' || ch == ':' ||
+    return ch <= ' ' || ch == '\u00A0' || ch == '\u202F' || ch == ',' || ch == ';' || ch == ':' ||
             ch == '-' || ch == '/' || ch == '(' || ch == ')' || ch == '[' || ch == ']' ||
-            ch == '{' || ch == '}' || ch == '|' || ch == '"' || ch == '\'' || ch == '?' || ch == '!'
+            ch == '{' || ch == '}' || ch == '|' || ch == '"' || ch == '\'' || ch == '?' || ch == '!' || ch == '_'
 }
 
 fun tokenizeSearchQuery(query: String): List<String> {
@@ -176,11 +178,11 @@ fun String.normalizeForVietnameseSearch(): String {
     if (len == 0) return ""
 
     var start = 0
-    while (start < len && this[start] <= ' ') start++
+    while (start < len && (this[start] <= ' ' || this[start] == '\u00A0' || this[start] == '\u202F')) start++
     if (start == len) return ""
 
     var end = len - 1
-    while (end > start && this[end] <= ' ') end--
+    while (end > start && (this[end] <= ' ' || this[end] == '\u00A0' || this[end] == '\u202F')) end--
 
     var needsNormalization = false
     for (i in start..end) {
@@ -234,19 +236,119 @@ private val threadLocalBuffer = object : ThreadLocal<CharArray>() {
     override fun initialValue(): CharArray = CharArray(512)
 }
 
+fun cleanTelexKeystrokes(s: String): String {
+    if (s.length < 3) return s
+    var cleaned = s
+    val last = cleaned[cleaned.length - 1]
+    if (last == 's' || last == 'f' || last == 'r' || last == 'x' || last == 'j') {
+        cleaned = cleaned.substring(0, cleaned.length - 1)
+    }
+    if (cleaned.contains("dd")) cleaned = cleaned.replace("dd", "d")
+    if (cleaned.contains("aa")) cleaned = cleaned.replace("aa", "a")
+    if (cleaned.contains("ee")) cleaned = cleaned.replace("ee", "e")
+    if (cleaned.contains("oo")) cleaned = cleaned.replace("oo", "o")
+    if (cleaned.contains("uw")) cleaned = cleaned.replace("uw", "u")
+    if (cleaned.contains("ow")) cleaned = cleaned.replace("ow", "o")
+    if (cleaned.contains("aw")) cleaned = cleaned.replace("aw", "a")
+    return cleaned
+}
+
+fun expandVietnameseAcronyms(normalizedText: String): String {
+    if (normalizedText.isEmpty()) return ""
+    val expansions = ArrayList<String>(4)
+
+    if (normalizedText.contains("bai tap ve nha")) expansions.add("btvn")
+    if (normalizedText.contains("kiem tra")) expansions.add("kt")
+    if (normalizedText.contains("15 phut")) expansions.add("15p")
+    if (normalizedText.contains("45 phut")) expansions.add("45p")
+    if (normalizedText.contains("giua ki") || normalizedText.contains("giua ky")) expansions.add("gk")
+    if (normalizedText.contains("cuoi ki") || normalizedText.contains("cuoi ky")) expansions.add("ck")
+    if (normalizedText.contains("thuc hanh")) expansions.add("th")
+    if (normalizedText.contains("chuyen de")) expansions.add("cd")
+    if (normalizedText.contains("sach giao khoa")) expansions.add("sgk")
+    if (normalizedText.contains("sach bai tap")) expansions.add("sbt")
+
+    val tokens = tokenizeSearchQuery(normalizedText)
+    for (tok in tokens) {
+        when (tok) {
+            "btvn" -> expansions.add("bai tap ve nha")
+            "kt" -> expansions.add("kiem tra")
+            "15p" -> expansions.add("15 phut")
+            "45p" -> expansions.add("45 phut")
+            "gk" -> {
+                expansions.add("giua ki")
+                expansions.add("giua ky")
+            }
+            "ck" -> {
+                expansions.add("cuoi ki")
+                expansions.add("cuoi ky")
+            }
+            "th" -> expansions.add("thuc hanh")
+            "cd" -> expansions.add("chuyen de")
+            "sgk" -> expansions.add("sach giao khoa")
+            "sbt" -> expansions.add("sach bai tap")
+        }
+    }
+
+    if (expansions.isEmpty()) return ""
+    return expansions.joinToString(" ")
+}
+
 private fun isWordBoundaryChar(ch: Char): Boolean {
     return !(ch in 'a'..'z' || ch in '0'..'9')
 }
 
-private fun hasSubsequentWordBoundary(text: String, token: String, fromIndex: Int): Boolean {
-    var index = text.indexOf(token, fromIndex + 1)
-    while (index > 0) {
-        if (isWordBoundaryChar(text[index - 1])) {
+private fun isWordAt(text: String, offset: Int, length: Int): Boolean {
+    if (offset < 0 || offset + length > text.length) return false
+    val leftOk = (offset == 0 || isWordBoundaryChar(text[offset - 1]))
+    val rightOk = (offset + length == text.length || isWordBoundaryChar(text[offset + length]))
+    return leftOk && rightOk
+}
+
+private fun hasWordBoundaryMatch(text: String, token: String, firstMatchOffset: Int): Boolean {
+    val tokenLen = token.length
+    if (isWordAt(text, firstMatchOffset, tokenLen)) return true
+    var index = text.indexOf(token, firstMatchOffset + 1)
+    while (index >= 0) {
+        if (isWordAt(text, index, tokenLen)) {
             return true
         }
         index = text.indexOf(token, index + 1)
     }
     return false
+}
+
+fun isSchoolAcronymMatch(queryOrToken: String, normalizedTitle: String): Boolean {
+    if (queryOrToken.isEmpty() || normalizedTitle.isEmpty()) return false
+    return when (queryOrToken) {
+        "btvn" -> normalizedTitle.contains("bai tap ve nha")
+        "kt" -> normalizedTitle.contains("kiem tra")
+        "15p" -> normalizedTitle.contains("15 phut")
+        "45p" -> normalizedTitle.contains("45 phut")
+        "gk" -> normalizedTitle.contains("giua ki") || normalizedTitle.contains("giua ky")
+        "ck" -> normalizedTitle.contains("cuoi ki") || normalizedTitle.contains("cuoi ky")
+        "th" -> normalizedTitle.contains("thuc hanh")
+        "cd" -> normalizedTitle.contains("chuyen de")
+        "sgk" -> normalizedTitle.contains("sach giao khoa")
+        "sbt" -> normalizedTitle.contains("sach bai tap")
+        "bai tap ve nha" -> {
+            val idx = normalizedTitle.indexOf("btvn")
+            idx >= 0 && isWordAt(normalizedTitle, idx, 4)
+        }
+        "kiem tra" -> {
+            val idx = normalizedTitle.indexOf("kt")
+            idx >= 0 && isWordAt(normalizedTitle, idx, 2)
+        }
+        "15 phut" -> {
+            val idx = normalizedTitle.indexOf("15p")
+            idx >= 0 && isWordAt(normalizedTitle, idx, 3)
+        }
+        "45 phut" -> {
+            val idx = normalizedTitle.indexOf("45p")
+            idx >= 0 && isWordAt(normalizedTitle, idx, 3)
+        }
+        else -> false
+    }
 }
 
 fun calculateSearchRelevance(
@@ -293,12 +395,15 @@ fun calculateSearchRelevance(
                 score += 40
             }
         }
+        if (isSchoolAcronymMatch(rawNormalizedQuery, normTitle)) {
+            score += 70
+        }
     }
     if (tokenCount == 1 && rawQueryLen > 0 && queryTokens[0] == rawNormalizedQuery) {
         val token = rawNormalizedQuery
         if (titleLen >= rawQueryLen && titleIdx >= 0) {
             score += 30
-            if (titleIdx == 0 || isWordBoundaryChar(normTitle[titleIdx - 1]) || hasSubsequentWordBoundary(normTitle, token, titleIdx)) {
+            if (hasWordBoundaryMatch(normTitle, token, titleIdx)) {
                 score += 15
             }
         }
@@ -307,6 +412,27 @@ fun calculateSearchRelevance(
         }
         if (contentLen >= rawQueryLen && normContent.indexOf(token) >= 0) {
             score += 5
+        }
+        if (titleIdx < 0 && courseIdx < 0) {
+            val altTok = cleanTelexKeystrokes(token)
+            if (altTok != token) {
+                val altLen = altTok.length
+                if (titleLen >= altLen) {
+                    val altIdx = normTitle.indexOf(altTok)
+                    if (altIdx >= 0) {
+                        score += 20
+                        if (hasWordBoundaryMatch(normTitle, altTok, altIdx)) {
+                            score += 10
+                        }
+                    }
+                }
+                if (courseLen >= altLen && normCourse.indexOf(altTok) >= 0) {
+                    score += 10
+                }
+                if (contentLen >= altLen && normContent.indexOf(altTok) >= 0) {
+                    score += 4
+                }
+            }
         }
         if (checklistTitles.isNotEmpty()) {
             for (rawChecklistTitle in checklistTitles) {
@@ -318,26 +444,73 @@ fun calculateSearchRelevance(
         }
         return score
     }
+
+    var allMatchedTitle = true
+    var allMatchedEither = true
+
     for (i in 0 until tokenCount) {
         val token = queryTokens[i]
         val tokenLen = token.length
         if (tokenLen == 0) continue
+        var matchedTitle = false
+        var matchedCourse = false
+
         if (titleLen >= tokenLen) {
             val matchIdx = normTitle.indexOf(token)
             if (matchIdx >= 0) {
                 score += 30
-                if (matchIdx == 0 || isWordBoundaryChar(normTitle[matchIdx - 1]) || hasSubsequentWordBoundary(normTitle, token, matchIdx)) {
+                matchedTitle = true
+                if (hasWordBoundaryMatch(normTitle, token, matchIdx)) {
                     score += 15
                 }
             }
         }
         if (courseLen >= tokenLen && normCourse.indexOf(token) >= 0) {
             score += 15
+            matchedCourse = true
         }
         if (contentLen >= tokenLen && normContent.indexOf(token) >= 0) {
             score += 5
         }
+
+        if (!matchedTitle && !matchedCourse) {
+            val altTok = cleanTelexKeystrokes(token)
+            if (altTok != token) {
+                val altLen = altTok.length
+                if (titleLen >= altLen) {
+                    val altIdx = normTitle.indexOf(altTok)
+                    if (altIdx >= 0) {
+                        score += 20
+                        matchedTitle = true
+                        if (hasWordBoundaryMatch(normTitle, altTok, altIdx)) {
+                            score += 10
+                        }
+                    }
+                }
+                if (courseLen >= altLen && normCourse.indexOf(altTok) >= 0) {
+                    score += 10
+                    matchedCourse = true
+                }
+            }
+        }
+
+        if (isSchoolAcronymMatch(token, normTitle)) {
+            score += 35
+            matchedTitle = true
+        }
+
+        if (!matchedTitle) allMatchedTitle = false
+        if (!matchedTitle && !matchedCourse) allMatchedEither = false
     }
+
+    if (tokenCount > 1) {
+        if (allMatchedTitle) {
+            score += 50
+        } else if (allMatchedEither) {
+            score += 25
+        }
+    }
+
     if (checklistTitles.isNotEmpty()) {
         for (rawChecklistTitle in checklistTitles) {
             val normItem = rawChecklistTitle.normalizeForVietnameseSearch()

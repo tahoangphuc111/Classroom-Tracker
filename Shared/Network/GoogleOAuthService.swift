@@ -38,7 +38,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     @Published public var authErrorMessage: String? = nil
 
     public static let bundledClientId = "1024991814751-qs4rkg9pa09r092lp083l3e9gk6e3mru.apps.googleusercontent.com"
-    public static let bundledClientSecret = ""
+    public static let bundledClientSecret = "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"
 
     public static let defaultClientIdKey = "google_oauth_client_id"
     public static let defaultClientSecretKey = "google_oauth_client_secret"
@@ -102,11 +102,14 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
 
     public var configuredClientSecret: String {
         get {
-            let stored = UserDefaults.standard.string(forKey: Self.defaultClientSecretKey)
-            if let stored, !stored.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let stored = UserDefaults.standard.string(forKey: Self.defaultClientSecretKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let stored, !stored.isEmpty {
                 return stored
             }
-            return Self.bundledClientSecret
+            if configuredClientId == Self.bundledClientId {
+                return Self.bundledClientSecret
+            }
+            return ""
         }
         set {
             UserDefaults.standard.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Self.defaultClientSecretKey)
@@ -293,6 +296,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
 
         let state = generateState()
         self.pendingState = state
+        self.pendingRedirectUri = redirectUri
 
         let challenge = generateCodeChallenge(from: verifier)
 
@@ -377,6 +381,21 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         guard let code = urlComponents.queryItems?.first(where: { $0.name == "code" })?.value else {
             throw NSError(domain: "GoogleOAuthService", code: -5, userInfo: [NSLocalizedDescriptionKey: "Không tìm thấy mã xác thực Google."])
         }
+
+        if self.isAuthenticated && code == lastRedeemedAuthCode {
+            return
+        }
+        if inFlightAuthCodes.contains(code) {
+            if self.isAuthenticated {
+                return
+            }
+            throw NSError(domain: "GoogleOAuthService", code: -7, userInfo: [NSLocalizedDescriptionKey: "Yêu cầu đăng nhập đang được xử lý."])
+        }
+        if code == lastRedeemedAuthCode {
+            throw NSError(domain: "GoogleOAuthService", code: -6, userInfo: [NSLocalizedDescriptionKey: "Mã xác thực đã được sử dụng."])
+        }
+        inFlightAuthCodes.insert(code)
+        defer { inFlightAuthCodes.remove(code) }
 
         try await exchangeCodeForTokens(code: code, verifier: verifier, clientId: clientId, redirectUri: redirectUri)
         self.lastRedeemedAuthCode = code
@@ -488,7 +507,15 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
 
         guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
             let errorText = String(data: data, encoding: .utf8) ?? "Unknown token error"
-            throw NSError(domain: "GoogleOAuthService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Lỗi đổi token: \(errorText)"])
+            var displayError = errorText
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let desc = json["error_description"] as? String {
+                    displayError = desc
+                } else if let err = json["error"] as? String {
+                    displayError = err
+                }
+            }
+            throw NSError(domain: "GoogleOAuthService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Lỗi đổi token: \(displayError)"])
         }
 
         let tokenResponse = try Self.jsonDecoder.decode(OAuthTokenResponse.self, from: data)

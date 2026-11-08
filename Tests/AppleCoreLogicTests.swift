@@ -939,6 +939,73 @@ struct TestRunner {
 
             let punctTokens2 = "Toán - Đại số (chương 1)".searchQueryTokens()
             assertCondition(punctTokens2 == ["toan", "dai", "so", "chuong", "1"], "Query with dash and brackets must cleanly tokenize")
+
+            let punctTokens3 = "Toán, Lý; Hoá (Sinh) [Văn]".searchQueryTokens()
+            assertCondition(punctTokens3 == ["toan", "ly", "hoa", "sinh", "van"], "Complex multi-byte query with delimiters must cleanly tokenize")
+
+            let underscoreTokens = "bai_tap_1".searchQueryTokens()
+            assertCondition(underscoreTokens == ["bai", "tap", "1"], "Query with underscore must tokenize to individual words")
+
+            let nbspQuery = "Toán\u{00A0}12".normalizedForVietnameseSearch()
+            assertCondition(nbspQuery == "toan 12", "NBSP must be normalized to space in search normalization")
+            let nbspTokens = "Toán\u{00A0}12".searchQueryTokens()
+            assertCondition(nbspTokens == ["toan", "12"], "Query with NBSP must cleanly tokenize to ['toan', '12']")
+
+            let zeroWidthQuery = "Toán\u{200B}12".normalizedForVietnameseSearch()
+            assertCondition(zeroWidthQuery == "toan12", "Zero-width space must be stripped cleanly")
+        }
+
+        do {
+            // Test School Acronym Expansion & Matching
+            let itemBtvn = Coursework(id: "cw_btvn", courseId: "c1", courseName: "Toán 12", title: "Bài tập về nhà tuần 5")
+            assertCondition(itemBtvn.searchIndex.contains("btvn"), "Search index must contain expanded acronym 'btvn'")
+            let scoreBtvn = itemBtvn.searchRelevanceScore(for: ["btvn"], rawNormalizedQuery: "btvn")
+            assertCondition(scoreBtvn >= 70, "Searching acronym 'btvn' on 'Bài tập về nhà' must yield high score (got \(scoreBtvn))")
+
+            let itemReverseBtvn = Coursework(id: "cw_rev_btvn", courseId: "c1", courseName: "Toán 12", title: "BTVN số 3")
+            assertCondition(itemReverseBtvn.searchIndex.contains("bai tap ve nha"), "Search index of 'BTVN' must contain expanded phrase 'bai tap ve nha'")
+
+            let itemKt = Coursework(id: "cw_kt", courseId: "c2", courseName: "Vật lý", title: "Kiểm tra 15 phút")
+            assertCondition(itemKt.searchIndex.contains("kt"), "Search index must contain 'kt'")
+            assertCondition(itemKt.searchIndex.contains("15p"), "Search index must contain '15p'")
+
+            // Test Telex typing slip tolerance
+            let cleanToans = cleanTelexKeystrokes("toans")
+            assertCondition(cleanToans == "toan", "cleanTelexKeystrokes('toans') must equal 'toan'")
+            let cleanBaif = cleanTelexKeystrokes("baif")
+            assertCondition(cleanBaif == "bai", "cleanTelexKeystrokes('baif') must equal 'bai'")
+            let cleanDdai = cleanTelexKeystrokes("ddai")
+            assertCondition(cleanDdai == "dai", "cleanTelexKeystrokes('ddai') must equal 'dai'")
+
+            let scoreTelex = itemBtvn.searchRelevanceScore(for: ["toans"], rawNormalizedQuery: "toans")
+            assertCondition(scoreTelex > 0, "Score for telex-slipped query 'toans' must be positive (got \(scoreTelex))")
+
+            // Test Two-sided Word Boundary Isolation
+            let itemTinh = Coursework(id: "cw_tinh", courseId: "c1", courseName: "GDCD", title: "Tinh thần tự học")
+            let itemTin = Coursework(id: "cw_tin", courseId: "c1", courseName: "Tin học", title: "Tin học văn phòng")
+
+            let scoreTinh = itemTinh.searchRelevanceScore(for: ["tin"], rawNormalizedQuery: "tin")
+            let scoreTin = itemTin.searchRelevanceScore(for: ["tin"], rawNormalizedQuery: "tin")
+            assertCondition(scoreTin > scoreTinh, "Whole word match 'tin' in 'Tin học' must score higher than substring in 'Tinh thần' (\(scoreTin) vs \(scoreTinh))")
+
+            // Test Multi-Token Conjunction Bonus
+            let itemFullMatch = Coursework(id: "cw_full", courseId: "c1", courseName: "Toán 12", title: "Toán hình học không gian 12")
+            let itemPartialMatch = Coursework(id: "cw_part", courseId: "c1", courseName: "Toán 12", title: "Hình học phẳng ôn tập")
+            let multiTokens = ["toan", "hinh", "12"]
+            let scoreFull = itemFullMatch.searchRelevanceScore(for: multiTokens, rawNormalizedQuery: "toan hinh 12")
+            let scorePart = itemPartialMatch.searchRelevanceScore(for: multiTokens, rawNormalizedQuery: "toan hinh 12")
+            assertCondition(scoreFull > scorePart + 50, "Full multi-token conjunction match must decisively beat partial match (\(scoreFull) vs \(scorePart))")
+        }
+
+        do {
+            // NFD canonical mapping tests for SubjectArtHelper
+            let nfdMathCourse = "Toán 12".decomposedStringWithCanonicalMapping
+            assertCondition(SubjectArtHelper.category(for: nfdMathCourse) == .math, "Decomposed NFD 'Toán 12' must map to .math")
+            let nfdLitCourse = "Ngữ văn".decomposedStringWithCanonicalMapping
+            assertCondition(SubjectArtHelper.category(for: nfdLitCourse) == .literature, "Decomposed NFD 'Ngữ văn' must map to .literature")
+            let nfdPhysicsTitle = "Bài tập Lý hạt nhân".decomposedStringWithCanonicalMapping
+            assertCondition(SubjectArtHelper.category(for: "12A1", title: nfdPhysicsTitle) == .physics, "Decomposed NFD in title must map to .physics")
+            assertCondition(SubjectArtHelper.category(for: "toán") == .math, "'toán' token in tokenMap must map to .math")
         }
 
         // Parity with Android BaoBaiShareHelperTest
@@ -994,6 +1061,15 @@ struct TestRunner {
             assertCondition(fullText.contains("(Đã xong)"), "Completed item must have (Đã xong) suffix")
             assertCondition(fullText.contains("3. [Tiếng Anh] Review Unit 5 — Không có hạn nộp"), "Undated item must show Không có hạn nộp")
             assertCondition(fullText.contains("Tiến độ: 1/3 bài hoàn thành"), "Must report 1/3 completed tasks")
+
+            // Test targetDate with leading undated item
+            let fallbackTarget = BaoBaiShareHelper.targetDate(
+                items: [c3, c1],
+                hasTomorrowTasks: false,
+                hasTodayTasks: false,
+                now: Date()
+            )
+            assertCondition(fallbackTarget == sampleDate, "targetDate must pick first item with dueDate (c1) when leading item (c3) is undated")
 
             // Test static comparators
             assertCondition(Coursework.compareByDueDateAscending(c1, c3) == true, "c1 with due date must be before c3 with no due date in ascending order")

@@ -102,9 +102,10 @@ struct AssignmentListEmptyView: View {
 
             if isSearching {
                 Button("Xóa tìm kiếm") {
+                    PlatformHaptics.trigger()
                     onClearSearch()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SpringPressButtonStyle(scale: 0.95, pressedOpacity: 0.88))
                 .font(.system(size: 14.5, weight: .semibold))
                 .foregroundStyle(Color.blue)
                 .padding(.horizontal, 15)
@@ -118,6 +119,7 @@ struct AssignmentListEmptyView: View {
                 .padding(.top, 4)
             } else if (filter == .tomorrow || filter == .todayAndTomorrow), let onSwitchToUpcoming {
                 Button {
+                    PlatformHaptics.trigger()
                     onSwitchToUpcoming()
                 } label: {
                     HStack(spacing: 5) {
@@ -127,7 +129,7 @@ struct AssignmentListEmptyView: View {
                             .font(.system(size: 14.5, weight: .semibold))
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SpringPressButtonStyle(scale: 0.95, pressedOpacity: 0.88))
                 .foregroundStyle(Color.blue)
                 .padding(.horizontal, 15)
                 .padding(.vertical, 8)

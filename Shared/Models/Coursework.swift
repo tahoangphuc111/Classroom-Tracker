@@ -294,17 +294,22 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     }
 
     public static func buildNormalizedSearchIndex(normTitle: String, normCourse: String, normDescription: String) -> String {
-        guard !normDescription.isEmpty else {
-            return "\(normTitle) \(normCourse)"
+        let base: String
+        if !normDescription.isEmpty {
+            base = "\(normTitle) \(normCourse) \(normDescription)"
+        } else {
+            base = "\(normTitle) \(normCourse)"
         }
-        return "\(normTitle) \(normCourse) \(normDescription)"
+        let extra = expandVietnameseAcronyms(normalizedText: base)
+        if !extra.isEmpty {
+            return "\(base) \(extra)"
+        }
+        return base
     }
 
     public static func buildNormalizedSearchIndex(normTitle: String, normCourse: String, description: String?) -> String {
-        guard let description, !description.isEmpty else {
-            return "\(normTitle) \(normCourse)"
-        }
-        return "\(normTitle) \(normCourse) \(description.normalizedForVietnameseSearch())"
+        let normDesc = description?.normalizedForVietnameseSearch() ?? ""
+        return buildNormalizedSearchIndex(normTitle: normTitle, normCourse: normCourse, normDescription: normDesc)
     }
 
     private static func buildTimeOnlyString(from dueDate: Date?) -> String {
@@ -338,7 +343,7 @@ private let vietnameseLut2: [UInt8] = [
 
 @inline(__always)
 fileprivate func isSearchDelimiterByte(_ b: UInt8) -> Bool {
-    return b <= 32 || b == 44 || b == 59 || b == 58 || b == 45 || b == 47 || b == 40 || b == 41 || b == 91 || b == 93 || b == 123 || b == 125 || b == 124 || b == 34 || b == 39 || b == 63 || b == 33
+    return b <= 32 || b == 44 || b == 59 || b == 58 || b == 45 || b == 47 || b == 40 || b == 41 || b == 91 || b == 93 || b == 123 || b == 125 || b == 124 || b == 34 || b == 39 || b == 63 || b == 33 || b == 95
 }
 
 public extension String {
@@ -359,6 +364,13 @@ public extension String {
                                 buffer[outIdx] = UInt8(v)
                             }
                             outIdx += 1
+                        } else if v == 0x00A0 || v == 0x202F {
+                            // Normalize non-breaking spaces to ASCII space
+                            buffer[outIdx] = 32
+                            outIdx += 1
+                        } else if v == 0x200B || v == 0xFEFF {
+                            // Drop zero-width spaces / BOM
+                            continue
                         } else if v >= 0x00C0 && v <= 0x01B0 {
                             let mapped = lut1Ptr[Int(v - 0x00C0)]
                             if mapped != 0 {
@@ -425,25 +437,139 @@ public extension String {
         } ?? {
             var tokens: [String] = []
             tokens.reserveCapacity(4)
-            var start: String.Index? = nil
+            var currentBytes: [UInt8] = []
+            currentBytes.reserveCapacity(16)
 
-            for i in cleanQuery.indices {
-                let b = cleanQuery.utf8[i]
+            for b in cleanQuery.utf8 {
                 if isSearchDelimiterByte(b) {
-                    if let s = start {
-                        tokens.append(String(cleanQuery[s..<i]))
-                        start = nil
+                    if !currentBytes.isEmpty {
+                        tokens.append(String(decoding: currentBytes, as: UTF8.self))
+                        currentBytes.removeAll(keepingCapacity: true)
                     }
-                } else if start == nil {
-                    start = i
+                } else {
+                    currentBytes.append(b)
                 }
             }
-            if let s = start {
-                tokens.append(String(cleanQuery[s...]))
+            if !currentBytes.isEmpty {
+                tokens.append(String(decoding: currentBytes, as: UTF8.self))
             }
             return tokens
         }()
     }
+}
+
+public func cleanTelexKeystrokes(_ s: String) -> String {
+    guard s.count >= 3 else { return s }
+    var cleaned = s
+    if let last = cleaned.last, last == "s" || last == "f" || last == "r" || last == "x" || last == "j" {
+        cleaned.removeLast()
+    }
+    if cleaned.contains("dd") { cleaned = cleaned.replacingOccurrences(of: "dd", with: "d") }
+    if cleaned.contains("aa") { cleaned = cleaned.replacingOccurrences(of: "aa", with: "a") }
+    if cleaned.contains("ee") { cleaned = cleaned.replacingOccurrences(of: "ee", with: "e") }
+    if cleaned.contains("oo") { cleaned = cleaned.replacingOccurrences(of: "oo", with: "o") }
+    if cleaned.contains("uw") { cleaned = cleaned.replacingOccurrences(of: "uw", with: "u") }
+    if cleaned.contains("ow") { cleaned = cleaned.replacingOccurrences(of: "ow", with: "o") }
+    if cleaned.contains("aw") { cleaned = cleaned.replacingOccurrences(of: "aw", with: "a") }
+    return cleaned
+}
+
+public func expandVietnameseAcronyms(normalizedText: String) -> String {
+    guard !normalizedText.isEmpty else { return "" }
+    var expansions: [String] = []
+
+    if normalizedText.contains("bai tap ve nha") { expansions.append("btvn") }
+    if normalizedText.contains("kiem tra") { expansions.append("kt") }
+    if normalizedText.contains("15 phut") { expansions.append("15p") }
+    if normalizedText.contains("45 phut") { expansions.append("45p") }
+    if normalizedText.contains("giua ki") || normalizedText.contains("giua ky") { expansions.append("gk") }
+    if normalizedText.contains("cuoi ki") || normalizedText.contains("cuoi ky") { expansions.append("ck") }
+    if normalizedText.contains("thuc hanh") { expansions.append("th") }
+    if normalizedText.contains("chuyen de") { expansions.append("cd") }
+    if normalizedText.contains("sach giao khoa") { expansions.append("sgk") }
+    if normalizedText.contains("sach bai tap") { expansions.append("sbt") }
+
+    let tokens = normalizedText.searchQueryTokens()
+    for tok in tokens {
+        switch tok {
+        case "btvn": expansions.append("bai tap ve nha")
+        case "kt": expansions.append("kiem tra")
+        case "15p": expansions.append("15 phut")
+        case "45p": expansions.append("45 phut")
+        case "gk":
+            expansions.append("giua ki")
+            expansions.append("giua ky")
+        case "ck":
+            expansions.append("cuoi ki")
+            expansions.append("cuoi ky")
+        case "th": expansions.append("thuc hanh")
+        case "cd": expansions.append("chuyen de")
+        case "sgk": expansions.append("sach giao khoa")
+        case "sbt": expansions.append("sach bai tap")
+        default: break
+        }
+    }
+
+    if expansions.isEmpty { return "" }
+    return expansions.joined(separator: " ")
+}
+
+@inline(__always)
+public func isSchoolAcronymMatch(queryOrToken: String, normTitle: String) -> Bool {
+    guard !queryOrToken.isEmpty, !normTitle.isEmpty else { return false }
+    switch queryOrToken {
+    case "btvn": return normTitle.contains("bai tap ve nha")
+    case "kt": return normTitle.contains("kiem tra")
+    case "15p": return normTitle.contains("15 phut")
+    case "45p": return normTitle.contains("45 phut")
+    case "gk": return normTitle.contains("giua ki") || normTitle.contains("giua ky")
+    case "ck": return normTitle.contains("cuoi ki") || normTitle.contains("cuoi ky")
+    case "th": return normTitle.contains("thuc hanh")
+    case "cd": return normTitle.contains("chuyen de")
+    case "sgk": return normTitle.contains("sach giao khoa")
+    case "sbt": return normTitle.contains("sach bai tap")
+    case "bai tap ve nha":
+        if let r = normTitle.range(of: "btvn") {
+            let offset = normTitle.distance(from: normTitle.startIndex, to: r.lowerBound)
+            return isWordInString(normTitle, offset: offset, len: 4)
+        }
+        return false
+    case "kiem tra":
+        if let r = normTitle.range(of: "kt") {
+            let offset = normTitle.distance(from: normTitle.startIndex, to: r.lowerBound)
+            return isWordInString(normTitle, offset: offset, len: 2)
+        }
+        return false
+    case "15 phut":
+        if let r = normTitle.range(of: "15p") {
+            let offset = normTitle.distance(from: normTitle.startIndex, to: r.lowerBound)
+            return isWordInString(normTitle, offset: offset, len: 3)
+        }
+        return false
+    case "45 phut":
+        if let r = normTitle.range(of: "45p") {
+            let offset = normTitle.distance(from: normTitle.startIndex, to: r.lowerBound)
+            return isWordInString(normTitle, offset: offset, len: 3)
+        }
+        return false
+    default: return false
+    }
+}
+
+@inline(__always)
+fileprivate func isWordInString(_ s: String, offset: Int, len: Int) -> Bool {
+    guard offset >= 0, offset + len <= s.utf8.count else { return false }
+    return s.utf8.withContiguousStorageIfAvailable { buf in
+        guard let base = buf.baseAddress else { return false }
+        let leftOk = (offset == 0 || !((base[offset - 1] >= 97 && base[offset - 1] <= 122) || (base[offset - 1] >= 48 && base[offset - 1] <= 57)))
+        let rightOk = (offset + len == buf.count || !((base[offset + len] >= 97 && base[offset + len] <= 122) || (base[offset + len] >= 48 && base[offset + len] <= 57)))
+        return leftOk && rightOk
+    } ?? {
+        let utf8 = Array(s.utf8)
+        let leftOk = (offset == 0 || !((utf8[offset - 1] >= 97 && utf8[offset - 1] <= 122) || (utf8[offset - 1] >= 48 && utf8[offset - 1] <= 57)))
+        let rightOk = (offset + len == utf8.count || !((utf8[offset + len] >= 97 && utf8[offset + len] <= 122) || (utf8[offset + len] >= 48 && utf8[offset + len] <= 57)))
+        return leftOk && rightOk
+    }()
 }
 
 private struct FastSearchBuffer {
@@ -474,17 +600,25 @@ private struct FastSearchBuffer {
     }
 
     @inline(__always)
+    func isWordAt(offset: Int, len: Int) -> Bool {
+        guard offset >= 0, offset + len <= count else { return false }
+        let leftOk = (offset == 0 || Self.isWordBoundaryByte(ptr[offset - 1]))
+        let rightOk = (offset + len == count || Self.isWordBoundaryByte(ptr[offset + len]))
+        return leftOk && rightOk
+    }
+
+    @inline(__always)
     func findWordBoundary(_ sub: FastSearchBuffer, firstMatchOffset: Int) -> Bool {
-        if firstMatchOffset == 0 || Self.isWordBoundaryByte(ptr[firstMatchOffset - 1]) {
+        let subLen = sub.count
+        if isWordAt(offset: firstMatchOffset, len: subLen) {
             return true
         }
         var nextOffset = firstMatchOffset + 1
         var remaining = count - nextOffset
-        let subLen = sub.count
         while remaining >= subLen {
             if let p = memmem(ptr + nextOffset, remaining, sub.ptr, subLen) {
                 let matchOffset = UnsafeRawPointer(p) - UnsafeRawPointer(ptr)
-                if Self.isWordBoundaryByte(ptr[matchOffset - 1]) {
+                if isWordAt(offset: matchOffset, len: subLen) {
                     return true
                 }
                 nextOffset = matchOffset + 1
@@ -515,6 +649,7 @@ public enum VietnameseSearchScorer {
         qBuf: FastSearchBuffer,
         tokens: [String],
         rawNormalizedQuery: String,
+        normTitle: String,
         checklistTitles: [String]
     ) -> Int {
         var score = 0
@@ -547,6 +682,10 @@ public enum VietnameseSearchScorer {
                 score += 40
                 courseMatched = true
             }
+
+            if isSchoolAcronymMatch(queryOrToken: rawNormalizedQuery, normTitle: normTitle) {
+                score += 70
+            }
         }
 
         if tokens.count == 1 && rawQueryLen > 0 && tokens[0] == rawNormalizedQuery {
@@ -562,6 +701,34 @@ public enum VietnameseSearchScorer {
             if dBuf.count >= rawQueryLen && dBuf.find(qBuf) >= 0 {
                 score += 5
             }
+
+            if titleFirstMatchOffset < 0 && !courseMatched {
+                let altTok = cleanTelexKeystrokes(rawNormalizedQuery)
+                if altTok != rawNormalizedQuery {
+                    altTok.withCString { tokPtr in
+                        let altBuf = FastSearchBuffer(ptr: UnsafeRawPointer(tokPtr).assumingMemoryBound(to: UInt8.self), count: altTok.utf8.count)
+                        let altLen = altBuf.count
+                        if altLen > 0 {
+                            if tBuf.count >= altLen {
+                                let matchIdx = tBuf.find(altBuf)
+                                if matchIdx >= 0 {
+                                    score += 20
+                                    if tBuf.findWordBoundary(altBuf, firstMatchOffset: matchIdx) {
+                                        score += 10
+                                    }
+                                }
+                            }
+                            if cBuf.count >= altLen && cBuf.find(altBuf) >= 0 {
+                                score += 10
+                            }
+                            if dBuf.count >= altLen && dBuf.find(altBuf) >= 0 {
+                                score += 4
+                            }
+                        }
+                    }
+                }
+            }
+
             if !checklistTitles.isEmpty {
                 for rawTitle in checklistTitles {
                     let normItem = rawTitle.normalizedForVietnameseSearch()
@@ -577,7 +744,13 @@ public enum VietnameseSearchScorer {
             return score
         }
 
+        var allMatchedTitle = true
+        var allMatchedEither = true
+
         for token in tokens {
+            var matchedTitle = false
+            var matchedCourse = false
+
             token.withCString { tokPtr in
                 let tkBuf = FastSearchBuffer(ptr: UnsafeRawPointer(tokPtr).assumingMemoryBound(to: UInt8.self), count: token.utf8.count)
                 let tokenLen = tkBuf.count
@@ -586,6 +759,7 @@ public enum VietnameseSearchScorer {
                     let matchIdx = tBuf.find(tkBuf)
                     if matchIdx >= 0 {
                         score += 30
+                        matchedTitle = true
                         if tBuf.findWordBoundary(tkBuf, firstMatchOffset: matchIdx) {
                             score += 15
                         }
@@ -593,10 +767,53 @@ public enum VietnameseSearchScorer {
                 }
                 if cBuf.count >= tokenLen && cBuf.find(tkBuf) >= 0 {
                     score += 15
+                    matchedCourse = true
                 }
                 if dBuf.count >= tokenLen && dBuf.find(tkBuf) >= 0 {
                     score += 5
                 }
+            }
+
+            if !matchedTitle && !matchedCourse {
+                let altTok = cleanTelexKeystrokes(token)
+                if altTok != token {
+                    altTok.withCString { tokPtr in
+                        let tkBuf = FastSearchBuffer(ptr: UnsafeRawPointer(tokPtr).assumingMemoryBound(to: UInt8.self), count: altTok.utf8.count)
+                        let tokenLen = tkBuf.count
+                        if tokenLen > 0 {
+                            if tBuf.count >= tokenLen {
+                                let matchIdx = tBuf.find(tkBuf)
+                                if matchIdx >= 0 {
+                                    score += 20
+                                    matchedTitle = true
+                                    if tBuf.findWordBoundary(tkBuf, firstMatchOffset: matchIdx) {
+                                        score += 10
+                                    }
+                                }
+                            }
+                            if cBuf.count >= tokenLen && cBuf.find(tkBuf) >= 0 {
+                                score += 10
+                                matchedCourse = true
+                            }
+                        }
+                    }
+                }
+            }
+
+            if isSchoolAcronymMatch(queryOrToken: token, normTitle: normTitle) {
+                score += 35
+                matchedTitle = true
+            }
+
+            if !matchedTitle { allMatchedTitle = false }
+            if !matchedTitle && !matchedCourse { allMatchedEither = false }
+        }
+
+        if tokens.count > 1 {
+            if allMatchedTitle {
+                score += 50
+            } else if allMatchedEither {
+                score += 25
             }
         }
 
@@ -655,6 +872,7 @@ public enum VietnameseSearchScorer {
                             qBuf: qBuf,
                             tokens: tokens,
                             rawNormalizedQuery: rawNormalizedQuery,
+                            normTitle: normTitle,
                             checklistTitles: checklistTitles
                         )
                     }

@@ -195,80 +195,82 @@ struct AssignmentListRow: View, Equatable {
             .padding(.leading, 11)
             .padding(.trailing, 9)
 
-            HStack(alignment: .center, spacing: 9) {
-                VStack(alignment: .leading, spacing: 4) {
-                    #if os(macOS)
-                    Text(item.title)
-                        .font(.system(size: 15.5, weight: isSelected ? .bold : .semibold))
-                        .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
-                        .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
-                        .opacity(isTurnedIn ? 0.72 : 1.0)
-                        .lineLimit(2)
-
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(themeColor)
-                            .frame(width: 7, height: 7)
-                        Text(item.courseName)
-                            .font(.system(size: 13.5, weight: .semibold))
-                            .foregroundStyle(themeColor)
-                            .lineLimit(1)
-                        if hasNote {
-                            Image(systemName: "square.and.pencil")
-                                .font(.system(size: 11.5, weight: .semibold))
-                                .foregroundStyle(Color.blue)
-                        }
-                    }
-                    .opacity(isTurnedIn ? 0.75 : 1.0)
-                    #else
-                    Text(item.title)
-                        .font(.system(size: 17.5, weight: isSelected ? .bold : .semibold))
-                        .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
-                        .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
-                        .opacity(isTurnedIn ? 0.72 : 1.0)
-                        .lineLimit(2)
-
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(themeColor)
-                            .frame(width: 7, height: 7)
-                        Text(item.courseName)
-                            .font(.system(size: 14.5, weight: .semibold))
-                            .foregroundStyle(themeColor)
-                            .lineLimit(1)
-                        if hasNote {
-                            Image(systemName: "square.and.pencil")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Color.blue)
-                        }
-                    }
-                    .opacity(isTurnedIn ? 0.75 : 1.0)
-                    #endif
-                }
-
-                Spacer(minLength: 8)
-
-                DueBadgeView(item: item, compact: true)
-                    .equatable()
-                    .layoutPriority(1)
-            }
-            .padding(.trailing, 11)
-            #if os(iOS)
-            .padding(.vertical, 11)
-            .frame(minHeight: 66)
-            #else
-            .padding(.vertical, 8)
-            #endif
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .onTapGesture {
+            Button {
                 #if os(macOS)
                 let isCmd = NSEvent.modifierFlags.contains(.command)
                 #else
                 let isCmd = false
                 #endif
                 onSelect(isCmd)
+            } label: {
+                HStack(alignment: .center, spacing: 9) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        #if os(macOS)
+                        Text(item.title)
+                            .font(.system(size: 15.5, weight: isSelected ? .bold : .semibold))
+                            .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
+                            .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
+                            .opacity(isTurnedIn ? 0.72 : 1.0)
+                            .lineLimit(2)
+
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(themeColor)
+                                .frame(width: 7, height: 7)
+                            Text(item.courseName)
+                                .font(.system(size: 13.5, weight: .semibold))
+                                .foregroundStyle(themeColor)
+                                .lineLimit(1)
+                            if hasNote {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 11.5, weight: .semibold))
+                                    .foregroundStyle(Color.blue)
+                            }
+                        }
+                        .opacity(isTurnedIn ? 0.75 : 1.0)
+                        #else
+                        Text(item.title)
+                            .font(.system(size: 17.5, weight: isSelected ? .bold : .semibold))
+                            .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
+                            .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
+                            .opacity(isTurnedIn ? 0.72 : 1.0)
+                            .lineLimit(2)
+
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(themeColor)
+                                .frame(width: 7, height: 7)
+                            Text(item.courseName)
+                                .font(.system(size: 14.5, weight: .semibold))
+                                .foregroundStyle(themeColor)
+                                .lineLimit(1)
+                            if hasNote {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Color.blue)
+                            }
+                        }
+                        .opacity(isTurnedIn ? 0.75 : 1.0)
+                        #endif
+                    }
+
+                    Spacer(minLength: 8)
+
+                    DueBadgeView(item: item, compact: true)
+                        .equatable()
+                        .layoutPriority(1)
+                }
+                .padding(.trailing, 11)
+                #if os(iOS)
+                .padding(.vertical, 11)
+                .frame(minHeight: 66)
+                #else
+                .padding(.vertical, 8)
+                #endif
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
         }
         .contentShape(Rectangle())
         .background(
@@ -283,12 +285,13 @@ struct AssignmentListRow: View, Equatable {
                 )
         )
         .modifier(RowSelectedShadowModifier(isSelected: isSelected))
+        .animation(.spring(response: 0.24, dampingFraction: 0.75), value: isSelected)
         #if os(macOS)
         .onHover { hovering in
             isHovered = hovering
         }
         #endif
-        .animation(.spring(response: 0.22, dampingFraction: 0.72), value: isHovered)
+        .animation(.easeInOut(duration: 0.12), value: isHovered)
         .onChange(of: isTurnedIn) {
             withAnimation(.spring(response: 0.24, dampingFraction: 0.52)) {
                 checkmarkBounce = true

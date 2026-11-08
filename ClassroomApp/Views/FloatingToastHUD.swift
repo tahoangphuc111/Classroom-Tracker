@@ -55,16 +55,18 @@ struct FloatingToastHUD: View {
 
             if let actionTitle = toast.actionTitle, let action = toast.action {
                 Button(actionTitle) {
+                    PlatformHaptics.trigger()
                     action()
                     onDismiss()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
                 .controlSize(.mini)
                 .tint(toast.tint)
                 .font(.system(size: 11, weight: .semibold))
             }
 
             Button {
+                PlatformHaptics.trigger()
                 onDismiss()
             } label: {
                 Image(systemName: "xmark")
@@ -73,7 +75,7 @@ struct FloatingToastHUD: View {
                     .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SpringPressButtonStyle(scale: 0.90, pressedOpacity: 0.82))
             .padding(.leading, 2)
         }
         .padding(.horizontal, 16)
@@ -84,7 +86,7 @@ struct FloatingToastHUD: View {
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         ) {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white)
+                .fill(.ultraThinMaterial)
         }
         .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 6)
         .overlay(

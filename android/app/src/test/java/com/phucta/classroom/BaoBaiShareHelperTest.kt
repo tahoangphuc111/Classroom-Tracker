@@ -75,6 +75,7 @@ class BaoBaiShareHelperTest {
         assertNotNull(formatted)
         assertTrue(formatted.isNotBlank())
         assertTrue(formatted[0].isUpperCase())
+        assertTrue(formatted.contains("ngày"))
     }
 
     @Test

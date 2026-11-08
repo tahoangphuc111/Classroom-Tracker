@@ -249,7 +249,7 @@ Vietnamese students search using mixed diacritics (e.g. `"giai tich"`, `"toán"`
 
 ### Search Relevance Scoring Matrix
 
-Search queries are tokenized on whitespace and punctuation delimiters (`,`, `-`, `/`, `:`, `(`, `)`, `;`, `[`, `]`, `.`, `+`) and scored using a weighted multi-tier algorithm:
+Search queries are tokenized on whitespace and punctuation delimiters (`,`, `-`, `/`, `:`, `(`, `)`, `;`, `[`, `]`, `.`, `+`, `_`, `\u00A0`, `\u202F`) and scored using a weighted multi-tier algorithm:
 
 | Match Type | Target Field | Points |
 |---|---|---|
@@ -257,12 +257,43 @@ Search queries are tokenized on whitespace and punctuation delimiters (`,`, `-`,
 | **Prefix Match** | Title (`normTitle.startsWith(query)`) | **+120** |
 | **Exact Full Match** | Course Name (`normCourse == query`) | **+100** |
 | **Substring Match** | Title | **+80** |
+| **School Acronym Match** | Query Acronym $\leftrightarrow$ Title Phrase (`btvn`, `kt`, `15p`, `45p`, `gk`, `ck`) | **+70** |
 | **Prefix Match** | Course Name | **+60** |
+| **Multi-Token All Title Match** | All query tokens present in Title ($K \ge 2$) | **+50** |
+| **Token Word Boundary** | Title (isolated by word boundaries on both sides) | **+45** (+30 base + 15 bonus) |
 | **Substring Match** | Course Name | **+40** |
-| **Token Word Boundary** | Title (preceded or followed by word boundary) | **+45** (+30 base + 15 bonus) |
+| **Token Acronym Match** | Token Acronym $\leftrightarrow$ Title Phrase | **+35** |
+| **Multi-Token Title/Course Match** | All query tokens present in Title or Course ($K \ge 2$) | **+25** |
+| **Telex Fault-Tolerant Token** | Title (trailing tone key or doubled letter normalized) | **+20** (+10 word boundary) |
 | **Token Match** | Course Name | **+15** |
 | **Checklist Match** | Personal Note Checklist Items (`checklistTitles`) | **+10** |
+| **Telex Fault-Tolerant Token** | Course Name | **+10** |
 | **Token Match** | Content / Description | **+5** |
+
+### Algorithmic Refinements: Acronyms, Telex & Boundary Isolation
+
+1. **School Acronyms & Synonyms Expansion (`expandVietnameseAcronyms`)**:
+   - High school coursework frequently uses Vietnamese educational abbreviations.
+   - The search indexer enriches `searchIndex` with bidirectional expansions:
+     - `btvn` $\leftrightarrow$ `bai tap ve nha`
+     - `kt` $\leftrightarrow$ `kiem tra`
+     - `15p` $\leftrightarrow$ `15 phut`
+     - `45p` $\leftrightarrow$ `45 phut`
+     - `gk` $\leftrightarrow$ `giua ki` / `giua ky`
+     - `ck` $\leftrightarrow$ `cuoi ki` / `cuoi ky`
+     - `th` $\leftrightarrow$ `thuc hanh`
+     - `cd` $\leftrightarrow$ `chuyen de`
+     - `sgk` $\leftrightarrow$ `sach giao khoa`
+     - `sbt` $\leftrightarrow$ `sach bai tap`
+   - Searching `btvn` instantly matches assignments titled `"Bài tập về nhà..."`, and searching `"bài tập về nhà"` matches `"BTVN..."`.
+
+2. **True Two-Sided Word Boundary Isolation (`findWordBoundary` / `isWordAt`)**:
+   - Enforces separation from alphanumeric characters on both start and end boundaries (`isWordAt(offset, len)`).
+   - Eliminates false positive word boundary bonuses (e.g. `tin` inside `tinh than`, or `van` inside `vanban`).
+
+3. **Telex Typing Slip Tolerance (`cleanTelexKeystrokes`)**:
+   - Accommodates typing transpositions and unmerged Telex tone marks (e.g. `toans` $\to$ `toan`, `baif` $\to$ `bai`, `ddai` $\to$ `dai`).
+   - Evaluated as a graceful fallback only when the raw token does not match, preserving exact-string precedence and zero regression on English vocabulary (e.g. `physics`, `class`).
 
 ### Subject Taxonomy & Classification (`SubjectArtHelper`)
 
@@ -520,6 +551,7 @@ swiftc Tests/AppleCoreLogicTests.swift \
   Shared/Models/Course.swift \
   Shared/Models/Coursework.swift \
   Shared/Models/PersonalNote.swift \
+  Shared/Models/BaoBaiShareHelper.swift \
   Shared/Storage/ClassroomStorage.swift \
   Shared/PlatformUICompat.swift \
   Shared/WidgetViews/ChunkyTheme.swift \

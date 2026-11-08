@@ -65,7 +65,9 @@ data class PersonalNote(
         ): String {
             val checklistText = if (checklist.isEmpty()) "" else checklist.joinToString(" ") { it.title }
             val combined = "$title $content ${courseName ?: ""} $checklistText"
-            return combined.normalizeForVietnameseSearch()
+            val base = combined.normalizeForVietnameseSearch()
+            val extra = expandVietnameseAcronyms(base)
+            return if (extra.isEmpty()) base else "$base $extra"
         }
     }
 }
