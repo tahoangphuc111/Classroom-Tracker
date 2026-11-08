@@ -28,6 +28,7 @@ public struct SubjectArtHelper {
     private static let cacheLock = NSLock()
     private static var courseCategoryCache: [String: SubjectCategory] = [:]
     private static var categoryCache: [String: SubjectCategory] = [:]
+    private static var courseBadgeCache: [String: String] = [:]
 
     private static let standardThemes: [SubjectCategory: VisualTheme] = [
         .computerScience: VisualTheme(category: .computerScience, icon: "desktopcomputer", themeColor: Color(red: 0.08, green: 0.68, blue: 0.54), bannerBackground: Color(red: 0.06, green: 0.58, blue: 0.50)),
@@ -44,10 +45,13 @@ public struct SubjectArtHelper {
         .other: VisualTheme(category: .other, icon: "book.closed", themeColor: Color(red: 0.40, green: 0.52, blue: 0.64), bannerBackground: Color(red: 0.30, green: 0.44, blue: 0.60))
     ]
 
+    private static let maxCacheSize = 16384
+
     public static func clearCaches() {
         cacheLock.lock()
         courseCategoryCache.removeAll(keepingCapacity: false)
         categoryCache.removeAll(keepingCapacity: false)
+        courseBadgeCache.removeAll(keepingCapacity: false)
         cacheLock.unlock()
     }
 
@@ -63,7 +67,7 @@ public struct SubjectArtHelper {
 
             let computed = computeCategory(for: courseName, title: nil)
             cacheLock.lock()
-            if courseCategoryCache.count >= 2048 {
+            if courseCategoryCache.count >= maxCacheSize {
                 courseCategoryCache.removeAll()
             }
             courseCategoryCache[courseName] = computed
@@ -81,7 +85,7 @@ public struct SubjectArtHelper {
 
         let computed = computeCategory(for: courseName, title: title)
         cacheLock.lock()
-        if categoryCache.count >= 2048 {
+        if categoryCache.count >= maxCacheSize {
             categoryCache.removeAll()
         }
         categoryCache[key] = computed
@@ -107,7 +111,7 @@ public struct SubjectArtHelper {
     public static func badgeCode(for category: SubjectCategory, courseName: String = "", title: String? = nil) -> String {
         switch category {
         case .computerScience: return "TIN"
-        case .math: return "TOÁ"
+        case .math: return "TOÁN"
         case .english: return "ANH"
         case .literature: return "VĂN"
         case .physics: return "LÝ"
@@ -120,7 +124,22 @@ public struct SubjectArtHelper {
         case .other:
             let cleaned = courseName.trimmingCharacters(in: .whitespacesAndNewlines)
             if cleaned.count >= 3 {
-                return String(cleaned.prefix(3)).uppercased()
+                if !courseName.isEmpty {
+                    cacheLock.lock()
+                    if let cached = courseBadgeCache[courseName] {
+                        cacheLock.unlock()
+                        return cached
+                    }
+                    cacheLock.unlock()
+                }
+                let badge = String(cleaned.prefix(3)).uppercased()
+                if !courseName.isEmpty {
+                    cacheLock.lock()
+                    if courseBadgeCache.count >= maxCacheSize { courseBadgeCache.removeAll() }
+                    courseBadgeCache[courseName] = badge
+                    cacheLock.unlock()
+                }
+                return badge
             }
             let titleCleaned = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             if titleCleaned.count >= 3 {
@@ -164,213 +183,613 @@ public struct SubjectArtHelper {
         static let anh = TokenFlags(rawValue: 1 << 16)
         static let tin = TokenFlags(rawValue: 1 << 17)
         static let tu = TokenFlags(rawValue: 1 << 18)
+
+        // Anchor tokens to gate substring scans
+        static let wGiai = TokenFlags(rawValue: 1 << 19)
+        static let wDai = TokenFlags(rawValue: 1 << 20)
+        static let wHinh = TokenFlags(rawValue: 1 << 21)
+        static let wXac = TokenFlags(rawValue: 1 << 22)
+        static let wLuong = TokenFlags(rawValue: 1 << 23)
+        static let wDao = TokenFlags(rawValue: 1 << 24)
+        static let wTich = TokenFlags(rawValue: 1 << 25)
+        static let wThong = TokenFlags(rawValue: 1 << 26)
+        static let wVi = TokenFlags(rawValue: 1 << 27)
+        static let wMa = TokenFlags(rawValue: 1 << 28)
+
+        static let wVat = TokenFlags(rawValue: 1 << 29)
+        static let wCo = TokenFlags(rawValue: 1 << 30)
+        static let wNhiet = TokenFlags(rawValue: 1 << 31)
+        static let wQuang = TokenFlags(rawValue: 1 << 32)
+        static let wDien = TokenFlags(rawValue: 1 << 33)
+        static let wSong = TokenFlags(rawValue: 1 << 34)
+
+        static let wY = TokenFlags(rawValue: 1 << 35)
+        static let wDi = TokenFlags(rawValue: 1 << 36)
+        static let wTe = TokenFlags(rawValue: 1 << 37)
+        static let wTieu = TokenFlags(rawValue: 1 << 38)
+
+        static let wLap = TokenFlags(rawValue: 1 << 39)
+        static let wThuat = TokenFlags(rawValue: 1 << 40)
+        static let wCong = TokenFlags(rawValue: 1 << 41)
+        static let wKhoa = TokenFlags(rawValue: 1 << 42)
+        static let wCau = TokenFlags(rawValue: 1 << 43)
+        static let wTri = TokenFlags(rawValue: 1 << 44)
+        static let wMachine = TokenFlags(rawValue: 1 << 45)
+        static let wHe = TokenFlags(rawValue: 1 << 46)
+        static let wKien = TokenFlags(rawValue: 1 << 47)
+
+        static let wQuoc = TokenFlags(rawValue: 1 << 48)
+        static let wQuan = TokenFlags(rawValue: 1 << 49)
+        static let wGiao = TokenFlags(rawValue: 1 << 50)
+        static let wHoat = TokenFlags(rawValue: 1 << 51)
+        static let wHuong = TokenFlags(rawValue: 1 << 52)
     }
 
-    private static let tokenMap: [Substring: TokenFlags] = [
-        "toan": .math, "toán": .math, "math": .math, "maths": .math, "calculus": .math, "algebra": .math,
-        "geometry": .math, "trigonometry": .math, "statistics": .math, "discrete": .math,
-        "physics": .physics, "mechanics": .physics, "thermodynamics": .physics, "optics": .physics,
-        "ly": .ly, "lý": .ly, "lí": .ly,
-        "chemistry": .chemistry, "chem": .chemistry, "biochemistry": .chemistry,
-        "hoa": .hoa, "hóa": .hoa, "hoá": .hoa,
-        "biology": .biology, "bio": .biology, "genetics": .biology, "ecology": .biology,
-        "sinh": .sinh,
-        "history": .history, "su": .su, "sử": .su,
-        "literature": .literature, "writing": .literature, "essay": .literature,
-        "van": .van, "văn": .van,
-        "english": .english, "ielts": .english, "toeic": .english, "toefl": .english,
-        "anh": .anh,
-        "gdqp": .defense,
-        "gddp": .local, "gdđp": .local,
-        "hdtn": .experiential, "hđtn": .experiential,
-        "android": .cs, "ios": .cs, "swift": .cs, "python": .cs, "java": .cs,
-        "cntt": .cs, "it": .cs, "ctdl": .cs, "cpp": .cs, "kotlin": .cs,
-        "javascript": .cs, "typescript": .cs, "tin": .tin, "tu": .tu, "tự": .tu
-    ]
+    private final class FastTokenTrie {
+        final class Node {
+            var flag: TokenFlags = []
+            var children: [Node?] = Array(repeating: nil, count: 26)
+        }
 
-    private static func scanTokenFlags(in text: String) -> TokenFlags {
-        var flags: TokenFlags = []
-        var start: String.Index? = nil
-        for i in text.indices {
-            let ch = text[i]
-            if ch.isLetter || ch.isNumber {
-                if start == nil { start = i }
-            } else if let s = start {
-                if let flag = tokenMap[text[s..<i]] {
-                    flags.insert(flag)
+        let root = Node()
+
+        init() {
+            func insert(_ word: String, _ flag: TokenFlags) {
+                var curr = root
+                for b in word.utf8 {
+                    let idx = Int(b - 97)
+                    if idx >= 0 && idx < 26 {
+                        if curr.children[idx] == nil {
+                            curr.children[idx] = Node()
+                        }
+                        curr = curr.children[idx]!
+                    }
                 }
-                start = nil
+                curr.flag.insert(flag)
+            }
+
+            insert("toan", .math)
+            insert("math", .math)
+            insert("maths", .math)
+            insert("calculus", .math)
+            insert("algebra", .math)
+            insert("geometry", .math)
+            insert("trigonometry", .math)
+            insert("statistics", .math)
+            insert("discrete", .math)
+
+            insert("giai", .wGiai)
+            insert("dai", .wDai)
+            insert("hinh", .wHinh)
+            insert("xac", .wXac)
+            insert("luong", .wLuong)
+            insert("dao", .wDao)
+            insert("tich", .wTich)
+            insert("thong", .wThong)
+            insert("vi", .wVi)
+            insert("ma", .wMa)
+
+            insert("physics", .physics)
+            insert("mechanics", .physics)
+            insert("thermodynamics", .physics)
+            insert("optics", .physics)
+            insert("ly", .ly)
+            insert("li", .ly)
+            insert("vat", .wVat)
+            insert("co", .wCo)
+            insert("nhiet", .wNhiet)
+            insert("quang", .wQuang)
+            insert("dien", .wDien)
+            insert("song", .wSong)
+
+            insert("chemistry", .chemistry)
+            insert("chem", .chemistry)
+            insert("biochemistry", .chemistry)
+            insert("hoa", .hoa)
+
+            insert("biology", .biology)
+            insert("bio", .biology)
+            insert("genetics", .biology)
+            insert("ecology", .biology)
+            insert("sinh", .sinh)
+            insert("y", .wY)
+            insert("di", .wDi)
+            insert("te", .wTe)
+            insert("tieu", .wTieu)
+
+            insert("history", .history)
+            insert("su", .su)
+
+            insert("literature", .literature)
+            insert("writing", .literature)
+            insert("essay", .literature)
+            insert("van", .van)
+
+            insert("english", .english)
+            insert("ielts", .english)
+            insert("toeic", .english)
+            insert("toefl", .english)
+            insert("anh", .anh)
+
+            insert("gdqp", .defense)
+            insert("gddp", .local)
+            insert("hdtn", .experiential)
+
+            insert("android", .cs)
+            insert("ios", .cs)
+            insert("swift", .cs)
+            insert("python", .cs)
+            insert("java", .cs)
+            insert("cntt", .cs)
+            insert("it", .cs)
+            insert("ctdl", .cs)
+            insert("cpp", .cs)
+            insert("kotlin", .cs)
+            insert("javascript", .cs)
+            insert("typescript", .cs)
+            insert("tin", .tin)
+            insert("tu", .tu)
+            insert("lap", .wLap)
+            insert("thuat", .wThuat)
+            insert("cong", .wCong)
+            insert("khoa", .wKhoa)
+            insert("cau", .wCau)
+            insert("tri", .wTri)
+            insert("machine", .wMachine)
+            insert("he", .wHe)
+            insert("kien", .wKien)
+
+            insert("quoc", .wQuoc)
+            insert("quan", .wQuan)
+            insert("giao", .wGiao)
+            insert("hoat", .wHoat)
+            insert("huong", .wHuong)
+        }
+
+        @inline(__always)
+        func lookup(ptr: UnsafePointer<UInt8>, count: Int) -> TokenFlags {
+            var curr = root
+            for i in 0..<count {
+                let b = ptr[i]
+                guard b >= 97 && b <= 122 else { return [] }
+                let idx = Int(b - 97)
+                guard let next = curr.children[idx] else { return [] }
+                curr = next
+            }
+            return curr.flag
+        }
+
+        @inline(__always)
+        func scan(buf: FastSearchBuffer) -> TokenFlags {
+            var flags: TokenFlags = []
+            var start = -1
+            let count = buf.count
+            let ptr = buf.ptr
+            for i in 0..<count {
+                let b = ptr[i]
+                let isWordChar = (b >= 97 && b <= 122) || (b >= 48 && b <= 57)
+                if isWordChar {
+                    if start == -1 { start = i }
+                } else if start != -1 {
+                    let tokenLen = i - start
+                    if tokenLen >= 1 && tokenLen <= 20 {
+                        flags.insert(lookup(ptr: ptr + start, count: tokenLen))
+                    }
+                    start = -1
+                }
+            }
+            if start != -1 {
+                let tokenLen = count - start
+                if tokenLen >= 1 && tokenLen <= 20 {
+                    flags.insert(lookup(ptr: ptr + start, count: tokenLen))
+                }
+            }
+            return flags
+        }
+    }
+
+    private struct StaticPattern {
+        let bytes: [UInt8]
+        let count: Int
+
+        init(_ str: String) {
+            self.bytes = Array(str.utf8)
+            self.count = self.bytes.count
+        }
+
+        @inline(__always)
+        func isFound(in buf: FastSearchBuffer) -> Bool {
+            guard count <= buf.count else { return false }
+            return bytes.withUnsafeBufferPointer { b in
+                guard let base = b.baseAddress else { return false }
+                if count == 1 {
+                    return memchr(buf.ptr, Int32(base.pointee), buf.count) != nil
+                }
+                return memmem(buf.ptr, buf.count, base, count) != nil
             }
         }
-        if let s = start {
-            if let flag = tokenMap[text[s...]] {
-                flags.insert(flag)
+    }
+
+    private static let tokenTrie = FastTokenTrie()
+
+    private static let p_giai_tich = StaticPattern("giai tich")
+    private static let p_dai_so = StaticPattern("dai so")
+    private static let p_hinh_hoc = StaticPattern("hinh hoc")
+    private static let p_xac_suat = StaticPattern("xac suat")
+    private static let p_luong_giac = StaticPattern("luong giac")
+    private static let p_dao_ham = StaticPattern("dao ham")
+    private static let p_tich_phan = StaticPattern("tich phan")
+    private static let p_toan_cao_cap = StaticPattern("toan cao cap")
+    private static let p_toan_roi_rac = StaticPattern("toan roi rac")
+    private static let p_thong_ke = StaticPattern("thong ke")
+    private static let p_vi_phan = StaticPattern("vi phan")
+    private static let p_ma_tran = StaticPattern("ma tran")
+    private static let p_dien_toan = StaticPattern("dien toan")
+    private static let p_an_toan = StaticPattern("an toan")
+    private static let p_thanh_toan = StaticPattern("thanh toan")
+    private static let p_hoan_toan = StaticPattern("hoan toan")
+
+    private static let p_vat_ly = StaticPattern("vat ly")
+    private static let p_vat_li = StaticPattern("vat li")
+    private static let p_mon_ly = StaticPattern("mon ly")
+    private static let p_mon_li = StaticPattern("mon li")
+    private static let p_sbt_ly = StaticPattern("sbt ly")
+    private static let p_sbt_li = StaticPattern("sbt li")
+    private static let p_co_hoc = StaticPattern("co hoc")
+    private static let p_nhiet_hoc = StaticPattern("nhiet hoc")
+    private static let p_quang_hoc = StaticPattern("quang hoc")
+    private static let p_dien_tu = StaticPattern("dien tu")
+    private static let p_vat_ly_dai_cuong = StaticPattern("vat ly dai cuong")
+    private static let p_vat_li_dai_cuong = StaticPattern("vat li dai cuong")
+    private static let p_dao_dong = StaticPattern("dao dong")
+    private static let p_song_co = StaticPattern("song co")
+    private static let p_quan_ly = StaticPattern("quan ly")
+    private static let p_quan_li = StaticPattern("quan li")
+    private static let p_xu_ly = StaticPattern("xu ly")
+    private static let p_xu_li = StaticPattern("xu li")
+    private static let p_tam_ly = StaticPattern("tam ly")
+    private static let p_tam_li = StaticPattern("tam li")
+    private static let p_phap_ly = StaticPattern("phap ly")
+    private static let p_phap_li = StaticPattern("phap li")
+    private static let p_dia_ly = StaticPattern("dia ly")
+    private static let p_dia_li = StaticPattern("dia li")
+    private static let p_triet_ly = StaticPattern("triet ly")
+    private static let p_triet_li = StaticPattern("triet li")
+    private static let p_ly_thuyet = StaticPattern("ly thuyet")
+    private static let p_li_thuyet = StaticPattern("li thuyet")
+    private static let p_ly_luan = StaticPattern("ly luan")
+    private static let p_li_luan = StaticPattern("li luan")
+    private static let p_ly_do = StaticPattern("ly do")
+    private static let p_li_do = StaticPattern("li do")
+    private static let p_hop_ly = StaticPattern("hop ly")
+    private static let p_hop_li = StaticPattern("hop li")
+    private static let p_dai_ly = StaticPattern("dai ly")
+    private static let p_dai_li = StaticPattern("dai li")
+
+    private static let p_hoa_hoc = StaticPattern("hoa hoc")
+    private static let p_mon_hoa = StaticPattern("mon hoa")
+    private static let p_hoa_huu_co = StaticPattern("hoa huu co")
+    private static let p_hoa_vo_co = StaticPattern("hoa vo co")
+    private static let p_hoa_dai_cuong = StaticPattern("hoa dai cuong")
+    private static let p_hoa_phan_tich = StaticPattern("hoa phan tich")
+    private static let p_tu_dong_hoa = StaticPattern("tu dong hoa")
+    private static let p_tien_hoa = StaticPattern("tien hoa")
+    private static let p_tieu_hoa = StaticPattern("tieu hoa")
+    private static let p_hoa_don = StaticPattern("hoa don")
+    private static let p_van_hoa = StaticPattern("van hoa")
+    private static let p_toi_uu_hoa = StaticPattern("toi uu hoa")
+    private static let p_chuan_hoa = StaticPattern("chuan hoa")
+    private static let p_cong_nghiep_hoa = StaticPattern("cong nghiep hoa")
+    private static let p_hien_dai_hoa = StaticPattern("hien dai hoa")
+    private static let p_ao_hoa = StaticPattern("ao hoa")
+    private static let p_so_hoa = StaticPattern("so hoa")
+    private static let p_hoa_binh = StaticPattern("hoa binh")
+    private static let p_hoa_hop = StaticPattern("hoa hop")
+    private static let p_hoa_than = StaticPattern("hoa than")
+
+    private static let p_sinh_hoc = StaticPattern("sinh hoc")
+    private static let p_mon_sinh = StaticPattern("mon sinh")
+    private static let p_y_hoc = StaticPattern("y hoc")
+    private static let p_di_truyen = StaticPattern("di truyen")
+    private static let p_te_bao = StaticPattern("te bao")
+    private static let p_vi_sinh = StaticPattern("vi sinh")
+    private static let p_sinh_thai = StaticPattern("sinh thai")
+    private static let p_hoc_sinh = StaticPattern("hoc sinh")
+    private static let p_sinh_vien = StaticPattern("sinh vien")
+    private static let p_sinh_hoat = StaticPattern("sinh hoat")
+
+    private static let p_lich_su = StaticPattern("lich su")
+    private static let p_lich_su_trong = StaticPattern("lich su trong")
+    private static let p_giao_tiep = StaticPattern("giao tiep")
+    private static let p_ung_xu = StaticPattern("ung xu")
+    private static let p_mon_su = StaticPattern("mon su")
+    private static let p_su_dung = StaticPattern("su dung")
+
+    private static let p_ngu_van = StaticPattern("ngu van")
+    private static let p_tieng_viet = StaticPattern("tieng viet")
+    private static let p_mon_van = StaticPattern("mon van")
+    private static let p_van_phong = StaticPattern("van phong")
+    private static let p_van_minh = StaticPattern("van minh")
+    private static let p_van_ban = StaticPattern("van ban")
+    private static let p_luan_van = StaticPattern("luan van")
+
+    private static let p_tieng_anh = StaticPattern("tieng anh")
+    private static let p_mon_anh = StaticPattern("mon anh")
+    private static let p_hinh_anh = StaticPattern("hinh anh")
+    private static let p_am_thanh = StaticPattern("am thanh")
+    private static let p_thay = StaticPattern("thay")
+    private static let p_co = StaticPattern("co ")
+    private static let p_gv = StaticPattern("gv")
+
+    private static let p_tin_hoc = StaticPattern("tin hoc")
+    private static let p_mon_tin = StaticPattern("mon tin")
+    private static let p_lap_trinh = StaticPattern("lap trinh")
+    private static let p_di_dong = StaticPattern("di dong")
+    private static let p_cong_nghe_thong_tin = StaticPattern("cong nghe thong tin")
+    private static let p_thuat_toan = StaticPattern("thuat toan")
+    private static let p_co_so_du_lieu = StaticPattern("co so du lieu")
+    private static let p_khoa_hoc_may_tinh = StaticPattern("khoa hoc may tinh")
+    private static let p_cau_truc_du_lieu = StaticPattern("cau truc du lieu")
+    private static let p_tri_tue_nhan_tao = StaticPattern("tri tue nhan tao")
+    private static let p_machine_learning = StaticPattern("machine learning")
+    private static let p_he_dieu_hanh = StaticPattern("he dieu hanh")
+    private static let p_kien_truc_may_tinh = StaticPattern("kien truc may tinh")
+    private static let p_thong_tin = StaticPattern("thong tin")
+    private static let p_ban_tin = StaticPattern("ban tin")
+    private static let p_tin_tuc = StaticPattern("tin tuc")
+    private static let p_niem_tin = StaticPattern("niem tin")
+
+    private static let p_giao_duc_quoc_phong = StaticPattern("giao duc quoc phong")
+    private static let p_quoc_phong_an_ninh = StaticPattern("quoc phong an ninh")
+    private static let p_an_ninh_quoc_phong = StaticPattern("an ninh quoc phong")
+    private static let p_quan_su = StaticPattern("quan su")
+    private static let p_giao_duc_qp = StaticPattern("giao duc qp")
+
+    private static let p_giao_duc_dia_phuong = StaticPattern("giao duc dia phuong")
+    private static let p_giao_duc_dp = StaticPattern("giao duc dp")
+
+    private static let p_hoat_dong_trai_nghiem = StaticPattern("hoat dong trai nghiem")
+    private static let p_huong_nghiep = StaticPattern("huong nghiep")
+    private static let p_sinh_hoat_duoi_co = StaticPattern("sinh hoat duoi co")
+    private static let p_sinh_hoat_lop = StaticPattern("sinh hoat lop")
+
+    private static func classifyCandidate(rawText: String) -> SubjectCategory? {
+        if rawText.isEmpty { return nil }
+        let norm = rawText.normalizedForVietnameseSearch()
+        if norm.isEmpty { return nil }
+
+        return norm.utf8.withContiguousStorageIfAvailable { buf -> SubjectCategory? in
+            guard let base = buf.baseAddress, buf.count > 0 else { return nil }
+            let sBuf = FastSearchBuffer(ptr: base, count: buf.count)
+            let flags = tokenTrie.scan(buf: sBuf)
+
+            // Math
+            var hasMath = flags.contains(.math)
+            if !hasMath {
+                if flags.contains(.wGiai) && p_giai_tich.isFound(in: sBuf) { hasMath = true }
+                else if flags.contains(.wDai) && p_dai_so.isFound(in: sBuf) { hasMath = true }
+                else if flags.contains(.wHinh) && p_hinh_hoc.isFound(in: sBuf) { hasMath = true }
+                else if flags.contains(.wXac) && p_xac_suat.isFound(in: sBuf) { hasMath = true }
+                else if flags.contains(.wLuong) && p_luong_giac.isFound(in: sBuf) { hasMath = true }
+                else if flags.contains(.wDao) && p_dao_ham.isFound(in: sBuf) { hasMath = true }
+                else if flags.contains(.wTich) && p_tich_phan.isFound(in: sBuf) { hasMath = true }
+                else if flags.contains(.wThong) && p_thong_ke.isFound(in: sBuf) { hasMath = true }
+                else if flags.contains(.wVi) && p_vi_phan.isFound(in: sBuf) { hasMath = true }
+                else if flags.contains(.wMa) && p_ma_tran.isFound(in: sBuf) { hasMath = true }
+            } else {
+                if p_toan_cao_cap.isFound(in: sBuf) || p_toan_roi_rac.isFound(in: sBuf) { hasMath = true }
             }
-        }
-        return flags
+
+            if hasMath {
+                if flags.contains(.math) {
+                    if !p_dien_toan.isFound(in: sBuf) &&
+                        !p_an_toan.isFound(in: sBuf) &&
+                        !p_thanh_toan.isFound(in: sBuf) &&
+                        !p_hoan_toan.isFound(in: sBuf) {
+                        return .math
+                    }
+                } else {
+                    return .math
+                }
+            }
+
+            // Physics
+            var hasPhysics = flags.contains(.physics)
+            if !hasPhysics {
+                if flags.contains(.wVat) {
+                    if p_vat_ly.isFound(in: sBuf) || p_vat_li.isFound(in: sBuf) ||
+                       p_vat_ly_dai_cuong.isFound(in: sBuf) || p_vat_li_dai_cuong.isFound(in: sBuf) {
+                        hasPhysics = true
+                    }
+                }
+                if !hasPhysics && flags.contains(.wCo) && p_co_hoc.isFound(in: sBuf) { hasPhysics = true }
+                if !hasPhysics && flags.contains(.wNhiet) && p_nhiet_hoc.isFound(in: sBuf) { hasPhysics = true }
+                if !hasPhysics && flags.contains(.wQuang) && p_quang_hoc.isFound(in: sBuf) { hasPhysics = true }
+                if !hasPhysics && flags.contains(.wDien) && p_dien_tu.isFound(in: sBuf) { hasPhysics = true }
+                if !hasPhysics && flags.contains(.wDao) && p_dao_dong.isFound(in: sBuf) { hasPhysics = true }
+                if !hasPhysics && flags.contains(.wSong) && p_song_co.isFound(in: sBuf) { hasPhysics = true }
+                if !hasPhysics && flags.contains(.ly) {
+                    if p_mon_ly.isFound(in: sBuf) || p_mon_li.isFound(in: sBuf) || p_sbt_ly.isFound(in: sBuf) || p_sbt_li.isFound(in: sBuf) {
+                        hasPhysics = true
+                    } else if !p_quan_ly.isFound(in: sBuf) && !p_quan_li.isFound(in: sBuf) &&
+                        !p_xu_ly.isFound(in: sBuf) && !p_xu_li.isFound(in: sBuf) &&
+                        !p_tam_ly.isFound(in: sBuf) && !p_tam_li.isFound(in: sBuf) &&
+                        !p_phap_ly.isFound(in: sBuf) && !p_phap_li.isFound(in: sBuf) &&
+                        !p_dia_ly.isFound(in: sBuf) && !p_dia_li.isFound(in: sBuf) &&
+                        !p_triet_ly.isFound(in: sBuf) && !p_triet_li.isFound(in: sBuf) &&
+                        !p_ly_thuyet.isFound(in: sBuf) && !p_li_thuyet.isFound(in: sBuf) &&
+                        !p_ly_luan.isFound(in: sBuf) && !p_li_luan.isFound(in: sBuf) &&
+                        !p_ly_do.isFound(in: sBuf) && !p_li_do.isFound(in: sBuf) &&
+                        !p_hop_ly.isFound(in: sBuf) && !p_hop_li.isFound(in: sBuf) &&
+                        !p_dai_ly.isFound(in: sBuf) && !p_dai_li.isFound(in: sBuf) {
+                        hasPhysics = true
+                    }
+                }
+            }
+            if hasPhysics { return .physics }
+
+            // Chemistry
+            var hasChem = flags.contains(.chemistry)
+            if !hasChem && flags.contains(.hoa) {
+                if p_hoa_hoc.isFound(in: sBuf) || p_mon_hoa.isFound(in: sBuf) ||
+                   p_hoa_huu_co.isFound(in: sBuf) || p_hoa_vo_co.isFound(in: sBuf) ||
+                   p_hoa_dai_cuong.isFound(in: sBuf) || p_hoa_phan_tich.isFound(in: sBuf) {
+                    hasChem = true
+                } else if !p_tu_dong_hoa.isFound(in: sBuf) &&
+                    !p_tien_hoa.isFound(in: sBuf) &&
+                    !p_tieu_hoa.isFound(in: sBuf) &&
+                    !p_hoa_don.isFound(in: sBuf) &&
+                    !p_van_hoa.isFound(in: sBuf) &&
+                    !p_toi_uu_hoa.isFound(in: sBuf) &&
+                    !p_chuan_hoa.isFound(in: sBuf) &&
+                    !p_cong_nghiep_hoa.isFound(in: sBuf) &&
+                    !p_hien_dai_hoa.isFound(in: sBuf) &&
+                    !p_ao_hoa.isFound(in: sBuf) &&
+                    !p_so_hoa.isFound(in: sBuf) &&
+                    !p_hoa_binh.isFound(in: sBuf) &&
+                    !p_hoa_hop.isFound(in: sBuf) &&
+                    !p_hoa_than.isFound(in: sBuf) {
+                    hasChem = true
+                }
+            }
+            if hasChem { return .chemistry }
+
+            // Biology
+            var hasBio = flags.contains(.biology)
+            if !hasBio {
+                if flags.contains(.wY) && p_y_hoc.isFound(in: sBuf) { hasBio = true }
+                else if flags.contains(.wDi) && p_di_truyen.isFound(in: sBuf) { hasBio = true }
+                else if flags.contains(.wTe) && p_te_bao.isFound(in: sBuf) { hasBio = true }
+                else if flags.contains(.wVi) && p_vi_sinh.isFound(in: sBuf) { hasBio = true }
+                else if flags.contains(.wTieu) && p_tieu_hoa.isFound(in: sBuf) { hasBio = true }
+                else if flags.contains(.sinh) {
+                    if p_sinh_hoc.isFound(in: sBuf) || p_mon_sinh.isFound(in: sBuf) || p_sinh_thai.isFound(in: sBuf) {
+                        hasBio = true
+                    } else if !p_hoc_sinh.isFound(in: sBuf) && !p_sinh_vien.isFound(in: sBuf) && !p_sinh_hoat.isFound(in: sBuf) {
+                        hasBio = true
+                    }
+                }
+            }
+            if hasBio { return .biology }
+
+            // History
+            if flags.contains(.history) { return .history }
+            if flags.contains(.su) {
+                let isLichSuManners = p_lich_su_trong.isFound(in: sBuf) ||
+                    p_giao_tiep.isFound(in: sBuf) ||
+                    p_ung_xu.isFound(in: sBuf) ||
+                    rawText.contains("lịch sự")
+                if !isLichSuManners {
+                    if p_lich_su.isFound(in: sBuf) || p_mon_su.isFound(in: sBuf) || !p_su_dung.isFound(in: sBuf) {
+                        return .history
+                    }
+                }
+            }
+
+            // Literature
+            if flags.contains(.literature) { return .literature }
+            if flags.contains(.van) {
+                if p_ngu_van.isFound(in: sBuf) || p_tieng_viet.isFound(in: sBuf) || p_mon_van.isFound(in: sBuf) {
+                    return .literature
+                }
+                if !p_van_phong.isFound(in: sBuf) &&
+                    !p_van_hoa.isFound(in: sBuf) &&
+                    !p_van_minh.isFound(in: sBuf) &&
+                    !p_van_ban.isFound(in: sBuf) &&
+                    !p_luan_van.isFound(in: sBuf) {
+                    return .literature
+                }
+            }
+
+            // English
+            if flags.contains(.english) { return .english }
+            if flags.contains(.anh) {
+                if p_tieng_anh.isFound(in: sBuf) || p_mon_anh.isFound(in: sBuf) {
+                    return .english
+                }
+                if !p_hinh_anh.isFound(in: sBuf) &&
+                    !p_am_thanh.isFound(in: sBuf) &&
+                    !p_thay.isFound(in: sBuf) &&
+                    !p_co.isFound(in: sBuf) &&
+                    !rawText.contains("cô") &&
+                    !p_gv.isFound(in: sBuf) {
+                    return .english
+                }
+            }
+
+            // Computer Science
+            if flags.contains(.cs) { return .computerScience }
+            var hasCs = false
+            if flags.contains(.tin) {
+                if p_tin_hoc.isFound(in: sBuf) || p_mon_tin.isFound(in: sBuf) {
+                    hasCs = true
+                } else if !p_thong_tin.isFound(in: sBuf) &&
+                    !p_ban_tin.isFound(in: sBuf) &&
+                    !p_tin_tuc.isFound(in: sBuf) &&
+                    !p_niem_tin.isFound(in: sBuf) &&
+                    !flags.contains(.tu) {
+                    hasCs = true
+                }
+            }
+            if !hasCs {
+                if flags.contains(.wLap) && p_lap_trinh.isFound(in: sBuf) { hasCs = true }
+                else if flags.contains(.wDi) && p_di_dong.isFound(in: sBuf) { hasCs = true }
+                else if flags.contains(.wCong) && p_cong_nghe_thong_tin.isFound(in: sBuf) { hasCs = true }
+                else if flags.contains(.wThuat) && p_thuat_toan.isFound(in: sBuf) { hasCs = true }
+                else if (flags.contains(.wCo) && p_co_so_du_lieu.isFound(in: sBuf)) || (flags.contains(.wCau) && p_cau_truc_du_lieu.isFound(in: sBuf)) { hasCs = true }
+                else if flags.contains(.wKhoa) && p_khoa_hoc_may_tinh.isFound(in: sBuf) { hasCs = true }
+                else if flags.contains(.wTri) && p_tri_tue_nhan_tao.isFound(in: sBuf) { hasCs = true }
+                else if flags.contains(.wMachine) && p_machine_learning.isFound(in: sBuf) { hasCs = true }
+                else if flags.contains(.wHe) && p_he_dieu_hanh.isFound(in: sBuf) { hasCs = true }
+                else if flags.contains(.wKien) && p_kien_truc_may_tinh.isFound(in: sBuf) { hasCs = true }
+            }
+            if hasCs { return .computerScience }
+
+            // Defense
+            if flags.contains(.defense) { return .defenseEducation }
+            if flags.contains(.wQuoc) || flags.contains(.wQuan) || flags.contains(.wGiao) {
+                if p_giao_duc_quoc_phong.isFound(in: sBuf) ||
+                    p_quoc_phong_an_ninh.isFound(in: sBuf) ||
+                    p_an_ninh_quoc_phong.isFound(in: sBuf) ||
+                    p_quan_su.isFound(in: sBuf) ||
+                    p_giao_duc_qp.isFound(in: sBuf) {
+                    return .defenseEducation
+                }
+            }
+
+            // Local
+            if flags.contains(.local) { return .localEducation }
+            if flags.contains(.wGiao) {
+                if p_giao_duc_dia_phuong.isFound(in: sBuf) || p_giao_duc_dp.isFound(in: sBuf) {
+                    return .localEducation
+                }
+            }
+
+            // Experiential
+            if flags.contains(.experiential) { return .experientialActivities }
+            if flags.contains(.wHoat) || flags.contains(.wHuong) || flags.contains(.sinh) {
+                if p_hoat_dong_trai_nghiem.isFound(in: sBuf) ||
+                    p_huong_nghiep.isFound(in: sBuf) ||
+                    p_sinh_hoat_duoi_co.isFound(in: sBuf) ||
+                    p_sinh_hoat_lop.isFound(in: sBuf) {
+                    return .experientialActivities
+                }
+            }
+
+            return nil
+        } ?? nil
     }
 
     private static func computeCategory(for courseName: String, title: String? = nil) -> SubjectCategory {
-        func matchCategory(text: String, flags: TokenFlags) -> SubjectCategory? {
-            if (flags.contains(.math) || text.contains("toán") ||
-                text.contains("giải tích") || text.contains("giai tich") ||
-                text.contains("đại số") || text.contains("dai so") ||
-                text.contains("hình học") || text.contains("hinh hoc") ||
-                text.contains("xác suất") || text.contains("xac suat") ||
-                text.contains("lượng giác") || text.contains("luong giac") ||
-                text.contains("đạo hàm") || text.contains("dao ham") ||
-                text.contains("tích phân") || text.contains("tich phan") ||
-                text.contains("toán cao cấp") || text.contains("toan cao cap") ||
-                text.contains("toán rời rạc") || text.contains("toan roi rac") ||
-                text.contains("thống kê") || text.contains("thong ke") ||
-                text.contains("vi phân") || text.contains("vi phan") ||
-                text.contains("ma trận") || text.contains("ma tran"))
-                && !text.contains("điện toán") && !text.contains("dien toan")
-                && !text.contains("an toàn") && !text.contains("an toan")
-                && !text.contains("thanh toán") && !text.contains("thanh toan")
-                && !text.contains("hoàn toàn") && !text.contains("hoan toan") {
-                return .math
-            } else if text.contains("vật lý") || text.contains("vật lí") || text.contains("vat ly") || text.contains("vat li") || flags.contains(.physics) ||
-                text.contains("môn lý") || text.contains("môn lí") || text.contains("mon ly") || text.contains("mon li") ||
-                text.contains("sbt lý") || text.contains("sbt lí") || text.contains("sbt ly") || text.contains("sbt li") ||
-                text.contains("cơ học") || text.contains("co hoc") ||
-                text.contains("nhiệt học") || text.contains("nhiet hoc") ||
-                text.contains("quang học") || text.contains("quang hoc") ||
-                text.contains("điện từ") || text.contains("dien tu") ||
-                text.contains("vật lý đại cương") || text.contains("vật lí đại cương") || text.contains("vat ly dai cuong") || text.contains("vat li dai cuong") ||
-                text.contains("dao động") || text.contains("dao dong") ||
-                text.contains("sóng cơ") || text.contains("song co") ||
-                (flags.contains(.ly) &&
-                    !text.contains("quản lý") && !text.contains("quản lí") && !text.contains("quan ly") && !text.contains("quan li") &&
-                    !text.contains("xử lý") && !text.contains("xử lí") && !text.contains("xu ly") && !text.contains("xu li") &&
-                    !text.contains("tâm lý") && !text.contains("tâm lí") && !text.contains("tam ly") && !text.contains("tam li") &&
-                    !text.contains("pháp lý") && !text.contains("pháp lí") && !text.contains("phap ly") && !text.contains("phap li") &&
-                    !text.contains("địa lý") && !text.contains("địa lí") && !text.contains("dia ly") && !text.contains("dia li") &&
-                    !text.contains("triết lý") && !text.contains("triết lí") && !text.contains("triet ly") && !text.contains("triet li") &&
-                    !text.contains("lý thuyết") && !text.contains("lí thuyết") && !text.contains("ly thuyet") && !text.contains("li thuyet") &&
-                    !text.contains("lý luận") && !text.contains("lí luận") && !text.contains("ly luan") && !text.contains("li luan") &&
-                    !text.contains("lý do") && !text.contains("lí do") && !text.contains("ly do") && !text.contains("li do") &&
-                    !text.contains("hợp lý") && !text.contains("hợp lí") && !text.contains("hop ly") && !text.contains("hop li") &&
-                    !text.contains("đại lý") && !text.contains("đại lí") && !text.contains("dai ly") && !text.contains("dai li")) {
-                return .physics
-            } else if text.contains("hóa học") || text.contains("hoá học") || text.contains("hoa hoc") ||
-                text.contains("môn hóa") || text.contains("môn hoá") || text.contains("mon hoa") ||
-                text.contains("hóa hữu cơ") || text.contains("hoá hữu cơ") || text.contains("hoa huu co") ||
-                text.contains("hóa vô cơ") || text.contains("hoá vô cơ") || text.contains("hoa vo co") ||
-                text.contains("hóa đại cương") || text.contains("hoá đại cương") || text.contains("hoa dai cuong") ||
-                text.contains("hóa phân tích") || text.contains("hoá phân tích") || text.contains("hoa phan tich") ||
-                flags.contains(.chemistry) ||
-                (flags.contains(.hoa) &&
-                    !text.contains("tự động hóa") && !text.contains("tự động hoá") && !text.contains("tu dong hoa") &&
-                    !text.contains("tiến hóa") && !text.contains("tiến hoá") && !text.contains("tien hoa") &&
-                    !text.contains("tiêu hóa") && !text.contains("tiêu hoá") && !text.contains("tieu hoa") &&
-                    !text.contains("hóa đơn") && !text.contains("hoá đơn") && !text.contains("hoa don") &&
-                    !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("van hoa") &&
-                    !text.contains("tối ưu hóa") && !text.contains("tối ưu hoá") && !text.contains("toi uu hoa") &&
-                    !text.contains("chuẩn hóa") && !text.contains("chuẩn hoá") && !text.contains("chuan hoa") &&
-                    !text.contains("công nghiệp hóa") && !text.contains("công nghiệp hoá") && !text.contains("cong nghiep hoa") &&
-                    !text.contains("hiện đại hóa") && !text.contains("hiện đại hoá") && !text.contains("hien dai hoa") &&
-                    !text.contains("ảo hóa") && !text.contains("ảo hoá") && !text.contains("ao hoa") &&
-                    !text.contains("số hóa") && !text.contains("số hoá") && !text.contains("so hoa") &&
-                    !text.contains("hòa bình") && !text.contains("hoà bình") && !text.contains("hoa binh") &&
-                    !text.contains("hòa hợp") && !text.contains("hoà hợp") && !text.contains("hoa hop") &&
-                    !text.contains("hóa thân") && !text.contains("hoá thân") && !text.contains("hoa than")) {
-                return .chemistry
-            } else if text.contains("sinh học") || text.contains("sinh hoc") || text.contains("môn sinh") || text.contains("mon sinh") || flags.contains(.biology) ||
-                text.contains("y học") || text.contains("y hoc") ||
-                text.contains("di truyền") || text.contains("di truyen") ||
-                text.contains("tế bào") || text.contains("te bao") ||
-                text.contains("vi sinh") ||
-                text.contains("sinh thái") || text.contains("sinh thai") ||
-                text.contains("tiêu hóa") || text.contains("tiêu hoá") || text.contains("tieu hoa") ||
-                (flags.contains(.sinh) &&
-                    !text.contains("học sinh") && !text.contains("hoc sinh") &&
-                    !text.contains("sinh viên") && !text.contains("sinh vien") &&
-                    !text.contains("sinh hoạt") && !text.contains("sinh hoat")) {
-                return .biology
-            } else if text.contains("lịch sử") || (text.contains("lich su") && !text.contains("lịch sự") && !text.contains("lich su trong") && !text.contains("giao tiep") && !text.contains("ung xu")) || flags.contains(.history) ||
-                text.contains("môn sử") || text.contains("mon su") ||
-                (flags.contains(.su) &&
-                    !text.contains("sử dụng") && !text.contains("su dung") &&
-                    !text.contains("lịch sự") && !text.contains("lich su trong") &&
-                    !text.contains("giao tiep") && !text.contains("ung xu")) {
-                return .history
-            } else if text.contains("ngữ văn") || text.contains("ngu van") || text.contains("tiếng việt") || text.contains("tieng viet") || flags.contains(.literature) ||
-                text.contains("môn văn") || text.contains("mon van") ||
-                (flags.contains(.van) &&
-                    !text.contains("văn phòng") && !text.contains("van phong") &&
-                    !text.contains("văn hóa") && !text.contains("văn hoá") && !text.contains("van hoa") &&
-                    !text.contains("văn minh") && !text.contains("van minh") &&
-                    !text.contains("văn bản") && !text.contains("van ban") &&
-                    !text.contains("luận văn") && !text.contains("luan van")) {
-                return .literature
-            } else if text.contains("tiếng anh") || text.contains("tieng anh") || flags.contains(.english) ||
-                text.contains("môn anh") || text.contains("mon anh") ||
-                (flags.contains(.anh) &&
-                    !text.contains("hình ảnh") && !text.contains("hinh anh") &&
-                    !text.contains("âm thanh") && !text.contains("am thanh") &&
-                    !text.contains("thầy") && !text.contains("thay") &&
-                    !text.contains("cô") && !text.contains("co ") &&
-                    !text.contains("gv")) {
-                return .english
-            } else if text.contains("tin học") || text.contains("tin hoc") ||
-                text.contains("môn tin") || text.contains("mon tin") ||
-                text.contains("lập trình") || text.contains("lap trinh") ||
-                text.contains("di động") || text.contains("di dong") ||
-                flags.contains(.cs) ||
-                text.contains("công nghệ thông tin") || text.contains("cong nghe thong tin") ||
-                text.contains("thuật toán") || text.contains("thuat toan") ||
-                text.contains("cơ sở dữ liệu") || text.contains("co so du lieu") ||
-                text.contains("khoa học máy tính") || text.contains("khoa hoc may tinh") ||
-                text.contains("cấu trúc dữ liệu") || text.contains("cau truc du lieu") ||
-                text.contains("trí tuệ nhân tạo") || text.contains("tri tue nhan tao") ||
-                text.contains("machine learning") ||
-                text.contains("hệ điều hành") || text.contains("he dieu hanh") ||
-                text.contains("kiến trúc máy tính") || text.contains("kien truc may tinh") ||
-                (flags.contains(.tin) &&
-                    !text.contains("thông tin") && !text.contains("thong tin") &&
-                    !text.contains("bản tin") && !text.contains("ban tin") &&
-                    !text.contains("tin tức") && !text.contains("tin tuc") &&
-                    !text.contains("niềm tin") && !text.contains("niem tin") &&
-                    !flags.contains(.tu)) {
-                return .computerScience
-            } else if flags.contains(.defense) ||
-                text.contains("giáo dục quốc phòng") || text.contains("giao duc quoc phong") ||
-                text.contains("quốc phòng an ninh") || text.contains("quoc phong an ninh") ||
-                text.contains("an ninh quốc phòng") || text.contains("an ninh quoc phong") ||
-                text.contains("quân sự") || text.contains("quan su") ||
-                text.contains("giáo dục qp") || text.contains("giao duc qp") {
-                return .defenseEducation
-            } else if flags.contains(.local) ||
-                text.contains("giáo dục địa phương") || text.contains("giao duc dia phuong") ||
-                text.contains("giáo dục đp") || text.contains("giao duc dp") {
-                return .localEducation
-            } else if flags.contains(.experiential) ||
-                text.contains("hoạt động trải nghiệm") || text.contains("hoat dong trai nghiem") ||
-                text.contains("hướng nghiệp") || text.contains("huong nghiep") ||
-                text.contains("sinh hoạt dưới cờ") || text.contains("sinh hoat duoi co") ||
-                text.contains("sinh hoạt lớp") || text.contains("sinh hoat lop") {
-                return .experientialActivities
-            }
-            return nil
-        }
-
         if let title, !title.isEmpty {
-            let titleNormalized = title.precomposedStringWithCanonicalMapping
-            let titleLower = titleNormalized.lowercased()
-            let titleFlags = scanTokenFlags(in: titleLower)
-            if let matched = matchCategory(text: titleLower, flags: titleFlags) {
+            if let matched = classifyCandidate(rawText: title) {
                 return matched
             }
+            return category(for: courseName, title: nil)
         }
-
-        let courseNormalized = courseName.precomposedStringWithCanonicalMapping
-        let courseLower = courseNormalized.lowercased()
-        let courseFlags = scanTokenFlags(in: courseLower)
-        if let matched = matchCategory(text: courseLower, flags: courseFlags) {
+        if let matched = classifyCandidate(rawText: courseName) {
             return matched
         }
-
         return .other
     }
 
@@ -519,16 +938,21 @@ public struct ClassroomSubjectBanner: View {
                         .minimumScaleFactor(0.85)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    HStack(spacing: 5) {
+                    HStack(spacing: 5.5) {
                         Image(systemName: "calendar")
-                            .font(.system(size: 12.5, weight: .semibold))
-                        Text(item.formattedFullDueDate)
-                            .font(.system(size: 14.5, weight: .semibold))
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(item.conciseDueString)
+                            .font(.system(size: 13.5, weight: .semibold, design: .rounded))
+                            .lineLimit(1)
                     }
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(.white.opacity(0.96))
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.black.opacity(0.18))
+                    .padding(.vertical, 4.5)
+                    .background(Color.white.opacity(0.16))
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(Color.white.opacity(0.24), lineWidth: 0.8)
+                    )
                     .clipShape(Capsule())
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

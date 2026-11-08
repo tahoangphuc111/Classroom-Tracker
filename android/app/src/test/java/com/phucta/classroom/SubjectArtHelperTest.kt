@@ -165,7 +165,7 @@ class SubjectArtHelperTest {
         assertEquals("ML", themeTitleShort)
 
         // Convenience overload matches Swift parity
-        assertEquals("TOÁ", SubjectArtHelper.badgeCode("Toán 12"))
+        assertEquals("TOÁN", SubjectArtHelper.badgeCode("Toán 12"))
         assertEquals("LÝ", SubjectArtHelper.badgeCode("Vật lý 10"))
         assertEquals("KỸ ", SubjectArtHelper.badgeCode("Kỹ năng mềm"))
     }
@@ -319,7 +319,7 @@ class SubjectArtHelperTest {
         assertEquals("LÝ", SubjectArtHelper.badgeCode(SubjectCategory.PHYSICS, "11 Tin", "Lý (tuần 10)"))
 
         assertEquals(SubjectCategory.MATH, SubjectArtHelper.category("11 Tin", "Toán (tuần 7)"))
-        assertEquals("TOÁ", SubjectArtHelper.badgeCode(SubjectCategory.MATH, "11 Tin", "Toán (tuần 7)"))
+        assertEquals("TOÁN", SubjectArtHelper.badgeCode(SubjectCategory.MATH, "11 Tin", "Toán (tuần 7)"))
 
         assertEquals(SubjectCategory.LOCAL_EDUCATION, SubjectArtHelper.category("11 Tin", "GDDP (tuần 8)"))
         assertEquals("GDĐP", SubjectArtHelper.badgeCode(SubjectCategory.LOCAL_EDUCATION, "11 Tin", "GDDP (tuần 8)"))

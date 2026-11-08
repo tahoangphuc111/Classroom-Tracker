@@ -136,6 +136,33 @@ class ClassroomDateUtilsTest {
     }
 
     @Test
+    fun testConciseDueString() {
+        assertEquals("Không có hạn", ClassroomDateUtils.buildConciseDueString(null))
+
+        val calFriday = gregorianCalendar().apply {
+            set(Calendar.YEAR, 2026)
+            set(Calendar.MONTH, Calendar.OCTOBER)
+            set(Calendar.DAY_OF_MONTH, 23)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 0)
+        }
+        val conciseFriday = ClassroomDateUtils.buildConciseDueString(calFriday.timeInMillis)
+        assertTrue(conciseFriday.contains("23:59 • T6, 23/10"))
+
+        val calTuesday = gregorianCalendar().apply {
+            set(Calendar.YEAR, 2026)
+            set(Calendar.MONTH, Calendar.OCTOBER)
+            set(Calendar.DAY_OF_MONTH, 20)
+            set(Calendar.HOUR_OF_DAY, 15)
+            set(Calendar.MINUTE, 45)
+            set(Calendar.SECOND, 0)
+        }
+        val conciseTuesday = ClassroomDateUtils.buildConciseDueString(calTuesday.timeInMillis)
+        assertTrue(conciseTuesday.contains("15:45 • T3, 20/10"))
+    }
+
+    @Test
     fun testCountdownBadge_Completed() {
         val cal = gregorianCalendar().apply { add(Calendar.HOUR_OF_DAY, 2) }
         val badge = ClassroomDateUtils.countdownBadgeString(cal.timeInMillis, isCompleted = true)

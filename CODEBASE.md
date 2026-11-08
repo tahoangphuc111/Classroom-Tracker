@@ -305,7 +305,7 @@ Course titles on Google Classroom vary wildly between schools. `SubjectArtHelper
 ├────────────────────┼───────────┼───────────────────┼────────────────────────────────────────────────────────┤
 │ Tin học (CS)       │ TIN       │ Cyan (#14AD8A)    │ tin học, lập trình, cntt, it, ctdl, c++, python, csdl. │
 │                    │           │                   │ Guard: thông tin, bản tin, tin tức, niềm tin, tự       │
-│ Toán (Math)        │ TOÁ       │ Amber (#F2991A)   │ toán, giải tích, đại số, hình học, xác suất, thống kê. │
+│ Toán (Math)        │ TOÁN      │ Amber (#F2991A)   │ toán, giải tích, đại số, hình học, xác suất, thống kê. │
 │                    │           │                   │ Guard: điện toán, an toàn, thanh toán, hoàn toàn       │
 │ Tiếng Anh (English)│ ANH       │ Blue (#2694EB)    │ tiếng anh, english, ielts, toeic, toefl.               │
 │                    │           │                   │ Guard: hình ảnh, âm thanh, thầy, cô, gv                │
@@ -328,14 +328,14 @@ Course titles on Google Classroom vary wildly between schools. `SubjectArtHelper
 ```
 
 #### Deterministic Static Badge Codes & Memory Efficiency
-- All 11 curriculum subjects have static, compile-time $O(1)$ badge codes (`TIN`, `TOÁ`, `ANH`, `VĂN`, `LÝ`, `HOÁ`, `SINH`, `SỬ`, `GDQP`, `GDĐP`, `HĐTN`).
+- All 11 curriculum subjects have static, compile-time $O(1)$ badge codes (`TIN`, `TOÁN`, `ANH`, `VĂN`, `LÝ`, `HOÁ`, `SINH`, `SỬ`, `GDQP`, `GDĐP`, `HĐTN`).
 - Only `.other` computes dynamic badges based on the first 3 characters of course/title or falls back to `MÔN`.
 - On Android, `SubjectArtHelper.theme(...)` reuses pre-allocated `STANDARD_THEMES[cat.ordinal]` instances with zero object allocation during list scrolling.
 
 #### Homeroom Class & Assignment Title Priority
 In Vietnamese high schools, homeroom teachers frequently create a single Google Classroom for the entire class (e.g. `"11 Tin"` or `"12 Chuyên Anh"`), and subject teachers post assignments inside it (e.g. `"Toán (tuần 7)"`, `"Lý bài tập 10"`).
 - `SubjectArtHelper.category(courseName, title)` prioritizes explicit subject identifiers in the assignment `title` over generic homeroom class names.
-- Example: Course `"11 Tin"` with title `"Toán (tuần 7)"` cleanly classifies as **`MATH`** (`TOÁ`), not `COMPUTER_SCIENCE`.
+- Example: Course `"11 Tin"` with title `"Toán (tuần 7)"` cleanly classifies as **`MATH`** (`TOÁN`), not `COMPUTER_SCIENCE`.
 
 #### Strict False Positive Guards
 Vietnamese compound words can easily cause misclassification:

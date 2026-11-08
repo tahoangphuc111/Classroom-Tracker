@@ -58,7 +58,7 @@ class GoogleOAuthManager(
     private var activeAuthState: String? = null
 
     companion object {
-        const val BUNDLED_OAUTH_CLIENT_SECRET = "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"
+        const val BUNDLED_OAUTH_CLIENT_SECRET = ""
         val SCOPES = listOf(
             "https://www.googleapis.com/auth/classroom.courses.readonly",
             "https://www.googleapis.com/auth/classroom.coursework.me.readonly",

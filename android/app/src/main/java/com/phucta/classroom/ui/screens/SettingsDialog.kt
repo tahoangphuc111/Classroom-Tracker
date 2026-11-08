@@ -396,7 +396,12 @@ fun SettingsDialog(
                 androidx.compose.material3.TextButton(
                     onClick = { showLogoutConfirmation = false }
                 ) {
-                    Text("Huỷ", color = ChunkyColor.TextPrimary)
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Huỷ",
+                        tint = ChunkyColor.TextPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             },
             containerColor = ChunkyColor.SurfaceWhite,

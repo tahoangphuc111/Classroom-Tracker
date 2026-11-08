@@ -879,6 +879,58 @@ private fun MainTopAppBar(
 }
 
 @Composable
+private fun BouncingNavIcon(
+    isSelected: Boolean,
+    bounceTrigger: Int,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val scale = remember { Animatable(1f) }
+    val offsetY = remember { Animatable(0f) }
+
+    LaunchedEffect(isSelected, bounceTrigger) {
+        if (isSelected) {
+            scale.snapTo(1.18f)
+            offsetY.snapTo(-3.2f)
+            kotlinx.coroutines.coroutineScope {
+                launch {
+                    scale.animateTo(
+                        targetValue = 1f,
+                        animationSpec = spring(
+                            dampingRatio = 0.52f,
+                            stiffness = 380f
+                        )
+                    )
+                }
+                launch {
+                    offsetY.animateTo(
+                        targetValue = 0f,
+                        animationSpec = spring(
+                            dampingRatio = 0.52f,
+                            stiffness = 380f
+                        )
+                    )
+                }
+            }
+        } else {
+            scale.animateTo(1f, tween(150))
+            offsetY.animateTo(0f, tween(150))
+        }
+    }
+
+    Box(
+        modifier = modifier.graphicsLayer {
+            scaleX = scale.value
+            scaleY = scale.value
+            translationY = offsetY.value * density
+        },
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
+@Composable
 private fun MainBottomNavigationBar(
     selectedTabIndex: Int,
     tomorrowIncompleteCount: Int,
@@ -887,6 +939,41 @@ private fun MainBottomNavigationBar(
     onTabSelected: (Int) -> Unit
 ) {
     val view = androidx.compose.ui.platform.LocalView.current
+    var lastHapticTimestamp by remember { mutableLongStateOf(0L) }
+    var lastActiveTabTapTimestamp by remember { mutableLongStateOf(0L) }
+    var bounceTrigger0 by remember { mutableIntStateOf(0) }
+    var bounceTrigger1 by remember { mutableIntStateOf(0) }
+    var bounceTrigger2 by remember { mutableIntStateOf(0) }
+    var bounceTrigger3 by remember { mutableIntStateOf(0) }
+
+    val handleTabClick = { index: Int ->
+        val now = android.os.SystemClock.uptimeMillis()
+        if (selectedTabIndex != index) {
+            if (now - lastHapticTimestamp >= 160L) {
+                lastHapticTimestamp = now
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+            }
+            when (index) {
+                0 -> bounceTrigger0++
+                1 -> bounceTrigger1++
+                2 -> bounceTrigger2++
+                3 -> bounceTrigger3++
+            }
+            onTabSelected(index)
+        } else {
+            if (now - lastActiveTabTapTimestamp >= 350L) {
+                lastActiveTabTapTimestamp = now
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+            }
+            when (index) {
+                0 -> bounceTrigger0++
+                1 -> bounceTrigger1++
+                2 -> bounceTrigger2++
+                3 -> bounceTrigger3++
+            }
+        }
+    }
+
     val standardNavColors = NavigationBarItemDefaults.colors(
         selectedIconColor = ChunkyColor.ActionBlue,
         selectedTextColor = ChunkyColor.ActionBlue,
@@ -908,29 +995,28 @@ private fun MainBottomNavigationBar(
     ) {
         NavigationBarItem(
             selected = selectedTabIndex == 0,
-            onClick = {
-                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                onTabSelected(0)
-            },
+            onClick = { handleTabClick(0) },
             icon = {
-                BadgedBox(
-                    badge = {
-                        if (tomorrowIncompleteCount > 0) {
-                            Badge(
-                                containerColor = Color(0xFFEF4444),
-                                contentColor = Color.White
-                            ) {
-                                Text(
-                                    text = if (tomorrowIncompleteCount > 99) "99+" else "$tomorrowIncompleteCount",
-                                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp
-                                )
+                BouncingNavIcon(isSelected = selectedTabIndex == 0, bounceTrigger = bounceTrigger0) {
+                    BadgedBox(
+                        badge = {
+                            if (tomorrowIncompleteCount > 0) {
+                                Badge(
+                                    containerColor = Color(0xFFEF4444),
+                                    contentColor = Color.White
+                                ) {
+                                    Text(
+                                        text = if (tomorrowIncompleteCount > 99) "99+" else "$tomorrowIncompleteCount",
+                                        fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    )
+                                }
                             }
                         }
+                    ) {
+                        Icon(Icons.Default.CalendarToday, contentDescription = "Báo bài")
                     }
-                ) {
-                    Icon(Icons.Default.CalendarToday, contentDescription = "Báo bài")
                 }
             },
             label = {
@@ -947,29 +1033,28 @@ private fun MainBottomNavigationBar(
         )
         NavigationBarItem(
             selected = selectedTabIndex == 1,
-            onClick = {
-                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                onTabSelected(1)
-            },
+            onClick = { handleTabClick(1) },
             icon = {
-                BadgedBox(
-                    badge = {
-                        if (upcomingIncompleteCount > 0) {
-                            Badge(
-                                containerColor = Color(0xFFEF4444),
-                                contentColor = Color.White
-                            ) {
-                                Text(
-                                    text = if (upcomingIncompleteCount > 99) "99+" else "$upcomingIncompleteCount",
-                                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp
-                                )
+                BouncingNavIcon(isSelected = selectedTabIndex == 1, bounceTrigger = bounceTrigger1) {
+                    BadgedBox(
+                        badge = {
+                            if (upcomingIncompleteCount > 0) {
+                                Badge(
+                                    containerColor = Color(0xFFEF4444),
+                                    contentColor = Color.White
+                                ) {
+                                    Text(
+                                        text = if (upcomingIncompleteCount > 99) "99+" else "$upcomingIncompleteCount",
+                                        fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    )
+                                }
                             }
                         }
+                    ) {
+                        Icon(Icons.Default.Upcoming, contentDescription = "Sắp tới")
                     }
-                ) {
-                    Icon(Icons.Default.Upcoming, contentDescription = "Sắp tới")
                 }
             },
             label = {
@@ -986,11 +1071,12 @@ private fun MainBottomNavigationBar(
         )
         NavigationBarItem(
             selected = selectedTabIndex == 2,
-            onClick = {
-                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                onTabSelected(2)
+            onClick = { handleTabClick(2) },
+            icon = {
+                BouncingNavIcon(isSelected = selectedTabIndex == 2, bounceTrigger = bounceTrigger2) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = "Đã xong")
+                }
             },
-            icon = { Icon(Icons.Default.CheckCircle, contentDescription = "Đã xong") },
             label = {
                 Text(
                     text = "Đã xong",
@@ -1005,29 +1091,28 @@ private fun MainBottomNavigationBar(
         )
         NavigationBarItem(
             selected = selectedTabIndex == 3,
-            onClick = {
-                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                onTabSelected(3)
-            },
+            onClick = { handleTabClick(3) },
             icon = {
-                BadgedBox(
-                    badge = {
-                        if (incompleteNotesCount > 0) {
-                            Badge(
-                                containerColor = Color(0xFFF59E0B),
-                                contentColor = Color.White
-                            ) {
-                                Text(
-                                    text = if (incompleteNotesCount > 99) "99+" else "$incompleteNotesCount",
-                                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp
-                                )
+                BouncingNavIcon(isSelected = selectedTabIndex == 3, bounceTrigger = bounceTrigger3) {
+                    BadgedBox(
+                        badge = {
+                            if (incompleteNotesCount > 0) {
+                                Badge(
+                                    containerColor = Color(0xFFF59E0B),
+                                    contentColor = Color.White
+                                ) {
+                                    Text(
+                                        text = if (incompleteNotesCount > 99) "99+" else "$incompleteNotesCount",
+                                        fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    )
+                                }
                             }
                         }
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.StickyNote2, contentDescription = "Ghi chú")
                     }
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.StickyNote2, contentDescription = "Ghi chú")
                 }
             },
             label = {

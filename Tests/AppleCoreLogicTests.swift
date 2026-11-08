@@ -354,6 +354,19 @@ struct TestRunner {
                 let item = Coursework(id: "cw_greg", courseId: "c1", courseName: "Math", title: "Test Greg", dueDate: date, status: .pending)
                 assertCondition(item.timeOnlyString == "15:45", "Coursework timeOnlyString must match expected Gregorian time '15:45'")
                 assertCondition(item.formattedFullDueDate.contains("2026"), "Coursework formattedFullDueDate must use Gregorian year 2026")
+                assertCondition(item.conciseDueString.contains("15:45 • T3, 20/10"), "Coursework conciseDueString must format as '15:45 • T3, 20/10' (got: \(item.conciseDueString))")
+
+                var fridayComp = comp
+                fridayComp.day = 23
+                fridayComp.hour = 23
+                fridayComp.minute = 59
+                if let fridayDate = gregorianCal.date(from: fridayComp) {
+                    let fridayItem = Coursework(id: "cw_fri", courseId: "c1", courseName: "Math", title: "Test Friday", dueDate: fridayDate, status: .pending)
+                    assertCondition(fridayItem.conciseDueString.contains("23:59 • T6, 23/10"), "Coursework conciseDueString Friday must format as '23:59 • T6, 23/10' (got: \(fridayItem.conciseDueString))")
+                }
+
+                let noDueItem = Coursework(id: "cw_none", courseId: "c1", courseName: "Math", title: "No Due", dueDate: nil, status: .pending)
+                assertCondition(noDueItem.conciseDueString == "Không có hạn", "Undated item must have conciseDueString 'Không có hạn'")
             }
         }
 
@@ -890,6 +903,8 @@ struct TestRunner {
             let courseHistoryWithAddress = "Lịch sử Đảng - Địa chỉ học: Tầng 3"
             assertCondition(SubjectArtHelper.badgeCode(for: .history, courseName: courseHistoryWithAddress) == "SỬ", "Course history with address 'Địa chỉ' must produce badge 'SỬ'")
 
+            assertCondition(SubjectArtHelper.badgeCode(for: "Toán 12") == "TOÁN", "Toán 12 must produce badge 'TOÁN'")
+            assertCondition(SubjectArtHelper.badgeCode(for: .math, courseName: "11 Tin", title: "Toán (tuần 7)") == "TOÁN", "Math assignment in homeroom must produce badge 'TOÁN'")
             assertCondition(SubjectArtHelper.badgeCode(for: "Địa lý 12") == "ĐỊA", "Địa lý 12 must produce badge 'ĐỊA'")
             assertCondition(SubjectArtHelper.badgeCode(for: "Địa lí Việt Nam") == "ĐỊA", "Địa lí Việt Nam must produce badge 'ĐỊA'")
             assertCondition(SubjectArtHelper.badgeCode(for: "Dia ly lop 11") == "DIA", "Dia ly lop 11 must produce badge 'DIA'")

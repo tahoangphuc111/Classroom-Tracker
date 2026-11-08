@@ -1315,14 +1315,22 @@ public struct CreateOrEditNoteSheet: View {
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Huỷ", action: onCancel)
-                        .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
-                        .keyboardShortcut(.cancelAction)
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .bold))
+                    }
+                    .accessibilityLabel("Huỷ")
+                    .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
+                    .keyboardShortcut(.cancelAction)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Lưu") {
+                    Button {
                         save()
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 15, weight: .bold))
                     }
+                    .accessibilityLabel("Lưu")
                     .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
                     .keyboardShortcut(.return, modifiers: [.command])
                     .tint(Color.blue)
@@ -1366,13 +1374,7 @@ public struct CreateOrEditNoteSheet: View {
         #elseif os(iOS)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
-        .presentationBackground {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .appleLiquidGlassSurface(style: .regular, in: Rectangle()) {
-                    Color.platformWindowBackground.opacity(0.85)
-                }
-        }
+        .presentationBackground(.ultraThinMaterial)
         #endif
     }
 

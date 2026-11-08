@@ -38,7 +38,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     @Published public var authErrorMessage: String? = nil
 
     public static let bundledClientId = "1024991814751-qs4rkg9pa09r092lp083l3e9gk6e3mru.apps.googleusercontent.com"
-    public static let bundledClientSecret = "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"
+    public static let bundledClientSecret = ""
 
     public static let defaultClientIdKey = "google_oauth_client_id"
     public static let defaultClientSecretKey = "google_oauth_client_secret"

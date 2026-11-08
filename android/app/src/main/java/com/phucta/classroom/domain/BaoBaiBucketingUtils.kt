@@ -335,32 +335,18 @@ object BaoBaiBucketingUtils {
         val startOfDayAfter = ClassroomDateUtils.startOfDayAfter
         val estCap = maxOf(4, relevant.size shr 2)
         val tomorrowFiltered = ArrayList<Coursework>(estCap)
-        val todayIncompleteFiltered = ArrayList<Coursework>(estCap)
-        val todayCompletedFiltered = ArrayList<Coursework>(estCap)
-        val upcomingFiltered = ArrayList<Coursework>(estCap)
-        val undatedFiltered = ArrayList<Coursework>(estCap)
         val count = relevant.size
+
         for (i in 0 until count) {
             val item = relevant[i]
             val isEligible = includeCompleted || !item.isCompleted
             if (!isEligible) continue
             val due = item.dueEpochMillis
-            if (due != null) {
-                if (due in startOfTomorrow until startOfDayAfter) {
-                    tomorrowFiltered.add(item)
-                } else if (due in ClassroomDateUtils.startOfToday until startOfTomorrow) {
-                    if (item.isCompleted) {
-                        if (includeCompleted) todayCompletedFiltered.add(item)
-                    } else if (due >= now) {
-                        todayIncompleteFiltered.add(item)
-                    }
-                } else if (due >= startOfDayAfter) {
-                    upcomingFiltered.add(item)
-                }
-            } else {
-                undatedFiltered.add(item)
+            if (due != null && due in startOfTomorrow until startOfDayAfter) {
+                tomorrowFiltered.add(item)
             }
         }
+
         if (hasNotes) {
             val filter = if (courses.isNotEmpty()) getCourseFilter(courses) else null
             val filterActive = filter != null && filter.hasUnselected && filter.activeCourseIds.isNotEmpty() && filter.allCourseIds.size != filter.activeCourseIds.size
@@ -392,11 +378,61 @@ object BaoBaiBucketingUtils {
                 }
             }
         }
+
         if (tomorrowFiltered.isNotEmpty()) return sortInternal(tomorrowFiltered, emptyList(), "")
+
+        // Fallback Tier 2: Incomplete tasks due today
+        val todayIncompleteFiltered = ArrayList<Coursework>(estCap)
+        for (i in 0 until count) {
+            val item = relevant[i]
+            if (item.isCompleted) continue
+            val due = item.dueEpochMillis
+            if (due != null && due in now until startOfTomorrow) {
+                todayIncompleteFiltered.add(item)
+            }
+        }
         if (todayIncompleteFiltered.isNotEmpty()) return sortInternal(todayIncompleteFiltered, emptyList(), "")
+
+        // Fallback Tier 3: Nearest upcoming tasks
+        val upcomingFiltered = ArrayList<Coursework>(estCap)
+        for (i in 0 until count) {
+            val item = relevant[i]
+            val isEligible = includeCompleted || !item.isCompleted
+            if (!isEligible) continue
+            val due = item.dueEpochMillis
+            if (due != null && due >= startOfDayAfter) {
+                upcomingFiltered.add(item)
+            }
+        }
         if (upcomingFiltered.isNotEmpty()) return sortInternal(upcomingFiltered, emptyList(), "")
+
+        // Fallback Tier 4: Undated tasks
+        val undatedFiltered = ArrayList<Coursework>(estCap)
+        for (i in 0 until count) {
+            val item = relevant[i]
+            val isEligible = includeCompleted || !item.isCompleted
+            if (!isEligible) continue
+            if (item.dueEpochMillis == null) {
+                undatedFiltered.add(item)
+            }
+        }
         if (undatedFiltered.isNotEmpty()) return sortInternal(undatedFiltered, emptyList(), "")
-        if (todayCompletedFiltered.isNotEmpty()) return sortInternal(todayCompletedFiltered, emptyList(), "")
+
+        // Fallback Tier 5: Completed today tasks
+        if (includeCompleted) {
+            val startOfToday = ClassroomDateUtils.startOfToday
+            val todayCompletedFiltered = ArrayList<Coursework>(estCap)
+            for (i in 0 until count) {
+                val item = relevant[i]
+                if (!item.isCompleted) continue
+                val due = item.dueEpochMillis
+                if (due != null && due in startOfToday until startOfTomorrow) {
+                    todayCompletedFiltered.add(item)
+                }
+            }
+            if (todayCompletedFiltered.isNotEmpty()) return sortInternal(todayCompletedFiltered, emptyList(), "")
+        }
+
         return emptyList()
     }
 

@@ -237,20 +237,65 @@ private val threadLocalBuffer = object : ThreadLocal<CharArray>() {
 }
 
 fun cleanTelexKeystrokes(s: String): String {
-    if (s.length < 3) return s
-    var cleaned = s
-    val last = cleaned[cleaned.length - 1]
-    if (last == 's' || last == 'f' || last == 'r' || last == 'x' || last == 'j') {
-        cleaned = cleaned.substring(0, cleaned.length - 1)
+    val len = s.length
+    if (len < 3) return s
+
+    val last = s[len - 1]
+    val hasTrailingTone = last == 's' || last == 'f' || last == 'r' || last == 'x' || last == 'j'
+    val effectiveLen = if (hasTrailingTone) len - 1 else len
+    if (effectiveLen < 2) return s
+
+    var hasPair = false
+    for (i in 0 until effectiveLen - 1) {
+        val c1 = s[i]
+        val c2 = s[i + 1]
+        if ((c1 == 'd' && c2 == 'd') ||
+            (c1 == 'a' && c2 == 'a') ||
+            (c1 == 'e' && c2 == 'e') ||
+            (c1 == 'o' && c2 == 'o') ||
+            (c1 == 'u' && c2 == 'w') ||
+            (c1 == 'o' && c2 == 'w') ||
+            (c1 == 'a' && c2 == 'w')) {
+            hasPair = true
+            break
+        }
     }
-    if (cleaned.contains("dd")) cleaned = cleaned.replace("dd", "d")
-    if (cleaned.contains("aa")) cleaned = cleaned.replace("aa", "a")
-    if (cleaned.contains("ee")) cleaned = cleaned.replace("ee", "e")
-    if (cleaned.contains("oo")) cleaned = cleaned.replace("oo", "o")
-    if (cleaned.contains("uw")) cleaned = cleaned.replace("uw", "u")
-    if (cleaned.contains("ow")) cleaned = cleaned.replace("ow", "o")
-    if (cleaned.contains("aw")) cleaned = cleaned.replace("aw", "a")
-    return cleaned
+
+    if (!hasTrailingTone && !hasPair) {
+        return s
+    }
+
+    val sb = java.lang.StringBuilder(effectiveLen)
+    var i = 0
+    while (i < effectiveLen) {
+        val c = s[i]
+        if (i + 1 < effectiveLen) {
+            val next = s[i + 1]
+            if ((c == 'd' && next == 'd') ||
+                (c == 'a' && next == 'a') ||
+                (c == 'e' && next == 'e') ||
+                (c == 'o' && next == 'o')) {
+                sb.append(c)
+                i += 2
+                continue
+            } else if (c == 'u' && next == 'w') {
+                sb.append('u')
+                i += 2
+                continue
+            } else if (c == 'o' && next == 'w') {
+                sb.append('o')
+                i += 2
+                continue
+            } else if (c == 'a' && next == 'w') {
+                sb.append('a')
+                i += 2
+                continue
+            }
+        }
+        sb.append(c)
+        i++
+    }
+    return sb.toString()
 }
 
 fun expandVietnameseAcronyms(normalizedText: String): String {

@@ -869,37 +869,20 @@ public final class ClassroomStorage: @unchecked Sendable {
     public func getTomorrowCoursework(items: [Coursework]? = nil, courses: [Course]? = nil, includeCompleted: Bool = true, includeNotes: Bool = true) -> [Coursework] {
         let allItems = items ?? loadCoursework()
         let relevant = filterItemsByActiveCourses(allItems, courses: courses)
-        let calendar = ClassroomDateFormatters.gregorianCalendar
-        let now = Date()
-        let startOfToday = calendar.startOfDay(for: now)
-        guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
-              let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday) else {
-            return []
-        }
+        let nowTimestamp = Date.timeIntervalSinceReferenceDate
+        ClassroomDateFormatters.ensureDayBoundaries(nowTimestamp: nowTimestamp)
+        let startOfTodayTimestamp = ClassroomDateFormatters.startOfTodayTimestamp
+        let startOfTomorrowTimestamp = ClassroomDateFormatters.startOfTomorrowTimestamp
+        let startOfDayAfterTimestamp = ClassroomDateFormatters.startOfDayAfterTimestamp
 
         var tomorrowFiltered: [Coursework] = []
-        var todayIncompleteFiltered: [Coursework] = []
-        var todayCompletedFiltered: [Coursework] = []
-        var laterUpcoming: [Coursework] = []
-        var undated: [Coursework] = []
 
         for item in relevant {
             let isEligible = includeCompleted ? true : !item.isCompleted
-            guard let dueDate = item.dueDate else {
-                if isEligible { undated.append(item) }
-                continue
-            }
-
-            if dueDate >= startOfTomorrow && dueDate < startOfDayAfter {
-                if isEligible { tomorrowFiltered.append(item) }
-            } else if dueDate >= startOfToday && dueDate < startOfTomorrow {
-                if item.isCompleted {
-                    if includeCompleted { todayCompletedFiltered.append(item) }
-                } else if dueDate >= now {
-                    todayIncompleteFiltered.append(item)
-                }
-            } else if dueDate >= startOfDayAfter {
-                if isEligible { laterUpcoming.append(item) }
+            guard isEligible, let dueDate = item.dueDate else { continue }
+            let dueTimestamp = dueDate.timeIntervalSinceReferenceDate
+            if dueTimestamp >= startOfTomorrowTimestamp && dueTimestamp < startOfDayAfterTimestamp {
+                tomorrowFiltered.append(item)
             }
         }
 
@@ -931,10 +914,54 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
 
         if !tomorrowFiltered.isEmpty { return sortCoursework(tomorrowFiltered) }
+
+        // Fallback Tier 2: Incomplete tasks due today
+        var todayIncompleteFiltered: [Coursework] = []
+        for item in relevant {
+            if item.isCompleted { continue }
+            guard let dueDate = item.dueDate else { continue }
+            let dueTimestamp = dueDate.timeIntervalSinceReferenceDate
+            if dueTimestamp >= startOfTodayTimestamp && dueTimestamp < startOfTomorrowTimestamp && dueTimestamp >= nowTimestamp {
+                todayIncompleteFiltered.append(item)
+            }
+        }
         if !todayIncompleteFiltered.isEmpty { return sortCoursework(todayIncompleteFiltered) }
+
+        // Fallback Tier 3: Nearest upcoming tasks
+        var laterUpcoming: [Coursework] = []
+        for item in relevant {
+            let isEligible = includeCompleted ? true : !item.isCompleted
+            guard isEligible, let dueDate = item.dueDate else { continue }
+            let dueTimestamp = dueDate.timeIntervalSinceReferenceDate
+            if dueTimestamp >= startOfDayAfterTimestamp {
+                laterUpcoming.append(item)
+            }
+        }
         if !laterUpcoming.isEmpty { return sortCoursework(laterUpcoming) }
+
+        // Fallback Tier 4: Undated tasks
+        var undated: [Coursework] = []
+        for item in relevant {
+            let isEligible = includeCompleted ? true : !item.isCompleted
+            if isEligible && item.dueDate == nil {
+                undated.append(item)
+            }
+        }
         if !undated.isEmpty { return sortCoursework(undated) }
-        if !todayCompletedFiltered.isEmpty { return sortCoursework(todayCompletedFiltered) }
+
+        // Fallback Tier 5: Completed today tasks
+        if includeCompleted {
+            var todayCompletedFiltered: [Coursework] = []
+            for item in relevant {
+                if !item.isCompleted { continue }
+                guard let dueDate = item.dueDate else { continue }
+                let dueTimestamp = dueDate.timeIntervalSinceReferenceDate
+                if dueTimestamp >= startOfTodayTimestamp && dueTimestamp < startOfTomorrowTimestamp {
+                    todayCompletedFiltered.append(item)
+                }
+            }
+            if !todayCompletedFiltered.isEmpty { return sortCoursework(todayCompletedFiltered) }
+        }
 
         return []
     }

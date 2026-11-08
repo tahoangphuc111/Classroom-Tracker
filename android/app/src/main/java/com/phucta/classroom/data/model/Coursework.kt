@@ -24,6 +24,8 @@ data class Coursework(
         get() = ClassroomDateUtils.buildTimeOnlyString(dueEpochMillis)
     val formattedFullDueDate: String
         get() = ClassroomDateUtils.buildFormattedFullDueDate(dueEpochMillis)
+    val conciseDueString: String
+        get() = ClassroomDateUtils.buildConciseDueString(dueEpochMillis)
 
     val isCompleted: Boolean
         get() = status == SubmissionStatus.TURNED_IN ||

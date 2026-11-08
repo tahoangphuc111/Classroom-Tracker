@@ -59,6 +59,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
@@ -1367,7 +1368,12 @@ private fun CreateOrEditNoteDialog(
                     scaleY = dismissScale
                 }
             ) {
-                Text("Huỷ")
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Huỷ",
+                    tint = ChunkyColor.TextMuted,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     )

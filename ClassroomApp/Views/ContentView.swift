@@ -298,6 +298,17 @@ public struct ContentView: View {
     @State private var showCompactCourseFilterSheet: Bool = false
     @State private var showMobileDetailSheet: Bool = false
     @State private var noteToEditFromReader: PersonalNote? = nil
+    private enum TabTransitionDirection: Sendable {
+        case forward
+        case backward
+    }
+    @State private var tabTransitionDirection: TabTransitionDirection = .forward
+    #if os(iOS)
+    @State private var tabBounceTrigger: [AppFilterCategory: Int] = [:]
+    @State private var lastTabHapticTime: TimeInterval = 0
+    @State private var lastActiveTabTapTime: TimeInterval = 0
+    @State private var dragSwitchedTabInCurrentGesture: Bool = false
+    #endif
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -759,7 +770,12 @@ public struct ContentView: View {
                 reminderService.updateReminderContent()
             }
         }
-        .onChange(of: selectedFilter) {
+        .onChange(of: selectedFilter) { oldValue, newValue in
+            let oldIdx = categoryOrder(oldValue)
+            let newIdx = categoryOrder(newValue)
+            if oldIdx != newIdx {
+                tabTransitionDirection = newIdx > oldIdx ? .forward : .backward
+            }
             selectedSubjectFilter = "Tất cả"
             updateAvailableSubjectPills()
             completedDisplayLimit = 30
@@ -1087,99 +1103,333 @@ public struct ContentView: View {
     }
 
     #if os(iOS)
-    private var compactTabSelectionBinding: Binding<AppFilterCategory> {
-        Binding(
-            get: {
-                if selectedFilter == .todayAndTomorrow || selectedFilter == .past {
-                    return .allUpcoming
-                }
-                return selectedFilter
-            },
-            set: { newCategory in
-                if selectedFilter != newCategory {
-                    triggerHapticFeedback()
-                    if !searchText.isEmpty {
-                        searchText = ""
+    private let compactTabCategories: [AppFilterCategory] = [
+        .tomorrow,
+        .allUpcoming,
+        .completed,
+        .notes
+    ]
+
+    private var activeCompactTab: AppFilterCategory {
+        if selectedFilter == .todayAndTomorrow || selectedFilter == .past {
+            return .allUpcoming
+        }
+        return selectedFilter
+    }
+
+    private func compactTabIndex(_ category: AppFilterCategory) -> Int {
+        compactTabCategories.firstIndex(of: category) ?? 0
+    }
+
+    private func triggerTabSelectionHaptic() {
+        let now = ProcessInfo.processInfo.systemUptime
+        // Throttle rapid gestures/taps to prevent haptic buzzing
+        guard now - lastTabHapticTime >= 0.16 else { return }
+        lastTabHapticTime = now
+        PlatformHaptics.trigger(.selection)
+    }
+
+    private func triggerActiveTabReTapHaptic() {
+        let now = ProcessInfo.processInfo.systemUptime
+        // Strict cooldown on tapping the already-active tab to eliminate spam
+        guard now - lastActiveTabTapTime >= 0.35 else { return }
+        lastActiveTabTapTime = now
+        PlatformHaptics.trigger(.light)
+    }
+
+    private func switchCompactTab(to category: AppFilterCategory) {
+        let oldCategory = activeCompactTab
+        if oldCategory != category {
+            triggerTabSelectionHaptic()
+            let oldIndex = compactTabIndex(oldCategory)
+            let newIndex = compactTabIndex(category)
+            tabTransitionDirection = newIndex > oldIndex ? .forward : .backward
+            if !searchText.isEmpty {
+                searchText = ""
+            }
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.76)) {
+                selectedFilter = category
+            }
+            tabBounceTrigger[category, default: 0] += 1
+        } else {
+            triggerActiveTabReTapHaptic()
+            tabBounceTrigger[category, default: 0] += 1
+        }
+    }
+
+    private var compactTabContentView: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let currentIdx = compactTabIndex(activeCompactTab)
+            let slideDistance = min(width * 0.65, 260)
+
+            ZStack {
+                ForEach(compactTabCategories) { tab in
+                    let tabIdx = compactTabIndex(tab)
+                    let offset: CGFloat = tabIdx == currentIdx ? 0 : (tabIdx < currentIdx ? -slideDistance : slideDistance)
+
+                    NavigationStack {
+                        detailMasterView(isCompact: true, tabCategory: tab)
                     }
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                        selectedFilter = newCategory
-                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .offset(x: offset)
+                    .opacity(tabIdx == currentIdx ? 1.0 : 0.0)
+                    .allowsHitTesting(tabIdx == currentIdx)
                 }
             }
-        )
+            .animation(.spring(response: 0.32, dampingFraction: 0.80), value: activeCompactTab)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 25)
+                    .onEnded { value in
+                        let horiz = value.translation.width
+                        let vert = value.translation.height
+                        guard abs(horiz) > abs(vert) * 1.5, abs(horiz) > 40 else { return }
+                        if horiz < 0 {
+                            if currentIdx < compactTabCategories.count - 1 {
+                                switchCompactTab(to: compactTabCategories[currentIdx + 1])
+                            }
+                        } else {
+                            if currentIdx > 0 {
+                                switchCompactTab(to: compactTabCategories[currentIdx - 1])
+                            }
+                        }
+                    }
+            )
+        }
+    }
+
+    private func compactTabTitle(for category: AppFilterCategory) -> String {
+        switch category {
+        case .tomorrow: return "Báo bài"
+        case .allUpcoming: return "Sắp tới"
+        case .completed: return "Đã xong"
+        case .notes: return "Ghi chú"
+        default: return category.rawValue
+        }
+    }
+
+    private func compactTabIcon(for category: AppFilterCategory) -> String {
+        switch category {
+        case .tomorrow: return "calendar.badge.clock"
+        case .allUpcoming: return "tray.fill"
+        case .completed: return "checkmark.seal.fill"
+        case .notes: return "square.and.pencil"
+        default: return "circle"
+        }
+    }
+
+    private func compactTabBadgeCount(for category: AppFilterCategory, upcomingBadge: Int) -> Int {
+        switch category {
+        case .tomorrow: return buckets.tomorrowPendingCount
+        case .allUpcoming: return upcomingBadge
+        case .completed: return 0
+        case .notes: return pendingNotesCount
+        default: return 0
+        }
+    }
+
+    private var compactCustomTabBar: some View {
+        let upcomingBadge = buckets.allUpcomingPendingCount + buckets.pastPendingCount
+        let barHeight: CGFloat = isLandscapePhone ? 40 : 52
+        let trackHeight: CGFloat = isLandscapePhone ? 34 : 46
+        let trackCornerRadius: CGFloat = isLandscapePhone ? 13 : 15
+        let trackPadding: CGFloat = 2.5
+        let thumbHeight = trackHeight - trackPadding * 2
+        let thumbCornerRadius: CGFloat = isLandscapePhone ? 10.5 : 12.5
+        let currentIdx = compactTabIndex(activeCompactTab)
+        let tabCount = compactTabCategories.count
+
+        return VStack(spacing: 0) {
+            Divider()
+                .opacity(0.35)
+
+            GeometryReader { proxy in
+                let availableWidth = proxy.size.width
+                let horizontalInset: CGFloat = isLandscapePhone ? 16 : 10
+                let trackWidth = max(0, availableWidth - horizontalInset * 2)
+                let innerTrackWidth = max(0, trackWidth - trackPadding * 2)
+                let tabWidth = tabCount > 0 ? innerTrackWidth / CGFloat(tabCount) : 0
+
+                ZStack(alignment: .leading) {
+                    // Track background
+                    RoundedRectangle(cornerRadius: trackCornerRadius, style: .continuous)
+                        .fill(Color.platformSubtleFill.opacity(colorScheme == .dark ? 0.38 : 0.22))
+
+                    // Single continuous sliding thumb with fluid organic spring
+                    RoundedRectangle(cornerRadius: thumbCornerRadius, style: .continuous)
+                        .fill(Color.platformControlBackground)
+                        .shadow(
+                            color: Color.black.opacity(colorScheme == .dark ? 0.30 : 0.08),
+                            radius: 3.5,
+                            x: 0,
+                            y: 1.5
+                        )
+                        .frame(width: tabWidth, height: thumbHeight)
+                        .offset(x: trackPadding + CGFloat(currentIdx) * tabWidth)
+                        .animation(.spring(response: 0.32, dampingFraction: 0.74), value: currentIdx)
+
+                    // Tab contents
+                    HStack(spacing: 0) {
+                        ForEach(compactTabCategories) { tab in
+                            let isSelected = (activeCompactTab == tab)
+                            CompactTabBarSliderItem(
+                                category: tab,
+                                title: compactTabTitle(for: tab),
+                                icon: compactTabIcon(for: tab),
+                                badgeCount: compactTabBadgeCount(for: tab, upcomingBadge: upcomingBadge),
+                                isSelected: isSelected,
+                                bounce: tabBounceTrigger[tab, default: 0],
+                                isLandscapePhone: isLandscapePhone,
+                                iconColor: isSelected ? categoryIconColor(tab) : Color.platformTextSecondary,
+                                textColor: isSelected ? Color.platformTextPrimary : Color.platformTextSecondary
+                            )
+                            .frame(width: tabWidth, height: thumbHeight)
+                        }
+                    }
+                    .padding(trackPadding)
+                }
+                .frame(width: trackWidth, height: trackHeight)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { gesture in
+                            let relativeX = gesture.location.x - trackPadding
+                            guard tabWidth > 0 else { return }
+                            let rawIdx = Int(relativeX / tabWidth)
+                            let clampedIdx = min(max(rawIdx, 0), tabCount - 1)
+                            let target = compactTabCategories[clampedIdx]
+                            if target != activeCompactTab {
+                                dragSwitchedTabInCurrentGesture = true
+                                switchCompactTab(to: target)
+                            }
+                        }
+                        .onEnded { gesture in
+                            let relativeX = gesture.location.x - trackPadding
+                            guard tabWidth > 0 else { return }
+                            let rawIdx = Int(relativeX / tabWidth)
+                            let clampedIdx = min(max(rawIdx, 0), tabCount - 1)
+                            let target = compactTabCategories[clampedIdx]
+                            if !dragSwitchedTabInCurrentGesture {
+                                if target == activeCompactTab && abs(gesture.translation.width) < 8 {
+                                    triggerActiveTabReTapHaptic()
+                                    tabBounceTrigger[target, default: 0] += 1
+                                }
+                            }
+                            dragSwitchedTabInCurrentGesture = false
+                        }
+                )
+            }
+            .frame(height: barHeight)
+            .padding(.top, isLandscapePhone ? 1 : 3)
+            .padding(.bottom, isLandscapePhone ? 1 : 3)
+        }
+        .background {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea(edges: .bottom)
+        }
+    }
+
+    private struct CompactTabBarSliderItem: View {
+        let category: AppFilterCategory
+        let title: String
+        let icon: String
+        let badgeCount: Int
+        let isSelected: Bool
+        let bounce: Int
+        let isLandscapePhone: Bool
+        let iconColor: Color
+        let textColor: Color
+
+        @State private var bounceScale: CGFloat = 1.0
+        @State private var bounceOffset: CGFloat = 0.0
+
+        var body: some View {
+            let iconSize: CGFloat = isLandscapePhone ? 15 : 18
+            let textSize: CGFloat = isLandscapePhone ? 9.5 : 10.5
+
+            VStack(spacing: isLandscapePhone ? 1 : 2) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: icon)
+                        .font(.system(size: iconSize, weight: isSelected ? .bold : .semibold))
+                        .foregroundStyle(iconColor)
+                        .symbolEffect(.bounce.up.byLayer, options: .speed(1.2), value: bounce)
+                        .scaleEffect(bounceScale * (isSelected ? 1.06 : 1.0))
+                        .offset(y: bounceOffset)
+                        .frame(width: 28, height: isLandscapePhone ? 16 : 20)
+                        .onChange(of: bounce) { _, _ in
+                            withAnimation(.spring(response: 0.16, dampingFraction: 0.42)) {
+                                bounceScale = 1.18
+                                bounceOffset = -3.2
+                            }
+                            withAnimation(.spring(response: 0.34, dampingFraction: 0.58).delay(0.10)) {
+                                bounceScale = 1.0
+                                bounceOffset = 0.0
+                            }
+                        }
+
+                    if badgeCount > 0 {
+                        Text(badgeCount > 99 ? "99+" : "\(badgeCount)")
+                            .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(
+                                Capsule().fill(iconColor)
+                            )
+                            .offset(x: 9, y: -4)
+                            .contentTransition(.numericText())
+                    }
+                }
+
+                Text(title)
+                    .font(.system(size: textSize, weight: isSelected ? .bold : .medium, design: .rounded))
+                    .foregroundStyle(textColor)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 2)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .animation(.spring(response: 0.28, dampingFraction: 0.78), value: isSelected)
+        }
     }
 
     @ViewBuilder
     private var compactAppView: some View {
-        let upcomingBadge = buckets.allUpcomingPendingCount + buckets.pastPendingCount
-        TabView(selection: compactTabSelectionBinding) {
-            NavigationStack {
-                detailMasterView(isCompact: true, tabCategory: .tomorrow)
+        compactTabContentView
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                compactCustomTabBar
             }
-            .tabItem {
-                Label("Báo bài", systemImage: "calendar.badge.clock")
+            .sheet(isPresented: $showCompactCourseFilterSheet) {
+                compactCourseFilterSheetView
             }
-            .tag(AppFilterCategory.tomorrow)
-            .badge(buckets.tomorrowPendingCount > 0 ? buckets.tomorrowPendingCount : 0)
-
-            NavigationStack {
-                detailMasterView(isCompact: true, tabCategory: .allUpcoming)
-            }
-            .tabItem {
-                Label("Sắp tới", systemImage: "tray.fill")
-            }
-            .tag(AppFilterCategory.allUpcoming)
-            .badge(upcomingBadge > 0 ? upcomingBadge : 0)
-
-            NavigationStack {
-                detailMasterView(isCompact: true, tabCategory: .completed)
-            }
-            .tabItem {
-                Label("Đã xong", systemImage: "checkmark.seal.fill")
-            }
-            .tag(AppFilterCategory.completed)
-
-            NavigationStack {
-                detailMasterView(isCompact: true, tabCategory: .notes)
-            }
-            .tabItem {
-                Label("Ghi chú", systemImage: "square.and.pencil")
-            }
-            .tag(AppFilterCategory.notes)
-            .badge(pendingNotesCount > 0 ? pendingNotesCount : 0)
-        }
-        .tint(Color.accentColor)
-        .sheet(isPresented: $showCompactCourseFilterSheet) {
-            compactCourseFilterSheetView
-        }
-        .sheet(isPresented: $showMobileDetailSheet) {
-            NavigationStack {
-                homeworkReaderPane
-                    .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-                    .toolbarBackground(.visible, for: .navigationBar)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Xong") {
-                                triggerHapticFeedback()
-                                showMobileDetailSheet = false
+            .sheet(isPresented: $showMobileDetailSheet) {
+                NavigationStack {
+                    homeworkReaderPane
+                        .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+                        .toolbarBackground(.visible, for: .navigationBar)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button {
+                                    triggerHapticFeedback()
+                                    showMobileDetailSheet = false
+                                } label: {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 15, weight: .bold))
+                                }
+                                .accessibilityLabel("Xong")
+                                .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
                             }
-                            .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
-                            .font(.system(size: 15, weight: .semibold))
                         }
-                    }
+                }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
             }
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
-            .presentationBackground {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .appleLiquidGlassSurface(style: .regular, in: Rectangle()) {
-                        Color.platformWindowBackground.opacity(0.85)
-                    }
-            }
-        }
     }
 
     private var compactCourseFilterSheetView: some View {
@@ -1221,7 +1471,14 @@ public struct ContentView: View {
             get: { selectedFilter },
             set: {
                 if let val = $0 {
-                    selectedFilter = val
+                    let oldIdx = categoryOrder(selectedFilter)
+                    let newIdx = categoryOrder(val)
+                    if oldIdx != newIdx {
+                        tabTransitionDirection = newIdx > oldIdx ? .forward : .backward
+                    }
+                    withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
+                        selectedFilter = val
+                    }
                     #if os(iOS)
                     preferredCompactColumn = .detail
                     if isLandscapePhone {
@@ -1325,7 +1582,12 @@ public struct ContentView: View {
         sidebarCategoryRowContent(for: category, count: count, isSelected: isSelected)
             .contentShape(Rectangle())
             .onTapGesture {
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.72)) {
+                let oldIdx = categoryOrder(selectedFilter)
+                let newIdx = categoryOrder(category)
+                if oldIdx != newIdx {
+                    tabTransitionDirection = newIdx > oldIdx ? .forward : .backward
+                }
+                withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
                     selectedFilter = category
                 }
                 #if os(iOS)
@@ -1393,6 +1655,27 @@ public struct ContentView: View {
         .animation(.spring(response: 0.30, dampingFraction: 0.75), value: isSelected)
     }
 
+    private func categoryOrder(_ category: AppFilterCategory) -> Int {
+        switch category {
+        case .tomorrow: return 0
+        case .todayAndTomorrow: return 1
+        case .allUpcoming: return 2
+        case .past: return 3
+        case .completed: return 4
+        case .notes: return 5
+        case .widgetPreview: return 6
+        }
+    }
+
+    private var macOSTabTransition: AnyTransition {
+        let offset: CGFloat = 16
+        let moveX = tabTransitionDirection == .forward ? offset : -offset
+        return .asymmetric(
+            insertion: .opacity.combined(with: .offset(x: moveX)),
+            removal: .opacity.combined(with: .offset(x: -moveX))
+        )
+    }
+
     private func categoryIconColor(_ category: AppFilterCategory) -> Color {
         switch category {
         case .tomorrow: return Color(red: 0.12, green: 0.52, blue: 0.95)
@@ -1425,175 +1708,7 @@ public struct ContentView: View {
 
             Divider()
 
-            if activeCategory == .widgetPreview {
-                ScrollView {
-                    widgetPreviewSection
-                        #if os(iOS)
-                        .padding(horizontalSizeClass == .compact ? 12 : 24)
-                        #else
-                        .padding(24)
-                        #endif
-                }
-            } else if activeCategory == .notes {
-                PersonalNotesView(
-                    notes: personalNotes,
-                    courses: courses,
-                    searchText: searchText,
-                    onToggleCompletion: { id in
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                            ClassroomStorage.shared.togglePersonalNoteCompletion(id: id)
-                            personalNotes = ClassroomStorage.shared.loadPersonalNotes()
-                            updatePersonalNotesCache()
-                            recomputeBuckets()
-                            if selectedCoursework?.id == id || selectedCoursework?.id == "note_\(id)" {
-                                if let note = personalNotes.first(where: { $0.id == id }) {
-                                    selectedCoursework = Coursework(
-                                        id: "note_\(note.id)",
-                                        courseId: note.courseId ?? "personal_note",
-                                        courseName: note.courseName ?? "Ghi chú",
-                                        title: note.title,
-                                        description: note.content,
-                                        dueDate: note.dueDate,
-                                        status: note.isCompleted ? .turnedIn : .pending,
-                                        isManuallyCompleted: note.isCompleted
-                                    )
-                                }
-                            }
-                        }
-                        if let note = personalNotes.first(where: { $0.id == id }) {
-                            if note.isCompleted {
-                                showToast(title: "Đã hoàn thành việc cần làm!", subtitle: note.title, icon: "checkmark.circle.fill", tint: .green)
-                            } else {
-                                showToast(title: "Đã chuyển về chưa xong", subtitle: note.title, icon: "arrow.uturn.backward.circle.fill", tint: .orange)
-                            }
-                        }
-                    },
-                    onToggleChecklistItem: { noteId, itemId in
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                            ClassroomStorage.shared.toggleChecklistItemCompletion(noteId: noteId, itemId: itemId)
-                            personalNotes = ClassroomStorage.shared.loadPersonalNotes()
-                            updatePersonalNotesCache()
-                            recomputeBuckets()
-                            if selectedCoursework?.id == noteId || selectedCoursework?.id == "note_\(noteId)" {
-                                if let note = personalNotes.first(where: { $0.id == noteId }) {
-                                    selectedCoursework = Coursework(
-                                        id: "note_\(note.id)",
-                                        courseId: note.courseId ?? "personal_note",
-                                        courseName: note.courseName ?? "Ghi chú",
-                                        title: note.title,
-                                        description: note.content,
-                                        dueDate: note.dueDate,
-                                        status: note.isCompleted ? .turnedIn : .pending,
-                                        isManuallyCompleted: note.isCompleted
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    onSaveNote: { note in
-                        savePersonalNoteItem(note)
-                    },
-                    onDeleteNote: { id in
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                            ClassroomStorage.shared.deletePersonalNote(id: id)
-                            personalNotes = ClassroomStorage.shared.loadPersonalNotes()
-                            updatePersonalNotesCache()
-                            recomputeBuckets()
-                            if selectedCoursework?.id == id || selectedCoursework?.id == "note_\(id)" {
-                                selectedCoursework = nil
-                            }
-                            selectedCourseworkIds.remove(id)
-                            selectedCourseworkIds.remove("note_\(id)")
-                        }
-                        showToast(title: "Đã xoá việc cần làm", icon: "trash.fill", tint: .orange)
-                    }
-                )
-            } else {
-                #if os(iOS)
-                if isCompact {
-                    assignmentListPane(isWide: false, category: activeCategory)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    GeometryReader { geometry in
-                        let isWide = geometry.size.width >= 560
-                        if isWide {
-                            let listWidth = min(350, max(260, geometry.size.width * 0.38))
-                            HStack(spacing: 0) {
-                                assignmentListPane(isWide: true, category: activeCategory)
-                                    .frame(width: listWidth)
-
-                                Divider()
-
-                                homeworkReaderPane
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            }
-                        } else {
-                            assignmentListPane(isWide: false, category: activeCategory)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        }
-                    }
-                    .sheet(isPresented: $showMobileDetailSheet) {
-                        NavigationStack {
-                            homeworkReaderPane
-                                .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
-                                .navigationBarTitleDisplayMode(.inline)
-                                .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-                                .toolbarBackground(.visible, for: .navigationBar)
-                                .toolbar {
-                                    ToolbarItem(placement: .confirmationAction) {
-                                        Button("Xong") {
-                                            triggerHapticFeedback()
-                                            showMobileDetailSheet = false
-                                        }
-                                        .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
-                                        .font(.system(size: 15, weight: .semibold))
-                                    }
-                                }
-                        }
-                        .presentationDetents([.medium, .large])
-                        .presentationDragIndicator(.visible)
-                        .presentationBackground {
-                            Rectangle()
-                                .fill(.ultraThinMaterial)
-                                .appleLiquidGlassSurface(style: .regular, in: Rectangle()) {
-                                    Color.platformWindowBackground.opacity(0.85)
-                                }
-                        }
-                    }
-                }
-                #else
-                GeometryReader { geometry in
-                    let isWide = geometry.size.width >= 520
-                    if isWide {
-                        let listWidth = min(360, max(260, geometry.size.width * 0.38))
-                        HStack(spacing: 0) {
-                            assignmentListPane(isWide: true, category: activeCategory)
-                                .frame(width: listWidth)
-
-                            Divider()
-
-                            homeworkReaderPane
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        }
-                    } else {
-                        assignmentListPane(isWide: false, category: activeCategory)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                }
-                .sheet(isPresented: $showMobileDetailSheet) {
-                    NavigationStack {
-                        homeworkReaderPane
-                            .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
-                            .toolbar {
-                                ToolbarItem(placement: .confirmationAction) {
-                                    Button("Xong") { showMobileDetailSheet = false }
-                                }
-                            }
-                    }
-                    .frame(minWidth: 420, minHeight: 460)
-                }
-                #endif
-            }
+            detailBodyContent(for: activeCategory, isCompact: isCompact)
         }
         .navigationTitle(activeCategory.rawValue)
         #if os(iOS)
@@ -1761,6 +1876,209 @@ public struct ContentView: View {
                 }
                 .help("Cài đặt tài khoản & dữ liệu mẫu")
             }
+        }
+    }
+
+    @ViewBuilder
+    private func detailBodyContent(for activeCategory: AppFilterCategory, isCompact: Bool) -> some View {
+        #if os(macOS)
+        ZStack {
+            detailCategoryView(for: activeCategory, isCompact: isCompact)
+                .id(activeCategory)
+                .transition(macOSTabTransition)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: activeCategory)
+        #else
+        if isCompact {
+            detailCategoryView(for: activeCategory, isCompact: isCompact)
+        } else {
+            ZStack {
+                detailCategoryView(for: activeCategory, isCompact: isCompact)
+                    .id(activeCategory)
+                    .transition(macOSTabTransition)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+            .animation(.spring(response: 0.28, dampingFraction: 0.82), value: activeCategory)
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private func detailCategoryView(for activeCategory: AppFilterCategory, isCompact: Bool) -> some View {
+        if activeCategory == .widgetPreview {
+            ScrollView {
+                widgetPreviewSection
+                    #if os(iOS)
+                    .padding(horizontalSizeClass == .compact ? 12 : 24)
+                    #else
+                    .padding(24)
+                    #endif
+            }
+        } else if activeCategory == .notes {
+            PersonalNotesView(
+                notes: personalNotes,
+                courses: courses,
+                searchText: searchText,
+                onToggleCompletion: { id in
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                        ClassroomStorage.shared.togglePersonalNoteCompletion(id: id)
+                        personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        updatePersonalNotesCache()
+                        recomputeBuckets()
+                        if selectedCoursework?.id == id || selectedCoursework?.id == "note_\(id)" {
+                            if let note = personalNotes.first(where: { $0.id == id }) {
+                                selectedCoursework = Coursework(
+                                    id: "note_\(note.id)",
+                                    courseId: note.courseId ?? "personal_note",
+                                    courseName: note.courseName ?? "Ghi chú",
+                                    title: note.title,
+                                    description: note.content,
+                                    dueDate: note.dueDate,
+                                    status: note.isCompleted ? .turnedIn : .pending,
+                                    isManuallyCompleted: note.isCompleted
+                                )
+                            }
+                        }
+                    }
+                    if let note = personalNotes.first(where: { $0.id == id }) {
+                        if note.isCompleted {
+                            showToast(title: "Đã hoàn thành việc cần làm!", subtitle: note.title, icon: "checkmark.circle.fill", tint: .green)
+                        } else {
+                            showToast(title: "Đã chuyển về chưa xong", subtitle: note.title, icon: "arrow.uturn.backward.circle.fill", tint: .orange)
+                        }
+                    }
+                },
+                onToggleChecklistItem: { noteId, itemId in
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                        ClassroomStorage.shared.toggleChecklistItemCompletion(noteId: noteId, itemId: itemId)
+                        personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        updatePersonalNotesCache()
+                        recomputeBuckets()
+                        if selectedCoursework?.id == noteId || selectedCoursework?.id == "note_\(noteId)" {
+                            if let note = personalNotes.first(where: { $0.id == noteId }) {
+                                selectedCoursework = Coursework(
+                                    id: "note_\(note.id)",
+                                    courseId: note.courseId ?? "personal_note",
+                                    courseName: note.courseName ?? "Ghi chú",
+                                    title: note.title,
+                                    description: note.content,
+                                    dueDate: note.dueDate,
+                                    status: note.isCompleted ? .turnedIn : .pending,
+                                    isManuallyCompleted: note.isCompleted
+                                )
+                            }
+                        }
+                    }
+                },
+                onSaveNote: { note in
+                    savePersonalNoteItem(note)
+                },
+                onDeleteNote: { id in
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                        ClassroomStorage.shared.deletePersonalNote(id: id)
+                        personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+                        updatePersonalNotesCache()
+                        recomputeBuckets()
+                        if selectedCoursework?.id == id || selectedCoursework?.id == "note_\(id)" {
+                            selectedCoursework = nil
+                        }
+                        selectedCourseworkIds.remove(id)
+                        selectedCourseworkIds.remove("note_\(id)")
+                    }
+                    showToast(title: "Đã xoá việc cần làm", icon: "trash.fill", tint: .orange)
+                }
+            )
+        } else {
+            #if os(iOS)
+            if isCompact {
+                assignmentListPane(isWide: false, category: activeCategory)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                GeometryReader { geometry in
+                    let isWide = geometry.size.width >= 560
+                    if isWide {
+                        let listWidth = min(350, max(260, geometry.size.width * 0.38))
+                        HStack(spacing: 0) {
+                            assignmentListPane(isWide: true, category: activeCategory)
+                                .frame(width: listWidth)
+
+                            Divider()
+
+                            homeworkReaderPane
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                    } else {
+                        assignmentListPane(isWide: false, category: activeCategory)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+                .sheet(isPresented: $showMobileDetailSheet) {
+                    NavigationStack {
+                        homeworkReaderPane
+                            .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+                            .toolbarBackground(.visible, for: .navigationBar)
+                            .toolbar {
+                                ToolbarItem(placement: .confirmationAction) {
+                                    Button {
+                                        triggerHapticFeedback()
+                                        showMobileDetailSheet = false
+                                    } label: {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 15, weight: .bold))
+                                    }
+                                    .accessibilityLabel("Xong")
+                                    .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
+                                }
+                            }
+                    }
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(.ultraThinMaterial)
+                }
+            }
+            #else
+            GeometryReader { geometry in
+                let isWide = geometry.size.width >= 520
+                if isWide {
+                    let listWidth = min(360, max(260, geometry.size.width * 0.38))
+                    HStack(spacing: 0) {
+                        assignmentListPane(isWide: true, category: activeCategory)
+                            .frame(width: listWidth)
+
+                        Divider()
+
+                        homeworkReaderPane
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                } else {
+                    assignmentListPane(isWide: false, category: activeCategory)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .sheet(isPresented: $showMobileDetailSheet) {
+                NavigationStack {
+                    homeworkReaderPane
+                        .navigationTitle(selectedCoursework?.id.hasPrefix("note_") == true ? "Chi tiết việc cần làm" : "Chi tiết bài tập")
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button {
+                                    showMobileDetailSheet = false
+                                } label: {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 15, weight: .bold))
+                                }
+                                .accessibilityLabel("Xong")
+                            }
+                        }
+                }
+                .frame(minWidth: 420, minHeight: 460)
+            }
+            #endif
         }
     }
 
@@ -1974,12 +2292,15 @@ public struct ContentView: View {
                     Image(systemName: category.icon)
                         .font(.system(size: 16.5, weight: .semibold))
                         .foregroundStyle(categoryIconColor(category))
+                        .contentTransition(.symbolEffect(.replace))
                 }
+                .animation(.spring(response: 0.28, dampingFraction: 0.8), value: category)
 
                 VStack(alignment: .leading, spacing: 2.5) {
                     Text(category.rawValue)
                         .font(.system(size: 19, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.platformTextPrimary)
+                        .contentTransition(.interpolate)
 
                     HStack(spacing: 4) {
                         Image(systemName: "calendar")
@@ -2055,6 +2376,7 @@ public struct ContentView: View {
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundStyle(categoryIconColor(category))
                                 .lineLimit(1)
+                                .contentTransition(.numericText())
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4.5)

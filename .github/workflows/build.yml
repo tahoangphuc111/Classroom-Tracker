@@ -44,6 +44,20 @@ jobs:
           xcodebuild -version
           xcodebuild -showsdks
 
+      - name: Inject OAuth Secrets
+        env:
+          OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+        run: |
+          if [ -n "$OAUTH_CLIENT_SECRET" ]; then
+            echo "Injecting OAuth Client Secret into Swift codebase..."
+            sed -i '' "s/bundledClientSecret = \".*\"/bundledClientSecret = \"$OAUTH_CLIENT_SECRET\"/" Shared/Network/GoogleOAuthService.swift
+          fi
+          if [ -n "$OAUTH_CLIENT_ID" ]; then
+            echo "Injecting OAuth Client ID into Swift codebase..."
+            sed -i '' "s/bundledClientId = \".*\"/bundledClientId = \"$OAUTH_CLIENT_ID\"/" Shared/Network/GoogleOAuthService.swift
+          fi
+
       - name: Build macOS 27 app & package PKG
         run: |
           chmod +x scripts/build_pkg.sh
@@ -67,6 +81,20 @@ jobs:
         run: |
           xcodebuild -version
           xcodebuild -showsdks
+
+      - name: Inject OAuth Secrets
+        env:
+          OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+        run: |
+          if [ -n "$OAUTH_CLIENT_SECRET" ]; then
+            echo "Injecting OAuth Client Secret into Swift codebase..."
+            sed -i '' "s/bundledClientSecret = \".*\"/bundledClientSecret = \"$OAUTH_CLIENT_SECRET\"/" Shared/Network/GoogleOAuthService.swift
+          fi
+          if [ -n "$OAUTH_CLIENT_ID" ]; then
+            echo "Injecting OAuth Client ID into Swift codebase..."
+            sed -i '' "s/bundledClientId = \".*\"/bundledClientId = \"$OAUTH_CLIENT_ID\"/" Shared/Network/GoogleOAuthService.swift
+          fi
 
       - name: Archive iOS app & package IPA
         run: |
@@ -131,6 +159,20 @@ jobs:
         run: |
           cd android
           ./gradlew testReleaseUnitTest
+
+      - name: Inject OAuth Secrets
+        env:
+          OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+        run: |
+          if [ -n "$OAUTH_CLIENT_SECRET" ]; then
+            echo "Injecting OAuth Client Secret into Android codebase..."
+            sed -i "s/BUNDLED_OAUTH_CLIENT_SECRET = \".*\"/BUNDLED_OAUTH_CLIENT_SECRET = \"$OAUTH_CLIENT_SECRET\"/" android/app/src/main/java/com/phucta/classroom/data/remote/GoogleOAuthManager.kt
+          fi
+          if [ -n "$OAUTH_CLIENT_ID" ]; then
+            echo "Injecting OAuth Client ID into Android codebase..."
+            sed -i "s/BUNDLED_CLIENT_ID = \".*\"/BUNDLED_CLIENT_ID = \"$OAUTH_CLIENT_ID\"/" android/app/src/main/java/com/phucta/classroom/data/local/ClassroomPreferences.kt
+          fi
 
       - name: Build Android Release APK
         run: ./scripts/build_apk.sh

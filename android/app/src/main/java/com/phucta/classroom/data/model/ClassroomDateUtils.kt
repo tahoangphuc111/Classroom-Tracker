@@ -66,6 +66,7 @@ object ClassroomDateUtils {
 
     private val timeOnlyCache = FastLongStringCache(capacity = 2048)
     private val fullDueDateCache = FastLongStringCache(capacity = 1024)
+    private val conciseDueDateCache = FastLongStringCache(capacity = 1024)
     private val shortDateCache = FastLongStringCache(capacity = 2048)
     private val dayAndDateCache = FastLongStringCache(capacity = 2048)
 
@@ -100,6 +101,7 @@ object ClassroomDateUtils {
                         cachedTimeZoneId = currentTzId
                         timeOnlyCache.clear()
                         fullDueDateCache.clear()
+                        conciseDueDateCache.clear()
                         shortDateCache.clear()
                         dayAndDateCache.clear()
                         cachedStartOfToday = 0L
@@ -118,6 +120,7 @@ object ClassroomDateUtils {
         synchronized(this) {
             timeOnlyCache.clear()
             fullDueDateCache.clear()
+            conciseDueDateCache.clear()
             shortDateCache.clear()
             dayAndDateCache.clear()
             cachedStartOfToday = 0L
@@ -240,6 +243,46 @@ object ClassroomDateUtils {
         val formatted = format.format(Date(dueEpochMillis))
         val result = formatted.replaceFirstChar { if (it.isLowerCase()) it.titlecase(VIETNAMESE_LOCALE) else it.toString() }
         fullDueDateCache[dueEpochMillis] = result
+        return result
+    }
+
+    fun buildConciseDueString(dueEpochMillis: Long?): String {
+        if (dueEpochMillis == null) return "Không có hạn"
+        checkTimeZone()
+        val cached = conciseDueDateCache[dueEpochMillis]
+        if (cached != null) return cached
+
+        val cal = (calendarPool.get() ?: Calendar.getInstance(TimeZone.getDefault(), Locale.US)).apply {
+            timeInMillis = dueEpochMillis
+        }
+        val hour = cal.get(Calendar.HOUR_OF_DAY)
+        val minute = cal.get(Calendar.MINUTE)
+        val timeStr = String.format(Locale.US, "%02d:%02d", hour, minute)
+        val dayOfWeekStr = when (cal.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.MONDAY -> "T2"
+            Calendar.TUESDAY -> "T3"
+            Calendar.WEDNESDAY -> "T4"
+            Calendar.THURSDAY -> "T5"
+            Calendar.FRIDAY -> "T6"
+            Calendar.SATURDAY -> "T7"
+            Calendar.SUNDAY -> "CN"
+            else -> ""
+        }
+        val day = cal.get(Calendar.DAY_OF_MONTH)
+        val month = cal.get(Calendar.MONTH) + 1
+        val year = cal.get(Calendar.YEAR)
+
+        val nowCal = (calendarPool.get() ?: Calendar.getInstance(TimeZone.getDefault(), Locale.US)).apply {
+            timeInMillis = System.currentTimeMillis()
+        }
+        val currentYear = nowCal.get(Calendar.YEAR)
+
+        val result = if (year != currentYear) {
+            "$timeStr • $dayOfWeekStr, $day/$month/$year"
+        } else {
+            "$timeStr • $dayOfWeekStr, $day/$month"
+        }
+        conciseDueDateCache[dueEpochMillis] = result
         return result
     }
 

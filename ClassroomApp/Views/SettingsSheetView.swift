@@ -61,7 +61,6 @@ struct SettingsSheetView: View {
                 .navigationTitle("Cài đặt")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
                 .confirmationDialog(
                     "Đăng xuất khỏi Google?",
                     isPresented: $showLogoutConfirmation,
@@ -81,25 +80,22 @@ struct SettingsSheetView: View {
                 }
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Xong") {
+                        Button {
                             onTriggerHaptic()
                             isPresented = false
+                        } label: {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 15, weight: .bold))
                         }
+                        .accessibilityLabel("Xong")
                         .buttonStyle(SpringPressButtonStyle(scale: 0.92, pressedOpacity: 0.88))
                         .keyboardShortcut(.defaultAction)
-                        .fontWeight(.semibold)
                     }
                 }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-        .presentationBackground {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .appleLiquidGlassSurface(style: .regular, in: Rectangle()) {
-                    Color.platformWindowBackground.opacity(0.85)
-                }
-        }
+        .presentationBackground(.ultraThinMaterial)
         #endif
     }
 
@@ -153,9 +149,13 @@ struct SettingsSheetView: View {
 
             Spacer()
 
-            Button("Xong") {
+            Button {
                 isPresented = false
+            } label: {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 13, weight: .bold))
             }
+            .accessibilityLabel("Xong")
             .buttonStyle(.borderedProminent)
             .controlSize(.regular)
             .keyboardShortcut(.defaultAction)

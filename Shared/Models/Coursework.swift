@@ -40,6 +40,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     public let searchIndex: String
     public let timeOnlyString: String
     public let formattedFullDueDate: String
+    public let conciseDueString: String
     public let normalizedTitle: String
     public let normalizedCourseName: String
     public let normalizedDescription: String
@@ -80,6 +81,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         self.searchIndex = Self.buildNormalizedSearchIndex(normTitle: normTitle, normCourse: normCourse, normDescription: normDesc)
         self.timeOnlyString = Self.buildTimeOnlyString(from: dueDate)
         self.formattedFullDueDate = Self.buildFormattedFullDueDate(from: dueDate)
+        self.conciseDueString = Self.buildConciseDueString(from: dueDate)
     }
 
     public init(from decoder: Decoder) throws {
@@ -115,6 +117,7 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         self.searchIndex = Self.buildNormalizedSearchIndex(normTitle: normTitle, normCourse: normCourse, normDescription: normDesc)
         self.timeOnlyString = Self.buildTimeOnlyString(from: dueDate)
         self.formattedFullDueDate = Self.buildFormattedFullDueDate(from: dueDate)
+        self.conciseDueString = Self.buildConciseDueString(from: dueDate)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -330,6 +333,32 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
         guard let dueDate else { return "Không có hạn nộp" }
         return ClassroomDateFormatters.fullDueDate.string(from: dueDate).capitalized
     }
+
+    public static func buildConciseDueString(from dueDate: Date?) -> String {
+        guard let dueDate else { return "Không có hạn" }
+        let cal = ClassroomDateFormatters.gregorianCalendar
+        let timeStr = ClassroomDateFormatters.timeOnly.string(from: dueDate)
+        let dayOfWeek = cal.component(.weekday, from: dueDate)
+        let dayStr: String
+        switch dayOfWeek {
+        case 1: dayStr = "CN"
+        case 2: dayStr = "T2"
+        case 3: dayStr = "T3"
+        case 4: dayStr = "T4"
+        case 5: dayStr = "T5"
+        case 6: dayStr = "T6"
+        case 7: dayStr = "T7"
+        default: dayStr = ""
+        }
+        let day = cal.component(.day, from: dueDate)
+        let month = cal.component(.month, from: dueDate)
+        let year = cal.component(.year, from: dueDate)
+        let currentYear = cal.component(.year, from: Date())
+        if year != currentYear {
+            return "\(timeStr) • \(dayStr), \(day)/\(month)/\(year)"
+        }
+        return "\(timeStr) • \(dayStr), \(day)/\(month)"
+    }
 }
 
 // Single-pass LUT for Vietnamese Diacritics Normalization & Lowercasing
@@ -409,11 +438,10 @@ public extension String {
         }
     }
 
-    func searchQueryTokens() -> [String] {
-        let cleanQuery = self.normalizedForVietnameseSearch()
-        guard !cleanQuery.isEmpty else { return [] }
+    func splitSearchTokens() -> [String] {
+        guard !self.isEmpty else { return [] }
 
-        return cleanQuery.utf8.withContiguousStorageIfAvailable { buf -> [String] in
+        return self.utf8.withContiguousStorageIfAvailable { buf -> [String] in
             let count = buf.count
             guard count > 0, let base = buf.baseAddress else { return [] }
             var tokens: [String] = []
@@ -440,7 +468,7 @@ public extension String {
             var currentBytes: [UInt8] = []
             currentBytes.reserveCapacity(16)
 
-            for b in cleanQuery.utf8 {
+            for b in self.utf8 {
                 if isSearchDelimiterByte(b) {
                     if !currentBytes.isEmpty {
                         tokens.append(String(decoding: currentBytes, as: UTF8.self))
@@ -456,22 +484,63 @@ public extension String {
             return tokens
         }()
     }
+
+    func searchQueryTokens() -> [String] {
+        let cleanQuery = self.normalizedForVietnameseSearch()
+        return cleanQuery.splitSearchTokens()
+    }
 }
 
 public func cleanTelexKeystrokes(_ s: String) -> String {
-    guard s.count >= 3 else { return s }
-    var cleaned = s
-    if let last = cleaned.last, last == "s" || last == "f" || last == "r" || last == "x" || last == "j" {
-        cleaned.removeLast()
-    }
-    if cleaned.contains("dd") { cleaned = cleaned.replacingOccurrences(of: "dd", with: "d") }
-    if cleaned.contains("aa") { cleaned = cleaned.replacingOccurrences(of: "aa", with: "a") }
-    if cleaned.contains("ee") { cleaned = cleaned.replacingOccurrences(of: "ee", with: "e") }
-    if cleaned.contains("oo") { cleaned = cleaned.replacingOccurrences(of: "oo", with: "o") }
-    if cleaned.contains("uw") { cleaned = cleaned.replacingOccurrences(of: "uw", with: "u") }
-    if cleaned.contains("ow") { cleaned = cleaned.replacingOccurrences(of: "ow", with: "o") }
-    if cleaned.contains("aw") { cleaned = cleaned.replacingOccurrences(of: "aw", with: "a") }
-    return cleaned
+    let count = s.utf8.count
+    guard count >= 3 else { return s }
+
+    return s.utf8.withContiguousStorageIfAvailable { buf -> String in
+        guard let base = buf.baseAddress else { return s }
+        var end = count
+        let lastB = base[count - 1]
+        if lastB == 115 || lastB == 102 || lastB == 114 || lastB == 120 || lastB == 106 { // 's', 'f', 'r', 'x', 'j'
+            end -= 1
+        }
+
+        var hasDbl = false
+        for i in 0..<end - 1 {
+            let b1 = base[i]
+            let b2 = base[i + 1]
+            if (b1 == b2 && (b1 == 100 || b1 == 97 || b1 == 101 || b1 == 111)) || // dd, aa, ee, oo
+               (b2 == 119 && (b1 == 117 || b1 == 111 || b1 == 97)) { // uw, ow, aw
+                hasDbl = true
+                break
+            }
+        }
+
+        if !hasDbl {
+            if end == count { return s }
+            return String(decoding: UnsafeBufferPointer(start: base, count: end), as: UTF8.self)
+        }
+
+        return String(unsafeUninitializedCapacity: end) { outBuf in
+            var outIdx = 0
+            var i = 0
+            while i < end {
+                let b = base[i]
+                if i + 1 < end {
+                    let nextB = base[i + 1]
+                    if (b == nextB && (b == 100 || b == 97 || b == 101 || b == 111)) ||
+                       (nextB == 119 && (b == 117 || b == 111 || b == 97)) {
+                        outBuf[outIdx] = b
+                        outIdx += 1
+                        i += 2
+                        continue
+                    }
+                }
+                outBuf[outIdx] = b
+                outIdx += 1
+                i += 1
+            }
+            return outIdx
+        }
+    } ?? s
 }
 
 public func expandVietnameseAcronyms(normalizedText: String) -> String {
@@ -489,7 +558,7 @@ public func expandVietnameseAcronyms(normalizedText: String) -> String {
     if normalizedText.contains("sach giao khoa") { expansions.append("sgk") }
     if normalizedText.contains("sach bai tap") { expansions.append("sbt") }
 
-    let tokens = normalizedText.searchQueryTokens()
+    let tokens = normalizedText.splitSearchTokens()
     for tok in tokens {
         switch tok {
         case "btvn": expansions.append("bai tap ve nha")
@@ -572,7 +641,7 @@ fileprivate func isWordInString(_ s: String, offset: Int, len: Int) -> Bool {
     }()
 }
 
-private struct FastSearchBuffer {
+public struct FastSearchBuffer {
     let ptr: UnsafePointer<UInt8>
     let count: Int
 
@@ -985,15 +1054,15 @@ public enum ClassroomDateFormatters {
     }
 
     public static func ensureDayBoundaries(nowTimestamp: TimeInterval) {
-        let currentTzId = TimeZone.autoupdatingCurrent.identifier
-        if currentTzId == cachedTimeZoneId && nowTimestamp >= cachedStartOfTodayTimestamp && nowTimestamp < cacheExpirationTimestamp {
+        if nowTimestamp >= cachedStartOfTodayTimestamp && nowTimestamp < cacheExpirationTimestamp {
             return
         }
         boundaryLock.lock()
         defer { boundaryLock.unlock() }
-        if currentTzId == cachedTimeZoneId && nowTimestamp >= cachedStartOfTodayTimestamp && nowTimestamp < cacheExpirationTimestamp {
+        if nowTimestamp >= cachedStartOfTodayTimestamp && nowTimestamp < cacheExpirationTimestamp {
             return
         }
+        let currentTzId = TimeZone.autoupdatingCurrent.identifier
         cachedTimeZoneId = currentTzId
         let now = Date(timeIntervalSinceReferenceDate: nowTimestamp)
         let cal = gregorianCalendar

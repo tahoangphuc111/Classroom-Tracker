@@ -80,23 +80,20 @@ struct CompactCourseFilterSheet: View {
             .navigationTitle("Lọc môn học")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Xong") {
+                    Button {
                         PlatformHaptics.trigger()
                         isPresented = false
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 15, weight: .bold))
                     }
+                    .accessibilityLabel("Xong")
                     .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
-                    .font(.system(size: 15, weight: .semibold))
                 }
             }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-        .presentationBackground {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .appleLiquidGlassSurface(style: .regular, in: Rectangle()) {
-                    Color.platformWindowBackground.opacity(0.85)
-                }
-        }
+        .presentationBackground(.ultraThinMaterial)
     }
 }

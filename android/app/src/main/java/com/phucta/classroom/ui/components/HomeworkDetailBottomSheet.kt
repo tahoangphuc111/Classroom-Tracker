@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Close
@@ -213,10 +214,11 @@ fun HomeworkDetailBottomSheet(
                     modifier = Modifier.size(15.dp)
                 )
                 Text(
-                    text = coursework.formattedFullDueDate,
+                    text = coursework.conciseDueString,
                     color = ChunkyColor.TextMuted,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.5.sp
+                    fontSize = 14.5.sp,
+                    maxLines = 1
                 )
             }
 
@@ -466,10 +468,21 @@ fun HomeworkDetailBottomSheet(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SuccessGreen),
                                 shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                                 modifier = Modifier.height(34.dp)
                             ) {
-                                Text("Xong bài", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Xong bài",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text("Xong", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
                             }
                         }
                     }
@@ -585,7 +598,12 @@ fun HomeworkDetailBottomSheet(
                             },
                             modifier = Modifier.heightIn(min = 48.dp)
                         ) {
-                            Text("Huỷ", color = ChunkyColor.TextMuted)
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Huỷ",
+                                tint = ChunkyColor.TextMuted,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))

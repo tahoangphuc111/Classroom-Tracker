@@ -272,11 +272,15 @@ struct HomeworkReaderPane: View {
                                     )
 
                                     HStack(spacing: 8) {
-                                        Button("Huỷ") {
+                                        Button {
                                             courseworkNoteToEditCourseworkId = nil
                                             courseworkNoteEditingText = ""
+                                        } label: {
+                                            Image(systemName: "xmark")
+                                                .font(.system(size: 13, weight: .semibold))
                                         }
-                                        .font(.system(size: 14))
+                                        .accessibilityLabel("Huỷ")
+                                        .buttonStyle(.plain)
                                         .foregroundStyle(Color.secondary)
 
                                         Button("Lưu ghi chú") {
@@ -448,9 +452,14 @@ struct HomeworkReaderPane: View {
                 onTriggerHaptic()
                 onToggleCompletion(item)
             } label: {
-                Text("Xong bài tập")
-                    .font(.system(size: 12, weight: .bold))
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("Xong")
+                        .font(.system(size: 12, weight: .bold))
+                }
             }
+            .accessibilityLabel("Xong bài tập")
             .buttonStyle(.borderedProminent)
             .tint(.green)
             .controlSize(.small)
