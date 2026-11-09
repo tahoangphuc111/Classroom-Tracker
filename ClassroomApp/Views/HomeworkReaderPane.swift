@@ -1054,6 +1054,9 @@ struct StudyDeskEmberSceneView: View {
                 )
                 .frame(width: 160, height: 160)
 
+            #if os(macOS)
+            ChunkyEmberCharacterView(emotion: .normal, size: 54)
+            #else
             VStack(spacing: 0) {
                 HStack(alignment: .bottom, spacing: 14) {
                     ZStack(alignment: .center) {
@@ -1108,6 +1111,7 @@ struct StudyDeskEmberSceneView: View {
                     .frame(width: 180, height: 3.5)
                     .padding(.top, 4)
             }
+            #endif
         }
         .frame(height: 110)
     }
