@@ -4,6 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+if [ -f "$ROOT_DIR/scripts/inject_env.sh" ]; then
+  "$ROOT_DIR/scripts/inject_env.sh" apply
+  trap '"$ROOT_DIR/scripts/inject_env.sh" restore' EXIT INT TERM
+fi
+
 echo "===> [macOS] Building Classroom Tracker Release for macOS 27..."
 mkdir -p build/Release
 

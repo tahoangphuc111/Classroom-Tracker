@@ -11,6 +11,7 @@ public struct PersonalNotesView: View {
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @FocusState private var isQuickTodoFocused: Bool
     @State private var selectedStatusFilter: StatusFilter = .all
     @State private var selectedCourseId: String? = nil
     @State private var activeSheet: ActiveNoteSheet? = nil
@@ -71,19 +72,20 @@ public struct PersonalNotesView: View {
     }
 
     private var filteredNotes: [PersonalNote] {
-        var result = notes.filter { $0.courseworkId == nil }
+        var result: [PersonalNote] = []
+        result.reserveCapacity(notes.count)
 
-        switch selectedStatusFilter {
-        case .all:
-            break
-        case .pending:
-            result = result.filter { !$0.isCompleted }
-        case .completed:
-            result = result.filter { $0.isCompleted }
-        }
-
-        if let courseId = selectedCourseId {
-            result = result.filter { $0.courseId == courseId }
+        for note in notes {
+            guard note.courseworkId == nil else { continue }
+            switch selectedStatusFilter {
+            case .all: break
+            case .pending: if note.isCompleted { continue }
+            case .completed: if !note.isCompleted { continue }
+            }
+            if let courseId = selectedCourseId, note.courseId != courseId {
+                continue
+            }
+            result.append(note)
         }
 
         let query = searchText.trimmingCharacters(in: .whitespaces)
@@ -149,6 +151,7 @@ public struct PersonalNotesView: View {
     }
 
     public var body: some View {
+        let currentNotes = filteredNotes
         VStack(spacing: 0) {
             filterBarView
                 .padding(.horizontal, 16)
@@ -162,10 +165,10 @@ public struct PersonalNotesView: View {
 
             Divider()
 
-            if filteredNotes.isEmpty {
+            if currentNotes.isEmpty {
                 emptyStateView
             } else {
-                notesListView
+                notesListView(currentNotes)
             }
         }
         .animation(.spring(response: 0.32, dampingFraction: 0.8), value: selectedStatusFilter)
@@ -223,6 +226,12 @@ public struct PersonalNotesView: View {
             activeSheet = .create
         }
     }
+
+    #if os(iOS)
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+    #endif
 
     private var filterBarView: some View {
         ViewThatFits(in: .horizontal) {
@@ -354,14 +363,17 @@ public struct PersonalNotesView: View {
         }
     }
 
+    @ViewBuilder
     private var quickTodoBar: some View {
-        ViewThatFits(in: .horizontal) {
-            singleLineQuickTodoBar
+        #if os(iOS)
+        if horizontalSizeClass == .compact {
             compactStackedQuickTodoBar
+        } else {
+            singleLineQuickTodoBar
         }
-        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: quickTodoTitle.isEmpty)
-        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: quickTodoDue)
-        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: quickTodoCourseId)
+        #else
+        singleLineQuickTodoBar
+        #endif
     }
 
     private var singleLineQuickTodoBar: some View {
@@ -373,6 +385,7 @@ public struct PersonalNotesView: View {
             TextField("Thêm việc cần làm nhanh...", text: $quickTodoTitle)
                 .textFieldStyle(.plain)
                 .font(.system(size: 15))
+                .focused($isQuickTodoFocused)
                 .submitLabel(.done)
                 .onSubmit {
                     submitQuickTodo()
@@ -399,6 +412,9 @@ public struct PersonalNotesView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(Color.platformCardBorder, lineWidth: 1)
         )
+        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: quickTodoTitle.isEmpty)
+        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: quickTodoDue)
+        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: quickTodoCourseId)
     }
 
     private var compactStackedQuickTodoBar: some View {
@@ -411,6 +427,7 @@ public struct PersonalNotesView: View {
                 TextField("Thêm việc cần làm nhanh...", text: $quickTodoTitle)
                     .textFieldStyle(.plain)
                     .font(.system(size: 15))
+                    .focused($isQuickTodoFocused)
                     .submitLabel(.done)
                     .onSubmit {
                         submitQuickTodo()
@@ -440,6 +457,9 @@ public struct PersonalNotesView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(Color.platformCardBorder, lineWidth: 1)
         )
+        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: quickTodoTitle.isEmpty)
+        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: quickTodoDue)
+        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: quickTodoCourseId)
     }
 
     private var quickTodoExpandButton: some View {
@@ -466,6 +486,10 @@ public struct PersonalNotesView: View {
                 }
                 return selectedCourseId
             }()
+            isQuickTodoFocused = false
+            #if os(iOS)
+            hideKeyboard()
+            #endif
             activeSheet = .createDraft(
                 title: quickTodoTitle.trimmingCharacters(in: .whitespaces),
                 courseId: effectiveCourseId,
@@ -564,7 +588,13 @@ public struct PersonalNotesView: View {
 
     private func submitQuickTodo() {
         let trimmed = quickTodoTitle.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else {
+            isQuickTodoFocused = false
+            #if os(iOS)
+            hideKeyboard()
+            #endif
+            return
+        }
 
         PlatformHaptics.trigger()
 
@@ -607,37 +637,61 @@ public struct PersonalNotesView: View {
             quickTodoTitle = ""
             quickTodoCourseId = nil
             quickTodoDue = .none
+            isQuickTodoFocused = false
+            #if os(iOS)
+            hideKeyboard()
+            #endif
         }
     }
 
-    private var notesListView: some View {
+    @ViewBuilder
+    private func notesListView(_ notes: [PersonalNote]) -> some View {
         ScrollView {
             #if os(macOS)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 280, maximum: 440), spacing: 12, alignment: .top)], spacing: 12) {
-                notesForEach
+                notesForEach(notes)
             }
             .padding(16)
             #else
             if horizontalSizeClass == .regular {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 280, maximum: 440), spacing: 12, alignment: .top)], spacing: 12) {
-                    notesForEach
+                    notesForEach(notes)
                 }
                 .padding(16)
             } else {
                 LazyVStack(spacing: 10) {
-                    notesForEach
+                    notesForEach(notes)
                 }
                 .padding(16)
             }
             #endif
         }
+        .background(
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isQuickTodoFocused = false
+                    #if os(iOS)
+                    hideKeyboard()
+                    #endif
+                }
+        )
         #if os(iOS)
         .scrollDismissesKeyboard(.interactively)
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                if isQuickTodoFocused {
+                    isQuickTodoFocused = false
+                    hideKeyboard()
+                }
+            }
+        )
         #endif
     }
 
-    private var notesForEach: some View {
-        ForEach(filteredNotes) { note in
+    @ViewBuilder
+    private func notesForEach(_ notes: [PersonalNote]) -> some View {
+        ForEach(notes) { note in
             PersonalNoteRowCard(
                 note: note,
                 onToggle: { onToggleCompletion(note.id) },
@@ -768,6 +822,13 @@ public struct PersonalNotesView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isQuickTodoFocused = false
+            #if os(iOS)
+            hideKeyboard()
+            #endif
+        }
         .opacity(emptyAppeared ? 1.0 : 0.0)
         .scaleEffect(reduceMotion ? 1.0 : (emptyAppeared ? 1.0 : 0.95))
         .offset(y: reduceMotion ? 0 : (emptyAppeared ? 0 : 8))
@@ -813,6 +874,9 @@ private struct PersonalNoteRowCard: View, Equatable {
             } label: {
                 ZStack {
                     if note.isCompleted {
+                        Circle()
+                            .fill(Color.green.opacity(0.18))
+                            .frame(width: 26, height: 26)
                         if #available(macOS 14.0, iOS 17.0, *) {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 20, weight: .bold))
@@ -920,17 +984,24 @@ private struct PersonalNoteRowCard: View, Equatable {
                                 onToggleChecklistItem(note.id, item.id)
                             } label: {
                                 HStack(spacing: 7) {
-                                    if #available(macOS 14.0, iOS 17.0, *) {
-                                        Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 14.5, weight: .semibold))
-                                            .foregroundStyle(item.isCompleted ? Color.green : Color.secondary.opacity(0.6))
-                                            .frame(width: 17, height: 17)
-                                            .symbolEffect(.bounce, value: item.isCompleted)
-                                    } else {
-                                        Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 14.5, weight: .semibold))
-                                            .foregroundStyle(item.isCompleted ? Color.green : Color.secondary.opacity(0.6))
-                                            .frame(width: 17, height: 17)
+                                    ZStack {
+                                        if item.isCompleted {
+                                            Circle()
+                                                .fill(Color.green.opacity(0.18))
+                                                .frame(width: 19, height: 19)
+                                        }
+                                        if #available(macOS 14.0, iOS 17.0, *) {
+                                            Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                                                .font(.system(size: 14.5, weight: .semibold))
+                                                .foregroundStyle(item.isCompleted ? Color.green : Color.secondary.opacity(0.6))
+                                                .frame(width: 17, height: 17)
+                                                .symbolEffect(.bounce, value: item.isCompleted)
+                                        } else {
+                                            Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                                                .font(.system(size: 14.5, weight: .semibold))
+                                                .foregroundStyle(item.isCompleted ? Color.green : Color.secondary.opacity(0.6))
+                                                .frame(width: 17, height: 17)
+                                        }
                                     }
 
                                     Text(item.title)
@@ -1160,27 +1231,34 @@ public struct CreateOrEditNoteSheet: View {
                                     item.isCompleted.toggle()
                                 }
                             } label: {
-                                if #available(macOS 14.0, iOS 17.0, *) {
-                                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                                        .font(.system(size: 17, weight: .semibold))
-                                        .foregroundStyle(item.isCompleted ? Color.green : Color.secondary)
-                                        .symbolEffect(.bounce, value: item.isCompleted)
-                                        #if os(iOS)
-                                        .frame(width: 44, height: 44)
-                                        #else
-                                        .frame(width: 28, height: 28)
-                                        #endif
-                                        .contentShape(Rectangle())
-                                } else {
-                                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                                        .font(.system(size: 17, weight: .semibold))
-                                        .foregroundStyle(item.isCompleted ? Color.green : Color.secondary)
-                                        #if os(iOS)
-                                        .frame(width: 44, height: 44)
-                                        #else
-                                        .frame(width: 28, height: 28)
-                                        #endif
-                                        .contentShape(Rectangle())
+                                ZStack {
+                                    if item.isCompleted {
+                                        Circle()
+                                            .fill(Color.green.opacity(0.18))
+                                            .frame(width: 22, height: 22)
+                                    }
+                                    if #available(macOS 14.0, iOS 17.0, *) {
+                                        Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 17, weight: .semibold))
+                                            .foregroundStyle(item.isCompleted ? Color.green : Color.secondary)
+                                            .symbolEffect(.bounce, value: item.isCompleted)
+                                            #if os(iOS)
+                                            .frame(width: 44, height: 44)
+                                            #else
+                                            .frame(width: 28, height: 28)
+                                            #endif
+                                            .contentShape(Rectangle())
+                                    } else {
+                                        Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 17, weight: .semibold))
+                                            .foregroundStyle(item.isCompleted ? Color.green : Color.secondary)
+                                            #if os(iOS)
+                                            .frame(width: 44, height: 44)
+                                            #else
+                                            .frame(width: 28, height: 28)
+                                            #endif
+                                            .contentShape(Rectangle())
+                                    }
                                 }
                             }
                             .buttonStyle(.plain)
@@ -1328,12 +1406,14 @@ public struct CreateOrEditNoteSheet: View {
                         save()
                     } label: {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(size: 12.5, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .background(Circle().fill(Color.green))
                     }
                     .accessibilityLabel("Lưu")
                     .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
                     .keyboardShortcut(.return, modifiers: [.command])
-                    .tint(Color.blue)
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }

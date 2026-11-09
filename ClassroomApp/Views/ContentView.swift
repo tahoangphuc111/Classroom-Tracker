@@ -173,6 +173,72 @@ private final class AssignmentListCache {
     private var lastTomorrowCourseworkVersion: Int = -1
     private var cachedTomorrowGroups: TomorrowGroupsResult = TomorrowGroupsResult(groupedPending: [], completedItems: [])
 
+    private var lastRawQuery: String = ""
+    private var cachedCleanQuery: String = ""
+    private var cachedTokens: [String] = []
+
+    private var lastCountsSearchText: String = ""
+    private var lastCountsVersion: Int = -1
+    private var cachedCounts: [ContentView.AppFilterCategory: Int] = [:]
+
+    private var lastHasItemsSearchText: String = ""
+    private var lastHasItemsVersion: Int = -1
+    private var cachedHasItems: [ContentView.AppFilterCategory: Bool] = [:]
+
+    func searchTokens(for query: String) -> (clean: String, tokens: [String]) {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return ("", []) }
+        if trimmed == lastRawQuery {
+            return (cachedCleanQuery, cachedTokens)
+        }
+        let clean = trimmed.normalizedForVietnameseSearch()
+        let tokens = clean.searchQueryTokens()
+        lastRawQuery = trimmed
+        cachedCleanQuery = clean
+        cachedTokens = tokens
+        return (clean, tokens)
+    }
+
+    func categoryPendingCount(
+        category: ContentView.AppFilterCategory,
+        searchText: String,
+        courseworkVersion: Int,
+        compute: () -> Int
+    ) -> Int {
+        if lastCountsSearchText == searchText && lastCountsVersion == courseworkVersion {
+            if let count = cachedCounts[category] {
+                return count
+            }
+        } else {
+            cachedCounts.removeAll(keepingCapacity: true)
+            lastCountsSearchText = searchText
+            lastCountsVersion = courseworkVersion
+        }
+        let count = compute()
+        cachedCounts[category] = count
+        return count
+    }
+
+    func categoryHasItems(
+        category: ContentView.AppFilterCategory,
+        searchText: String,
+        courseworkVersion: Int,
+        compute: () -> Bool
+    ) -> Bool {
+        if lastHasItemsSearchText == searchText && lastHasItemsVersion == courseworkVersion {
+            if let has = cachedHasItems[category] {
+                return has
+            }
+        } else {
+            cachedHasItems.removeAll(keepingCapacity: true)
+            lastHasItemsSearchText = searchText
+            lastHasItemsVersion = courseworkVersion
+        }
+        let has = compute()
+        cachedHasItems[category] = has
+        return has
+    }
+
     func filteredList(
         category: ContentView.AppFilterCategory,
         searchText: String,
@@ -536,16 +602,37 @@ public struct ContentView: View {
         }
     }
 
+    @inline(__always)
+    private func itemMatchesTokens(_ item: Coursework, tokens: [String]) -> Bool {
+        let index = item.searchIndex
+        let tokenCount = tokens.count
+        for t in 0..<tokenCount {
+            let tok = tokens[t]
+            if !index.contains(tok) {
+                let altTok = cleanTelexKeystrokes(tok)
+                if altTok == tok || !index.contains(altTok) {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
     private func categoryPendingCount(_ category: AppFilterCategory) -> Int {
         if !searchText.isEmpty {
-            let query = searchText.trimmingCharacters(in: .whitespaces)
-            let cleanQuery = query.normalizedForVietnameseSearch()
-            let tokens = cleanQuery.searchQueryTokens()
-            guard !tokens.isEmpty else { return 0 }
-            let base = baseFilteredList(for: category)
-            return base.reduce(0) { count, item in
-                if !item.isCompleted && tokens.allSatisfy({ item.searchIndex.contains($0) }) {
-                    return count + 1
+            return listCache.categoryPendingCount(
+                category: category,
+                searchText: searchText,
+                courseworkVersion: courseworkVersion
+            ) {
+                let (_, tokens) = listCache.searchTokens(for: searchText)
+                guard !tokens.isEmpty else { return 0 }
+                let base = baseFilteredList(for: category)
+                var count = 0
+                for item in base {
+                    if !item.isCompleted && itemMatchesTokens(item, tokens: tokens) {
+                        count += 1
+                    }
                 }
                 return count
             }
@@ -570,12 +657,20 @@ public struct ContentView: View {
 
     private func categoryHasItems(_ category: AppFilterCategory) -> Bool {
         if !searchText.isEmpty {
-            let query = searchText.trimmingCharacters(in: .whitespaces)
-            let cleanQuery = query.normalizedForVietnameseSearch()
-            let tokens = cleanQuery.searchQueryTokens()
-            guard !tokens.isEmpty else { return false }
-            return baseFilteredList(for: category).contains { item in
-                tokens.allSatisfy { item.searchIndex.contains($0) }
+            return listCache.categoryHasItems(
+                category: category,
+                searchText: searchText,
+                courseworkVersion: courseworkVersion
+            ) {
+                let (_, tokens) = listCache.searchTokens(for: searchText)
+                guard !tokens.isEmpty else { return false }
+                let base = baseFilteredList(for: category)
+                for item in base {
+                    if itemMatchesTokens(item, tokens: tokens) {
+                        return true
+                    }
+                }
+                return false
             }
         }
         switch category {
@@ -607,30 +702,13 @@ public struct ContentView: View {
                 item.badgeCode == selectedSubjectFilter
             }
         }
-        let query = searchText.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return baseList }
-
-        let cleanQuery = query.normalizedForVietnameseSearch()
-        let tokens = cleanQuery.searchQueryTokens()
+        let (cleanQuery, tokens) = listCache.searchTokens(for: searchText)
         guard !tokens.isEmpty else { return baseList }
 
         var scored: [(item: Coursework, score: Int)] = []
         scored.reserveCapacity(baseList.count)
-        let tokenCount = tokens.count
         for item in baseList {
-            let index = item.searchIndex
-            var matchesAll = true
-            for t in 0..<tokenCount {
-                let tok = tokens[t]
-                if !index.contains(tok) {
-                    let altTok = cleanTelexKeystrokes(tok)
-                    if altTok == tok || !index.contains(altTok) {
-                        matchesAll = false
-                        break
-                    }
-                }
-            }
-            if matchesAll {
+            if itemMatchesTokens(item, tokens: tokens) {
                 scored.append((item: item, score: item.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)))
             }
         }
@@ -742,6 +820,23 @@ public struct ContentView: View {
                 welcomeLoginView
             }
         }
+        .overlay(alignment: .top) {
+            if let toast = activeToast {
+                FloatingToastHUD(toast: toast, onDismiss: { dismissToast() })
+                    .padding(.horizontal, 16)
+                    #if os(iOS)
+                    .padding(.top, 8)
+                    #else
+                    .padding(.top, 16)
+                    #endif
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.95)),
+                        removal: .opacity.combined(with: .scale(scale: 0.92))
+                    ))
+                    .zIndex(200)
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.78), value: activeToast)
         .onAppear {
             clientIdInput = authService.configuredClientId
             refreshData()
@@ -1037,18 +1132,6 @@ public struct ContentView: View {
         .onAppear {
             withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                 welcomeAppeared = true
-            }
-        }
-        .overlay(alignment: .bottom) {
-            if let toast = activeToast {
-                FloatingToastHUD(toast: toast, onDismiss: { dismissToast() })
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .offset(y: 12)),
-                        removal: .opacity.combined(with: .scale(scale: 0.92))
-                    ))
-                    .zIndex(100)
             }
         }
     }
@@ -1404,7 +1487,10 @@ public struct ContentView: View {
                                     showMobileDetailSheet = false
                                 } label: {
                                     Image(systemName: "checkmark")
-                                        .font(.system(size: 15, weight: .bold))
+                                        .font(.system(size: 12.5, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 28, height: 28)
+                                        .background(Circle().fill(Color.green))
                                 }
                                 .accessibilityLabel("Xong")
                                 .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
@@ -1699,19 +1785,6 @@ public struct ContentView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
-        .overlay(alignment: .bottom) {
-            if let toast = activeToast {
-                FloatingToastHUD(toast: toast, onDismiss: { dismissToast() })
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.95)),
-                        removal: .opacity.combined(with: .scale(scale: 0.92))
-                    ))
-                    .zIndex(100)
-            }
-        }
-        .animation(.spring(response: 0.35, dampingFraction: 0.78), value: activeToast)
         .background {
             if !showSettingsModal && activeCategory != .notes && activeCategory != .widgetPreview && courseworkNoteToEditCourseworkId == nil {
                 Group {
@@ -2013,7 +2086,10 @@ public struct ContentView: View {
                                         showMobileDetailSheet = false
                                     } label: {
                                         Image(systemName: "checkmark")
-                                            .font(.system(size: 15, weight: .bold))
+                                            .font(.system(size: 12.5, weight: .bold))
+                                            .foregroundStyle(.white)
+                                            .frame(width: 28, height: 28)
+                                            .background(Circle().fill(Color.green))
                                     }
                                     .accessibilityLabel("Xong")
                                     .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
@@ -2054,7 +2130,10 @@ public struct ContentView: View {
                                     showMobileDetailSheet = false
                                 } label: {
                                     Image(systemName: "checkmark")
-                                        .font(.system(size: 15, weight: .bold))
+                                        .font(.system(size: 12.5, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 28, height: 28)
+                                        .background(Circle().fill(Color.green))
                                 }
                                 .accessibilityLabel("Xong")
                             }
@@ -2208,54 +2287,6 @@ public struct ContentView: View {
                             .fixedSize()
                         }
                     }
-
-                    if apiService.isSyncing {
-                        ProgressView()
-                            .controlSize(.small)
-                            .padding(5)
-                    } else if authService.isAuthenticated {
-                        Button {
-                            triggerHapticFeedback()
-                            Task {
-                                await apiService.syncAll()
-                                withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                                    refreshData()
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 12.5, weight: .semibold))
-                                .foregroundStyle(Color.platformTextSecondary)
-                                .padding(5.5)
-                                .background(
-                                    Circle().fill(Color.platformControlBackground)
-                                )
-                                .overlay(
-                                    Circle().stroke(Color.platformCardBorder, lineWidth: 0.8)
-                                )
-                        }
-                        .buttonStyle(SpringPressButtonStyle(scale: 0.92, pressedOpacity: 0.84))
-                        .fixedSize()
-                    }
-
-                    Button {
-                        triggerHapticFeedback()
-                        clientIdInput = authService.configuredClientId
-                        showSettingsModal = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Color.platformTextSecondary)
-                            .padding(5.5)
-                            .background(
-                                Circle().fill(Color.platformControlBackground)
-                            )
-                            .overlay(
-                                Circle().stroke(Color.platformCardBorder, lineWidth: 0.8)
-                            )
-                    }
-                    .buttonStyle(SpringPressButtonStyle(scale: 0.92, pressedOpacity: 0.84))
-                    .fixedSize()
                 }
             }
         .padding(.horizontal, 16)
@@ -2839,11 +2870,30 @@ public struct ContentView: View {
                 }
                 #if os(iOS)
                 .scrollDismissesKeyboard(.interactively)
+                .simultaneousGesture(
+                    TapGesture().onEnded {
+                        if isSearchFocused {
+                            isSearchFocused = false
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        }
+                    }
+                )
                 #endif
                 }
             }
         }
-        .background(Color.platformWindowBackground)
+        .background(
+            Color.platformWindowBackground
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if isSearchFocused {
+                        isSearchFocused = false
+                    }
+                    #if os(iOS)
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    #endif
+                }
+        )
     }
 
     private var formattedBaoBaiShareText: String {

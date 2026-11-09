@@ -127,7 +127,8 @@ struct AssignmentListRow: View, Equatable {
     }
 
     var body: some View {
-        let themeColor = SubjectArtHelper.themeColor(for: item.courseName, title: item.title)
+        let category = item.subjectCategory
+        let themeColor = SubjectArtHelper.themeColor(for: category)
 
         HStack(alignment: .center, spacing: 0) {
             HStack(spacing: 9) {
@@ -149,7 +150,7 @@ struct AssignmentListRow: View, Equatable {
                     onToggleCompletion()
                 } label: {
                     ZStack(alignment: .bottomTrailing) {
-                        SubjectArtBadgeView(courseName: item.courseName, title: item.title, size: 34)
+                        SubjectArtBadgeView(category: category, size: 34)
                             .equatable()
 
                         if isTurnedIn {

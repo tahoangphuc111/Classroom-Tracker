@@ -45,9 +45,11 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -98,6 +100,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -184,6 +187,7 @@ fun PersonalNotesScreen(
 
     val normalizedQuery = remember(debouncedQuery) { debouncedQuery.normalizeForVietnameseSearch() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     BackHandler(enabled = searchQuery.isNotEmpty() || selectedCourseId != null) {
         if (searchQuery.isNotEmpty()) {
@@ -372,6 +376,13 @@ fun PersonalNotesScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                        }
                         .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -394,7 +405,15 @@ fun PersonalNotesScreen(
                     }
                 }
             } else {
+                val listState = rememberLazyListState()
+                LaunchedEffect(listState.isScrollInProgress) {
+                    if (listState.isScrollInProgress) {
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                    }
+                }
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 136.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -443,8 +462,9 @@ fun PersonalNotesScreen(
                 )
                 onSaveNote(newNote)
             },
-            onOpenFullDialog = { draftTitle, draftDue ->
-                val targetCourse = courses.find { it.id == selectedCourseId }
+            onOpenFullDialog = { draftTitle, draftDue, draftCourseId ->
+                val targetCourseId = draftCourseId ?: selectedCourseId
+                val targetCourse = courses.find { it.id == targetCourseId }
                 draftForDialog = if (draftTitle.isNotBlank() || draftDue != null || targetCourse != null) {
                     PersonalNote(
                         title = draftTitle,
@@ -847,16 +867,23 @@ private fun PersonalNoteCard(
                                         .padding(vertical = 2.5.dp, horizontal = 2.dp)
                                 ) {
                                     if (item.isCompleted) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            tint = ChunkyColor.SuccessGreen,
-                                            modifier = Modifier.size(16.dp)
-                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .size(18.dp)
+                                                .background(ChunkyColor.SuccessGreen.copy(alpha = 0.16f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = ChunkyColor.SuccessGreen,
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                        }
                                     } else {
                                         Box(
                                             modifier = Modifier
-                                                .size(16.dp)
+                                                .size(18.dp)
                                                 .border(1.4.dp, ChunkyColor.TextMuted.copy(alpha = 0.5f), CircleShape)
                                         )
                                     }
@@ -1063,16 +1090,23 @@ private fun CreateOrEditNoteDialog(
                                     modifier = Modifier.size(28.dp)
                                 ) {
                                     if (item.isCompleted) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            tint = ChunkyColor.SuccessGreen,
-                                            modifier = Modifier.size(18.dp)
-                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .background(ChunkyColor.SuccessGreen.copy(alpha = 0.16f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = ChunkyColor.SuccessGreen,
+                                                modifier = Modifier.size(17.dp)
+                                            )
+                                        }
                                     } else {
                                         Box(
                                             modifier = Modifier
-                                                .size(18.dp)
+                                                .size(20.dp)
                                                 .border(1.5.dp, ChunkyColor.TextMuted.copy(alpha = 0.5f), CircleShape)
                                         )
                                     }
@@ -1346,9 +1380,15 @@ private fun CreateOrEditNoteDialog(
                     scaleY = saveScale
                 },
                 enabled = title.trim().isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.ActionBlue)
+                colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.SuccessGreen)
             ) {
-                Text("Lưu ghi chú")
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(17.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Lưu ghi chú", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -1383,12 +1423,16 @@ private fun CreateOrEditNoteDialog(
 private fun BottomQuickCaptureBar(
     courses: List<Course>,
     onSaveQuickNote: (title: String, dueEpoch: Long?, courseId: String?, courseName: String?) -> Unit,
-    onOpenFullDialog: (draftTitle: String, draftDue: Long?) -> Unit,
+    onOpenFullDialog: (draftTitle: String, draftDue: Long?, draftCourseId: String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var title by rememberSaveable { mutableStateOf("") }
     var selectedDeadlineMode by rememberSaveable { mutableIntStateOf(1) } // 0: none, 1: tomorrow, 2: today
+    var selectedCourseId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showCourseMenu by remember { mutableStateOf(false) }
     val view = LocalView.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val openDialogWithDraft = {
         val currentTitle = title.trim()
@@ -1397,8 +1441,33 @@ private fun BottomQuickCaptureBar(
             2 -> ClassroomDateUtils.startOfTomorrow - 1000L
             else -> null
         }
+        val currentCourse = selectedCourseId
         title = ""
-        onOpenFullDialog(currentTitle, due)
+        selectedCourseId = null
+        focusManager.clearFocus()
+        keyboardController?.hide()
+        onOpenFullDialog(currentTitle, due, currentCourse)
+    }
+
+    val submitQuickNote = {
+        val trimmed = title.trim()
+        if (trimmed.isNotEmpty()) {
+            val due = when (selectedDeadlineMode) {
+                1 -> ClassroomDateUtils.startOfDayAfter - 1000L
+                2 -> ClassroomDateUtils.startOfTomorrow - 1000L
+                else -> null
+            }
+            val targetCourse = courses.find { it.id == selectedCourseId }
+            onSaveQuickNote(trimmed, due, selectedCourseId, targetCourse?.name)
+            title = ""
+            selectedCourseId = null
+            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            focusManager.clearFocus()
+            keyboardController?.hide()
+        } else {
+            focusManager.clearFocus()
+            keyboardController?.hide()
+        }
     }
 
     Surface(
@@ -1432,17 +1501,7 @@ private fun BottomQuickCaptureBar(
                     textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, color = ChunkyColor.TextPrimary),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
-                        val trimmed = title.trim()
-                        if (trimmed.isNotEmpty()) {
-                            val due = when (selectedDeadlineMode) {
-                                1 -> ClassroomDateUtils.startOfDayAfter - 1000L
-                                2 -> ClassroomDateUtils.startOfTomorrow - 1000L
-                                else -> null
-                            }
-                            onSaveQuickNote(trimmed, due, null, null)
-                            title = ""
-                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                        }
+                        submitQuickNote()
                     }),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -1460,14 +1519,7 @@ private fun BottomQuickCaptureBar(
                     onClick = {
                         val trimmed = title.trim()
                         if (trimmed.isNotEmpty()) {
-                            val due = when (selectedDeadlineMode) {
-                                1 -> ClassroomDateUtils.startOfDayAfter - 1000L
-                                2 -> ClassroomDateUtils.startOfTomorrow - 1000L
-                                else -> null
-                            }
-                            onSaveQuickNote(trimmed, due, null, null)
-                            title = ""
-                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            submitQuickNote()
                         } else {
                             openDialogWithDraft()
                         }
@@ -1475,8 +1527,8 @@ private fun BottomQuickCaptureBar(
                     modifier = Modifier
                         .size(46.dp)
                         .clip(CircleShape)
-                        .background(if (title.trim().isNotEmpty()) ChunkyColor.ActionBlue else ChunkyColor.WindowBackground)
-                        .border(1.dp, if (title.trim().isNotEmpty()) ChunkyColor.ActionBlue else ChunkyColor.CardBorder, CircleShape)
+                        .background(if (title.trim().isNotEmpty()) ChunkyColor.SuccessGreen else ChunkyColor.WindowBackground)
+                        .border(1.dp, if (title.trim().isNotEmpty()) ChunkyColor.SuccessGreen else ChunkyColor.CardBorder, CircleShape)
                 ) {
                     Icon(
                         imageVector = if (title.trim().isNotEmpty()) Icons.Default.Check else Icons.Default.Add,
@@ -1509,6 +1561,59 @@ private fun BottomQuickCaptureBar(
                     selected = selectedDeadlineMode == 0,
                     onClick = { selectedDeadlineMode = 0 }
                 )
+
+                if (courses.isNotEmpty()) {
+                    Box {
+                        val selectedCourse = courses.find { it.id == selectedCourseId }
+                        val courseLabel = selectedCourse?.name ?: "Môn"
+                        val isCourseSelected = selectedCourseId != null
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isCourseSelected) ChunkyColor.SkyBottom.copy(alpha = 0.12f) else Color.Transparent)
+                                .border(
+                                    1.dp,
+                                    if (isCourseSelected) ChunkyColor.SkyBottom.copy(alpha = 0.5f) else ChunkyColor.CardBorder,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .clickable { showCourseMenu = true }
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = courseLabel,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                fontWeight = if (isCourseSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                color = if (isCourseSelected) ChunkyColor.SkyBottom else ChunkyColor.TextMuted,
+                                modifier = Modifier.widthIn(max = 110.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showCourseMenu,
+                            onDismissRequest = { showCourseMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Không gắn môn") },
+                                onClick = {
+                                    selectedCourseId = null
+                                    showCourseMenu = false
+                                }
+                            )
+                            courses.forEach { course ->
+                                DropdownMenuItem(
+                                    text = { Text(course.name) },
+                                    onClick = {
+                                        selectedCourseId = course.id
+                                        showCourseMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.weight(1f))
 

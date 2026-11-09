@@ -18,14 +18,11 @@ data class Coursework(
     val isManuallyCompleted: Boolean = false,
     val normalizedTitle: String = title.normalizeForVietnameseSearch(),
     val normalizedCourseName: String = courseName.normalizeForVietnameseSearch(),
-    val searchIndex: String = buildNormalizedSearchIndex(normalizedTitle, normalizedCourseName, description)
+    val searchIndex: String = buildNormalizedSearchIndex(normalizedTitle, normalizedCourseName, description),
+    val timeOnlyString: String = ClassroomDateUtils.buildTimeOnlyString(dueEpochMillis),
+    val formattedFullDueDate: String = ClassroomDateUtils.buildFormattedFullDueDate(dueEpochMillis),
+    val conciseDueString: String = ClassroomDateUtils.buildConciseDueString(dueEpochMillis)
 ) {
-    val timeOnlyString: String
-        get() = ClassroomDateUtils.buildTimeOnlyString(dueEpochMillis)
-    val formattedFullDueDate: String
-        get() = ClassroomDateUtils.buildFormattedFullDueDate(dueEpochMillis)
-    val conciseDueString: String
-        get() = ClassroomDateUtils.buildConciseDueString(dueEpochMillis)
 
     val isCompleted: Boolean
         get() = status == SubmissionStatus.TURNED_IN ||

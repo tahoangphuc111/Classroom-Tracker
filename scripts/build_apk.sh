@@ -4,6 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR/android"
 
+if [ -f "$ROOT_DIR/scripts/inject_env.sh" ]; then
+  "$ROOT_DIR/scripts/inject_env.sh" apply
+  trap '"$ROOT_DIR/scripts/inject_env.sh" restore' EXIT INT TERM
+fi
+
 if [ -d "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home" ]; then
   export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
   export PATH="$JAVA_HOME/bin:$PATH"

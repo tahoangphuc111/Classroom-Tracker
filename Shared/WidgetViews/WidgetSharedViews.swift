@@ -25,9 +25,14 @@ public struct SubjectArtHelper {
         public let bannerBackground: Color
     }
 
+    private struct CompoundCategoryKey: Hashable {
+        let courseName: String
+        let title: String
+    }
+
     private static let cacheLock = NSLock()
     private static var courseCategoryCache: [String: SubjectCategory] = [:]
-    private static var categoryCache: [String: SubjectCategory] = [:]
+    private static var categoryCache: [CompoundCategoryKey: SubjectCategory] = [:]
     private static var courseBadgeCache: [String: String] = [:]
 
     private static let standardThemes: [SubjectCategory: VisualTheme] = [
@@ -75,7 +80,7 @@ public struct SubjectArtHelper {
             return computed
         }
 
-        let key = "\(courseName)|\(title ?? "")"
+        let key = CompoundCategoryKey(courseName: courseName, title: title ?? "")
         cacheLock.lock()
         if let cached = categoryCache[key] {
             cacheLock.unlock()
@@ -853,21 +858,35 @@ public struct CourseColorHelper {
 public struct SubjectArtBadgeView: View, Equatable {
     let courseName: String
     var title: String? = nil
+    var category: SubjectCategory? = nil
     var size: CGFloat = 20
     @Environment(\.colorScheme) private var colorScheme
 
     public init(courseName: String, title: String? = nil, size: CGFloat = 20) {
         self.courseName = courseName
         self.title = title
+        self.category = nil
+        self.size = size
+    }
+
+    public init(category: SubjectCategory, size: CGFloat = 20) {
+        self.courseName = ""
+        self.title = nil
+        self.category = category
         self.size = size
     }
 
     public static func == (lhs: SubjectArtBadgeView, rhs: SubjectArtBadgeView) -> Bool {
-        lhs.courseName == rhs.courseName && lhs.title == rhs.title && lhs.size == rhs.size
+        lhs.courseName == rhs.courseName && lhs.title == rhs.title && lhs.category == rhs.category && lhs.size == rhs.size
     }
 
     public var body: some View {
-        let visualTheme = SubjectArtHelper.theme(for: courseName, title: title)
+        let visualTheme: SubjectArtHelper.VisualTheme = {
+            if let cat = category {
+                return SubjectArtHelper.theme(for: cat)
+            }
+            return SubjectArtHelper.theme(for: courseName, title: title)
+        }()
         let cornerRadius = size * 0.28
         let isDark = colorScheme == .dark
         let bgOpacity: Double = isDark ? 0.28 : 0.16

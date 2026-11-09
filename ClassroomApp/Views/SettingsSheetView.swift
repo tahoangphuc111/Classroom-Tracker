@@ -84,7 +84,10 @@ struct SettingsSheetView: View {
                             isPresented = false
                         } label: {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 15, weight: .bold))
+                                .font(.system(size: 12.5, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 28, height: 28)
+                                .background(Circle().fill(Color.green))
                         }
                         .accessibilityLabel("Xong")
                         .buttonStyle(SpringPressButtonStyle(scale: 0.92, pressedOpacity: 0.88))

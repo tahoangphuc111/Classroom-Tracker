@@ -47,7 +47,19 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             let decoded = bundledSecretObfuscatedBytes.map { $0 ^ bundledSecretMaskKey }
             return String(bytes: decoded, encoding: .utf8) ?? ""
         }
-        return bundledClientSecret
+        if !bundledClientSecret.isEmpty {
+            return bundledClientSecret
+        }
+        #if DEBUG
+        let envSecret = ProcessInfo.processInfo.environment["GOOGLE_OAUTH_CLIENT_SECRET"]
+            ?? ProcessInfo.processInfo.environment["OAUTH_CLIENT_SECRET"]
+            ?? ProcessInfo.processInfo.environment["CLIENT_SECRET"]
+            ?? ProcessInfo.processInfo.environment["SECRET_ID"]
+        if let envSecret = envSecret?.trimmingCharacters(in: .whitespacesAndNewlines), !envSecret.isEmpty {
+            return envSecret
+        }
+        #endif
+        return ""
     }
 
     public static let defaultClientIdKey = "google_oauth_client_id"
