@@ -79,6 +79,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -195,39 +198,40 @@ fun MainScreen() {
         }
     }
 
-    val courseworkState = remember(
-        allCoursework,
-        courses,
-        personalNotes,
-        currentDayEpoch
+    // Sorting and note conversion must not compete with gesture/animation frames.
+    // produceState cancels obsolete results when a newer database snapshot arrives.
+    val courseworkState by produceState(
+        MainScreenCourseworkState(), allCoursework, courses, personalNotes, currentDayEpoch
     ) {
-        val active = BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses)
+        value = withContext(Dispatchers.Default) {
+            val active = BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses)
 
-        val tomorrow = BaoBaiBucketingUtils.getTomorrowCoursework(
-            items = active,
-            courses = courses,
-            personalNotes = personalNotes
-        )
-        val completed = active.filter { it.isCompleted }.sortedWith { first, second ->
-            when {
-                first.dueEpochMillis != null && second.dueEpochMillis != null -> {
-                    val dueDiff = second.dueEpochMillis.compareTo(first.dueEpochMillis)
-                    if (dueDiff != 0) dueDiff else first.id.compareTo(second.id)
-                }
-                first.dueEpochMillis != null -> -1
-                second.dueEpochMillis != null -> 1
-                else -> {
-                    val titleDiff = first.title.compareTo(second.title, ignoreCase = true)
-                    if (titleDiff != 0) titleDiff else first.id.compareTo(second.id)
+            val tomorrow = BaoBaiBucketingUtils.getTomorrowCoursework(
+                items = active,
+                courses = courses,
+                personalNotes = personalNotes
+            )
+            val completed = active.filter { it.isCompleted }.sortedWith { first, second ->
+                when {
+                    first.dueEpochMillis != null && second.dueEpochMillis != null -> {
+                        val dueDiff = second.dueEpochMillis.compareTo(first.dueEpochMillis)
+                        if (dueDiff != 0) dueDiff else first.id.compareTo(second.id)
+                    }
+                    first.dueEpochMillis != null -> -1
+                    second.dueEpochMillis != null -> 1
+                    else -> {
+                        val titleDiff = first.title.compareTo(second.title, ignoreCase = true)
+                        if (titleDiff != 0) titleDiff else first.id.compareTo(second.id)
+                    }
                 }
             }
+            val upcomingCount = active.count { !it.isCompleted }
+            MainScreenCourseworkState(
+                tomorrowItems = tomorrow,
+                completedItems = completed,
+                upcomingIncompleteCount = upcomingCount
+            )
         }
-        val upcomingCount = active.count { !it.isCompleted }
-        MainScreenCourseworkState(
-            tomorrowItems = tomorrow,
-            completedItems = completed,
-            upcomingIncompleteCount = upcomingCount
-        )
     }
 
     val tomorrowItems = courseworkState.tomorrowItems

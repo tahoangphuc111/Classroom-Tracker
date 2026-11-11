@@ -154,19 +154,14 @@ private final class AssignmentListCache {
         }
     }
 
-    private var lastCategory: ContentView.AppFilterCategory?
-    private var lastSearchText: String = ""
-    private var lastSubjectFilter: String = ""
-    private var lastCourseworkCount: Int = -1
-    private var lastCourseworkVersion: Int = -1
-    private var cachedFilteredList: [Coursework] = []
-
-    private var lastSectionsCategory: ContentView.AppFilterCategory?
-    private var lastSectionsListCount: Int = -1
-    private var lastSectionsSearchText: String = ""
-    private var lastSectionsSubjectFilter: String = ""
-    private var lastSectionsCourseworkVersion: Int = -1
-    private var cachedSections: CategorizedSectionsResult = CategorizedSectionsResult(todays: [], tomorrows: [], laters: [], noDueDates: [])
+    private struct ListContext: Equatable {
+        let searchText: String
+        let subjectFilter: String
+        let itemCount: Int
+        let version: Int
+    }
+    private let filteredLists = CategoryResultCache<ContentView.AppFilterCategory, ListContext, [Coursework]>()
+    private let sections = CategoryResultCache<ContentView.AppFilterCategory, ListContext, CategorizedSectionsResult>()
 
     private var lastTomorrowListCount: Int = -1
     private var lastTomorrowSearchText: String = ""
@@ -174,8 +169,7 @@ private final class AssignmentListCache {
     private var cachedTomorrowGroups: TomorrowGroupsResult = TomorrowGroupsResult(groupedPending: [], completedItems: [])
 
     private var lastRawQuery: String = ""
-    private var cachedCleanQuery: String = ""
-    private var cachedTokens: [String] = []
+    private var cachedQuery = CourseworkSearchQuery("")
 
     private var lastCountsSearchText: String = ""
     private var lastCountsVersion: Int = -1
@@ -185,18 +179,12 @@ private final class AssignmentListCache {
     private var lastHasItemsVersion: Int = -1
     private var cachedHasItems: [ContentView.AppFilterCategory: Bool] = [:]
 
-    func searchTokens(for query: String) -> (clean: String, tokens: [String]) {
-        let trimmed = query.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return ("", []) }
-        if trimmed == lastRawQuery {
-            return (cachedCleanQuery, cachedTokens)
+    func searchQuery(for query: String) -> CourseworkSearchQuery {
+        if query != lastRawQuery {
+            cachedQuery = CourseworkSearchQuery(query)
+            lastRawQuery = query
         }
-        let clean = trimmed.normalizedForVietnameseSearch()
-        let tokens = clean.searchQueryTokens()
-        lastRawQuery = trimmed
-        cachedCleanQuery = clean
-        cachedTokens = tokens
-        return (clean, tokens)
+        return cachedQuery
     }
 
     func categoryPendingCount(
@@ -247,21 +235,12 @@ private final class AssignmentListCache {
         courseworkVersion: Int,
         compute: () -> [Coursework]
     ) -> [Coursework] {
-        if lastCategory == category &&
-            lastSearchText == searchText &&
-            lastSubjectFilter == subjectFilter &&
-            lastCourseworkCount == courseworkCount &&
-            lastCourseworkVersion == courseworkVersion {
-            return cachedFilteredList
-        }
-        let result = compute()
-        lastCategory = category
-        lastSearchText = searchText
-        lastSubjectFilter = subjectFilter
-        lastCourseworkCount = courseworkCount
-        lastCourseworkVersion = courseworkVersion
-        cachedFilteredList = result
-        return result
+        filteredLists.value(
+            for: category,
+            context: ListContext(searchText: searchText, subjectFilter: subjectFilter,
+                                 itemCount: courseworkCount, version: courseworkVersion),
+            compute: compute
+        )
     }
 
     func categorizedSections(
@@ -272,26 +251,16 @@ private final class AssignmentListCache {
         courseworkVersion: Int,
         compute: () -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework])
     ) -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
-        if lastSectionsCategory == category &&
-            lastSectionsListCount == list.count &&
-            lastSectionsSearchText == searchText &&
-            lastSectionsSubjectFilter == subjectFilter &&
-            lastSectionsCourseworkVersion == courseworkVersion {
-            return (cachedSections.todays, cachedSections.tomorrows, cachedSections.laters, cachedSections.noDueDates)
+        let result = sections.value(
+            for: category,
+            context: ListContext(searchText: searchText, subjectFilter: subjectFilter,
+                                 itemCount: list.count, version: courseworkVersion)
+        ) {
+            let result = compute()
+            return CategorizedSectionsResult(todays: result.todays, tomorrows: result.tomorrows,
+                                             laters: result.laters, noDueDates: result.noDueDates)
         }
-        let result = compute()
-        lastSectionsCategory = category
-        lastSectionsListCount = list.count
-        lastSectionsSearchText = searchText
-        lastSectionsSubjectFilter = subjectFilter
-        lastSectionsCourseworkVersion = courseworkVersion
-        cachedSections = CategorizedSectionsResult(
-            todays: result.todays,
-            tomorrows: result.tomorrows,
-            laters: result.laters,
-            noDueDates: result.noDueDates
-        )
-        return result
+        return (result.todays, result.tomorrows, result.laters, result.noDueDates)
     }
 
     func tomorrowGroups(
@@ -602,22 +571,6 @@ public struct ContentView: View {
         }
     }
 
-    @inline(__always)
-    private func itemMatchesTokens(_ item: Coursework, tokens: [String]) -> Bool {
-        let index = item.searchIndex
-        let tokenCount = tokens.count
-        for t in 0..<tokenCount {
-            let tok = tokens[t]
-            if !index.contains(tok) {
-                let altTok = cleanTelexKeystrokes(tok)
-                if altTok == tok || !index.contains(altTok) {
-                    return false
-                }
-            }
-        }
-        return true
-    }
-
     private func categoryPendingCount(_ category: AppFilterCategory) -> Int {
         if !searchText.isEmpty {
             return listCache.categoryPendingCount(
@@ -625,12 +578,12 @@ public struct ContentView: View {
                 searchText: searchText,
                 courseworkVersion: courseworkVersion
             ) {
-                let (_, tokens) = listCache.searchTokens(for: searchText)
-                guard !tokens.isEmpty else { return 0 }
+                let query = listCache.searchQuery(for: searchText)
+                guard !query.tokens.isEmpty else { return 0 }
                 let base = baseFilteredList(for: category)
                 var count = 0
                 for item in base {
-                    if !item.isCompleted && itemMatchesTokens(item, tokens: tokens) {
+                    if !item.isCompleted && query.matches(item.searchIndex) {
                         count += 1
                     }
                 }
@@ -662,11 +615,11 @@ public struct ContentView: View {
                 searchText: searchText,
                 courseworkVersion: courseworkVersion
             ) {
-                let (_, tokens) = listCache.searchTokens(for: searchText)
-                guard !tokens.isEmpty else { return false }
+                let query = listCache.searchQuery(for: searchText)
+                guard !query.tokens.isEmpty else { return false }
                 let base = baseFilteredList(for: category)
                 for item in base {
-                    if itemMatchesTokens(item, tokens: tokens) {
+                    if query.matches(item.searchIndex) {
                         return true
                     }
                 }
@@ -702,14 +655,14 @@ public struct ContentView: View {
                 item.badgeCode == selectedSubjectFilter
             }
         }
-        let (cleanQuery, tokens) = listCache.searchTokens(for: searchText)
-        guard !tokens.isEmpty else { return baseList }
+        let query = listCache.searchQuery(for: searchText)
+        guard !query.tokens.isEmpty else { return baseList }
 
         var scored: [(item: Coursework, score: Int)] = []
         scored.reserveCapacity(baseList.count)
         for item in baseList {
-            if itemMatchesTokens(item, tokens: tokens) {
-                scored.append((item: item, score: item.searchRelevanceScore(for: tokens, rawNormalizedQuery: cleanQuery)))
+            if query.matches(item.searchIndex) {
+                scored.append((item: item, score: item.searchRelevanceScore(for: query.tokens, rawNormalizedQuery: query.normalized)))
             }
         }
         guard !scored.isEmpty else { return [] }
@@ -3391,7 +3344,8 @@ public struct ContentView: View {
         completedDisplayLimit = 30
         let list = currentFilteredList
         if let current = selectedCoursework, list.contains(where: { $0.id == current.id }) {
-            selectedCourseworkIds = selectedCourseworkIds.filter { id in list.contains(where: { $0.id == id }) }
+            let availableIds = Set(list.map(\.id))
+            selectedCourseworkIds.formIntersection(availableIds)
             if selectedCourseworkIds.isEmpty {
                 selectedCourseworkIds = [current.id]
             }

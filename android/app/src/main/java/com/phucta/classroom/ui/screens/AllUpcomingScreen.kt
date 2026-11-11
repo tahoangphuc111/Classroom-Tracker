@@ -48,6 +48,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -111,37 +114,26 @@ fun AllUpcomingScreen(
         searchQuery = ""
     }
 
-    val activeCoursework = remember(allCoursework, courses) {
-        BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses)
-    }
-
     val searchTokens = remember(normalizedQuery) {
         com.phucta.classroom.data.model.tokenizeSearchQuery(normalizedQuery)
     }
 
-    val filteredItems = remember(activeCoursework, searchTokens) {
-        if (searchTokens.isEmpty()) {
-            activeCoursework
-        } else {
-            activeCoursework.filter { item ->
-                for (token in searchTokens) {
-                    if (!item.searchIndex.contains(token)) {
-                        val altTok = com.phucta.classroom.data.model.cleanTelexKeystrokes(token)
-                        if (altTok == token || !item.searchIndex.contains(altTok)) return@filter false
-                    }
-                }
-                true
-            }
+    // computeBuckets already filters courses and search tokens in one pass.
+    val buckets by produceState(
+        BaoBaiBucketingUtils.CourseworkBuckets(),
+        allCoursework, courses, searchTokens, normalizedQuery, currentDayEpoch
+    ) {
+        value = withContext(Dispatchers.Default) {
+            BaoBaiBucketingUtils.computeBuckets(
+                items = allCoursework,
+                courses = courses,
+                searchTokens = searchTokens,
+                rawNormalizedQuery = normalizedQuery
+            )
         }
     }
-
-    val buckets = remember(filteredItems, searchTokens, normalizedQuery, currentDayEpoch) {
-        BaoBaiBucketingUtils.computeBuckets(
-            items = filteredItems,
-            searchTokens = searchTokens,
-            rawNormalizedQuery = normalizedQuery
-        )
-    }
+    val matchingCount = buckets.overdue.size + buckets.today.size + buckets.tomorrow.size +
+        buckets.laterUpcoming.size + buckets.noDueDate.size + buckets.completed.size
 
     Column(
         modifier = modifier
@@ -184,7 +176,7 @@ fun AllUpcomingScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Tìm thấy ${filteredItems.size} bài tập",
+                    text = "Tìm thấy ${matchingCount} bài tập",
                     fontSize = 13.5.sp,
                     color = ChunkyColor.TextMuted,
                     fontWeight = FontWeight.SemiBold
@@ -276,7 +268,7 @@ fun AllUpcomingScreen(
             }
         }
 
-        if (filteredItems.isEmpty()) {
+        if (matchingCount == 0) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

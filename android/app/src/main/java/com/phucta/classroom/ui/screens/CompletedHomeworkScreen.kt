@@ -42,6 +42,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -103,18 +106,19 @@ fun CompletedHomeworkScreen(
         tokenizeSearchQuery(normalizedQuery)
     }
 
-    val filteredItems = remember(completedItems, searchTokens) {
-        if (searchTokens.isEmpty()) {
-            completedItems
-        } else {
-            completedItems.filter { item ->
-                for (token in searchTokens) {
-                    if (!item.searchIndex.contains(token)) {
-                        val altTok = com.phucta.classroom.data.model.cleanTelexKeystrokes(token)
-                        if (altTok == token || !item.searchIndex.contains(altTok)) return@filter false
+    val filteredItems by produceState(completedItems, completedItems, searchTokens) {
+        value = withContext(Dispatchers.Default) {
+            if (searchTokens.isEmpty()) {
+                completedItems
+            } else {
+                val alternatives = com.phucta.classroom.data.model.alternativeTokensFor(searchTokens)
+                completedItems.filter { item ->
+                    searchTokens.indices.all { i ->
+                        val token = searchTokens[i]
+                        item.searchIndex.contains(token) ||
+                            (alternatives[i] != token && item.searchIndex.contains(alternatives[i]))
                     }
                 }
-                true
             }
         }
     }

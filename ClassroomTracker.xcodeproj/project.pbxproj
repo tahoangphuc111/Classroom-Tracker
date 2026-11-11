@@ -53,6 +53,8 @@
 		465E27FD3D708A1BD1CE1565 /* PlusJakartaSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */; };
 		4B5EC507E4557E97831FB0F1 /* SmallWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72AA16D6CC38D1AB92759B4 /* SmallWidgetView.swift */; };
 		4C3044602C711FE33D56936C /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
+		4C3C71DD0CFCDBC5EA0C0EC2 /* CourseworkSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF593AAAD6A4E6C3767D82C /* CourseworkSearch.swift */; };
+		4CC145C83734FF135151DF09 /* CourseworkSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF593AAAD6A4E6C3767D82C /* CourseworkSearch.swift */; };
 		4E819390C60CB7F99A7CAE8F /* ClassroomTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8D3F55C61287C9E7E225FD /* ClassroomTimelineProvider.swift */; };
 		50F195E70EDBD2CE8A6E5ED9 /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
 		53B4DE26F1214441CB6CD47D /* AppleLiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005BE5EB314FF6648A4EB470 /* AppleLiquidGlass.swift */; };
@@ -65,6 +67,7 @@
 		59FD024F21660871C8B48AEF /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
 		5A8BDBC5102357F31F06BAA7 /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
 		5B00F034FE2B8F6DBBD0413E /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
+		5B4CC845BDE5E8335CB1E521 /* CourseworkSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF593AAAD6A4E6C3767D82C /* CourseworkSearch.swift */; };
 		5C4423BBF792AD9417E76A07 /* WidgetVectorArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD22FBD16D58EFBCBCC5EBD /* WidgetVectorArt.swift */; };
 		5D1F4B06D5109641AAEFCDD6 /* EveningReminderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74DF3B3C4B88510916B56233 /* EveningReminderService.swift */; };
 		5DE1C108CDE60F0F8F590064 /* ember_stressed.png in Resources */ = {isa = PBXBuildFile; fileRef = 6D88CD5FE7B0D105A6966C30 /* ember_stressed.png */; };
@@ -133,6 +136,7 @@
 		CBD2E7E650DE1B9D9F4A966E /* AssignmentListRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70976B2FACF6A9FABE3EECB /* AssignmentListRow.swift */; };
 		CD98A7F27D77B3B825A6EF9F /* BeVietnamPro-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */; };
 		CDE9B0D0654FD9B94E4D9295 /* EveningReminderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74DF3B3C4B88510916B56233 /* EveningReminderService.swift */; };
+		CF45944CC712DDA5F3D0A7D4 /* CourseworkSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF593AAAD6A4E6C3767D82C /* CourseworkSearch.swift */; };
 		CFFD98A3CE699E345D3F36BF /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
 		D13D21E5F66F6BFFFA509A06 /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
 		D14BCF37E58AB8E37A787F4A /* ember_normal.svg in Resources */ = {isa = PBXBuildFile; fileRef = 0E71BB535F5533E7E10B9C14 /* ember_normal.svg */; };
@@ -219,6 +223,7 @@
 		054A7230A61A968D3470F649 /* WidgetSharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSharedViews.swift; sourceTree = "<group>"; };
 		0ADD3209B29A94C82F9B20E5 /* hero_bao_bai_modernist.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = hero_bao_bai_modernist.png; sourceTree = "<group>"; };
 		0C19BE580149DEE05DF2162F /* ClassroomWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ClassroomWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		0DF593AAAD6A4E6C3767D82C /* CourseworkSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseworkSearch.swift; sourceTree = "<group>"; };
 		0E71BB535F5533E7E10B9C14 /* ember_normal.svg */ = {isa = PBXFileReference; path = ember_normal.svg; sourceTree = "<group>"; };
 		0EDBE7D2959EBE4F4B96FB0F /* SettingsSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheetView.swift; sourceTree = "<group>"; };
 		10264E7130B2DE16D373CB26 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -325,6 +330,7 @@
 				B891B4913D6C4139F0811EFB /* BaoBaiShareHelper.swift */,
 				1C4508EBDBFF6D0212A21C01 /* Course.swift */,
 				577E534AFF94B7B61CD38E00 /* Coursework.swift */,
+				0DF593AAAD6A4E6C3767D82C /* CourseworkSearch.swift */,
 				8DED96C52D69984DF9155598 /* PersonalNote.swift */,
 			);
 			path = Models;
@@ -726,6 +732,7 @@
 				DA384E556B37E0B3BA7231BF /* Course.swift in Sources */,
 				87C21EB63DD150D04F0F80A0 /* CourseSelectionRow.swift in Sources */,
 				A7395D60908C5BBBFE75E740 /* Coursework.swift in Sources */,
+				4C3C71DD0CFCDBC5EA0C0EC2 /* CourseworkSearch.swift in Sources */,
 				CDE9B0D0654FD9B94E4D9295 /* EveningReminderService.swift in Sources */,
 				DDC951AF5D643A2025715103 /* FloatingToastHUD.swift in Sources */,
 				D750CB748227403E3F7FCA33 /* GoogleOAuthService.swift in Sources */,
@@ -758,6 +765,7 @@
 				73FD2A662BDEE2DF57710B2C /* ClassroomWidgetBundle.swift in Sources */,
 				E3386CB5A5834CD0523BEAAD /* Course.swift in Sources */,
 				79411F264C4A7EE04F676B97 /* Coursework.swift in Sources */,
+				CF45944CC712DDA5F3D0A7D4 /* CourseworkSearch.swift in Sources */,
 				843474698FC0949AC025D89A /* LargeWidgetView.swift in Sources */,
 				4C3044602C711FE33D56936C /* MediumWidgetView.swift in Sources */,
 				25499A6E32C4A03F9C07936E /* PersonalNote.swift in Sources */,
@@ -787,6 +795,7 @@
 				7F26CC1E72F68F52045C561C /* Course.swift in Sources */,
 				2736130891BCB099470BAD25 /* CourseSelectionRow.swift in Sources */,
 				7BC77EFAB7F1BFCBF6A5906D /* Coursework.swift in Sources */,
+				4CC145C83734FF135151DF09 /* CourseworkSearch.swift in Sources */,
 				5D1F4B06D5109641AAEFCDD6 /* EveningReminderService.swift in Sources */,
 				EB97DE9788357CDBA9604D3E /* FloatingToastHUD.swift in Sources */,
 				F97AC4CD49F0EC1A19375DCF /* GoogleOAuthService.swift in Sources */,
@@ -819,6 +828,7 @@
 				3501C0CC7F4105BA6F589923 /* ClassroomWidgetBundle.swift in Sources */,
 				671D466371D14585CBE67293 /* Course.swift in Sources */,
 				7A06BD6E3891B315C2A80B20 /* Coursework.swift in Sources */,
+				5B4CC845BDE5E8335CB1E521 /* CourseworkSearch.swift in Sources */,
 				B0D3E9BC239FC8AE303DB424 /* LargeWidgetView.swift in Sources */,
 				5B00F034FE2B8F6DBBD0413E /* MediumWidgetView.swift in Sources */,
 				931457AFB0AB6F7F8E244578 /* PersonalNote.swift in Sources */,

@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -53,17 +55,17 @@ class ClassroomRepository(
     private val _syncErrorMessage = MutableStateFlow<String?>(null)
     val syncErrorMessage: StateFlow<String?> = _syncErrorMessage.asStateFlow()
 
-    val coursesFlow: Flow<List<Course>> = courseDao.observeAllCourses().map { entities ->
+    val coursesFlow: Flow<List<Course>> = courseDao.observeAllCourses().distinctUntilChanged().map { entities ->
         entities.map { it.toDomain() }
-    }
+    }.flowOn(Dispatchers.Default)
 
-    val courseworkFlow: Flow<List<Coursework>> = courseworkDao.observeAllCoursework().map { entities ->
+    val courseworkFlow: Flow<List<Coursework>> = courseworkDao.observeAllCoursework().distinctUntilChanged().map { entities ->
         entities.toCoursework()
-    }
+    }.flowOn(Dispatchers.Default)
 
-    val personalNotesFlow: Flow<List<PersonalNote>> = personalNoteDao.observeAllNotes().map { entities ->
+    val personalNotesFlow: Flow<List<PersonalNote>> = personalNoteDao.observeAllNotes().distinctUntilChanged().map { entities ->
         entities.map { it.toDomain() }
-    }
+    }.flowOn(Dispatchers.Default)
 
     suspend fun ensureInitialData() = withContext(Dispatchers.IO) {
     }
