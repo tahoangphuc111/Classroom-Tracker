@@ -202,19 +202,24 @@ fun MainScreen() {
         currentDayEpoch
     ) {
         val active = BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses)
+
         val tomorrow = BaoBaiBucketingUtils.getTomorrowCoursework(
-            items = allCoursework,
+            items = active,
             courses = courses,
             personalNotes = personalNotes
         )
         val completed = active.filter { it.isCompleted }.sortedWith { first, second ->
             when {
                 first.dueEpochMillis != null && second.dueEpochMillis != null -> {
-                    second.dueEpochMillis.compareTo(first.dueEpochMillis)
+                    val dueDiff = second.dueEpochMillis.compareTo(first.dueEpochMillis)
+                    if (dueDiff != 0) dueDiff else first.id.compareTo(second.id)
                 }
                 first.dueEpochMillis != null -> -1
                 second.dueEpochMillis != null -> 1
-                else -> first.title.compareTo(second.title, ignoreCase = true)
+                else -> {
+                    val titleDiff = first.title.compareTo(second.title, ignoreCase = true)
+                    if (titleDiff != 0) titleDiff else first.id.compareTo(second.id)
+                }
             }
         }
         val upcomingCount = active.count { !it.isCompleted }
@@ -824,24 +829,27 @@ private fun MainTopAppBar(
 ) {
     TopAppBar(
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = "Classroom Tracker",
                     fontWeight = FontWeight.Bold,
                     fontSize = 19.5.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     color = ChunkyColor.TextPrimary
                 )
-                Spacer(modifier = Modifier.width(8.dp))
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(ChunkyColor.TomorrowBackground)
                         .border(1.dp, ChunkyColor.TomorrowBorder, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .padding(horizontal = 6.dp, vertical = 1.dp)
                 ) {
                     Text(
                         text = com.phucta.classroom.data.model.ClassroomDateUtils.formatDayAndDate(currentDayEpoch),
-                        fontSize = 12.5.sp,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         fontWeight = FontWeight.Bold,
                         fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
                         color = ChunkyColor.TomorrowText

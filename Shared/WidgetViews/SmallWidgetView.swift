@@ -112,21 +112,21 @@ public struct SmallWidgetView: View {
                     .padding(.horizontal, 8)
                     .padding(.top, 6)
 
-                    ZStack(alignment: .center) {
-                        RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .fill(ChunkyTheme.sheetBg)
-                            .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 5, x: 0, y: 2)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                                    .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
-                            )
-
-                        cardContent
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.bottom, 6)
+                    cardContent
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                        .background {
+                            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                                .fill(ChunkyTheme.sheetBg)
+                                .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 5, x: 0, y: 2)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                                        .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
+                                )
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.bottom, 10)
                 }
             }
         }
@@ -139,7 +139,21 @@ public struct SmallWidgetView: View {
         VStack(spacing: 6) {
             ChunkyEmberCharacterView(emotion: .normal, size: 44)
 
-            ZStack(alignment: .center) {
+            VStack(spacing: 3.5) {
+                Text("Chưa đăng nhập")
+                    .font(WidgetFontSystem.courseTitle(size: 12.5))
+                    .foregroundStyle(ChunkyTheme.textPrimary)
+                    .lineLimit(1)
+
+                Text("Chạm để đăng nhập")
+                    .font(WidgetFontSystem.meta(size: 10.5))
+                    .foregroundStyle(ChunkyTheme.pillBlue)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 6)
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+            .background {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(ChunkyTheme.sheetBg)
                     .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 5, x: 0, y: 2)
@@ -147,24 +161,10 @@ public struct SmallWidgetView: View {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
                     )
-
-                VStack(spacing: 3.5) {
-                    Text("Chưa đăng nhập")
-                        .font(WidgetFontSystem.courseTitle(size: 12.5))
-                        .foregroundStyle(ChunkyTheme.textPrimary)
-                        .lineLimit(1)
-
-                    Text("Chạm để đăng nhập")
-                        .font(WidgetFontSystem.meta(size: 10.5))
-                        .foregroundStyle(ChunkyTheme.pillBlue)
-                        .lineLimit(1)
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 6)
             }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -221,7 +221,9 @@ public struct SmallWidgetView: View {
 
                 Spacer(minLength: 2)
 
-                statusTag(for: item, fontSize: 11)
+                if item.isCompleted {
+                    statusTag(for: item, fontSize: 11)
+                }
             }
 
             Rectangle()
@@ -230,11 +232,11 @@ public struct SmallWidgetView: View {
 
             let headline = item.title.isEmpty ? item.courseName : item.title
             Text(headline)
-                .font(WidgetFontSystem.courseTitle(size: 16.5))
+                .font(WidgetFontSystem.courseTitle(size: 14))
                 .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
-                .lineLimit(3)
+                .lineLimit(2)
                 .minimumScaleFactor(0.82)
-                .lineSpacing(2)
+                .lineSpacing(1)
 
             Spacer(minLength: 0)
 
@@ -279,15 +281,17 @@ public struct SmallWidgetView: View {
                                 .font(WidgetFontSystem.meta(size: 11))
                                 .foregroundStyle(ChunkyTheme.textMuted)
                                 .lineLimit(1)
+                                .layoutPriority(-1)
 
                             Text("•")
                                 .font(.system(size: 7.5, weight: .bold))
                                 .foregroundStyle(ChunkyTheme.textMuted.opacity(0.45))
 
                             Text(dueLabel(for: subItem))
-                                .font(WidgetFontSystem.meta(size: 11))
+                                .font(WidgetFontSystem.meta(size: 10.5))
                                 .foregroundStyle(subItem.isUrgent ? ChunkyTheme.urgentAccent : (subItem.isCompleted ? Color.green : ChunkyTheme.textMuted))
                                 .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
                     }
 

@@ -34,13 +34,18 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -203,6 +208,10 @@ fun PersonalNotesScreen(
 
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
     var draftForDialog by remember { mutableStateOf<PersonalNote?>(null) }
+    var draftSessionKey by rememberSaveable { mutableStateOf("") }
+    var draftDueDateMode by rememberSaveable { mutableIntStateOf(0) }
+
+    var quickBarResetToken by rememberSaveable { mutableIntStateOf(0) }
     var noteToEdit by remember { mutableStateOf<PersonalNote?>(null) }
 
     LaunchedEffect(initialNoteToEdit) {
@@ -268,8 +277,8 @@ fun PersonalNotesScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
+        Column(modifier = Modifier.weight(1f)) {
             val activeTabColor = when (selectedStatusTab) {
                 1 -> ChunkyColor.HeaderToday
                 2 -> ChunkyColor.HeaderCompleted
@@ -324,8 +333,6 @@ fun PersonalNotesScreen(
                     }
                 )
             }
-
-
 
             OutlinedTextField(
                 value = searchQuery,
@@ -415,7 +422,7 @@ fun PersonalNotesScreen(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 136.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(
@@ -462,10 +469,12 @@ fun PersonalNotesScreen(
                 )
                 onSaveNote(newNote)
             },
-            onOpenFullDialog = { draftTitle, draftDue, draftCourseId ->
+            onOpenFullDialog = { draftTitle, draftDue, draftCourseId, draftDeadlineMode ->
                 val targetCourseId = draftCourseId ?: selectedCourseId
                 val targetCourse = courses.find { it.id == targetCourseId }
-                draftForDialog = if (draftTitle.isNotBlank() || draftDue != null || targetCourse != null) {
+
+                val hasContent = draftTitle.isNotBlank() || draftDue != null || targetCourse != null
+                draftForDialog = if (hasContent) {
                     PersonalNote(
                         title = draftTitle,
                         dueEpochMillis = draftDue,
@@ -475,12 +484,21 @@ fun PersonalNotesScreen(
                 } else {
                     null
                 }
+
+                draftSessionKey = java.util.UUID.randomUUID().toString()
+
+                draftDueDateMode = when (draftDeadlineMode) {
+                    1 -> 2
+                    2 -> 1
+                    else -> 0
+                }
                 showCreateDialog = true
             },
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .imePadding()
+
+                .then(if (showCreateDialog || noteToEdit != null) Modifier else Modifier.imePadding()),
+            resetToken = quickBarResetToken
         )
     }
 
@@ -488,6 +506,8 @@ fun PersonalNotesScreen(
         CreateOrEditNoteDialog(
             existingNote = draftForDialog,
             isDraft = true,
+            draftSessionKey = draftSessionKey,
+            initialDueDateMode = draftDueDateMode,
             courses = courses,
             onDismiss = {
                 showCreateDialog = false
@@ -497,6 +517,8 @@ fun PersonalNotesScreen(
                 onSaveNote(note)
                 showCreateDialog = false
                 draftForDialog = null
+
+                quickBarResetToken++
             }
         )
     }
@@ -977,11 +999,18 @@ private fun CreateOrEditNoteDialog(
     existingNote: PersonalNote?,
     courses: List<Course>,
     isDraft: Boolean = false,
+    draftSessionKey: String = "",
+    initialDueDateMode: Int? = null,
     onDismiss: () -> Unit,
     onSave: (PersonalNote) -> Unit
 ) {
     val context = LocalContext.current
-    val dialogKey = existingNote?.id ?: if (isDraft) "draft_${existingNote?.title ?: ""}" else "new_note"
+
+    val dialogKey = when {
+        isDraft -> "draft_${draftSessionKey.ifEmpty { "initial" }}"
+        existingNote?.id != null -> existingNote.id
+        else -> "new_note"
+    }
     var title by rememberSaveable(dialogKey) { mutableStateOf(existingNote?.title ?: "") }
     var content by rememberSaveable(dialogKey) { mutableStateOf(existingNote?.content ?: "") }
     var checklist by remember(dialogKey) {
@@ -989,16 +1018,18 @@ private fun CreateOrEditNoteDialog(
     }
     var newChecklistItemTitle by remember(dialogKey) { mutableStateOf("") }
     var selectedCourseId by rememberSaveable(dialogKey) { mutableStateOf(existingNote?.courseId ?: "") }
+
     val isEndOfDay = remember(dialogKey, existingNote?.dueEpochMillis) {
         existingNote?.dueEpochMillis?.let { epoch ->
             val cal = com.phucta.classroom.data.model.ClassroomDateUtils.createLocalCalendar(epoch)
-            (cal.get(Calendar.HOUR_OF_DAY) == 23 && cal.get(Calendar.MINUTE) >= 55) ||
-            (cal.get(Calendar.HOUR_OF_DAY) == 0 && cal.get(Calendar.MINUTE) == 0 && cal.get(Calendar.SECOND) == 0)
+            cal.get(Calendar.HOUR_OF_DAY) == 23 && cal.get(Calendar.MINUTE) >= 55
         } ?: false
     }
     var dueDateMode by rememberSaveable(dialogKey) {
         mutableIntStateOf(
             when {
+
+                initialDueDateMode != null -> initialDueDateMode
                 existingNote?.isDueToday == true && isEndOfDay -> 1
                 existingNote?.isDueTomorrow == true && isEndOfDay -> 2
                 existingNote?.dueEpochMillis != null -> 3
@@ -1010,8 +1041,7 @@ private fun CreateOrEditNoteDialog(
     val customDateStr = remember(customDueDateEpoch) {
         customDueDateEpoch?.let {
             val cal = com.phucta.classroom.data.model.ClassroomDateUtils.createLocalCalendar(it)
-            val hasTime = !(cal.get(Calendar.HOUR_OF_DAY) == 23 && cal.get(Calendar.MINUTE) >= 55) &&
-                          !(cal.get(Calendar.HOUR_OF_DAY) == 0 && cal.get(Calendar.MINUTE) == 0 && cal.get(Calendar.SECOND) == 0)
+            val hasTime = !(cal.get(Calendar.HOUR_OF_DAY) == 23 && cal.get(Calendar.MINUTE) >= 55)
             val pattern = if (hasTime) "HH:mm d/M" else "d/M"
             SimpleDateFormat(pattern, com.phucta.classroom.data.model.ClassroomDateUtils.VIETNAMESE_LOCALE).format(Date(it))
         } ?: ""
@@ -1026,7 +1056,9 @@ private fun CreateOrEditNoteDialog(
         modifier = Modifier
             .fillMaxWidth(0.92f)
             .heightIn(max = 620.dp)
-            .imePadding(),
+
+            .imePadding()
+            .consumeWindowInsets(WindowInsets.ime),
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1419,48 +1451,62 @@ private fun CreateOrEditNoteDialog(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BottomQuickCaptureBar(
     courses: List<Course>,
     onSaveQuickNote: (title: String, dueEpoch: Long?, courseId: String?, courseName: String?) -> Unit,
-    onOpenFullDialog: (draftTitle: String, draftDue: Long?, draftCourseId: String?) -> Unit,
+    onOpenFullDialog: (draftTitle: String, draftDue: Long?, draftCourseId: String?, draftDeadlineMode: Int) -> Unit,
+    resetToken: Int = 0,
     modifier: Modifier = Modifier
 ) {
     var title by rememberSaveable { mutableStateOf("") }
-    var selectedDeadlineMode by rememberSaveable { mutableIntStateOf(1) } // 0: none, 1: tomorrow, 2: today
+    var selectedDeadlineMode by rememberSaveable { mutableIntStateOf(1) }
     var selectedCourseId by rememberSaveable { mutableStateOf<String?>(null) }
     var showCourseMenu by remember { mutableStateOf(false) }
     val view = LocalView.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    val openDialogWithDraft = {
-        val currentTitle = title.trim()
-        val due = when (selectedDeadlineMode) {
+    LaunchedEffect(resetToken) {
+        if (resetToken > 0) {
+            title = ""
+            selectedCourseId = null
+            selectedDeadlineMode = 1
+        }
+    }
+
+    val dueForMode = { mode: Int ->
+        when (mode) {
             1 -> ClassroomDateUtils.startOfDayAfter - 1000L
             2 -> ClassroomDateUtils.startOfTomorrow - 1000L
             else -> null
         }
+    }
+
+    val openDialogWithDraft = {
+        val currentTitle = title.trim()
+        val currentMode = selectedDeadlineMode
         val currentCourse = selectedCourseId
-        title = ""
-        selectedCourseId = null
+
+        val hasDraftContent = currentTitle.isNotEmpty() || currentCourse != null
+        val due = if (hasDraftContent) dueForMode(currentMode) else null
+
         focusManager.clearFocus()
         keyboardController?.hide()
-        onOpenFullDialog(currentTitle, due, currentCourse)
+        onOpenFullDialog(currentTitle, due, currentCourse, currentMode)
     }
 
     val submitQuickNote = {
         val trimmed = title.trim()
         if (trimmed.isNotEmpty()) {
-            val due = when (selectedDeadlineMode) {
-                1 -> ClassroomDateUtils.startOfDayAfter - 1000L
-                2 -> ClassroomDateUtils.startOfTomorrow - 1000L
-                else -> null
-            }
+            val due = dueForMode(selectedDeadlineMode)
             val targetCourse = courses.find { it.id == selectedCourseId }
             onSaveQuickNote(trimmed, due, selectedCourseId, targetCourse?.name)
+
             title = ""
             selectedCourseId = null
+            selectedDeadlineMode = 1
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             focusManager.clearFocus()
             keyboardController?.hide()
@@ -1541,10 +1587,10 @@ private fun BottomQuickCaptureBar(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 QuickDeadlinePill(
                     label = "Mai",
@@ -1615,10 +1661,9 @@ private fun BottomQuickCaptureBar(
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
-
                 Text(
                     text = "Mở rộng",
+                    maxLines = 1,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = ChunkyColor.TextLink,

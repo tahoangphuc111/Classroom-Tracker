@@ -177,6 +177,11 @@ fun String.normalizeForVietnameseSearch(): String {
     val len = this.length
     if (len == 0) return ""
 
+    if (len <= 128) {
+        val cached = NORMALIZE_CACHE[this]
+        if (cached != null) return cached
+    }
+
     var start = 0
     while (start < len && (this[start] <= ' ' || this[start] == '\u00A0' || this[start] == '\u202F')) start++
     if (start == len) return ""
@@ -198,11 +203,6 @@ fun String.normalizeForVietnameseSearch(): String {
     }
 
     val trimmedLen = end - start + 1
-    if (len <= 128) {
-        val cached = NORMALIZE_CACHE[this]
-        if (cached != null) return cached
-    }
-
     if (trimmedLen <= 25) {
         val lookupKey = if (start == 0 && end == len - 1) this else this.substring(start, end + 1)
         val common = COMMON_SYLLABLES[lookupKey]
@@ -298,45 +298,66 @@ fun cleanTelexKeystrokes(s: String): String {
     return sb.toString()
 }
 
+private class TokenAlternatives(val tokens: List<String>, val alternatives: Array<String>)
+
+@Volatile
+private var cachedTokenAlternatives: TokenAlternatives? = null
+
+internal fun alternativeTokensFor(tokens: List<String>): Array<String> {
+    val cached = cachedTokenAlternatives
+    if (cached != null && (cached.tokens === tokens || cached.tokens == tokens)) {
+        return cached.alternatives
+    }
+    val alternatives = Array(tokens.size) { cleanTelexKeystrokes(tokens[it]) }
+    cachedTokenAlternatives = TokenAlternatives(tokens, alternatives)
+    return alternatives
+}
+
 fun expandVietnameseAcronyms(normalizedText: String): String {
     if (normalizedText.isEmpty()) return ""
-    val expansions = ArrayList<String>(4)
 
-    if (normalizedText.contains("bai tap ve nha")) expansions.add("btvn")
-    if (normalizedText.contains("kiem tra")) expansions.add("kt")
-    if (normalizedText.contains("15 phut")) expansions.add("15p")
-    if (normalizedText.contains("45 phut")) expansions.add("45p")
-    if (normalizedText.contains("giua ki") || normalizedText.contains("giua ky")) expansions.add("gk")
-    if (normalizedText.contains("cuoi ki") || normalizedText.contains("cuoi ky")) expansions.add("ck")
-    if (normalizedText.contains("thuc hanh")) expansions.add("th")
-    if (normalizedText.contains("chuyen de")) expansions.add("cd")
-    if (normalizedText.contains("sach giao khoa")) expansions.add("sgk")
-    if (normalizedText.contains("sach bai tap")) expansions.add("sbt")
+    var expansions: ArrayList<String>? = null
+
+    fun add(value: String) {
+        val list = expansions ?: ArrayList<String>(4).also { expansions = it }
+        list.add(value)
+    }
+
+    if (normalizedText.contains("bai tap ve nha")) add("btvn")
+    if (normalizedText.contains("kiem tra")) add("kt")
+    if (normalizedText.contains("15 phut")) add("15p")
+    if (normalizedText.contains("45 phut")) add("45p")
+    if (normalizedText.contains("giua ki") || normalizedText.contains("giua ky")) add("gk")
+    if (normalizedText.contains("cuoi ki") || normalizedText.contains("cuoi ky")) add("ck")
+    if (normalizedText.contains("thuc hanh")) add("th")
+    if (normalizedText.contains("chuyen de")) add("cd")
+    if (normalizedText.contains("sach giao khoa")) add("sgk")
+    if (normalizedText.contains("sach bai tap")) add("sbt")
 
     val tokens = tokenizeSearchQuery(normalizedText)
     for (tok in tokens) {
         when (tok) {
-            "btvn" -> expansions.add("bai tap ve nha")
-            "kt" -> expansions.add("kiem tra")
-            "15p" -> expansions.add("15 phut")
-            "45p" -> expansions.add("45 phut")
+            "btvn" -> add("bai tap ve nha")
+            "kt" -> add("kiem tra")
+            "15p" -> add("15 phut")
+            "45p" -> add("45 phut")
             "gk" -> {
-                expansions.add("giua ki")
-                expansions.add("giua ky")
+                add("giua ki")
+                add("giua ky")
             }
             "ck" -> {
-                expansions.add("cuoi ki")
-                expansions.add("cuoi ky")
+                add("cuoi ki")
+                add("cuoi ky")
             }
-            "th" -> expansions.add("thuc hanh")
-            "cd" -> expansions.add("chuyen de")
-            "sgk" -> expansions.add("sach giao khoa")
-            "sbt" -> expansions.add("sach bai tap")
+            "th" -> add("thuc hanh")
+            "cd" -> add("chuyen de")
+            "sgk" -> add("sach giao khoa")
+            "sbt" -> add("sach bai tap")
         }
     }
 
-    if (expansions.isEmpty()) return ""
-    return expansions.joinToString(" ")
+    val list = expansions ?: return ""
+    return list.joinToString(" ")
 }
 
 private fun isWordBoundaryChar(ch: Char): Boolean {
@@ -459,7 +480,7 @@ fun calculateSearchRelevance(
             score += 5
         }
         if (titleIdx < 0 && courseIdx < 0) {
-            val altTok = cleanTelexKeystrokes(token)
+            val altTok = alternativeTokensFor(queryTokens)[0]
             if (altTok != token) {
                 val altLen = altTok.length
                 if (titleLen >= altLen) {
@@ -493,6 +514,8 @@ fun calculateSearchRelevance(
     var allMatchedTitle = true
     var allMatchedEither = true
 
+    val tokenAlternatives = alternativeTokensFor(queryTokens)
+
     for (i in 0 until tokenCount) {
         val token = queryTokens[i]
         val tokenLen = token.length
@@ -519,7 +542,7 @@ fun calculateSearchRelevance(
         }
 
         if (!matchedTitle && !matchedCourse) {
-            val altTok = cleanTelexKeystrokes(token)
+            val altTok = tokenAlternatives[i]
             if (altTok != token) {
                 val altLen = altTok.length
                 if (titleLen >= altLen) {

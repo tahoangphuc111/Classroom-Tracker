@@ -125,7 +125,10 @@ fun AllUpcomingScreen(
         } else {
             activeCoursework.filter { item ->
                 for (token in searchTokens) {
-                    if (!item.searchIndex.contains(token)) return@filter false
+                    if (!item.searchIndex.contains(token)) {
+                        val altTok = com.phucta.classroom.data.model.cleanTelexKeystrokes(token)
+                        if (altTok == token || !item.searchIndex.contains(altTok)) return@filter false
+                    }
                 }
                 true
             }
@@ -199,8 +202,6 @@ fun AllUpcomingScreen(
                 }
             }
         }
-
-
 
         val hasAnyUpcoming = buckets.overdue.isNotEmpty() ||
                 buckets.today.isNotEmpty() ||

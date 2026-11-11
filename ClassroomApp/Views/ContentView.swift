@@ -1191,7 +1191,7 @@ public struct ContentView: View {
 
     private func triggerTabSelectionHaptic() {
         let now = ProcessInfo.processInfo.systemUptime
-        // Throttle rapid gestures/taps to prevent haptic buzzing
+
         guard now - lastTabHapticTime >= 0.16 else { return }
         lastTabHapticTime = now
         PlatformHaptics.trigger(.selection)
@@ -1199,7 +1199,7 @@ public struct ContentView: View {
 
     private func triggerActiveTabReTapHaptic() {
         let now = ProcessInfo.processInfo.systemUptime
-        // Strict cooldown on tapping the already-active tab to eliminate spam
+
         guard now - lastActiveTabTapTime >= 0.35 else { return }
         lastActiveTabTapTime = now
         PlatformHaptics.trigger(.light)
@@ -1319,11 +1319,10 @@ public struct ContentView: View {
                 let tabWidth = tabCount > 0 ? innerTrackWidth / CGFloat(tabCount) : 0
 
                 ZStack(alignment: .leading) {
-                    // Track background
+
                     RoundedRectangle(cornerRadius: trackCornerRadius, style: .continuous)
                         .fill(Color.platformSubtleFill.opacity(colorScheme == .dark ? 0.38 : 0.22))
 
-                    // Single continuous sliding thumb with fluid organic spring
                     RoundedRectangle(cornerRadius: thumbCornerRadius, style: .continuous)
                         .fill(Color.platformControlBackground)
                         .shadow(
@@ -1336,7 +1335,6 @@ public struct ContentView: View {
                         .offset(x: trackPadding + CGFloat(currentIdx) * tabWidth)
                         .animation(.spring(response: 0.32, dampingFraction: 0.74), value: currentIdx)
 
-                    // Tab contents
                     HStack(spacing: 0) {
                         ForEach(compactTabCategories) { tab in
                             let isSelected = (activeCompactTab == tab)
@@ -1362,7 +1360,7 @@ public struct ContentView: View {
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { gesture in
-                            let relativeX = gesture.location.x - trackPadding
+                            let relativeX = gesture.location.x - horizontalInset - trackPadding
                             guard tabWidth > 0 else { return }
                             let rawIdx = Int(relativeX / tabWidth)
                             let clampedIdx = min(max(rawIdx, 0), tabCount - 1)
@@ -1373,7 +1371,7 @@ public struct ContentView: View {
                             }
                         }
                         .onEnded { gesture in
-                            let relativeX = gesture.location.x - trackPadding
+                            let relativeX = gesture.location.x - horizontalInset - trackPadding
                             guard tabWidth > 0 else { return }
                             let rawIdx = Int(relativeX / tabWidth)
                             let clampedIdx = min(max(rawIdx, 0), tabCount - 1)
@@ -2969,7 +2967,6 @@ public struct ContentView: View {
         )
     }
 
-
     private var widgetPreviewSection: some View {
         VStack(spacing: 24) {
             VStack(alignment: .leading, spacing: 14) {
@@ -3012,8 +3009,10 @@ public struct ContentView: View {
                 }
 
                 GeometryReader { cardGeometry in
-                    let availableWidth = cardGeometry.size.width - 32
-                    let previewWidth = min(325, max(250, availableWidth))
+                    let availableWidth = max(0, cardGeometry.size.width - 32)
+                    let widgetWidth: CGFloat = selectedPreviewFamily == .small ? 155 : 325
+                    let widgetHeight: CGFloat = selectedPreviewFamily == .large ? 325 : 155
+                    let previewScale = min(1, availableWidth / widgetWidth)
                     ZStack {
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .fill(
@@ -3036,18 +3035,17 @@ public struct ContentView: View {
                             switch selectedPreviewFamily {
                             case .small:
                                 SmallWidgetView(courseworkList: itemsForPreview)
-                                    .frame(width: 155, height: 155)
                             case .medium:
                                 MediumWidgetView(courseworkList: itemsForPreview)
-                                    .frame(width: previewWidth, height: 155)
                             case .large:
-                                let size = min(previewWidth, 325)
                                 LargeWidgetView(courseworkList: itemsForPreview)
-                                    .frame(width: size, height: size)
                             }
                         }
+                        .frame(width: widgetWidth, height: widgetHeight)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .shadow(color: .black.opacity(0.12), radius: 14, x: 0, y: 6)
+                        .scaleEffect(previewScale)
+                        .frame(width: widgetWidth * previewScale, height: widgetHeight * previewScale)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -3242,7 +3240,13 @@ public struct ContentView: View {
                 selectedSubjectFilter = "Tất cả"
             }
         } else if !selectedCourseworkIds.isEmpty {
-            handleDeselectAll()
+            if selectedCourseworkIds.count > 1, let current = selectedCoursework {
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                    selectedCourseworkIds = [current.id]
+                }
+            } else {
+                handleDeselectAll()
+            }
         }
     }
 
@@ -3686,4 +3690,3 @@ public struct ContentView: View {
         Self.compactHeaderDateFormatter.string(from: Date()).capitalized
     }
 }
-

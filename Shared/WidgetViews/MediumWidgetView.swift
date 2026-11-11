@@ -105,7 +105,58 @@ public struct MediumWidgetView: View {
                     .frame(width: 96)
                     .frame(maxHeight: .infinity)
 
-                    ZStack(alignment: .topLeading) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack(alignment: .center, spacing: 6) {
+                            Text(sectionHeaderTitle)
+                                .font(WidgetFontSystem.sectionHeader(size: 11.5))
+                                .tracking(0.0)
+                                .foregroundStyle(ChunkyTheme.textMuted)
+
+                            Spacer(minLength: 4)
+
+                            if activeItems.count > 3 {
+                                Text("+\(activeItems.count - 3)")
+                                    .font(WidgetFontSystem.statusTag(size: 10))
+                                    .foregroundStyle(ChunkyTheme.urgentAccent)
+                                    .padding(.horizontal, 6.5)
+                                    .padding(.vertical, 2)
+                                    .background(ChunkyTheme.urgentAccent.opacity(0.12))
+                                    .clipShape(Capsule())
+                            } else if !activeItems.isEmpty {
+                                Text("\(activeItems.count)")
+                                    .font(WidgetFontSystem.sectionHeader(size: 10.5))
+                                    .foregroundStyle(ChunkyTheme.textMuted)
+                            } else if !courseworkList.isEmpty {
+                                Image(systemName: "checkmark")
+                                    .font(WidgetFontSystem.sectionHeader(size: 10.5))
+                                    .foregroundStyle(Color.green)
+                            }
+                        }
+                        .padding(.top, 8)
+                        .padding(.horizontal, 11)
+                        .padding(.bottom, 4)
+
+                        Rectangle()
+                            .fill(ChunkyTheme.editorialHairline)
+                            .frame(height: 0.8)
+                            .padding(.horizontal, 10)
+
+                        if displayItems.isEmpty {
+                            emptyStateView
+                                .padding(.horizontal, 11)
+                                .frame(maxHeight: .infinity, alignment: .center)
+                        } else if displayItems.count == 1, let singleItem = displayItems.first {
+                            singleHeroTaskView(item: singleItem)
+                        } else {
+                            pureTaskListRows
+                                .padding(.horizontal, 10)
+                                .padding(.top, 2)
+                        }
+
+                        Spacer(minLength: 0)
+                    }
+                    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                    .background {
                         RoundedRectangle(cornerRadius: 15, style: .continuous)
                             .fill(ChunkyTheme.sheetBg)
                             .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 6, x: 0, y: 2.5)
@@ -113,61 +164,9 @@ public struct MediumWidgetView: View {
                                 RoundedRectangle(cornerRadius: 15, style: .continuous)
                                     .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
                             )
-
-                        VStack(alignment: .leading, spacing: 0) {
-                            HStack(alignment: .center, spacing: 6) {
-                                Text(sectionHeaderTitle)
-                                    .font(WidgetFontSystem.sectionHeader(size: 11.5))
-                                    .tracking(0.0)
-                                    .foregroundStyle(ChunkyTheme.textMuted)
-
-                                Spacer(minLength: 4)
-
-                                if activeItems.count > 3 {
-                                    Text("+\(activeItems.count - 3)")
-                                        .font(WidgetFontSystem.statusTag(size: 10))
-                                        .foregroundStyle(ChunkyTheme.urgentAccent)
-                                        .padding(.horizontal, 6.5)
-                                        .padding(.vertical, 2)
-                                        .background(ChunkyTheme.urgentAccent.opacity(0.12))
-                                        .clipShape(Capsule())
-                                } else if !activeItems.isEmpty {
-                                    Text("\(activeItems.count)")
-                                        .font(WidgetFontSystem.sectionHeader(size: 10.5))
-                                        .foregroundStyle(ChunkyTheme.textMuted)
-                                } else if !courseworkList.isEmpty {
-                                    Image(systemName: "checkmark")
-                                        .font(WidgetFontSystem.sectionHeader(size: 10.5))
-                                        .foregroundStyle(Color.green)
-                                }
-                            }
-                            .padding(.top, 8)
-                            .padding(.horizontal, 11)
-                            .padding(.bottom, 4)
-
-                            Rectangle()
-                                .fill(ChunkyTheme.editorialHairline)
-                                .frame(height: 0.8)
-                                .padding(.horizontal, 10)
-
-                            if displayItems.isEmpty {
-                                emptyStateView
-                                    .padding(.horizontal, 11)
-                                    .frame(maxHeight: .infinity, alignment: .center)
-                            } else if displayItems.count == 1, let singleItem = displayItems.first {
-                                singleHeroTaskView(item: singleItem)
-                            } else {
-                                pureTaskListRows
-                                    .padding(.horizontal, 10)
-                                    .padding(.top, 2)
-                            }
-
-                            Spacer(minLength: 0)
-                        }
                     }
-                    .frame(maxHeight: .infinity)
-                    .padding(.vertical, 8)
-                    .padding(.trailing, 8)
+                    .padding(.vertical, 12)
+                    .padding(.trailing, 12)
                 }
             }
         }
@@ -186,7 +185,24 @@ public struct MediumWidgetView: View {
             }
             .frame(width: 90)
 
-            ZStack(alignment: .center) {
+            VStack(spacing: 6) {
+                Image(systemName: "person.crop.circle.badge.plus")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(ChunkyTheme.pillBlue)
+
+                Text("Chưa đăng nhập")
+                    .font(WidgetFontSystem.courseTitle(size: 15))
+                    .foregroundStyle(ChunkyTheme.textPrimary)
+
+                Text("Chạm để đăng nhập Google Classroom")
+                    .font(WidgetFontSystem.meta(size: 12))
+                    .foregroundStyle(ChunkyTheme.textMuted)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
+            .padding(.horizontal, 12)
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+            .background {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(ChunkyTheme.sheetBg)
                     .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 6, x: 0, y: 2.5)
@@ -194,26 +210,8 @@ public struct MediumWidgetView: View {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
                     )
-
-                VStack(spacing: 6) {
-                    Image(systemName: "person.crop.circle.badge.plus")
-                        .font(.system(size: 28, weight: .semibold))
-                        .foregroundStyle(ChunkyTheme.pillBlue)
-
-                    Text("Chưa đăng nhập")
-                        .font(WidgetFontSystem.courseTitle(size: 15))
-                        .foregroundStyle(ChunkyTheme.textPrimary)
-
-                    Text("Chạm để đăng nhập Google Classroom")
-                        .font(WidgetFontSystem.meta(size: 12))
-                        .foregroundStyle(ChunkyTheme.textMuted)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                }
-                .padding(.horizontal, 12)
             }
-            .frame(maxHeight: .infinity)
-            .padding(.vertical, 10)
+            .padding(.vertical, 12)
             .padding(.trailing, 12)
         }
     }
@@ -268,22 +266,23 @@ public struct MediumWidgetView: View {
         }()
 
         return Link(destination: item.destinationURL) {
-            VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .center, spacing: 8) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .fill(themeColor)
-                            .frame(width: 32, height: 32)
+                            .frame(width: 26, height: 26)
 
                         Image(systemName: SubjectArtHelper.icon(for: item.courseName, title: item.title))
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(Color.white)
                     }
 
                     Text(subHeadline)
-                        .font(WidgetFontSystem.courseTitle(size: 15))
+                        .font(WidgetFontSystem.courseTitle(size: 12))
                         .foregroundStyle(themeColor)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.8)
 
                     Spacer(minLength: 4)
 
@@ -299,33 +298,34 @@ public struct MediumWidgetView: View {
                         .padding(.vertical, 3.5)
                         .background(Color.green.opacity(0.12))
                         .clipShape(Capsule())
+                        .fixedSize(horizontal: true, vertical: false)
                     } else {
                         HStack(spacing: 3.5) {
                             Image(systemName: "clock")
                                 .font(.system(size: 10.5, weight: .semibold))
                             Text(item.compactDueString)
-                                .font(WidgetFontSystem.statusTag(size: 12))
+                                .font(WidgetFontSystem.statusTag(size: 10.5))
                         }
                         .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textPrimary)
-                        .padding(.horizontal, 8.5)
+                        .padding(.horizontal, 6)
                         .padding(.vertical, 3.5)
                         .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.06))
                         .clipShape(Capsule())
+                        .fixedSize(horizontal: true, vertical: false)
                     }
                 }
 
                 Text(mainHeadline)
-                    .font(WidgetFontSystem.courseTitle(size: 18))
+                    .font(WidgetFontSystem.courseTitle(size: 15))
                     .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
-                    .fixedSize(horizontal: false, vertical: true)
 
                 if !descSnippet.isEmpty && descSnippet != mainHeadline {
                     Text(descSnippet)
-                        .font(WidgetFontSystem.meta(size: 12.5))
+                        .font(WidgetFontSystem.meta(size: 11))
                         .foregroundStyle(ChunkyTheme.textMuted)
-                        .lineLimit(2)
+                        .lineLimit(1)
                         .lineSpacing(1.5)
                 } else {
                     HStack(spacing: 4) {
@@ -340,7 +340,7 @@ public struct MediumWidgetView: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 11)
-            .padding(.top, 8)
+            .padding(.top, 6)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .buttonStyle(.plain)
@@ -349,7 +349,6 @@ public struct MediumWidgetView: View {
     @ViewBuilder
     private var pureTaskListRows: some View {
         let itemsToShow = Array(displayItems.prefix(3))
-        let rowHeight: CGFloat = displayItems.count <= 2 ? 48 : 39
 
         VStack(spacing: 0) {
             ForEach(Array(itemsToShow.enumerated()), id: \.element.id) { index, item in
@@ -394,14 +393,16 @@ public struct MediumWidgetView: View {
                             } else {
                                 Text(item.compactDueString)
                                     .font(WidgetFontSystem.statusTag(size: displayItems.count <= 2 ? 11.5 : 10.5))
+                                    .lineLimit(1)
                                     .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
                                     .padding(.horizontal, 6.5)
                                     .padding(.vertical, 2.5)
                                     .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.04))
                                     .clipShape(Capsule())
+                                    .fixedSize(horizontal: true, vertical: false)
                             }
                         }
-                        .frame(minHeight: rowHeight)
+                        .frame(minHeight: 0, maxHeight: .infinity)
 
                         if index < itemsToShow.count - 1 {
                             Rectangle()

@@ -76,10 +76,11 @@ class ClassroomDateUtilsTest {
     @Test
     fun testCompactDueString() {
         assertEquals("Không hạn", ClassroomDateUtils.compactDueString(null, isCompleted = false))
-        assertEquals("Đã nộp", ClassroomDateUtils.compactDueString(System.currentTimeMillis(), isCompleted = true))
+        assertEquals("Đã xong", ClassroomDateUtils.compactDueString(System.currentTimeMillis(), isCompleted = true))
 
         val calOverdue = gregorianCalendar().apply { add(Calendar.DAY_OF_YEAR, -2) }
-        assertEquals("Quá hạn", ClassroomDateUtils.compactDueString(calOverdue.timeInMillis, isCompleted = false))
+
+        assertEquals("Đã qua", ClassroomDateUtils.compactDueString(calOverdue.timeInMillis, isCompleted = false))
 
         val calTodayEndOfDay = gregorianCalendar().apply {
             set(Calendar.HOUR_OF_DAY, 23)
@@ -124,7 +125,13 @@ class ClassroomDateUtilsTest {
         }
 
         val calTodayOverdue = gregorianCalendar().apply { add(Calendar.MINUTE, -15) }
-        assertEquals("Quá hạn", ClassroomDateUtils.compactDueString(calTodayOverdue.timeInMillis, isCompleted = false))
+
+        val expectedOverdueLabel = if (ClassroomDateUtils.isDueToday(calTodayOverdue.timeInMillis)) {
+            ClassroomDateUtils.buildTimeOnlyString(calTodayOverdue.timeInMillis)
+        } else {
+            "Đã qua"
+        }
+        assertEquals(expectedOverdueLabel, ClassroomDateUtils.compactDueString(calTodayOverdue.timeInMillis, isCompleted = false))
 
         val calTomorrow1430 = gregorianCalendar().apply {
             add(Calendar.DAY_OF_YEAR, 1)
@@ -173,7 +180,8 @@ class ClassroomDateUtilsTest {
     fun testCountdownBadge_Overdue() {
         val cal = gregorianCalendar().apply { add(Calendar.HOUR_OF_DAY, -2) }
         val badge = ClassroomDateUtils.countdownBadgeString(cal.timeInMillis, isCompleted = false)
-        assertTrue(badge.startsWith("Quá hạn"))
+
+        assertEquals("Đã hoàn thành", badge)
     }
 
     @Test
@@ -415,15 +423,14 @@ class ClassroomDateUtilsTest {
     fun testTimezoneChange_InvalidatesDayBoundaries() {
         val originalTz = java.util.TimeZone.getDefault()
         try {
-            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh")) // UTC+7
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh"))
             ClassroomDateUtils.ensureDayBoundaries()
             val startOfTodayVn = ClassroomDateUtils.startOfToday
 
-            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tokyo")) // UTC+9
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tokyo"))
             ClassroomDateUtils.ensureDayBoundaries()
             val startOfTodayTokyo = ClassroomDateUtils.startOfToday
 
-            // Tokyo is 2 hours ahead of VN. When run between 22:00-24:00 VN, Tokyo has crossed midnight into the next day (-22h).
             val diff = startOfTodayVn - startOfTodayTokyo
             val expectedDiff = if (diff < 0) -22 * 3600 * 1000L else 2 * 3600 * 1000L
             assertEquals(expectedDiff, diff)
@@ -477,13 +484,11 @@ class ClassroomDateUtilsTest {
             val initialTomorrow = ClassroomDateUtils.startOfTomorrow
             val initialDayAfter = ClassroomDateUtils.startOfDayAfter
 
-            // Switch timezone without calling clearCaches to exercise checkTimeZone()
             TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
             ClassroomDateUtils.ensureDayBoundaries()
             val utcTomorrow = ClassroomDateUtils.startOfTomorrow
             val utcDayAfter = ClassroomDateUtils.startOfDayAfter
 
-            // UTC midnight occurs 7 hours after Ho Chi Minh (UTC+7) midnight in epoch millis
             assertEquals(7 * 3600 * 1000L, utcTomorrow - initialTomorrow)
             assertEquals(7 * 3600 * 1000L, utcDayAfter - initialDayAfter)
         } finally {

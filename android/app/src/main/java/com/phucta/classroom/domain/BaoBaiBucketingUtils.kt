@@ -106,6 +106,8 @@ object BaoBaiBucketingUtils {
         if (itemCount <= 1) return items
         if (searchTokens.isNotEmpty()) {
             val tokenCount = searchTokens.size
+
+            val tokenAlternatives = com.phucta.classroom.data.model.alternativeTokensFor(searchTokens)
             val filteredItems = ArrayList<Coursework>(itemCount)
             for (i in 0 until itemCount) {
                 val item = items[i]
@@ -114,7 +116,7 @@ object BaoBaiBucketingUtils {
                 for (t in 0 until tokenCount) {
                     val tok = searchTokens[t]
                     if (!idx.contains(tok)) {
-                        val altTok = com.phucta.classroom.data.model.cleanTelexKeystrokes(tok)
+                        val altTok = tokenAlternatives[t]
                         if (altTok == tok || !idx.contains(altTok)) {
                             matchesAll = false
                             break
@@ -171,13 +173,15 @@ object BaoBaiBucketingUtils {
         var i = low
         var j = high
         while (i <= j) {
-            while (true) {
+
+            while (i <= j) {
                 val curr = indices[i]
                 val s = scores[curr]
                 val cmp = if (s != pScore) pScore.compareTo(s) else comparator.compare(items[curr], pItem)
                 if (cmp < 0) i++ else break
             }
-            while (true) {
+
+            while (i <= j) {
                 val curr = indices[j]
                 val s = scores[curr]
                 val cmp = if (s != pScore) pScore.compareTo(s) else comparator.compare(items[curr], pItem)
@@ -285,17 +289,9 @@ object BaoBaiBucketingUtils {
     fun filterByActiveCourses(items: List<Coursework>, courses: List<Course>): List<Coursework> {
         if (courses.isEmpty() || items.isEmpty()) return items
 
-        var hasUnselected = false
-        val courseCount = courses.size
-        for (i in 0 until courseCount) {
-            if (!courses[i].isSelectedForWidget) {
-                hasUnselected = true
-                break
-            }
-        }
-        if (!hasUnselected) return items
-
         val filter = getCourseFilter(courses)
+        if (!filter.hasUnselected) return items
+
         val allCourseIds = filter.allCourseIds
         val activeCourseIds = filter.activeCourseIds
 
@@ -381,7 +377,6 @@ object BaoBaiBucketingUtils {
 
         if (tomorrowFiltered.isNotEmpty()) return sortInternal(tomorrowFiltered, emptyList(), "")
 
-        // Fallback Tier 2: Incomplete tasks due today
         val todayIncompleteFiltered = ArrayList<Coursework>(estCap)
         for (i in 0 until count) {
             val item = relevant[i]
@@ -393,7 +388,6 @@ object BaoBaiBucketingUtils {
         }
         if (todayIncompleteFiltered.isNotEmpty()) return sortInternal(todayIncompleteFiltered, emptyList(), "")
 
-        // Fallback Tier 3: Nearest upcoming tasks
         val upcomingFiltered = ArrayList<Coursework>(estCap)
         for (i in 0 until count) {
             val item = relevant[i]
@@ -406,7 +400,6 @@ object BaoBaiBucketingUtils {
         }
         if (upcomingFiltered.isNotEmpty()) return sortInternal(upcomingFiltered, emptyList(), "")
 
-        // Fallback Tier 4: Undated tasks
         val undatedFiltered = ArrayList<Coursework>(estCap)
         for (i in 0 until count) {
             val item = relevant[i]
@@ -418,7 +411,6 @@ object BaoBaiBucketingUtils {
         }
         if (undatedFiltered.isNotEmpty()) return sortInternal(undatedFiltered, emptyList(), "")
 
-        // Fallback Tier 5: Completed today tasks
         if (includeCompleted) {
             val startOfToday = ClassroomDateUtils.startOfToday
             val todayCompletedFiltered = ArrayList<Coursework>(estCap)
@@ -453,6 +445,12 @@ object BaoBaiBucketingUtils {
         val hasSearchTokens = searchTokens.isNotEmpty()
         val tokenCount = searchTokens.size
 
+        val tokenAlternatives = if (hasSearchTokens) {
+            com.phucta.classroom.data.model.alternativeTokensFor(searchTokens)
+        } else {
+            null
+        }
+
         val now = System.currentTimeMillis()
         val startOfTomorrow = ClassroomDateUtils.startOfTomorrow
         val startOfDayAfter = ClassroomDateUtils.startOfDayAfter
@@ -463,7 +461,7 @@ object BaoBaiBucketingUtils {
         val later = ArrayList<Coursework>(estCapacity)
         val noDate = ArrayList<Coursework>(estCapacity)
         val completed = ArrayList<Coursework>(estCapacity)
-        val completedTomorrow = ArrayList<Coursework>()
+        val completedTomorrow = ArrayList<Coursework>(estCapacity)
         var anyMatchesLoadedCourses = false
         for (i in 0 until totalCount) {
             val item = items[i]
@@ -476,13 +474,17 @@ object BaoBaiBucketingUtils {
                     }
                 }
             }
-            if (hasSearchTokens) {
+            if (hasSearchTokens && tokenAlternatives != null) {
                 var matchesAll = true
                 val idx = item.searchIndex
                 for (t in 0 until tokenCount) {
-                    if (!idx.contains(searchTokens[t])) {
-                        matchesAll = false
-                        break
+                    val tok = searchTokens[t]
+                    if (!idx.contains(tok)) {
+                        val altTok = tokenAlternatives[t]
+                        if (altTok == tok || !idx.contains(altTok)) {
+                            matchesAll = false
+                            break
+                        }
                     }
                 }
                 if (!matchesAll) continue
@@ -497,7 +499,8 @@ object BaoBaiBucketingUtils {
             } else {
                 when {
                     due == null -> noDate.add(item)
-                    due < now -> overdue.add(item)
+
+                    due < now -> completed.add(item)
                     due < startOfTomorrow -> today.add(item)
                     due < startOfDayAfter -> tomorrow.add(item)
                     else -> later.add(item)
@@ -522,6 +525,7 @@ object BaoBaiBucketingUtils {
             later.isNotEmpty() -> later
             noDate.isNotEmpty() -> noDate
             else -> {
+
                 var fallbackToday: ArrayList<Coursework>? = null
                 var fallbackLater: ArrayList<Coursework>? = null
                 var fallbackNoDate: ArrayList<Coursework>? = null
@@ -532,14 +536,14 @@ object BaoBaiBucketingUtils {
                     val cDue = cItem.dueEpochMillis
                     if (cDue != null) {
                         if (cDue in startOfToday until startOfTomorrow) {
-                            if (fallbackToday == null) fallbackToday = ArrayList()
+                            if (fallbackToday == null) fallbackToday = ArrayList(compCount)
                             fallbackToday.add(cItem)
                         } else if (cDue >= startOfDayAfter) {
-                            if (fallbackLater == null) fallbackLater = ArrayList()
+                            if (fallbackLater == null) fallbackLater = ArrayList(compCount)
                             fallbackLater.add(cItem)
                         }
                     } else {
-                        if (fallbackNoDate == null) fallbackNoDate = ArrayList()
+                        if (fallbackNoDate == null) fallbackNoDate = ArrayList(compCount)
                         fallbackNoDate.add(cItem)
                     }
                 }

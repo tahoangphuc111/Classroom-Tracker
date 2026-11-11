@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -369,6 +370,7 @@ fun AssignmentCard(
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     if (hasNote) {
@@ -385,16 +387,22 @@ fun AssignmentCard(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            DueDateBadge(
-                text = coursework.compactDueString,
-                isCompleted = isCompleted,
-                isOverdue = isOverdue || coursework.isPast,
-                isDueToday = coursework.isDueToday,
-                isDueTomorrow = coursework.isDueTomorrow,
-                isUrgent = coursework.isUrgent,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(top = 2.dp)
-            )
+            Box(
+                modifier = Modifier.widthIn(max = 150.dp),
+                contentAlignment = Alignment.TopEnd
+            ) {
+                DueDateBadge(
+                    text = coursework.compactDueString,
+                    isCompleted = isCompleted,
+
+                    isOverdue = !isCompleted && (isOverdue || coursework.isPast),
+                    isDueToday = coursework.isDueToday,
+                    isDueTomorrow = coursework.isDueTomorrow,
+                    isUrgent = coursework.isUrgent,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
         }
     }
 }

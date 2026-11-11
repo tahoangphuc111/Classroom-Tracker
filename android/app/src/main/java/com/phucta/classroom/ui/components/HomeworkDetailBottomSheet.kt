@@ -12,6 +12,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,7 +22,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -46,6 +47,9 @@ import java.util.regex.Pattern
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -71,6 +75,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -82,7 +87,7 @@ import com.phucta.classroom.data.model.PersonalNote
 import com.phucta.classroom.ui.theme.BeVietnamProFontFamily
 import com.phucta.classroom.ui.theme.ChunkyColor
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun HomeworkDetailBottomSheet(
     coursework: Coursework?,
@@ -117,7 +122,9 @@ fun HomeworkDetailBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+
                 .imePadding()
+                .consumeWindowInsets(WindowInsets.ime)
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
                 .verticalScroll(rememberScrollState())
@@ -161,13 +168,15 @@ fun HomeworkDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 DueDateBadge(
                     text = coursework.countdownBadgeString,
                     isCompleted = coursework.isCompleted,
-                    isOverdue = coursework.isOverdue || coursework.isPast,
+
+                    isOverdue = !coursework.isCompleted && (coursework.isOverdue || coursework.isPast),
                     isDueToday = coursework.isDueToday,
                     isDueTomorrow = coursework.isDueTomorrow,
                     fontSize = 13.sp
@@ -179,7 +188,6 @@ fun HomeworkDetailBottomSheet(
                     } else {
                         coursework.maxPoints.toString()
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
@@ -718,7 +726,7 @@ fun HomeworkDetailBottomSheet(
             }
 
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val isNarrow = maxWidth < 360.dp
+                val isNarrow = maxWidth < 540.dp * maxOf(1f, LocalDensity.current.fontScale)
                 if (isNarrow) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -833,7 +841,8 @@ fun HomeworkDetailBottomSheet(
                 } else {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
                             onClick = {
@@ -852,7 +861,7 @@ fun HomeworkDetailBottomSheet(
                             modifier = Modifier
                                 .weight(1f)
                                 .heightIn(min = 50.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (coursework.isCompleted) ChunkyColor.SuccessGreen else ChunkyColor.SkyBottom,
                                 contentColor = Color.White
@@ -865,63 +874,74 @@ fun HomeworkDetailBottomSheet(
                                 tint = Color.White,
                                 modifier = Modifier.size(19.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = if (coursework.isCompleted) "Đã làm xong" else "Đánh dấu đã nộp",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
+                                fontSize = 14.sp,
                                 color = Color.White,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
 
-                        Spacer(modifier = Modifier.width(8.dp))
-
                         OutlinedButton(
                             onClick = onCopyClick,
-                            modifier = Modifier.sizeIn(minWidth = 50.dp, minHeight = 50.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 50.dp),
                             border = BorderStroke(1.dp, ChunkyColor.CardBorder),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = ChunkyColor.SurfaceWhite,
                                 contentColor = ChunkyColor.TextPrimary
                             ),
                             shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp)
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
                                 contentDescription = "Sao chép thông tin bài tập",
                                 tint = ChunkyColor.TextPrimary,
-                                modifier = Modifier.size(19.dp)
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Sao chép",
+                                color = ChunkyColor.TextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
 
-                        Spacer(modifier = Modifier.width(8.dp))
-
                         OutlinedButton(
                             onClick = onOpenBrowserClick,
-                            modifier = Modifier.sizeIn(minWidth = 50.dp, minHeight = 50.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 50.dp),
                             border = BorderStroke(1.dp, ChunkyColor.TextLink.copy(alpha = 0.5f)),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = ChunkyColor.TomorrowBackground,
                                 contentColor = ChunkyColor.TextLink
                             ),
                             shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp)
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.OpenInBrowser,
                                 contentDescription = "Mở trên Classroom",
                                 tint = ChunkyColor.TextLink,
-                                modifier = Modifier.size(19.dp)
+                                modifier = Modifier.size(18.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Mở",
                                 color = ChunkyColor.TextLink,
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 15.sp
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }

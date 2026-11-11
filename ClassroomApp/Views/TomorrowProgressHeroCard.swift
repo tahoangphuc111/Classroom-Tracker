@@ -34,43 +34,18 @@ public struct TomorrowProgressHeroCard: View {
         }()
 
         return VStack(spacing: 11) {
-            HStack(spacing: 12) {
-                FloatingEmberView(emotion: emotion, size: 58)
-
-                VStack(alignment: .leading, spacing: 3.5) {
-                    Text(isAllDone ? "Xuất sắc! Đã xong hết" : "Báo bài \(titleSuffix)")
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.white)
-                        .contentTransition(.opacity)
-
-                    Text(isAllDone ? "Đã hoàn thành toàn bộ bài tập \(titleSuffix)." : "Còn \(incompleteCount) bài tập cần nộp.")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.92))
-                        .lineLimit(1)
-                        .contentTransition(.numericText())
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    summaryHeading(emotion: emotion, isAllDone: isAllDone, incompleteCount: incompleteCount, titleSuffix: titleSuffix)
+                        .frame(minWidth: 220)
+                    shareButton
                 }
 
-                Spacer(minLength: 4)
-
-                ShareLink(item: shareText) {
-                    HStack(spacing: 4.5) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 12, weight: .bold))
-                        Text("Chia sẻ")
-                            .font(.system(size: 13.5, weight: .bold, design: .rounded))
-                    }
-                    .foregroundStyle(Color.white)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule().fill(Color.white.opacity(0.22))
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.white.opacity(0.4), lineWidth: 0.8)
-                    )
+                VStack(alignment: .leading, spacing: 10) {
+                    summaryHeading(emotion: emotion, isAllDone: isAllDone, incompleteCount: incompleteCount, titleSuffix: titleSuffix)
+                    shareButton
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
             }
 
             VStack(spacing: 6) {
@@ -117,6 +92,49 @@ public struct TomorrowProgressHeroCard: View {
         .shadow(color: Color.blue.opacity(0.18), radius: 6, x: 0, y: 3)
         .padding(.bottom, 4)
     }
+    private func summaryHeading(emotion: EmberEmotion, isAllDone: Bool, incompleteCount: Int, titleSuffix: String) -> some View {
+        HStack(spacing: 12) {
+            FloatingEmberView(emotion: emotion, size: 58)
+
+            VStack(alignment: .leading, spacing: 3.5) {
+                Text(isAllDone ? "Xuất sắc! Đã xong hết" : "Báo bài \(titleSuffix)")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.white)
+                    .contentTransition(.opacity)
+
+                Text(isAllDone ? "Đã hoàn thành toàn bộ bài tập \(titleSuffix)." : "Còn \(incompleteCount) bài tập cần nộp.")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.92))
+                    .lineLimit(2)
+                    .contentTransition(.numericText())
+            }
+        }
+        .frame(idealWidth: 280, maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var shareButton: some View {
+        ShareLink(item: shareText) {
+            HStack(spacing: 4.5) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 12, weight: .bold))
+                Text("Chia sẻ")
+                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
+            }
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 6)
+            .background(
+                Capsule().fill(Color.white.opacity(0.22))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.4), lineWidth: 0.8)
+            )
+        }
+        .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
 }
 
 public struct TomorrowHeroBanner: View {

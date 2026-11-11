@@ -40,14 +40,15 @@ public struct PersonalNotesView: View {
 
     public enum ActiveNoteSheet: Identifiable {
         case create
-        case createDraft(title: String, courseId: String?, dueDate: Date?)
+        case createDraft(id: UUID, title: String, courseId: String?, dueDate: Date?)
         case edit(PersonalNote)
 
         public var id: String {
             switch self {
             case .create: return "create"
-            case .createDraft(let title, let courseId, let due):
-                return "draft_\(title)_\(courseId ?? "")_\(due?.timeIntervalSince1970 ?? 0)"
+            case .createDraft(let id, _, _, _):
+
+                return "draft_\(id.uuidString)"
             case .edit(let note): return "edit_\(note.id)"
             }
         }
@@ -187,7 +188,7 @@ public struct PersonalNotesView: View {
                         activeSheet = nil
                     }
                 )
-            case .createDraft(let initialTitle, let initialCourseId, let initialDueDate):
+            case .createDraft(_, let initialTitle, let initialCourseId, let initialDueDate):
                 CreateOrEditNoteSheet(
                     existingNote: nil,
                     courses: courses,
@@ -491,6 +492,7 @@ public struct PersonalNotesView: View {
             hideKeyboard()
             #endif
             activeSheet = .createDraft(
+                id: UUID(),
                 title: quickTodoTitle.trimmingCharacters(in: .whitespaces),
                 courseId: effectiveCourseId,
                 dueDate: due
@@ -1191,8 +1193,9 @@ public struct CreateOrEditNoteSheet: View {
         let effectiveDue = existingNote?.dueDate ?? initialDueDate
         if let due = effectiveDue {
             let cal = ClassroomDateFormatters.gregorianCalendar
-            let comps = cal.dateComponents([.hour, .minute, .second], from: due)
-            let isEndOfDay = (comps.hour == 23 && (comps.minute ?? 0) >= 55) || (comps.hour == 0 && (comps.minute ?? 0) == 0 && (comps.second ?? 0) == 0)
+            let comps = cal.dateComponents([.hour, .minute], from: due)
+
+            let isEndOfDay = (comps.hour == 23 && (comps.minute ?? 0) >= 55)
             if isEndOfDay && cal.isDateInToday(due) {
                 _selectedDueDateMode = State(initialValue: .today)
                 _customDueDate = State(initialValue: due)

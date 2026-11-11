@@ -105,16 +105,6 @@ public struct LargeWidgetView: View {
                     }
                     .frame(height: 90)
 
-                ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(ChunkyTheme.sheetBg)
-                        .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 8, x: 0, y: 3)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(alignment: .center) {
                             Text(sectionHeaderTitle)
@@ -150,14 +140,6 @@ public struct LargeWidgetView: View {
                         } else {
                             let itemsToShow = Array(allItems.prefix(4))
                             let count = itemsToShow.count
-
-                            let rowHeight: CGFloat = {
-                                switch count {
-                                case 2: return 74
-                                case 3: return 60
-                                default: return 48
-                                }
-                            }()
 
                             let badgeSize: CGFloat = {
                                 switch count {
@@ -229,7 +211,7 @@ public struct LargeWidgetView: View {
 
                                                 statusTag(for: item, fontSize: tagFontSize)
                                             }
-                                            .frame(height: rowHeight)
+                                            .frame(minHeight: 0, maxHeight: .infinity)
 
                                             if index < itemsToShow.count - 1 {
                                                 Rectangle()
@@ -243,13 +225,20 @@ public struct LargeWidgetView: View {
                             }
                             .padding(.horizontal, 18)
                             .padding(.top, 4)
-
-                            Spacer(minLength: 0)
                         }
                     }
-                }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
+                    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                    .background {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(ChunkyTheme.sheetBg)
+                            .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 8, x: 0, y: 3)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
+                            )
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
                 }
             }
         }
@@ -278,7 +267,26 @@ public struct LargeWidgetView: View {
             }
             .frame(height: 90)
 
-            ZStack(alignment: .center) {
+            VStack(spacing: 12) {
+                Image(systemName: "person.crop.circle.badge.plus")
+                    .font(.system(size: 44, weight: .semibold))
+                    .foregroundStyle(ChunkyTheme.pillBlue)
+
+                VStack(spacing: 5) {
+                    Text("Chạm để đăng nhập")
+                        .font(WidgetFontSystem.courseTitle(size: 17))
+                        .foregroundStyle(ChunkyTheme.textPrimary)
+
+                    Text("Đăng nhập tài khoản Google Classroom để theo dõi bài tập cần hoàn thành cho ngày mai.")
+                        .font(WidgetFontSystem.meta(size: 13))
+                        .foregroundStyle(ChunkyTheme.textMuted)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+            }
+            .padding(.vertical, 20)
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+            .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(ChunkyTheme.sheetBg)
                     .shadow(color: Color(red: 0.08, green: 0.22, blue: 0.36).opacity(0.12), radius: 8, x: 0, y: 3)
@@ -286,28 +294,9 @@ public struct LargeWidgetView: View {
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
                     )
-
-                VStack(spacing: 12) {
-                    Image(systemName: "person.crop.circle.badge.plus")
-                        .font(.system(size: 44, weight: .semibold))
-                        .foregroundStyle(ChunkyTheme.pillBlue)
-
-                    VStack(spacing: 5) {
-                        Text("Chạm để đăng nhập")
-                            .font(WidgetFontSystem.courseTitle(size: 17))
-                            .foregroundStyle(ChunkyTheme.textPrimary)
-
-                        Text("Đăng nhập tài khoản Google Classroom để theo dõi bài tập cần hoàn thành cho ngày mai.")
-                            .font(WidgetFontSystem.meta(size: 13))
-                            .foregroundStyle(ChunkyTheme.textMuted)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 24)
-                    }
-                }
-                .padding(.vertical, 20)
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
         }
     }
 
@@ -336,21 +325,21 @@ public struct LargeWidgetView: View {
         }()
 
         return Link(destination: item.destinationURL) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .center, spacing: 14) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 13, style: .continuous)
                             .fill(themeColor)
-                            .frame(width: 48, height: 48)
+                            .frame(width: 38, height: 38)
 
                         Image(systemName: SubjectArtHelper.icon(for: item.courseName, title: item.title))
-                            .font(.system(size: 24, weight: .bold))
+                            .font(.system(size: 19, weight: .bold))
                             .foregroundStyle(Color.white)
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(subHeadline)
-                            .font(WidgetFontSystem.courseTitle(size: 18))
+                            .font(WidgetFontSystem.courseTitle(size: 15))
                             .foregroundStyle(themeColor)
                             .lineLimit(1)
 
@@ -373,7 +362,7 @@ public struct LargeWidgetView: View {
                     .frame(height: 0.8)
 
                 Text(mainHeadline)
-                    .font(WidgetFontSystem.courseTitle(size: 22))
+                    .font(WidgetFontSystem.courseTitle(size: 18))
                     .foregroundStyle(item.isCompleted ? ChunkyTheme.textMuted : ChunkyTheme.textPrimary)
                     .lineLimit(3)
                     .lineSpacing(3)
@@ -381,9 +370,9 @@ public struct LargeWidgetView: View {
 
                 if !descSnippet.isEmpty && descSnippet != mainHeadline {
                     Text(descSnippet)
-                        .font(WidgetFontSystem.meta(size: 14.5))
+                        .font(WidgetFontSystem.meta(size: 12))
                         .foregroundStyle(ChunkyTheme.textMuted)
-                        .lineLimit(4)
+                        .lineLimit(2)
                         .lineSpacing(2.5)
                 } else {
                     HStack(spacing: 6) {

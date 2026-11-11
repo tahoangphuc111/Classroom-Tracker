@@ -126,9 +126,61 @@ struct AssignmentListRow: View, Equatable {
         item.isCompleted
     }
 
+    private var assignmentText: some View {
+        let themeColor = SubjectArtHelper.themeColor(for: item.subjectCategory)
+        return VStack(alignment: .leading, spacing: 4) {
+            #if os(macOS)
+            Text(item.title)
+                .font(.system(size: 15.5, weight: isSelected ? .bold : .semibold))
+                .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
+                .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
+                .opacity(isTurnedIn ? 0.72 : 1.0)
+                .lineLimit(2)
+
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(themeColor)
+                    .frame(width: 7, height: 7)
+                Text(item.courseName)
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(themeColor)
+                    .lineLimit(1)
+                if hasNote {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(Color.blue)
+                }
+            }
+            .opacity(isTurnedIn ? 0.75 : 1.0)
+            #else
+            Text(item.title)
+                .font(.system(size: 17.5, weight: isSelected ? .bold : .semibold))
+                .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
+                .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
+                .opacity(isTurnedIn ? 0.72 : 1.0)
+                .lineLimit(2)
+
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(themeColor)
+                    .frame(width: 7, height: 7)
+                Text(item.courseName)
+                    .font(.system(size: 14.5, weight: .semibold))
+                    .foregroundStyle(themeColor)
+                    .lineLimit(1)
+                if hasNote {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.blue)
+                }
+            }
+            .opacity(isTurnedIn ? 0.75 : 1.0)
+            #endif
+        }
+    }
+
     var body: some View {
         let category = item.subjectCategory
-        let themeColor = SubjectArtHelper.themeColor(for: category)
 
         HStack(alignment: .center, spacing: 0) {
             HStack(spacing: 9) {
@@ -204,62 +256,25 @@ struct AssignmentListRow: View, Equatable {
                 #endif
                 onSelect(isCmd)
             } label: {
-                HStack(alignment: .center, spacing: 9) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        #if os(macOS)
-                        Text(item.title)
-                            .font(.system(size: 15.5, weight: isSelected ? .bold : .semibold))
-                            .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
-                            .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
-                            .opacity(isTurnedIn ? 0.72 : 1.0)
-                            .lineLimit(2)
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 9) {
+                        assignmentText
+                            .frame(minWidth: 160, idealWidth: 200, maxWidth: .infinity, alignment: .leading)
 
-                        HStack(spacing: 5) {
-                            Circle()
-                                .fill(themeColor)
-                                .frame(width: 7, height: 7)
-                            Text(item.courseName)
-                                .font(.system(size: 13.5, weight: .semibold))
-                                .foregroundStyle(themeColor)
-                                .lineLimit(1)
-                            if hasNote {
-                                Image(systemName: "square.and.pencil")
-                                    .font(.system(size: 11.5, weight: .semibold))
-                                    .foregroundStyle(Color.blue)
-                            }
-                        }
-                        .opacity(isTurnedIn ? 0.75 : 1.0)
-                        #else
-                        Text(item.title)
-                            .font(.system(size: 17.5, weight: isSelected ? .bold : .semibold))
-                            .foregroundStyle(isTurnedIn ? Color.platformTextSecondary : Color.platformTextPrimary)
-                            .strikethrough(isTurnedIn, color: Color.platformTextTertiary)
-                            .opacity(isTurnedIn ? 0.72 : 1.0)
-                            .lineLimit(2)
+                        Spacer(minLength: 8)
 
-                        HStack(spacing: 5) {
-                            Circle()
-                                .fill(themeColor)
-                                .frame(width: 7, height: 7)
-                            Text(item.courseName)
-                                .font(.system(size: 14.5, weight: .semibold))
-                                .foregroundStyle(themeColor)
-                                .lineLimit(1)
-                            if hasNote {
-                                Image(systemName: "square.and.pencil")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Color.blue)
-                            }
-                        }
-                        .opacity(isTurnedIn ? 0.75 : 1.0)
-                        #endif
+                        DueBadgeView(item: item, compact: true)
+                            .equatable()
+                            .layoutPriority(1)
                     }
 
-                    Spacer(minLength: 8)
-
-                    DueBadgeView(item: item, compact: true)
-                        .equatable()
-                        .layoutPriority(1)
+                    VStack(alignment: .leading, spacing: 7) {
+                        assignmentText
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        DueBadgeView(item: item, compact: true)
+                            .equatable()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(.trailing, 11)
                 #if os(iOS)

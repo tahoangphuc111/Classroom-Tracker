@@ -189,7 +189,6 @@ public struct SubjectArtHelper {
         static let tin = TokenFlags(rawValue: 1 << 17)
         static let tu = TokenFlags(rawValue: 1 << 18)
 
-        // Anchor tokens to gate substring scans
         static let wGiai = TokenFlags(rawValue: 1 << 19)
         static let wDai = TokenFlags(rawValue: 1 << 20)
         static let wHinh = TokenFlags(rawValue: 1 << 21)
@@ -568,7 +567,6 @@ public struct SubjectArtHelper {
             let sBuf = FastSearchBuffer(ptr: base, count: buf.count)
             let flags = tokenTrie.scan(buf: sBuf)
 
-            // Math
             var hasMath = flags.contains(.math)
             if !hasMath {
                 if flags.contains(.wGiai) && p_giai_tich.isFound(in: sBuf) { hasMath = true }
@@ -598,7 +596,6 @@ public struct SubjectArtHelper {
                 }
             }
 
-            // Physics
             var hasPhysics = flags.contains(.physics)
             if !hasPhysics {
                 if flags.contains(.wVat) {
@@ -633,7 +630,6 @@ public struct SubjectArtHelper {
             }
             if hasPhysics { return .physics }
 
-            // Chemistry
             var hasChem = flags.contains(.chemistry)
             if !hasChem && flags.contains(.hoa) {
                 if p_hoa_hoc.isFound(in: sBuf) || p_mon_hoa.isFound(in: sBuf) ||
@@ -659,7 +655,6 @@ public struct SubjectArtHelper {
             }
             if hasChem { return .chemistry }
 
-            // Biology
             var hasBio = flags.contains(.biology)
             if !hasBio {
                 if flags.contains(.wY) && p_y_hoc.isFound(in: sBuf) { hasBio = true }
@@ -677,7 +672,6 @@ public struct SubjectArtHelper {
             }
             if hasBio { return .biology }
 
-            // History
             if flags.contains(.history) { return .history }
             if flags.contains(.su) {
                 let isLichSuManners = p_lich_su_trong.isFound(in: sBuf) ||
@@ -691,7 +685,6 @@ public struct SubjectArtHelper {
                 }
             }
 
-            // Literature
             if flags.contains(.literature) { return .literature }
             if flags.contains(.van) {
                 if p_ngu_van.isFound(in: sBuf) || p_tieng_viet.isFound(in: sBuf) || p_mon_van.isFound(in: sBuf) {
@@ -706,7 +699,6 @@ public struct SubjectArtHelper {
                 }
             }
 
-            // English
             if flags.contains(.english) { return .english }
             if flags.contains(.anh) {
                 if p_tieng_anh.isFound(in: sBuf) || p_mon_anh.isFound(in: sBuf) {
@@ -722,7 +714,6 @@ public struct SubjectArtHelper {
                 }
             }
 
-            // Computer Science
             if flags.contains(.cs) { return .computerScience }
             var hasCs = false
             if flags.contains(.tin) {
@@ -750,7 +741,6 @@ public struct SubjectArtHelper {
             }
             if hasCs { return .computerScience }
 
-            // Defense
             if flags.contains(.defense) { return .defenseEducation }
             if flags.contains(.wQuoc) || flags.contains(.wQuan) || flags.contains(.wGiao) {
                 if p_giao_duc_quoc_phong.isFound(in: sBuf) ||
@@ -762,7 +752,6 @@ public struct SubjectArtHelper {
                 }
             }
 
-            // Local
             if flags.contains(.local) { return .localEducation }
             if flags.contains(.wGiao) {
                 if p_giao_duc_dia_phuong.isFound(in: sBuf) || p_giao_duc_dp.isFound(in: sBuf) {
@@ -770,7 +759,6 @@ public struct SubjectArtHelper {
                 }
             }
 
-            // Experiential
             if flags.contains(.experiential) { return .experientialActivities }
             if flags.contains(.wHoat) || flags.contains(.wHuong) || flags.contains(.sinh) {
                 if p_hoat_dong_trai_nghiem.isFound(in: sBuf) ||
@@ -1145,6 +1133,10 @@ public struct DueBadgeView: View, Equatable {
 
             Text(badgeText)
                 .font(.system(size: compact ? 13.5 : 14.5, weight: .semibold, design: .rounded))
+
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .truncationMode(.tail)
         }
         .foregroundStyle(badgeColor)
         .padding(.horizontal, compact ? 8.5 : 10.5)

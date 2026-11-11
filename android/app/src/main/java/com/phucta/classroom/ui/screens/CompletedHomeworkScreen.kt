@@ -109,7 +109,10 @@ fun CompletedHomeworkScreen(
         } else {
             completedItems.filter { item ->
                 for (token in searchTokens) {
-                    if (!item.searchIndex.contains(token)) return@filter false
+                    if (!item.searchIndex.contains(token)) {
+                        val altTok = com.phucta.classroom.data.model.cleanTelexKeystrokes(token)
+                        if (altTok == token || !item.searchIndex.contains(altTok)) return@filter false
+                    }
                 }
                 true
             }
@@ -268,8 +271,6 @@ fun CompletedHomeworkScreen(
                     }
                 }
             }
-
-
 
             LazyColumn(
                 state = listState,
