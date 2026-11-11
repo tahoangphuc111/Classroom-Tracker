@@ -801,7 +801,11 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             .trimmingCharacters(in: .whitespaces)
     }
 
+    #if CLASSROOM_TESTING
+    private let keychainService = "com.phucta.classroom.tests.\(UUID().uuidString)"
+    #else
     private let keychainService = "com.phucta.classroomwidget.tokens"
+    #endif
 
     private var keychainAccessGroupCandidates: [String] {
         #if targetEnvironment(simulator)

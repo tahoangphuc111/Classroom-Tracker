@@ -547,7 +547,7 @@ Before submitting any code changes, all test suites must pass without errors.
 The standalone Swift test suite verifies bucketing, local completion overrides, search scoring, personal note retention, and subject categorization:
 
 ```bash
-swiftc Tests/AppleCoreLogicTests.swift \
+swiftc -D CLASSROOM_TESTING Tests/AppleCoreLogicTests.swift \
   Shared/Models/*.swift \
   Shared/Storage/*.swift \
   Shared/PlatformUICompat.swift \
@@ -555,6 +555,8 @@ swiftc Tests/AppleCoreLogicTests.swift \
   Shared/Network/*.swift \
   -o /tmp/test_runner && /tmp/test_runner
 ```
+
+`CLASSROOM_TESTING` isolates storage and keychain identifiers from installed app data. Run `Tests/AppleSyncLogicTests.swift` with the same shared sources to verify network pagination and incomplete sync responses using an in-memory transport.
 
 #### 2. Running Android Unit Tests & Benchmarks
 The Android test suite validates Room DAOs, `BaoBaiBucketingUtils`, `VietnameseSearchUtils`, and OAuth token security contracts:

@@ -127,6 +127,7 @@ class ClassroomRepository(
                 val existingCoursework = if (hasOnlyMockCourses) emptyList() else courseworkDao.getAllCoursework().toCoursework().filter { !MockDataProvider.isMockCourseworkId(it.id) }
                 val allCoursework = mutableListOf<Coursework>()
                 var hasAnyFetchErrors = false
+                val fetchedCourseIds = mutableSetOf<String>()
                 val chunkSize = 2
                 val courseChunks = selectedCourses.chunked(chunkSize)
                 for ((chunkIndex, chunk) in courseChunks.withIndex()) {
@@ -134,16 +135,23 @@ class ClassroomRepository(
                         val deferredResults = chunk.map { course ->
                             async {
                                 try {
-                                    apiService.fetchCourseworkForCourse(course, accessToken)
+                                    course.id to apiService.fetchCourseworkForCourse(course, accessToken)
                                 } catch (e: Exception) {
                                     if (e is CancellationException) throw e
-                                    hasAnyFetchErrors = true
-                                    existingCoursework.filter { it.courseId == course.id }
+                                    course.id to null
                                 }
                             }
                         }
                         val results = deferredResults.awaitAll()
-                        results.forEach { allCoursework.addAll(it) }
+                        results.forEach { (courseId, items) ->
+                            if (items != null) {
+                                fetchedCourseIds.add(courseId)
+                                allCoursework.addAll(items)
+                            } else {
+                                hasAnyFetchErrors = true
+                                allCoursework.addAll(existingCoursework.filter { it.courseId == courseId })
+                            }
+                        }
                     }
                     if (chunkIndex < courseChunks.lastIndex) {
                         delay(500)
@@ -169,7 +177,7 @@ class ClassroomRepository(
                     val latestCoursework = courseworkDao.getAllCoursework().toCoursework()
                     val latestStatusMap = latestCoursework.associateBy { it.id }
                     val finalCoursework = allCoursework.distinctBy { it.id }.map { incoming ->
-                        reconcileCoursework(latestStatusMap[incoming.id], incoming)
+                        reconcileCoursework(latestStatusMap[incoming.id], incoming, isRemote = incoming.courseId in fetchedCourseIds)
                     }
                     courseworkDao.upsertCourseworks(finalCoursework.map { CourseworkEntity.fromDomain(it) })
 
@@ -184,9 +192,15 @@ class ClassroomRepository(
                         }
                     }
                 }
-                preferences.saveLastSyncTime(System.currentTimeMillis())
                 notifyWidgetReload()
-                Result.success(Unit)
+                if (hasAnyFetchErrors) {
+                    val message = "Một số lớp chưa đồng bộ được. Đã giữ dữ liệu cũ; vui lòng thử lại."
+                    _syncErrorMessage.value = message
+                    Result.failure(java.io.IOException(message))
+                } else {
+                    preferences.saveLastSyncTime(System.currentTimeMillis())
+                    Result.success(Unit)
+                }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 val friendlyMessage = when {
@@ -350,8 +364,9 @@ class ClassroomRepository(
         }
     }
     companion object {
-        fun reconcileCoursework(latest: Coursework?, incoming: Coursework): Coursework {
+        fun reconcileCoursework(latest: Coursework?, incoming: Coursework, isRemote: Boolean = true): Coursework {
             if (latest == null) return incoming
+            if (!isRemote) return latest
             val localIsManuallyCompleted = latest.isManuallyCompleted
             val incomingIsPendingOrLate = incoming.status == SubmissionStatus.PENDING ||
                     incoming.status == SubmissionStatus.LATE

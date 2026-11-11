@@ -8,11 +8,15 @@ import UIKit
 public final class ClassroomStorage: @unchecked Sendable {
     public static let shared = ClassroomStorage()
     public static let appGroupCandidates: [String] = {
+        #if CLASSROOM_TESTING
+        return ["com.phucta.classroom.tests.\(UUID().uuidString)"]
+        #else
         return [
             "group.com.phucta.classroom",
             "4J32CASZVT.group.com.phucta.classroom",
             "VGWH8K5259.group.com.phucta.classroom"
         ]
+        #endif
     }()
 
     public static var appGroupId: String {
@@ -64,6 +68,9 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public static let sharedStorageDirectories: [URL] = {
+        #if CLASSROOM_TESTING
+        return [FileManager.default.temporaryDirectory.appendingPathComponent("classroom-tests-\(UUID().uuidString)", isDirectory: true)]
+        #else
         var dirs: [URL] = []
         for id in ClassroomStorage.appGroupCandidates {
             if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id) {
@@ -82,6 +89,7 @@ public final class ClassroomStorage: @unchecked Sendable {
             }
         }
         return dirs
+        #endif
     }()
 
     private static var inaccessibleDirectoryPaths: Set<String> = []
@@ -766,8 +774,6 @@ public final class ClassroomStorage: @unchecked Sendable {
             }
         }
 
-        if activeCourseIds.isEmpty { return items }
-
         var result: [Coursework] = []
         result.reserveCapacity(items.count)
         var anyMatchesLoadedCourses = false
@@ -892,7 +898,7 @@ public final class ClassroomStorage: @unchecked Sendable {
             let courseList = courses ?? loadCourses()
             let activeCourseIds = Set(courseList.filter(\.isSelectedForWidget).map(\.id))
             let allCourseIds = Set(courseList.map(\.id))
-            let isFilterActive = !activeCourseIds.isEmpty && activeCourseIds.count < allCourseIds.count
+            let isFilterActive = activeCourseIds.count < allCourseIds.count
 
             for note in tomorrowNotes {
                 if note.courseworkId == nil {
@@ -1060,7 +1066,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         saveCoursework(currentItems)
     }
 
-    public func reconcileCoursework(incoming: [Coursework]) -> [Coursework] {
+    public func reconcileCoursework(incoming: [Coursework], fetchedCourseIds: Set<String>? = nil) -> [Coursework] {
         let cached = loadCoursework()
         var cachedMap: [String: Coursework] = [:]
         cachedMap.reserveCapacity(cached.count)
@@ -1069,6 +1075,10 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
         return incoming.map { item in
             guard let fresh = cachedMap[item.id] else { return item }
+            if let fetchedCourseIds, !fetchedCourseIds.contains(item.courseId) {
+                // Cached fallback data is not a remote acknowledgement.
+                return fresh
+            }
             var updated = item
             let localIsManuallyCompleted = fresh.isManuallyCompleted
             let incomingIsPendingOrLate = item.status == .pending || item.status == .late

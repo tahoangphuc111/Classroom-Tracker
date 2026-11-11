@@ -15,6 +15,35 @@ struct TestRunner {
         print("=== Running Apple Core Logic & Model Tests ===")
 
         do {
+            let courses = [Course(id: "hidden", name: "Toán", isSelectedForWidget: false)]
+            let homework = Coursework(id: "hidden_task", courseId: "hidden", courseName: "Toán", title: "Bài tập")
+            let personal = Coursework(id: "personal", courseId: "personal_note", courseName: "Ghi chú", title: "Nhắc việc")
+            let filtered = ClassroomStorage.shared.filterItemsByActiveCourses([homework, personal], courses: courses)
+            assertCondition(filtered.map(\.id) == [personal.id], "Deselecting all courses must hide their tasks while preserving independent notes")
+        }
+
+        do {
+            let checked = Coursework(id: "fallback", courseId: "c", courseName: "Toán", title: "Đại số", status: .turnedIn, isManuallyCompleted: true)
+            ClassroomStorage.shared.saveCoursework([checked])
+            let preserved = ClassroomStorage.shared.reconcileCoursework(incoming: [checked], fetchedCourseIds: [])
+            assertCondition(preserved.first?.isManuallyCompleted == true, "Cached fallback must not clear manual completion")
+            ClassroomStorage.shared.toggleCourseworkCompletion(id: checked.id, completed: false)
+            let unchecked = ClassroomStorage.shared.reconcileCoursework(incoming: [checked], fetchedCourseIds: [])
+            assertCondition(unchecked.first?.status == .pending && unchecked.first?.isManuallyCompleted == false, "Cached fallback must preserve edits made during sync")
+        }
+
+        do {
+            let courses = [Course(id: "hidden", name: "Toán", isSelectedForWidget: false)]
+            let tomorrow = Date(timeIntervalSinceReferenceDate: ClassroomDateFormatters.startOfTomorrowTimestamp + 3600)
+            let hiddenNote = PersonalNote(id: "hidden_note", courseId: "hidden", title: "Ôn tập", dueDate: tomorrow)
+            let independentNote = PersonalNote(id: "independent", title: "Chuẩn bị đồ dùng", dueDate: tomorrow)
+            ClassroomStorage.shared.savePersonalNotes([hiddenNote, independentNote])
+            let result = ClassroomStorage.shared.getTomorrowCoursework(items: [], courses: courses)
+            assertCondition(result.map(\.id) == ["note_independent"], "Deselecting all courses must also hide their tomorrow notes")
+            ClassroomStorage.shared.savePersonalNotes([])
+        }
+
+        do {
             let jsonWithUnknownStatus = """
             {
                 "id": "test_1",

@@ -103,7 +103,7 @@ object BaoBaiBucketingUtils {
         rawNormalizedQuery: String = ""
     ): List<Coursework> {
         val itemCount = items.size
-        if (itemCount <= 1) return items
+        if (itemCount == 0) return items
         if (searchTokens.isNotEmpty()) {
             val tokenCount = searchTokens.size
 
@@ -295,7 +295,7 @@ object BaoBaiBucketingUtils {
         val allCourseIds = filter.allCourseIds
         val activeCourseIds = filter.activeCourseIds
 
-        if (allCourseIds.size == activeCourseIds.size || activeCourseIds.isEmpty()) {
+        if (allCourseIds.size == activeCourseIds.size) {
             return items
         }
 
@@ -345,7 +345,7 @@ object BaoBaiBucketingUtils {
 
         if (hasNotes) {
             val filter = if (courses.isNotEmpty()) getCourseFilter(courses) else null
-            val filterActive = filter != null && filter.hasUnselected && filter.activeCourseIds.isNotEmpty() && filter.allCourseIds.size != filter.activeCourseIds.size
+            val filterActive = filter != null && filter.hasUnselected
             val noteCount = personalNotes.size
             for (i in 0 until noteCount) {
                 val note = personalNotes[i]
@@ -437,7 +437,7 @@ object BaoBaiBucketingUtils {
         val totalCount = items.size
         if (totalCount == 0) return CourseworkBuckets()
         val filter = if (courses.isNotEmpty()) getCourseFilter(courses) else null
-        val filterActive = filter != null && filter.hasUnselected && filter.activeCourseIds.isNotEmpty() && filter.allCourseIds.size != filter.activeCourseIds.size
+        val filterActive = filter != null && filter.hasUnselected
 
         val allCourseIds = if (filterActive) filter.allCourseIds else null
         val activeCourseIds = if (filterActive) filter.activeCourseIds else null

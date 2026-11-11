@@ -116,6 +116,7 @@ class ClassroomApiService(
                 coursesMap[course.id] = course
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             lastError = e
         }
         try {
@@ -124,34 +125,12 @@ class ClassroomApiService(
                 coursesMap[course.id] = course
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             if (lastError == null) lastError = e
         }
-        if (coursesMap.isEmpty()) {
-            try {
-                val adminCourses = fetchCoursesPage(accessToken, filterKey = null, filterValue = null, courseState = "ACTIVE")
-                for (course in adminCourses) {
-                    coursesMap[course.id] = course
-                }
-            } catch (e: Exception) {
-                if (lastError == null) lastError = e
-            }
-        }
-        if (coursesMap.isEmpty() && lastError == null) {
-            try {
-                val studentAllStateCourses = fetchCoursesPage(accessToken, filterKey = "studentId", filterValue = "me", courseState = null)
-                for (course in studentAllStateCourses) {
-                    coursesMap[course.id] = course
-                }
-            } catch (_: Exception) {}
-            try {
-                val teacherAllStateCourses = fetchCoursesPage(accessToken, filterKey = "teacherId", filterValue = "me", courseState = null)
-                for (course in teacherAllStateCourses) {
-                    coursesMap[course.id] = course
-                }
-            } catch (_: Exception) {}
-        }
-        if (coursesMap.isEmpty() && lastError != null) {
-            throw lastError
+        if (coursesMap.isEmpty() || lastError != null) {
+            // Only a complete listing can safely drive cache deletion.
+            return@withContext fetchCoursesPage(accessToken, filterKey = null, filterValue = null, courseState = "ACTIVE")
         }
         return@withContext coursesMap.values.toList()
     }
@@ -163,6 +142,7 @@ class ClassroomApiService(
     ): List<Course> {
         val pageCourses = mutableListOf<Course>()
         var pageToken: String? = null
+        val seenPageTokens = mutableSetOf<String>()
         var pageCount = 0
         do {
             val urlBuilder = "https://classroom.googleapis.com/v1/courses".toHttpUrl().newBuilder()
@@ -185,7 +165,7 @@ class ClassroomApiService(
                     if (!response.isSuccessful) {
                         throw IllegalStateException("Không lấy được danh sách lớp học (${response.code})")
                     }
-                    val body = response.body?.string() ?: return@use Pair(false, null)
+                    val body = response.body?.string() ?: throw IOException("Phản hồi danh sách lớp học trống")
                     val decoded = json.decodeFromString<GoogleCoursesResponse>(body)
                     decoded.courses?.forEach { item ->
                         if (item.id.isNotBlank() && item.name.isNotBlank()) {
@@ -209,12 +189,13 @@ class ClassroomApiService(
                 throw e
             }
             if (!shouldContinue) break
-            pageToken = newPageToken
+            pageToken = newPageToken?.takeIf { it.isNotBlank() }
             pageCount++
             if (pageToken != null) {
+                if (!seenPageTokens.add(pageToken)) throw IOException("Máy chủ lặp lại trang dữ liệu")
                 delay(200)
             }
-        } while (pageToken != null && pageCount < 10)
+        } while (pageToken != null)
         return pageCourses
     }
     suspend fun fetchCourseworkForCourse(course: Course, accessToken: String): List<Coursework> = withContext(Dispatchers.IO) {
@@ -259,6 +240,7 @@ class ClassroomApiService(
     private suspend fun fetchRawCoursework(courseId: String, accessToken: String): List<GoogleCourseworkRawItem> {
         val allItems = mutableListOf<GoogleCourseworkRawItem>()
         var pageToken: String? = null
+        val seenPageTokens = mutableSetOf<String>()
         var pageCount = 0
         do {
             val urlBuilder = "https://classroom.googleapis.com/v1/courses/$courseId/courseWork".toHttpUrl().newBuilder()
@@ -276,7 +258,7 @@ class ClassroomApiService(
                     if (!response.isSuccessful) {
                         throw IOException("HTTP ${response.code} khi tải bài tập lớp $courseId (trang ${pageCount + 1})")
                     }
-                    val body = response.body?.string() ?: return@use Pair(false, null)
+                    val body = response.body?.string() ?: throw IOException("Phản hồi bài tập trống")
                     val decoded = json.decodeFromString<GoogleCourseworkResponse>(body)
                     decoded.courseWork?.let { allItems.addAll(it) }
                     Pair(true, decoded.nextPageToken)
@@ -286,36 +268,19 @@ class ClassroomApiService(
                 throw e
             }
             if (!shouldContinue) break
-            pageToken = newPageToken
+            pageToken = newPageToken?.takeIf { it.isNotBlank() }
             pageCount++
             if (pageToken != null) {
+                if (!seenPageTokens.add(pageToken)) throw IOException("Máy chủ lặp lại trang dữ liệu")
                 delay(200)
             }
-        } while (pageToken != null && pageCount < 10)
-        if (allItems.isEmpty()) {
-            try {
-                delay(200)
-                val urlBuilder = "https://classroom.googleapis.com/v1/courses/$courseId/courseWork".toHttpUrl().newBuilder()
-                    .addQueryParameter("pageSize", "50")
-                val request = Request.Builder()
-                    .url(urlBuilder.build())
-                    .addHeader("Authorization", "Bearer $accessToken")
-                    .build()
-                executeWithRetry(request).use { response ->
-                    if (response.isSuccessful) {
-                        response.body?.string()?.let { body ->
-                            val decoded = json.decodeFromString<GoogleCourseworkResponse>(body)
-                            decoded.courseWork?.let { allItems.addAll(it) }
-                        }
-                    }
-                }
-            } catch (_: Exception) {}
-        }
+        } while (pageToken != null)
         return allItems
     }
     private suspend fun fetchSubmissionsMap(courseId: String, accessToken: String): Map<String, GoogleSubmissionItem> {
         val map = mutableMapOf<String, GoogleSubmissionItem>()
         var pageToken: String? = null
+        val seenPageTokens = mutableSetOf<String>()
         var pageCount = 0
         do {
             val urlBuilder = "https://classroom.googleapis.com/v1/courses/$courseId/courseWork/-/studentSubmissions".toHttpUrl().newBuilder()
@@ -333,7 +298,7 @@ class ClassroomApiService(
                     if (!response.isSuccessful) {
                         throw IOException("HTTP ${response.code} khi tải danh sách nộp bài lớp $courseId (trang ${pageCount + 1})")
                     }
-                    val body = response.body?.string() ?: return@use Pair(false, null)
+                    val body = response.body?.string() ?: throw IOException("Phản hồi trạng thái nộp bài trống")
                     val decoded = json.decodeFromString<GoogleSubmissionsResponse>(body)
                     decoded.studentSubmissions?.forEach { item ->
                         if (item.courseWorkId.isNotBlank()) {
@@ -347,12 +312,13 @@ class ClassroomApiService(
                 throw e
             }
             if (!shouldContinue) break
-            pageToken = newPageToken
+            pageToken = newPageToken?.takeIf { it.isNotBlank() }
             pageCount++
             if (pageToken != null) {
+                if (!seenPageTokens.add(pageToken)) throw IOException("Máy chủ lặp lại trang dữ liệu")
                 delay(200)
             }
-        } while (pageToken != null && pageCount < 10)
+        } while (pageToken != null)
         return map
     }
 }

@@ -24,7 +24,11 @@ public final class ClassroomAPIService: ObservableObject {
     @Published public private(set) var isSyncing: Bool = false
     @Published public var syncErrorMessage: String? = nil
 
-    private init() {}
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
 
     public func syncAll() async {
         guard !isSyncing else { return }
@@ -65,6 +69,7 @@ public final class ClassroomAPIService: ObservableObject {
             let rawExisting = ClassroomStorage.shared.loadCoursework()
             let existingCoursework = ClassroomStorage.isMockCoursework(rawExisting) ? [] : rawExisting
             var hasAnyFetchErrors = false
+            var fetchedCourseIds = Set<String>()
 
             if !selectedCourses.isEmpty {
                 try? await Task.sleep(nanoseconds: 300_000_000)
@@ -89,6 +94,7 @@ public final class ClassroomAPIService: ObservableObject {
 
                     for await (courseId, result) in group {
                         if let items = result {
+                            fetchedCourseIds.insert(courseId)
                             allCoursework.append(contentsOf: items)
                         } else {
                             hasAnyFetchErrors = true
@@ -118,14 +124,18 @@ public final class ClassroomAPIService: ObservableObject {
                 }
             }
 
-            let finalCoursework = ClassroomStorage.shared.reconcileCoursework(incoming: uniqueCoursework)
+            let finalCoursework = ClassroomStorage.shared.reconcileCoursework(incoming: uniqueCoursework, fetchedCourseIds: fetchedCourseIds)
 
             ClassroomStorage.shared.saveCoursework(finalCoursework)
             if !hasAnyFetchErrors {
                 let validIds = Set(finalCoursework.map(\.id))
                 ClassroomStorage.shared.cleanUpOrphanedNotes(validCourseworkIds: validIds)
             }
-            ClassroomStorage.shared.saveLastSyncTime(Date())
+            if hasAnyFetchErrors {
+                syncErrorMessage = "Một số lớp chưa đồng bộ được. Đã giữ dữ liệu cũ; vui lòng thử lại."
+            } else {
+                ClassroomStorage.shared.saveLastSyncTime(Date())
+            }
             ClassroomStorage.shared.saveUserLoggedIn(true)
         } catch {
             if Task.isCancelled || (error as? URLError)?.code == .cancelled {
@@ -135,7 +145,7 @@ public final class ClassroomAPIService: ObservableObject {
         }
     }
 
-    private nonisolated func fetchActiveCourses(accessToken: String) async throws -> [Course] {
+    nonisolated func fetchActiveCourses(accessToken: String) async throws -> [Course] {
         var coursesMap: [String: Course] = [:]
         var lastError: Error?
 
@@ -159,31 +169,9 @@ public final class ClassroomAPIService: ObservableObject {
             if lastError == nil { lastError = error }
         }
 
-        if coursesMap.isEmpty {
-            do {
-                let adminCourses = try await fetchCoursesPage(accessToken: accessToken, filterKey: nil, filterValue: nil, courseState: "ACTIVE")
-                for course in adminCourses {
-                    coursesMap[course.id] = course
-                }
-            } catch {
-                if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw error }
-                if lastError == nil { lastError = error }
-            }
-        }
-
-        if coursesMap.isEmpty && lastError == nil {
-            let studentAllStateCourses = (try? await fetchCoursesPage(accessToken: accessToken, filterKey: "studentId", filterValue: "me", courseState: nil)) ?? []
-            for course in studentAllStateCourses {
-                coursesMap[course.id] = course
-            }
-            let teacherAllStateCourses = (try? await fetchCoursesPage(accessToken: accessToken, filterKey: "teacherId", filterValue: "me", courseState: nil)) ?? []
-            for course in teacherAllStateCourses {
-                coursesMap[course.id] = course
-            }
-        }
-
-        if coursesMap.isEmpty, let lastError {
-            throw lastError
+        if coursesMap.isEmpty || lastError != nil {
+            // Only a complete listing can safely drive cache deletion.
+            return try await fetchCoursesPage(accessToken: accessToken, filterKey: nil, filterValue: nil, courseState: "ACTIVE")
         }
 
         return Array(coursesMap.values)
@@ -194,7 +182,7 @@ public final class ClassroomAPIService: ObservableObject {
         while true {
             let (data, response): (Data, URLResponse)
             do {
-                (data, response) = try await URLSession.shared.data(for: request)
+                (data, response) = try await session.data(for: request)
             } catch {
                 if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw error }
                 if attempt < maxRetries {
@@ -231,7 +219,7 @@ public final class ClassroomAPIService: ObservableObject {
     ) async throws -> [Course] {
         var courses: [Course] = []
         var pageToken: String? = nil
-        var pageCount = 0
+        var seenPageTokens = Set<String>()
 
         repeat {
             guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses") else {
@@ -258,17 +246,7 @@ public final class ClassroomAPIService: ObservableObject {
             request.timeoutInterval = 15
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
-            let (data, response): (Data, URLResponse)
-            do {
-                (data, response) = try await dataWithRetry(for: request)
-            } catch {
-                if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw error }
-                if courses.isEmpty {
-                    throw error
-                } else {
-                    break
-                }
-            }
+            let (data, response) = try await dataWithRetry(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw ClassroomAPIError.invalidResponse
@@ -293,17 +271,17 @@ public final class ClassroomAPIService: ObservableObject {
                 }
                 courses.append(contentsOf: mapped)
             }
-            pageToken = decoded.nextPageToken
-            pageCount += 1
-            if pageToken != nil {
-                try? await Task.sleep(nanoseconds: 200_000_000)
+            pageToken = decoded.nextPageToken.flatMap { $0.isEmpty ? nil : $0 }
+            if let pageToken {
+                guard seenPageTokens.insert(pageToken).inserted else { throw ClassroomAPIError.invalidResponse }
+                try await Task.sleep(nanoseconds: 200_000_000)
             }
-        } while pageToken != nil && pageCount < 10
+        } while pageToken != nil
 
         return courses
     }
 
-    private nonisolated func fetchCourseworkForCourse(course: Course, accessToken: String) async throws -> [Coursework] {
+    nonisolated func fetchCourseworkForCourse(course: Course, accessToken: String) async throws -> [Coursework] {
         async let rawCourseworkFetch = fetchRawCoursework(courseId: course.id, accessToken: accessToken)
         async let submissionsMapFetch = fetchSubmissionsMap(courseId: course.id, accessToken: accessToken)
 
@@ -353,10 +331,10 @@ public final class ClassroomAPIService: ObservableObject {
     private nonisolated func fetchRawCoursework(courseId: String, accessToken: String) async throws -> [GoogleCourseworkRawItem] {
         var allItems: [GoogleCourseworkRawItem] = []
         var pageToken: String? = nil
-        var pageCount = 0
+        var seenPageTokens = Set<String>()
 
         repeat {
-            guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses/\(courseId)/courseWork") else { break }
+            guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses/\(courseId)/courseWork") else { throw ClassroomAPIError.invalidURL }
             var queryItems = [
                 URLQueryItem(name: "courseWorkStates", value: "PUBLISHED"),
                 URLQueryItem(name: "pageSize", value: "50")
@@ -365,7 +343,7 @@ public final class ClassroomAPIService: ObservableObject {
                 queryItems.append(URLQueryItem(name: "pageToken", value: token))
             }
             components.queryItems = queryItems
-            guard let url = components.url else { break }
+            guard let url = components.url else { throw ClassroomAPIError.invalidURL }
 
             var request = URLRequest(url: url)
             request.timeoutInterval = 15
@@ -383,12 +361,12 @@ public final class ClassroomAPIService: ObservableObject {
             if let items = decoded.courseWork {
                 allItems.append(contentsOf: items)
             }
-            pageToken = decoded.nextPageToken
-            pageCount += 1
-            if pageToken != nil {
-                try? await Task.sleep(nanoseconds: 200_000_000)
+            pageToken = decoded.nextPageToken.flatMap { $0.isEmpty ? nil : $0 }
+            if let pageToken {
+                guard seenPageTokens.insert(pageToken).inserted else { throw ClassroomAPIError.invalidResponse }
+                try await Task.sleep(nanoseconds: 200_000_000)
             }
-        } while pageToken != nil && pageCount < 10
+        } while pageToken != nil
 
         return allItems
     }
@@ -396,10 +374,10 @@ public final class ClassroomAPIService: ObservableObject {
     private nonisolated func fetchSubmissionsMap(courseId: String, accessToken: String) async throws -> [String: GoogleSubmissionItem] {
         var map: [String: GoogleSubmissionItem] = [:]
         var pageToken: String? = nil
-        var pageCount = 0
+        var seenPageTokens = Set<String>()
 
         repeat {
-            guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses/\(courseId)/courseWork/-/studentSubmissions") else { break }
+            guard var components = URLComponents(string: "https://classroom.googleapis.com/v1/courses/\(courseId)/courseWork/-/studentSubmissions") else { throw ClassroomAPIError.invalidURL }
             var queryItems = [
                 URLQueryItem(name: "userId", value: "me"),
                 URLQueryItem(name: "pageSize", value: "50")
@@ -408,7 +386,7 @@ public final class ClassroomAPIService: ObservableObject {
                 queryItems.append(URLQueryItem(name: "pageToken", value: token))
             }
             components.queryItems = queryItems
-            guard let url = components.url else { break }
+            guard let url = components.url else { throw ClassroomAPIError.invalidURL }
 
             var request = URLRequest(url: url)
             request.timeoutInterval = 15
@@ -427,12 +405,12 @@ public final class ClassroomAPIService: ObservableObject {
                     map[cwId] = item
                 }
             }
-            pageToken = decoded.nextPageToken
-            pageCount += 1
-            if pageToken != nil {
-                try? await Task.sleep(nanoseconds: 200_000_000)
+            pageToken = decoded.nextPageToken.flatMap { $0.isEmpty ? nil : $0 }
+            if let pageToken {
+                guard seenPageTokens.insert(pageToken).inserted else { throw ClassroomAPIError.invalidResponse }
+                try await Task.sleep(nanoseconds: 200_000_000)
             }
-        } while pageToken != nil && pageCount < 10
+        } while pageToken != nil
 
         return map
     }
