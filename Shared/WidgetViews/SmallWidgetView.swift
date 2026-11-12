@@ -73,7 +73,7 @@ public struct SmallWidgetView: View {
             if !isLoggedIn {
                 loggedOutSmallView
             } else {
-                VStack(spacing: 5) {
+                VStack(spacing: 7) {
                     HStack(alignment: .center, spacing: 6) {
                         HStack(alignment: .firstTextBaseline, spacing: 5) {
                             Text("\(activeItems.count)")
@@ -107,10 +107,10 @@ public struct SmallWidgetView: View {
 
                         Spacer(minLength: 2)
 
-                        ChunkyEmberCharacterView(emotion: characterEmotion, size: 44)
+                        ChunkyEmberCharacterView(emotion: characterEmotion, size: 40)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.top, 6)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 7)
 
                     cardContent
                         .padding(.horizontal, 8)
@@ -125,8 +125,8 @@ public struct SmallWidgetView: View {
                                         .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
                                 )
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.bottom, 10)
+                        .padding(.horizontal, 13)
+                        .padding(.bottom, 13)
                 }
             }
         }
@@ -137,7 +137,7 @@ public struct SmallWidgetView: View {
 
     private var loggedOutSmallView: some View {
         VStack(spacing: 6) {
-            ChunkyEmberCharacterView(emotion: .normal, size: 44)
+            ChunkyEmberCharacterView(emotion: .normal, size: 40)
 
             VStack(spacing: 3.5) {
                 Text("Chưa đăng nhập")
@@ -163,8 +163,7 @@ public struct SmallWidgetView: View {
                     )
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 10)
+        .padding(13)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -222,13 +221,11 @@ public struct SmallWidgetView: View {
                 Spacer(minLength: 2)
 
                 if item.isCompleted {
-                    statusTag(for: item, fontSize: 11)
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Color.green)
                 }
             }
-
-            Rectangle()
-                .fill(ChunkyTheme.editorialHairline)
-                .frame(height: 0.8)
 
             let headline = item.title.isEmpty ? item.courseName : item.title
             Text(headline)
@@ -240,17 +237,18 @@ public struct SmallWidgetView: View {
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 4) {
-                Image(systemName: "clock")
-                    .font(.system(size: 10.5, weight: .semibold))
-                Text(dueLabel(for: item))
-                    .font(WidgetFontSystem.meta(size: 11))
+            if let deadline = dueLabel(for: item) {
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 10.5, weight: .semibold))
+                    Text(deadline)
+                        .font(WidgetFontSystem.meta(size: 11))
+                }
+                .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : (item.isCompleted ? Color.green : ChunkyTheme.textMuted))
+                .padding(.top, 1)
             }
-            .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : (item.isCompleted ? Color.green : ChunkyTheme.textMuted))
-            .padding(.top, 1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.top, 1)
     }
 
     private func multiItemCard(items: [Coursework]) -> some View {
@@ -283,15 +281,17 @@ public struct SmallWidgetView: View {
                                 .lineLimit(1)
                                 .layoutPriority(-1)
 
-                            Text("•")
-                                .font(.system(size: 7.5, weight: .bold))
-                                .foregroundStyle(ChunkyTheme.textMuted.opacity(0.45))
+                            if let deadline = dueLabel(for: subItem) {
+                                Text("•")
+                                    .font(.system(size: 7.5, weight: .bold))
+                                    .foregroundStyle(ChunkyTheme.textMuted.opacity(0.45))
 
-                            Text(dueLabel(for: subItem))
-                                .font(WidgetFontSystem.meta(size: 10.5))
-                                .foregroundStyle(subItem.isUrgent ? ChunkyTheme.urgentAccent : (subItem.isCompleted ? Color.green : ChunkyTheme.textMuted))
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
+                                Text(deadline)
+                                    .font(WidgetFontSystem.meta(size: 10.5))
+                                    .foregroundStyle(subItem.isUrgent ? ChunkyTheme.urgentAccent : (subItem.isCompleted ? Color.green : ChunkyTheme.textMuted))
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
+                            }
                         }
                     }
 
@@ -314,28 +314,7 @@ public struct SmallWidgetView: View {
         }
     }
 
-    private func dueLabel(for item: Coursework) -> String {
-        if item.isCompleted {
-            return "Đã nộp"
-        } else {
-            return item.compactDueString
-        }
-    }
-
-    @ViewBuilder
-    private func statusTag(for item: Coursework, fontSize: CGFloat) -> some View {
-        if item.isCompleted {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: fontSize + 4, weight: .bold))
-                .foregroundStyle(Color.green)
-        } else {
-            Text(item.compactDueString)
-                .font(WidgetFontSystem.statusTag(size: fontSize))
-                .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 1.5)
-                .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.04))
-                .clipShape(Capsule())
-        }
+    private func dueLabel(for item: Coursework) -> String? {
+        item.isCompleted ? "Đã nộp" : item.widgetDeadlineLabel
     }
 }

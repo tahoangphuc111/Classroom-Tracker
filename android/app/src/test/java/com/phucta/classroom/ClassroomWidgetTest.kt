@@ -12,6 +12,7 @@ import com.phucta.classroom.widget.ClassroomMediumWidgetReceiver
 import com.phucta.classroom.widget.ClassroomLargeWidgetReceiver
 import android.content.Intent
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.util.Calendar
 
@@ -117,7 +118,7 @@ class ClassroomWidgetTest {
             id = "3", courseId = "c1", courseName = "Toán", title = "Bài 3",
             dueEpochMillis = calTodayEndOfDay.timeInMillis, status = SubmissionStatus.PENDING
         )
-        assertEquals("Cuối ngày", ClassroomGlanceWidget.dueLabel(itemTodayEndOfDay))
+        assertNull(ClassroomGlanceWidget.dueLabel(itemTodayEndOfDay))
 
         val calTomorrowEndOfDay = Calendar.getInstance().apply {
             add(Calendar.DAY_OF_YEAR, 1)
@@ -145,7 +146,7 @@ class ClassroomWidgetTest {
             id = "1", courseId = "c1", courseName = "Toán", title = "Bài 1",
             dueEpochMillis = calTodayEndOfDay.timeInMillis, status = SubmissionStatus.PENDING
         )
-        assertEquals("Cuối ngày", ClassroomGlanceWidget.formatDeadlinePill(itemTodayEndOfDay))
+        assertNull(ClassroomGlanceWidget.formatDeadlinePill(itemTodayEndOfDay))
 
         val calTomorrowEndOfDay = Calendar.getInstance().apply {
             add(Calendar.DAY_OF_YEAR, 1)

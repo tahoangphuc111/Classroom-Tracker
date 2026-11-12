@@ -45,7 +45,6 @@ import com.phucta.classroom.ui.components.DueDateBadgeDefaults
 import com.phucta.classroom.ui.components.EmberEmotion
 import com.phucta.classroom.ui.components.SubjectArtHelper
 import com.phucta.classroom.ui.theme.ChunkyColor
-import com.phucta.classroom.widget.ClassroomGlanceWidget.Companion.formatDeadlinePill
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -121,6 +120,17 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                 val isLarge = !isSmall && currentSize.height >= 280.dp &&
                     sizeOverride != WidgetSizeOverride.MEDIUM
 
+                val horizontalInset = when {
+                    isLarge -> 20.dp
+                    isSmall && currentSize.width < 140.dp -> 12.dp
+                    else -> 14.dp
+                }
+                val verticalInset = when {
+                    isLarge -> 20.dp
+                    currentSize.height < 140.dp -> 12.dp
+                    else -> 14.dp
+                }
+
                 val skyBg = when {
                     isSmall -> R.drawable.bg_widget_sky
                     isLarge -> R.drawable.bg_widget_sky_large
@@ -133,7 +143,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                         .cornerRadius(22.dp)
                         .background(ImageProvider(skyBg))
                         .clickable(actionStartActivity<MainActivity>())
-                        .padding(if (isLarge) 16.dp else 12.dp)
+                        .padding(horizontal = horizontalInset, vertical = verticalInset)
                 ) {
                     when {
                         !isAuthenticated -> {
@@ -461,14 +471,14 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                     )
                                 )
                                 Spacer(modifier = GlanceModifier.width(4.dp))
+                                val deadline = formatDeadlinePill(item)
                                 if (item.isCompleted) {
                                     Image(
                                         provider = ImageProvider(R.drawable.ic_widget_check_circle),
                                         contentDescription = "Done",
                                         modifier = GlanceModifier.size(17.dp)
                                     )
-                                } else {
-                                    val labelText = formatDeadlinePill(item)
+                                } else if (deadline != null) {
                                     val badgeColors = getWidgetBadgeColors(item)
                                     Box(
                                         modifier = GlanceModifier
@@ -477,7 +487,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                             .padding(horizontal = 7.dp, vertical = 3.dp)
                                     ) {
                                         Text(
-                                            text = labelText,
+                                            text = deadline,
                                             maxLines = 1,
                                             style = TextStyle(
                                                 color = ColorProvider(badgeColors.text),
@@ -502,10 +512,11 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 fontFamily = WidgetRoundedFamily
                             )
                         )
-                        if (compact) {
+                        val deadline = if (compact) dueLabel(item) else null
+                        if (deadline != null) {
                             Spacer(modifier = GlanceModifier.height(3.dp))
                             Text(
-                                text = dueLabel(item),
+                                text = deadline,
                                 maxLines = 1,
                                 style = TextStyle(
                                     color = ColorProvider(getWidgetBadgeColors(item).text),
@@ -552,13 +563,14 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                     )
                                 )
                                 Spacer(modifier = GlanceModifier.width(4.dp))
+                                val deadline = formatDeadlinePill(item)
                                 if (item.isCompleted) {
                                     Image(
                                         provider = ImageProvider(R.drawable.ic_widget_check_circle),
                                         contentDescription = "Done",
                                         modifier = GlanceModifier.size(12.dp)
                                     )
-                                } else {
+                                } else if (deadline != null) {
                                     val badgeColors = getWidgetBadgeColors(item)
                                     Box(
                                         modifier = GlanceModifier
@@ -567,7 +579,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                             .padding(horizontal = 6.5.dp, vertical = 2.5.dp)
                                     ) {
                                         Text(
-                                            text = formatDeadlinePill(item),
+                                            text = deadline,
                                             maxLines = 1,
                                             style = TextStyle(
                                                 color = ColorProvider(badgeColors.text),
@@ -655,7 +667,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                 )
             }
 
-            Spacer(modifier = GlanceModifier.width(6.dp))
+            Spacer(modifier = GlanceModifier.width(8.dp))
 
             Box(
                 modifier = GlanceModifier
@@ -736,6 +748,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 )
                             )
                             Spacer(modifier = GlanceModifier.width(6.dp))
+                            val deadline = formatDeadlinePill(item)
                             if (item.isCompleted) {
                                 Box(
                                     modifier = GlanceModifier
@@ -754,7 +767,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                         )
                                     )
                                 }
-                            } else {
+                            } else if (deadline != null) {
                                 val badgeColors = getWidgetBadgeColors(item)
                                 Box(
                                     modifier = GlanceModifier
@@ -763,7 +776,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                         .padding(horizontal = 6.dp, vertical = 3.dp)
                                 ) {
                                     Text(
-                                        text = formatDeadlinePill(item),
+                                        text = deadline,
                                         maxLines = 1,
                                         style = TextStyle(
                                             color = ColorProvider(badgeColors.text),
@@ -845,14 +858,14 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                     )
                                 }
                                 Spacer(modifier = GlanceModifier.width(6.dp))
+                                val deadline = formatDeadlinePill(item)
                                 if (item.isCompleted) {
                                     Image(
                                         provider = ImageProvider(R.drawable.ic_widget_check_circle),
                                         contentDescription = "Done",
                                         modifier = GlanceModifier.size(19.dp)
                                     )
-                                } else {
-                                    val timeText = formatDeadlinePill(item)
+                                } else if (deadline != null) {
                                     val badgeColors = getWidgetBadgeColors(item)
                                     Box(
                                         modifier = GlanceModifier
@@ -861,7 +874,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                             .padding(horizontal = 8.5.dp, vertical = 3.5.dp)
                                     ) {
                                         Text(
-                                            text = timeText,
+                                            text = deadline,
                                             style = TextStyle(
                                                 color = ColorProvider(badgeColors.text),
                                                 fontWeight = FontWeight.Bold,
@@ -963,7 +976,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                 }
             }
 
-            Spacer(modifier = GlanceModifier.height(6.dp))
+            Spacer(modifier = GlanceModifier.height(10.dp))
 
             // White Card Content
             Box(
@@ -1043,6 +1056,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                 )
                             )
                             Spacer(modifier = GlanceModifier.width(8.dp))
+                            val deadline = formatDeadlinePill(item)
                             if (item.isCompleted) {
                                 Box(
                                     modifier = GlanceModifier
@@ -1061,7 +1075,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                         )
                                     )
                                 }
-                            } else {
+                            } else if (deadline != null) {
                                 val badgeColors = getWidgetBadgeColors(item)
                                 Box(
                                     modifier = GlanceModifier
@@ -1070,7 +1084,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                         .padding(horizontal = 12.dp, vertical = 5.dp)
                                 ) {
                                     Text(
-                                        text = formatDeadlinePill(item),
+                                        text = deadline,
                                         maxLines = 1,
                                         style = TextStyle(
                                             color = ColorProvider(badgeColors.text),
@@ -1170,14 +1184,14 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                     )
                                 }
                                 Spacer(modifier = GlanceModifier.width(8.dp))
+                                val deadline = formatDeadlinePill(item)
                                 if (item.isCompleted) {
                                     Image(
                                         provider = ImageProvider(R.drawable.ic_widget_check_circle),
                                         contentDescription = "Done",
                                         modifier = GlanceModifier.size(22.dp)
                                     )
-                                } else {
-                                    val timeText = formatDeadlinePill(item)
+                                } else if (deadline != null) {
                                     val badgeColors = getWidgetBadgeColors(item)
                                     Box(
                                         modifier = GlanceModifier
@@ -1186,7 +1200,7 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                                             .padding(horizontal = 9.5.dp, vertical = 4.5.dp)
                                     ) {
                                         Text(
-                                            text = timeText,
+                                            text = deadline,
                                             style = TextStyle(
                                                 color = ColorProvider(badgeColors.text),
                                                 fontWeight = FontWeight.Bold,
@@ -1264,23 +1278,22 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
             }
         }
 
-        fun formatDeadlinePill(item: Coursework): String {
+        fun formatDeadlinePill(item: Coursework): String? {
             return if (item.isDueTomorrow) {
                 if (item.timeOnlyString == "Cuối ngày") "Mai" else item.timeOnlyString
             } else if (item.isDueToday) {
-                item.timeOnlyString
+                item.timeOnlyString.takeUnless { it == "Cuối ngày" }
             } else {
                 item.compactDueString
             }
         }
 
-        fun dueLabel(item: Coursework): String {
+        fun dueLabel(item: Coursework): String? {
             return when {
                 item.isCompleted -> "Đã nộp"
-                item.isDueToday -> item.timeOnlyString
                 item.isDueTomorrow -> if (item.timeOnlyString == "Cuối ngày") "Mai" else "Mai ${item.timeOnlyString}"
                 item.dueEpochMillis == null -> "Không hạn"
-                else -> item.compactDueString
+                else -> formatDeadlinePill(item)
             }
         }
     }

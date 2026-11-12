@@ -75,7 +75,7 @@ public struct MediumWidgetView: View {
                 loggedOutMediumView
                     .widgetURL(URL(string: "classroomwidget://login"))
             } else {
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     VStack(spacing: 0) {
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text("\(activeItems.count)")
@@ -102,7 +102,7 @@ public struct MediumWidgetView: View {
                         ChunkyEmberCharacterView(emotion: characterEmotion, size: 76)
                             .padding(.bottom, 6)
                     }
-                    .frame(width: 96)
+                    .frame(width: 92)
                     .frame(maxHeight: .infinity)
 
                     VStack(alignment: .leading, spacing: 0) {
@@ -165,8 +165,8 @@ public struct MediumWidgetView: View {
                                     .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
                             )
                     }
-                    .padding(.vertical, 12)
-                    .padding(.trailing, 12)
+                    .padding(.vertical, 14)
+                    .padding(.trailing, 16)
                 }
             }
         }
@@ -211,8 +211,8 @@ public struct MediumWidgetView: View {
                             .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
                     )
             }
-            .padding(.vertical, 12)
-            .padding(.trailing, 12)
+            .padding(.vertical, 14)
+            .padding(.trailing, 16)
         }
     }
 
@@ -299,11 +299,11 @@ public struct MediumWidgetView: View {
                         .background(Color.green.opacity(0.12))
                         .clipShape(Capsule())
                         .fixedSize(horizontal: true, vertical: false)
-                    } else {
+                    } else if let deadline = item.widgetDeadlineLabel {
                         HStack(spacing: 3.5) {
                             Image(systemName: "clock")
                                 .font(.system(size: 10.5, weight: .semibold))
-                            Text(item.compactDueString)
+                            Text(deadline)
                                 .font(WidgetFontSystem.statusTag(size: 10.5))
                         }
                         .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textPrimary)
@@ -354,14 +354,14 @@ public struct MediumWidgetView: View {
             ForEach(Array(itemsToShow.enumerated()), id: \.element.id) { index, item in
                 Link(destination: item.destinationURL) {
                     VStack(spacing: 0) {
-                        HStack(alignment: .center, spacing: 9) {
+                        HStack(alignment: .center, spacing: 7) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 7, style: .continuous)
                                     .fill(SubjectArtHelper.themeColor(for: item.courseName, title: item.title))
-                                    .frame(width: displayItems.count <= 2 ? 30 : 26, height: displayItems.count <= 2 ? 30 : 26)
+                                    .frame(width: 26, height: 26)
 
                                 Image(systemName: SubjectArtHelper.icon(for: item.courseName, title: item.title))
-                                    .font(.system(size: displayItems.count <= 2 ? 14 : 12.5, weight: .bold))
+                                    .font(.system(size: 12.5, weight: .bold))
                                     .foregroundStyle(Color.white)
                             }
 
@@ -390,12 +390,12 @@ public struct MediumWidgetView: View {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 14.5, weight: .bold))
                                     .foregroundStyle(Color.green)
-                            } else {
-                                Text(item.compactDueString)
+                            } else if let deadline = item.widgetDeadlineLabel {
+                                Text(deadline)
                                     .font(WidgetFontSystem.statusTag(size: displayItems.count <= 2 ? 11.5 : 10.5))
                                     .lineLimit(1)
                                     .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
-                                    .padding(.horizontal, 6.5)
+                                    .padding(.horizontal, 5)
                                     .padding(.vertical, 2.5)
                                     .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.04))
                                     .clipShape(Capsule())

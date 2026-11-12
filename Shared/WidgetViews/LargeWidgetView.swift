@@ -75,7 +75,7 @@ public struct LargeWidgetView: View {
                 loggedOutLargeView
                     .widgetURL(URL(string: "classroomwidget://login"))
             } else {
-                VStack(spacing: 0) {
+                VStack(spacing: 5) {
                     HStack(alignment: .center, spacing: 14) {
                         ChunkyEmberCharacterView(emotion: characterEmotion, size: 78)
                             .padding(.leading, 18)
@@ -237,8 +237,8 @@ public struct LargeWidgetView: View {
                                     .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
                             )
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
                 }
             }
         }
@@ -247,7 +247,7 @@ public struct LargeWidgetView: View {
     }
 
     private var loggedOutLargeView: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 5) {
             HStack(alignment: .center, spacing: 14) {
                 ChunkyEmberCharacterView(emotion: .normal, size: 78)
                     .padding(.leading, 18)
@@ -295,8 +295,8 @@ public struct LargeWidgetView: View {
                             .stroke(ChunkyTheme.editorialCardBorder, lineWidth: 1)
                     )
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
         }
     }
 
@@ -343,13 +343,15 @@ public struct LargeWidgetView: View {
                             .foregroundStyle(themeColor)
                             .lineLimit(1)
 
-                        HStack(spacing: 5) {
-                            Image(systemName: "calendar.badge.clock")
-                                .font(.system(size: 11, weight: .semibold))
-                            Text(item.dayAndTimeString)
-                                .font(WidgetFontSystem.meta(size: 12.5))
+                        if item.timeOnlyString != "Cuối ngày" {
+                            HStack(spacing: 5) {
+                                Image(systemName: "calendar.badge.clock")
+                                    .font(.system(size: 11, weight: .semibold))
+                                Text(item.dayAndTimeString)
+                                    .font(WidgetFontSystem.meta(size: 12.5))
+                            }
+                            .foregroundStyle(ChunkyTheme.textMuted)
                         }
-                        .foregroundStyle(ChunkyTheme.textMuted)
                     }
 
                     Spacer(minLength: 6)
@@ -424,14 +426,16 @@ public struct LargeWidgetView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: fontSize + 5, weight: .bold))
                 .foregroundStyle(Color.green)
-        } else {
-            Text(item.compactDueString)
+        } else if let deadline = item.widgetDeadlineLabel {
+            Text(deadline)
                 .font(WidgetFontSystem.statusTag(size: fontSize))
+                .lineLimit(1)
                 .foregroundStyle(item.isUrgent ? ChunkyTheme.urgentAccent : ChunkyTheme.textMuted)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(item.isUrgent ? ChunkyTheme.urgentAccent.opacity(0.12) : Color.black.opacity(0.04))
                 .clipShape(Capsule())
+                .fixedSize(horizontal: true, vertical: false)
         }
     }
 

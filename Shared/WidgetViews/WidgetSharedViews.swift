@@ -2,6 +2,13 @@ import SwiftUI
 import WidgetKit
 import os
 
+extension Coursework {
+    var widgetDeadlineLabel: String? {
+        let label = compactDueString
+        return label == "Cuối ngày" ? nil : label
+    }
+}
+
 public enum SubjectCategory: Sendable {
     case computerScience
     case math
