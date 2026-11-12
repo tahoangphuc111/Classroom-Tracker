@@ -44,32 +44,10 @@ jobs:
           xcodebuild -version
           xcodebuild -showsdks
 
-      - name: Inject OAuth Secrets
+      - name: Build macOS 27 app & package PKG
         env:
           OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
-        run: |
-          if [ -n "$OAUTH_CLIENT_SECRET" ]; then
-            echo "Injecting obfuscated OAuth Client Secret into Swift codebase..."
-            python3 -c '
-import os
-secret = os.environ.get("OAUTH_CLIENT_SECRET", "")
-mask = 0x5A
-bytes_list = [str(b ^ mask) for b in secret.encode("utf-8")]
-swift_bytes = "[" + ", ".join(bytes_list) + "]"
-with open("Shared/Network/GoogleOAuthService.swift", "r") as f:
-    content = f.read()
-content = content.replace("bundledSecretObfuscatedBytes: [UInt8] = []", f"bundledSecretObfuscatedBytes: [UInt8] = {swift_bytes}")
-with open("Shared/Network/GoogleOAuthService.swift", "w") as f:
-    f.write(content)
-'
-          fi
-          if [ -n "$OAUTH_CLIENT_ID" ]; then
-            echo "Injecting OAuth Client ID into Swift codebase..."
-            sed -i '' "s/bundledClientId = \".*\"/bundledClientId = \"$OAUTH_CLIENT_ID\"/" Shared/Network/GoogleOAuthService.swift
-          fi
-
-      - name: Build macOS 27 app & package PKG
         run: |
           chmod +x scripts/build_pkg.sh
           ./scripts/build_pkg.sh
@@ -93,32 +71,10 @@ with open("Shared/Network/GoogleOAuthService.swift", "w") as f:
           xcodebuild -version
           xcodebuild -showsdks
 
-      - name: Inject OAuth Secrets
+      - name: Archive iOS app & package IPA
         env:
           OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
-        run: |
-          if [ -n "$OAUTH_CLIENT_SECRET" ]; then
-            echo "Injecting obfuscated OAuth Client Secret into Swift codebase..."
-            python3 -c '
-import os
-secret = os.environ.get("OAUTH_CLIENT_SECRET", "")
-mask = 0x5A
-bytes_list = [str(b ^ mask) for b in secret.encode("utf-8")]
-swift_bytes = "[" + ", ".join(bytes_list) + "]"
-with open("Shared/Network/GoogleOAuthService.swift", "r") as f:
-    content = f.read()
-content = content.replace("bundledSecretObfuscatedBytes: [UInt8] = []", f"bundledSecretObfuscatedBytes: [UInt8] = {swift_bytes}")
-with open("Shared/Network/GoogleOAuthService.swift", "w") as f:
-    f.write(content)
-'
-          fi
-          if [ -n "$OAUTH_CLIENT_ID" ]; then
-            echo "Injecting OAuth Client ID into Swift codebase..."
-            sed -i '' "s/bundledClientId = \".*\"/bundledClientId = \"$OAUTH_CLIENT_ID\"/" Shared/Network/GoogleOAuthService.swift
-          fi
-
-      - name: Archive iOS app & package IPA
         run: |
           chmod +x scripts/build_ipa.sh
           ./scripts/build_ipa.sh
@@ -182,32 +138,10 @@ with open("Shared/Network/GoogleOAuthService.swift", "w") as f:
           cd android
           ./gradlew testReleaseUnitTest
 
-      - name: Inject OAuth Secrets
+      - name: Build Android Release APK
         env:
           OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
-        run: |
-          if [ -n "$OAUTH_CLIENT_SECRET" ]; then
-            echo "Injecting obfuscated OAuth Client Secret into Android codebase..."
-            python3 -c '
-import os
-secret = os.environ.get("OAUTH_CLIENT_SECRET", "")
-mask = 0x5A
-bytes_list = [f"{(b ^ mask) if (b ^ mask) < 128 else (b ^ mask) - 256}.toByte()" for b in secret.encode("utf-8")]
-kotlin_bytes = "byteArrayOf(" + ", ".join(bytes_list) + ")"
-with open("android/app/src/main/java/com/phucta/classroom/data/remote/GoogleOAuthManager.kt", "r") as f:
-    content = f.read()
-content = content.replace("BUNDLED_SECRET_OBFUSCATED: ByteArray = byteArrayOf()", f"BUNDLED_SECRET_OBFUSCATED: ByteArray = {kotlin_bytes}")
-with open("android/app/src/main/java/com/phucta/classroom/data/remote/GoogleOAuthManager.kt", "w") as f:
-    f.write(content)
-'
-          fi
-          if [ -n "$OAUTH_CLIENT_ID" ]; then
-            echo "Injecting OAuth Client ID into Android codebase..."
-            sed -i "s/BUNDLED_CLIENT_ID = \".*\"/BUNDLED_CLIENT_ID = \"$OAUTH_CLIENT_ID\"/" android/app/src/main/java/com/phucta/classroom/data/local/ClassroomPreferences.kt
-          fi
-
-      - name: Build Android Release APK
         run: ./scripts/build_apk.sh
 
       - name: Upload APK Artifact
