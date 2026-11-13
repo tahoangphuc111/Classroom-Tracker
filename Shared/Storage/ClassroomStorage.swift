@@ -7,20 +7,45 @@ import UIKit
 
 public final class ClassroomStorage: @unchecked Sendable {
     public static let shared = ClassroomStorage()
+    private static let originalAppGroupID = "group.com.phucta.classroom"
     public static let appGroupCandidates: [String] = {
         #if CLASSROOM_TESTING
         return ["com.phucta.classroom.tests.\(UUID().uuidString)"]
+        #elseif os(iOS)
+        return iOSAppGroupCandidates(
+            bundleIdentifier: Bundle.main.bundleIdentifier,
+            signerGroups: Bundle.main.object(forInfoDictionaryKey: "ALTAppGroups") as? [String] ?? []
+        )
         #else
         return [
-            "group.com.phucta.classroom",
+            originalAppGroupID,
             "4J32CASZVT.group.com.phucta.classroom",
             "VGWH8K5259.group.com.phucta.classroom"
         ]
         #endif
     }()
 
+    #if os(iOS) || CLASSROOM_TESTING
+    static func iOSAppGroupCandidates(bundleIdentifier: String?, signerGroups: [String]) -> [String] {
+        let groupPrefix = originalAppGroupID + "."
+        var groups = signerGroups.filter { $0.hasPrefix(groupPrefix) }
+
+        // Some re-signers append the team ID to both the app bundle ID and the App Group.
+        let bundlePrefix = "com.phucta.ClassroomTracker."
+        if let bundleIdentifier, bundleIdentifier.hasPrefix(bundlePrefix),
+           let teamID = bundleIdentifier.dropFirst(bundlePrefix.count).split(separator: ".").first,
+           teamID.range(of: "^[A-Z0-9]{10}$", options: .regularExpression) != nil {
+            groups.append(groupPrefix + teamID)
+        }
+
+        groups.append(originalAppGroupID)
+        var seen = Set<String>()
+        return groups.filter { seen.insert($0).inserted }
+    }
+    #endif
+
     public static var appGroupId: String {
-        appGroupCandidates.first ?? "group.com.phucta.classroom"
+        appGroupCandidates.first ?? originalAppGroupID
     }
 
     public let allUserDefaults: [UserDefaults]
@@ -472,6 +497,11 @@ public final class ClassroomStorage: @unchecked Sendable {
 
     public func synchronizeAllStorageLayers() {
         guard !isAppExtension else { return }
+        if DispatchQueue.getSpecific(key: Self.ioQueueKey) == nil {
+            ioQueue.sync { synchronizeAllStorageLayers() }
+            return
+        }
+
         var bestCoursesData: Data?
         var bestCourseworkData: Data?
         var bestPersonalNotesData: Data?
@@ -515,26 +545,19 @@ public final class ClassroomStorage: @unchecked Sendable {
                     bestCourseworkData = cwData
                 }
             }
-            let pnTime = ud.double(forKey: personalNotesTimestampKey)
-            if pnTime > bestPersonalNotesTime {
-                bestPersonalNotesTime = pnTime
-            }
-            if let pnData = ud.data(forKey: personalNotesKey), !pnData.isEmpty {
-                if let currentData = bestPersonalNotesData {
-                    if let currentNotes = try? Self.jsonDecoder.decode([PersonalNote].self, from: currentData),
-                       let newNotes = try? Self.jsonDecoder.decode([PersonalNote].self, from: pnData) {
-                        if currentNotes.isEmpty && !newNotes.isEmpty {
-                            bestPersonalNotesData = pnData
-                        }
-                    }
-                } else {
-                    bestPersonalNotesData = pnData
-                }
-            }
             let sTime = ud.double(forKey: lastSyncKey)
             if sTime > bestSyncTime {
                 bestSyncTime = sTime
             }
+        }
+
+        if let data = bestPersonalNotesData, (try? Self.jsonDecoder.decode([PersonalNote].self, from: data)) != nil {
+            bestPersonalNotesTime = getLatestUserDefaultsTimestamp(forKey: personalNotesTimestampKey)
+        } else if let backup = latestPersonalNoteBackup() {
+            bestPersonalNotesData = backup.data
+            bestPersonalNotesTime = backup.timestamp
+        } else {
+            bestPersonalNotesData = nil
         }
 
         if bestPersonalNotesData != nil && bestPersonalNotesTime == 0 {
@@ -576,7 +599,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         let isUserLogged = !(bestEmail?.isEmpty ?? true) || hasUserLoggedIn
         let metadata = ClassroomSharedMetadata(
             userEmail: bestEmail,
-            lastSyncTimestamp: bestSyncTime > 0 ? bestSyncTime : Date().timeIntervalSince1970,
+            lastSyncTimestamp: bestSyncTime > 0 ? bestSyncTime : nil,
             hasUserLoggedIn: isUserLogged
         )
         if let metaData = try? Self.jsonEncoder.encode(metadata) {
@@ -606,6 +629,17 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
     }
 
+    func updateCourseSelection(courseId: String? = nil, isSelected: Bool) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var courses = loadCourses()
+        for index in courses.indices where courseId == nil || courses[index].id == courseId {
+            courses[index].isSelectedForWidget = isSelected
+        }
+        saveCourses(courses)
+    }
+
     private func getLatestUserDefaultsTimestamp(forKey key: String) -> Double {
         var maxTime: Double = 0
         for ud in allUserDefaults {
@@ -631,13 +665,13 @@ public final class ClassroomStorage: @unchecked Sendable {
             loaded = try? Self.jsonDecoder.decode([Course].self, from: data)
         }
         let currentIsMock = loaded.map { Self.isMockCourses($0) } ?? true
-        if loaded == nil || loaded?.isEmpty == true || currentIsMock {
+        if loaded == nil || currentIsMock {
             for ud in allUserDefaults {
                 if let data = ud.data(forKey: coursesKey),
                    let decoded = try? Self.jsonDecoder.decode([Course].self, from: data),
                    !decoded.isEmpty {
                     let newIsMock = Self.isMockCourses(decoded)
-                    if loaded == nil || loaded?.isEmpty == true || (currentIsMock && !newIsMock) {
+                    if loaded == nil || (currentIsMock && !newIsMock) {
                         loaded = decoded
                         if !newIsMock { break }
                     }
@@ -718,13 +752,13 @@ public final class ClassroomStorage: @unchecked Sendable {
             }
         }
         let currentIsMock = loaded.map { Self.isMockCoursework($0) } ?? true
-        if loaded == nil || loaded?.isEmpty == true || currentIsMock {
+        if loaded == nil || currentIsMock {
             for ud in allUserDefaults {
                 if let data = ud.data(forKey: courseworkKey),
                    let decoded = try? Self.jsonDecoder.decode([Coursework].self, from: data),
                    !decoded.isEmpty {
                     let newIsMock = Self.isMockCoursework(decoded)
-                    if loaded == nil || loaded?.isEmpty == true || (currentIsMock && !newIsMock) {
+                    if loaded == nil || (currentIsMock && !newIsMock) {
                         loaded = decoded
                         if !newIsMock { break }
                     }
@@ -1099,6 +1133,33 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
     }
 
+    func mergeCourseSelections(into fetchedCourses: [Course]) -> [Course] {
+        let storedCourses = loadCourses()
+        guard !Self.isMockCourses(storedCourses) else { return fetchedCourses }
+        let selections = Dictionary(storedCourses.map { ($0.id, $0.isSelectedForWidget) }, uniquingKeysWith: { _, latest in latest })
+        return fetchedCourses.map { course in
+            var merged = course
+            merged.isSelectedForWidget = selections[course.id] ?? course.isSelectedForWidget
+            return merged
+        }
+    }
+
+    func saveSyncResult(courses: [Course], coursework: [Coursework], fetchedCourseIds: Set<String>) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        let activeCourseIds = Set(courses.map(\.id))
+        let storedCoursework = loadCoursework()
+        let preservedCoursework = Self.isMockCoursework(storedCoursework) ? [] : storedCoursework.filter {
+            activeCourseIds.contains($0.courseId) && !fetchedCourseIds.contains($0.courseId)
+        }
+        var seenIds = Set<String>()
+        let incoming = (coursework + preservedCoursework).filter { seenIds.insert($0.id).inserted }
+        // A missing assignment can return later, so keep its personal note linked to the same ID.
+        saveCourses(mergeCourseSelections(into: courses))
+        saveCoursework(reconcileCoursework(incoming: incoming, fetchedCourseIds: fetchedCourseIds))
+    }
+
     public func saveLastSyncTime(_ date: Date) {
         let timestamp = date.timeIntervalSince1970
         lock.lock()
@@ -1312,6 +1373,18 @@ public final class ClassroomStorage: @unchecked Sendable {
 
     // MARK: - Personal Notes Storage
 
+    private func latestPersonalNoteBackup() -> (data: Data, notes: [PersonalNote], timestamp: Double)? {
+        var latest: (data: Data, notes: [PersonalNote], timestamp: Double)?
+        for defaults in allUserDefaults {
+            let timestamp = defaults.double(forKey: personalNotesTimestampKey)
+            if let latest, latest.timestamp >= timestamp { continue }
+            guard let data = defaults.data(forKey: personalNotesKey),
+                  let notes = try? Self.jsonDecoder.decode([PersonalNote].self, from: data) else { continue }
+            latest = (data, notes, timestamp)
+        }
+        return latest
+    }
+
     public func savePersonalNotes(_ notes: [PersonalNote]) {
         let timestamp = Date().timeIntervalSince1970
         lock.lock()
@@ -1349,15 +1422,8 @@ public final class ClassroomStorage: @unchecked Sendable {
         if let data = readDataFromDirectories(fileName: "cached_classroom_personal_notes.json") {
             loaded = try? Self.jsonDecoder.decode([PersonalNote].self, from: data)
         }
-        if loaded == nil || loaded?.isEmpty == true {
-            for ud in allUserDefaults {
-                if let data = ud.data(forKey: personalNotesKey),
-                   let decoded = try? Self.jsonDecoder.decode([PersonalNote].self, from: data),
-                   !decoded.isEmpty {
-                    loaded = decoded
-                    break
-                }
-            }
+        if loaded == nil {
+            loaded = latestPersonalNoteBackup()?.notes
         }
 
         let result = loaded ?? []
@@ -1423,23 +1489,6 @@ public final class ClassroomStorage: @unchecked Sendable {
             allNotes.append(newNote)
         }
         savePersonalNotes(allNotes)
-    }
-
-    public func cleanUpOrphanedNotes(validCourseworkIds: Set<String>) {
-        lock.lock()
-        defer { lock.unlock() }
-
-        var allNotes = loadPersonalNotes()
-        let originalCount = allNotes.count
-        allNotes.removeAll { note in
-            if let cwId = note.courseworkId, !cwId.isEmpty {
-                return !validCourseworkIds.contains(cwId)
-            }
-            return false
-        }
-        if allNotes.count != originalCount {
-            savePersonalNotes(allNotes)
-        }
     }
 
     public func deletePersonalNote(id: String) {

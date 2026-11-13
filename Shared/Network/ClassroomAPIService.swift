@@ -25,49 +25,48 @@ public final class ClassroomAPIService: ObservableObject {
     @Published public var syncErrorMessage: String? = nil
 
     private let session: URLSession
+    private var syncingSessionID: UUID?
 
     init(session: URLSession = .shared) {
         self.session = session
     }
 
     public func syncAll() async {
-        guard !isSyncing else { return }
-        guard GoogleOAuthService.shared.isAuthenticated else {
+        let auth = GoogleOAuthService.shared
+        let sessionID = auth.sessionID
+        await syncAll(sessionID: sessionID, getAccessToken: auth.getValidAccessToken) {
+            auth.isAuthenticated && auth.sessionID == sessionID
+        }
+    }
+
+    func syncAll(sessionID: UUID, getAccessToken: () async throws -> String, isSessionActive: () -> Bool) async {
+        guard syncingSessionID != sessionID else { return }
+        guard isSessionActive() else {
             syncErrorMessage = "Chưa kết nối Google."
             return
         }
 
+        syncingSessionID = sessionID
         isSyncing = true
         syncErrorMessage = nil
 
         defer {
-            isSyncing = false
+            if syncingSessionID == sessionID {
+                syncingSessionID = nil
+                isSyncing = false
+            }
         }
 
         do {
-            let accessToken = try await GoogleOAuthService.shared.getValidAccessToken()
-            guard GoogleOAuthService.shared.isAuthenticated, !Task.isCancelled else { return }
+            let accessToken = try await getAccessToken()
+            guard isSessionActive(), !Task.isCancelled else { return }
 
             let fetchedCourses = try await fetchActiveCourses(accessToken: accessToken)
-            guard GoogleOAuthService.shared.isAuthenticated, !Task.isCancelled else { return }
+            guard isSessionActive(), !Task.isCancelled else { return }
 
-            let rawCourses = ClassroomStorage.shared.loadCourses()
-            let existingCourses = ClassroomStorage.isMockCourses(rawCourses) ? [] : rawCourses
-            let existingMap = Dictionary(existingCourses.map { ($0.id, $0.isSelectedForWidget) }, uniquingKeysWith: { _, new in new })
-
-            let mergedCourses = fetchedCourses.map { course in
-                var updated = course
-                if let isSelected = existingMap[course.id] {
-                    updated.isSelectedForWidget = isSelected
-                }
-                return updated
-            }
-            ClassroomStorage.shared.saveCourses(mergedCourses)
-
-            let selectedCourses = mergedCourses.filter(\.isSelectedForWidget)
-            var allCoursework: [Coursework] = []
-            let rawExisting = ClassroomStorage.shared.loadCoursework()
-            let existingCoursework = ClassroomStorage.isMockCoursework(rawExisting) ? [] : rawExisting
+            let storage = ClassroomStorage.shared
+            let selectedCourses = storage.mergeCourseSelections(into: fetchedCourses).filter(\.isSelectedForWidget)
+            var fetchedCoursework: [Coursework] = []
             var hasAnyFetchErrors = false
             var fetchedCourseIds = Set<String>()
 
@@ -77,7 +76,7 @@ public final class ClassroomAPIService: ObservableObject {
 
             let chunkSize = 2
             for startIndex in stride(from: 0, to: selectedCourses.count, by: chunkSize) {
-                guard GoogleOAuthService.shared.isAuthenticated, !Task.isCancelled else { return }
+                guard isSessionActive(), !Task.isCancelled else { return }
                 let chunk = Array(selectedCourses[startIndex..<min(startIndex + chunkSize, selectedCourses.count)])
                 await withTaskGroup(of: (String, [Coursework]?).self) { group in
                     for course in chunk {
@@ -95,11 +94,9 @@ public final class ClassroomAPIService: ObservableObject {
                     for await (courseId, result) in group {
                         if let items = result {
                             fetchedCourseIds.insert(courseId)
-                            allCoursework.append(contentsOf: items)
+                            fetchedCoursework.append(contentsOf: items)
                         } else {
                             hasAnyFetchErrors = true
-                            let preserved = existingCoursework.filter { $0.courseId == courseId }
-                            allCoursework.append(contentsOf: preserved)
                         }
                     }
                 }
@@ -109,36 +106,17 @@ public final class ClassroomAPIService: ObservableObject {
                 }
             }
 
-            guard GoogleOAuthService.shared.isAuthenticated, !Task.isCancelled else { return }
+            guard isSessionActive(), !Task.isCancelled else { return }
 
-            let unselectedIds = Set(mergedCourses.filter { !$0.isSelectedForWidget }.map(\.id))
-            let preservedItems = existingCoursework.filter { unselectedIds.contains($0.courseId) }
-            allCoursework.append(contentsOf: preservedItems)
-
-            var seenCourseworkIds = Set<String>()
-            var uniqueCoursework: [Coursework] = []
-            for item in allCoursework {
-                if !seenCourseworkIds.contains(item.id) {
-                    seenCourseworkIds.insert(item.id)
-                    uniqueCoursework.append(item)
-                }
-            }
-
-            let finalCoursework = ClassroomStorage.shared.reconcileCoursework(incoming: uniqueCoursework, fetchedCourseIds: fetchedCourseIds)
-
-            ClassroomStorage.shared.saveCoursework(finalCoursework)
-            if !hasAnyFetchErrors {
-                let validIds = Set(finalCoursework.map(\.id))
-                ClassroomStorage.shared.cleanUpOrphanedNotes(validCourseworkIds: validIds)
-            }
+            storage.saveSyncResult(courses: fetchedCourses, coursework: fetchedCoursework, fetchedCourseIds: fetchedCourseIds)
             if hasAnyFetchErrors {
                 syncErrorMessage = "Một số lớp chưa đồng bộ được. Đã giữ dữ liệu cũ; vui lòng thử lại."
             } else {
-                ClassroomStorage.shared.saveLastSyncTime(Date())
+                storage.saveLastSyncTime(Date())
             }
-            ClassroomStorage.shared.saveUserLoggedIn(true)
+            storage.saveUserLoggedIn(true)
         } catch {
-            if Task.isCancelled || (error as? URLError)?.code == .cancelled {
+            if !isSessionActive() || Task.isCancelled || (error as? URLError)?.code == .cancelled {
                 return
             }
             syncErrorMessage = "Lỗi đồng bộ: \(error.localizedDescription)"

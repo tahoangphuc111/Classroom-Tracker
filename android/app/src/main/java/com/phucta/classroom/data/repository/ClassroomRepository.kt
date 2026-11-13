@@ -16,7 +16,6 @@ import com.phucta.classroom.data.model.PersonalNote
 import com.phucta.classroom.data.model.SubmissionStatus
 import com.phucta.classroom.data.remote.ClassroomApiService
 import com.phucta.classroom.data.remote.GoogleOAuthManager
-import com.phucta.classroom.widget.ClassroomGlanceWidget
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -27,8 +26,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -116,18 +113,9 @@ class ClassroomRepository(
                 if (fetchedCourses.isNotEmpty()) {
                     delay(300)
                 }
-                val existingCourseEntities = courseDao.getAllCourses()
-                val hasOnlyMockCourses = existingCourseEntities.isNotEmpty() &&
-                        existingCourseEntities.all { MockDataProvider.isMockCourse(it.id) }
-                val existingCourses = if (hasOnlyMockCourses) emptyList() else existingCourseEntities.map { it.toDomain() }.filter { !MockDataProvider.isMockCourse(it.id) }
-                val existingSelectionMap = existingCourses.associate { it.id to it.isSelectedForWidget }
-                val mergedCourses = fetchedCourses.map { course ->
-                    val preservedSelection = existingSelectionMap[course.id] ?: true
-                    course.copy(isSelectedForWidget = preservedSelection)
-                }
-                val selectedCourses = mergedCourses.filter { it.isSelectedForWidget }
-                val existingCoursework = if (hasOnlyMockCourses) emptyList() else courseworkDao.getAllCoursework().toCoursework().filter { !MockDataProvider.isMockCourseworkId(it.id) }
-                val allCoursework = mutableListOf<Coursework>()
+                val currentCourses = courseDao.getAllCourses().map { it.toDomain() }
+                val selectedCourses = mergeCourseSelections(fetchedCourses, currentCourses).filter { it.isSelectedForWidget }
+                val fetchedCoursework = mutableListOf<Coursework>()
                 var hasAnyFetchErrors = false
                 val fetchedCourseIds = mutableSetOf<String>()
                 val chunkSize = 2
@@ -148,10 +136,9 @@ class ClassroomRepository(
                         results.forEach { (courseId, items) ->
                             if (items != null) {
                                 fetchedCourseIds.add(courseId)
-                                allCoursework.addAll(items)
+                                fetchedCoursework.addAll(items)
                             } else {
                                 hasAnyFetchErrors = true
-                                allCoursework.addAll(existingCoursework.filter { it.courseId == courseId })
                             }
                         }
                     }
@@ -159,40 +146,22 @@ class ClassroomRepository(
                         delay(500)
                     }
                 }
-                val unselectedIds = mergedCourses.filter { !it.isSelectedForWidget }.map { it.id }.toSet()
-                val preservedItems = existingCoursework.filter { unselectedIds.contains(it.courseId) }
-                allCoursework.addAll(preservedItems)
                 database.withTransaction {
-                    if (hasOnlyMockCourses) {
-                        courseDao.deleteAllCourses()
-                        courseworkDao.deleteAllCoursework()
-                    }
-                    val uniqueCourses = mergedCourses.distinctBy { it.id }
-                    courseDao.upsertCourses(uniqueCourses.map { CourseEntity.fromDomain(it) })
-
-                    val activeCourseIds = uniqueCourses.map { it.id }
-                    if (activeCourseIds.isNotEmpty()) {
-                        courseDao.deleteCoursesNotIn(activeCourseIds)
-                    } else {
-                        courseDao.deleteAllCourses()
-                    }
+                    val latestCourses = courseDao.getAllCourses().map { it.toDomain() }
+                    val mergedCourses = mergeCourseSelections(fetchedCourses, latestCourses)
                     val latestCoursework = courseworkDao.getAllCoursework().toCoursework()
-                    val latestStatusMap = latestCoursework.associateBy { it.id }
-                    val finalCoursework = allCoursework.distinctBy { it.id }.map { incoming ->
-                        reconcileCoursework(latestStatusMap[incoming.id], incoming, isRemote = incoming.courseId in fetchedCourseIds)
-                    }
+                    val activeCourseIds = mergedCourses.map { it.id }
+                    val finalCoursework = mergeSyncedCoursework(
+                        latestCoursework, fetchedCoursework, activeCourseIds.toSet(), fetchedCourseIds
+                    )
+                    courseDao.upsertCourses(mergedCourses.map { CourseEntity.fromDomain(it) })
+                    courseDao.deleteCoursesNotIn(activeCourseIds)
                     courseworkDao.upsertCourseworks(finalCoursework.map { CourseworkEntity.fromDomain(it) })
-
-                    val validCourseworkIds = finalCoursework.map { it.id }
-                    if (!hasAnyFetchErrors) {
-                        if (validCourseworkIds.isNotEmpty()) {
-                            courseworkDao.deleteCourseworkNotIn(validCourseworkIds)
-                            database.personalNoteDao().deleteNotesWithCourseworkNotIn(validCourseworkIds)
-                        } else {
-                            courseworkDao.deleteAllCoursework()
-                            database.personalNoteDao().deleteAllCourseworkAttachedNotes()
-                        }
-                    }
+                    // A missing assignment can return later, so keep its personal note linked to the same ID.
+                    courseworkDao.deleteCourseworkNotIn(finalCoursework.map { it.id })
+                }
+                if (!hasAnyFetchErrors) {
+                    preferences.saveLastSyncTime(System.currentTimeMillis())
                 }
                 notifyWidgetReload()
                 if (hasAnyFetchErrors) {
@@ -200,7 +169,6 @@ class ClassroomRepository(
                     _syncErrorMessage.value = message
                     Result.failure(java.io.IOException(message))
                 } else {
-                    preferences.saveLastSyncTime(System.currentTimeMillis())
                     Result.success(Unit)
                 }
             } catch (e: Exception) {
@@ -231,17 +199,18 @@ class ClassroomRepository(
         }
     }
     suspend fun clearAllData(includePersonalNotes: Boolean = true) = withContext(Dispatchers.IO) {
-        database.withTransaction {
-            courseDao.deleteAllCourses()
-            courseworkDao.deleteAllCoursework()
-            if (includePersonalNotes) {
-                personalNoteDao.deleteAllNotes()
+        syncMutex.withLock {
+            database.withTransaction {
+                courseDao.deleteAllCourses()
+                courseworkDao.deleteAllCoursework()
+                if (includePersonalNotes) {
+                    personalNoteDao.deleteAllNotes()
+                }
             }
+            oauthManager.signOut()
+            ensureInitialData()
+            notifyWidgetReload()
         }
-        preferences.clear()
-        oauthManager.signOut()
-        ensureInitialData()
-        notifyWidgetReload()
     }
     fun observeNoteForCoursework(courseworkId: String): Flow<PersonalNote?> {
         return personalNoteDao.observeNoteForCoursework(courseworkId).map { it?.toDomain() }
@@ -366,6 +335,28 @@ class ClassroomRepository(
         }
     }
     companion object {
+        internal fun mergeCourseSelections(fetched: List<Course>, latest: List<Course>): List<Course> {
+            val selections = latest.filterNot { MockDataProvider.isMockCourse(it.id) }
+                .associate { it.id to it.isSelectedForWidget }
+            return fetched.distinctBy { it.id }.map { course ->
+                course.copy(isSelectedForWidget = selections[course.id] ?: course.isSelectedForWidget)
+            }
+        }
+
+        internal fun mergeSyncedCoursework(
+            latest: List<Coursework>,
+            fetched: List<Coursework>,
+            activeCourseIds: Set<String>,
+            fetchedCourseIds: Set<String>
+        ): List<Coursework> {
+            val latestById = latest.filterNot { MockDataProvider.isMockCourseworkId(it.id) }.associateBy { it.id }
+            val preserved = latestById.values.filter {
+                it.courseId in activeCourseIds && it.courseId !in fetchedCourseIds
+            }
+            val refreshed = fetched.map { reconcileCoursework(latestById[it.id], it) }
+            return (refreshed + preserved).distinctBy { it.id }
+        }
+
         fun reconcileCoursework(latest: Coursework?, incoming: Coursework, isRemote: Boolean = true): Coursework {
             if (latest == null) return incoming
             if (!isRemote) return latest

@@ -42,7 +42,6 @@ struct SettingsSheetView: View {
         ) {
             Button("Đăng xuất và xóa cache", role: .destructive) {
                 authService.signOut(includePersonalNotes: false)
-                ClassroomStorage.shared.clearAllData(includePersonalNotes: false)
                 isDemoMode = false
                 onRefreshData()
                 onAutoSelectFirstItem()
@@ -67,7 +66,6 @@ struct SettingsSheetView: View {
                 ) {
                     Button("Đăng xuất và xóa cache", role: .destructive) {
                         authService.signOut(includePersonalNotes: false)
-                        ClassroomStorage.shared.clearAllData(includePersonalNotes: false)
                         isDemoMode = false
                         onRefreshData()
                         onAutoSelectFirstItem()

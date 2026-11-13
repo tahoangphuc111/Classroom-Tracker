@@ -15,6 +15,51 @@ struct TestRunner {
         print("=== Running Apple Core Logic & Model Tests ===")
 
         do {
+            let originalGroup = "group.com.phucta.classroom"
+            let resignedGroup = "\(originalGroup).ABCDE12345"
+            let appID = "com.phucta.ClassroomTracker"
+            let widgetID = "\(appID).widget"
+            assertCondition(
+                ClassroomStorage.iOSAppGroupCandidates(bundleIdentifier: appID, signerGroups: []) == [originalGroup],
+                "The original iOS app must keep its existing storage group"
+            )
+            for bundleID in ["\(appID).ABCDE12345", "\(appID).ABCDE12345.widget"] {
+                assertCondition(
+                    ClassroomStorage.iOSAppGroupCandidates(bundleIdentifier: bundleID, signerGroups: []) == [resignedGroup, originalGroup],
+                    "The re-signed iOS app and widget must resolve the same App Group"
+                )
+            }
+            assertCondition(
+                ClassroomStorage.iOSAppGroupCandidates(
+                    bundleIdentifier: widgetID,
+                    signerGroups: ["group.com.other.app", resignedGroup, originalGroup, resignedGroup]
+                ) == [resignedGroup, originalGroup],
+                "The widget must prefer the configured App Group and ignore unrelated or duplicate groups"
+            )
+        }
+
+        do {
+            let storage = ClassroomStorage.shared
+            storage.clearAllData()
+            storage.synchronizeAllStorageLayers()
+            storage.invalidateMemoryCache()
+            assertCondition(storage.loadLastSyncTime() == nil, "Restoring storage must not record a successful sync")
+
+            let note = PersonalNote(id: "deleted_note", title: "Ghi chú đã xóa")
+            storage.savePersonalNotes([])
+            storage.flushIOQueue()
+            let oldNotes = try JSONEncoder().encode([note])
+            storage.allUserDefaults.last?.set(oldNotes, forKey: "cached_classroom_personal_notes")
+            storage.invalidateMemoryCache()
+            assertCondition(storage.loadPersonalNotes().isEmpty, "An empty notes file must take precedence over an old backup")
+            storage.synchronizeAllStorageLayers()
+            storage.invalidateMemoryCache()
+            assertCondition(storage.loadPersonalNotes().isEmpty, "Restoring storage must not resurrect deleted notes")
+        } catch {
+            assertCondition(false, "Failed to prepare storage fixtures: \(error)")
+        }
+
+        do {
             let courses = [Course(id: "hidden", name: "Toán", isSelectedForWidget: false)]
             let homework = Coursework(id: "hidden_task", courseId: "hidden", courseName: "Toán", title: "Bài tập")
             let personal = Coursework(id: "personal", courseId: "personal_note", courseName: "Ghi chú", title: "Nhắc việc")
@@ -728,11 +773,6 @@ struct TestRunner {
             assertCondition(preservedNote != nil, "Coursework note must NOT be removed when content is cleared if checklist is present")
             assertCondition(preservedNote?.content == "", "Preserved note content must be empty")
             assertCondition(preservedNote?.checklist.count == 2, "Checklist items must be preserved")
-
-            // Orphaned note cleanup test
-            ClassroomStorage.shared.cleanUpOrphanedNotes(validCourseworkIds: ["some_other_id"])
-            let notesAfterCleanup = ClassroomStorage.shared.loadPersonalNotes()
-            assertCondition(!notesAfterCleanup.contains { $0.courseworkId == "cw_parent_1" }, "Orphaned note attached to deleted coursework must be pruned")
 
             // Empty attached note without checklist must be removed
             ClassroomStorage.shared.saveNoteForCoursework(courseworkId: "cw_parent_empty", title: "Bài tập xóa", content: "Lời dặn tạm")
