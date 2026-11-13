@@ -28,6 +28,29 @@ class LogicRegressionTest {
     }
 
     @Test
+    fun syncKeepsCurrentSelectionsWhenRefreshingCourseMetadata() {
+        val renamed = hiddenCourse.copy(name = "Toán 12", isSelectedForWidget = true)
+        val newCourse = Course(id = "new", name = "Vật lý")
+        val merged = ClassroomRepository.mergeCourseSelections(listOf(renamed, newCourse), listOf(hiddenCourse))
+        assertEquals(listOf(renamed.copy(isSelectedForWidget = false), newCourse), merged)
+    }
+
+    @Test
+    fun partialSyncRetainsCurrentHomeworkForUnfetchedClassesAndPrunesStaleHomework() {
+        val editedWhileSyncing = homework.copy(status = SubmissionStatus.TURNED_IN, isManuallyCompleted = true)
+        val removedTask = homework.copy(id = "removed", courseId = "fetched")
+        val archivedTask = homework.copy(id = "archived", courseId = "archived")
+        val activeTask = homework.copy(id = "active", courseId = "fetched")
+        val result = ClassroomRepository.mergeSyncedCoursework(
+            latest = listOf(editedWhileSyncing, removedTask, archivedTask),
+            fetched = listOf(activeTask),
+            activeCourseIds = setOf("hidden", "fetched"),
+            fetchedCourseIds = setOf("fetched")
+        )
+        assertEquals(listOf(activeTask, editedWhileSyncing), result)
+    }
+
+    @Test
     fun singleItemSearchStillFiltersNonMatchingHomework() {
         assertTrue(BaoBaiBucketingUtils.sortCoursework(listOf(homework), listOf("english"), "english").isEmpty())
         assertEquals(listOf(homework), BaoBaiBucketingUtils.sortCoursework(listOf(homework), listOf("toan"), "toan"))

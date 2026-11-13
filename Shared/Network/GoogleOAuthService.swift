@@ -36,6 +36,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     @Published public private(set) var currentUserName: String? = nil
     @Published public private(set) var currentUserAvatar: String? = nil
     @Published public var authErrorMessage: String? = nil
+    private(set) var sessionID = UUID()
 
     public static let bundledClientId = "1024991814751-qs4rkg9pa09r092lp083l3e9gk6e3mru.apps.googleusercontent.com"
     public static var bundledClientSecret: String = ""
@@ -538,6 +539,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     }
 
     public func signOut(includePersonalNotes: Bool = false) {
+        sessionID = UUID()
         deleteTokensFromKeychain()
         ClassroomStorage.shared.clearAllData(includePersonalNotes: includePersonalNotes)
         self.isAuthenticated = false
@@ -550,6 +552,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
     }
 
     private func exchangeCodeForTokens(code: String, verifier: String, clientId: String, redirectUri: String) async throws {
+        let sessionID = self.sessionID
         guard let tokenURL = URL(string: "https://oauth2.googleapis.com/token") else { return }
 
         var request = URLRequest(url: tokenURL)
@@ -577,6 +580,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         request.httpBody = bodyString.data(using: .utf8)
 
         let (data, response) = try await URLSession.shared.data(for: request)
+        guard self.sessionID == sessionID else { throw CancellationError() }
 
         guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
             let errorText = String(data: data, encoding: .utf8) ?? "Unknown token error"
@@ -599,6 +603,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             expiresAt: Date().addingTimeInterval(Double(tokenResponse.expiresIn))
         )
 
+        self.sessionID = UUID()
         saveTokensToKeychain(tokens: tokens)
         self.isAuthenticated = true
 
@@ -616,7 +621,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         }
     }
 
-    private var refreshTask: Task<String, Error>?
+    private var refreshTask: (sessionID: UUID, task: Task<String, Error>)?
 
     public func getValidAccessToken() async throws -> String {
         guard let tokens = loadTokensFromKeychain() else {
@@ -627,17 +632,22 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             return tokens.accessToken
         }
 
-        if let activeTask = refreshTask {
-            return try await activeTask.value
+        let sessionID = self.sessionID
+        if let refreshTask, refreshTask.sessionID == sessionID {
+            return try await refreshTask.task.value
         }
 
         let task = Task<String, Error> { @MainActor [weak self] () -> String in
             guard let self else {
                 throw NSError(domain: "GoogleOAuthService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Dịch vụ xác thực không khả dụng."])
             }
-            defer { self.refreshTask = nil }
+            defer {
+                if self.refreshTask?.sessionID == sessionID {
+                    self.refreshTask = nil
+                }
+            }
 
-            guard self.isAuthenticated else {
+            guard self.isAuthenticated, self.sessionID == sessionID else {
                 throw NSError(domain: "GoogleOAuthService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Chưa đăng nhập Google."])
             }
 
@@ -675,6 +685,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             request.httpBody = bodyString.data(using: .utf8)
 
             let (data, response) = try await URLSession.shared.data(for: request)
+            guard self.sessionID == sessionID else { throw CancellationError() }
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NSError(domain: "GoogleOAuthService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Không nhận được phản hồi từ Google."])
             }
@@ -701,19 +712,22 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             return newTokens.accessToken
         }
 
-        self.refreshTask = task
+        self.refreshTask = (sessionID, task)
         return try await task.value
     }
 
     public func fetchUserInfo() async {
+        let sessionID = self.sessionID
         do {
             let accessToken = try await getValidAccessToken()
-            guard let url = URL(string: "https://www.googleapis.com/oauth2/v2/userinfo") else { return }
+            guard self.sessionID == sessionID,
+                  let url = URL(string: "https://www.googleapis.com/oauth2/v2/userinfo") else { return }
 
             var request = URLRequest(url: url)
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
             let (data, response) = try await URLSession.shared.data(for: request)
+            guard self.sessionID == sessionID else { return }
             if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
                 let userInfo = try Self.jsonDecoder.decode(GoogleUserInfo.self, from: data)
                 self.currentUserEmail = userInfo.email
@@ -725,6 +739,7 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
                     var oidcRequest = URLRequest(url: oidcUrl)
                     oidcRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
                     let (oidcData, oidcResponse) = try await URLSession.shared.data(for: oidcRequest)
+                    guard self.sessionID == sessionID else { return }
                     if let oidcHttp = oidcResponse as? HTTPURLResponse, (200...299).contains(oidcHttp.statusCode) {
                         let userInfo = try Self.jsonDecoder.decode(GoogleUserInfo.self, from: oidcData)
                         self.currentUserEmail = userInfo.email

@@ -105,6 +105,39 @@ struct AppleSyncLogicTests {
             check(false, "Repeated page tokens must fail rather than return truncated data")
         } catch { check(true, "Repeated page tokens rejected") }
 
+        let storage = ClassroomStorage.shared
+        storage.clearAllData()
+        storage.saveCourses([Course(id: "active", name: "Old name")])
+        storage.saveCoursework([
+            Coursework(id: "missing", courseId: "active", courseName: "Old name", title: "Old assignment")
+        ])
+        storage.saveNoteForCoursework(courseworkId: "missing", title: "Old assignment", content: "My notes")
+        MockClassroomProtocol.handler = { request in
+            if request.url?.path == "/v1/courses" {
+                return (200, #"{"courses":[{"id":"active","name":"New name"}]}"#)
+            }
+            return (200, "{}")
+        }
+        await api.syncAll(sessionID: UUID(), getAccessToken: { "test" }, isSessionActive: { true })
+        check(storage.loadCoursework().isEmpty, "A successful empty coursework response clears stale assignments")
+        check(storage.getNoteForCoursework(courseworkId: "missing")?.content == "My notes", "Sync must preserve notes for missing assignments")
+
+        let returnedCourse = Course(id: "active", name: "Renamed again")
+        storage.saveCourses([Course(id: "active", name: "New name", isSelectedForWidget: false)])
+        storage.saveSyncResult(courses: [returnedCourse], coursework: [], fetchedCourseIds: [])
+        let savedCourse = storage.loadCourses().first
+        check(savedCourse?.name == returnedCourse.name && savedCourse?.isSelectedForWidget == false, "Sync must preserve the latest course selection")
+
+        var activeSession = UUID()
+        let previousSession = activeSession
+        await api.syncAll(sessionID: previousSession, getAccessToken: {
+            storage.clearAllData(includePersonalNotes: false)
+            activeSession = UUID()
+            return "previous-account-token"
+        }, isSessionActive: { activeSession == previousSession })
+        check(storage.loadCourses().isEmpty && storage.loadLastSyncTime() == nil, "A sync from a previous session must not repopulate storage")
+
+        storage.clearAllData()
         exit(failures == 0 ? 0 : 1)
     }
 }

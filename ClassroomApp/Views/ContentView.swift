@@ -3395,9 +3395,8 @@ public struct ContentView: View {
     }
 
     private func toggleCourse(courseId: String) {
-        if let index = courses.firstIndex(where: { $0.id == courseId }) {
-            courses[index].isSelectedForWidget.toggle()
-            ClassroomStorage.shared.saveCourses(courses)
+        if let course = courses.first(where: { $0.id == courseId }) {
+            ClassroomStorage.shared.updateCourseSelection(courseId: courseId, isSelected: !course.isSelectedForWidget)
             refreshData()
             triggerHapticFeedback()
         }
@@ -3405,11 +3404,7 @@ public struct ContentView: View {
 
     private func toggleAllCourses() {
         let allSelected = courses.allSatisfy(\.isSelectedForWidget)
-        let newValue = !allSelected
-        for i in courses.indices {
-            courses[i].isSelectedForWidget = newValue
-        }
-        ClassroomStorage.shared.saveCourses(courses)
+        ClassroomStorage.shared.updateCourseSelection(isSelected: !allSelected)
         refreshData()
         triggerHapticFeedback()
     }
@@ -3429,19 +3424,15 @@ public struct ContentView: View {
         }
         let targetCompletion = !allCurrentlyCompleted
 
-        var notesChanged = false
-        for id in ids {
-            if let index = allCoursework.firstIndex(where: { $0.id == id }) {
-                allCoursework[index].status = targetCompletion ? .turnedIn : .pending
-                allCoursework[index].isManuallyCompleted = targetCompletion
-            } else if id.hasPrefix("note_") {
-                let noteId = String(id.dropFirst(5))
-                ClassroomStorage.shared.setPersonalNoteCompletion(id: noteId, isCompleted: targetCompletion)
-                notesChanged = true
-            }
+        let storage = ClassroomStorage.shared
+        storage.updateCourseworkStatuses(ids: ids, newStatus: targetCompletion ? .turnedIn : .pending)
+        allCoursework = storage.loadCoursework()
+        let noteIds = ids.filter { $0.hasPrefix("note_") }
+        for id in noteIds {
+            storage.setPersonalNoteCompletion(id: String(id.dropFirst(5)), isCompleted: targetCompletion)
         }
-        if notesChanged {
-            self.personalNotes = ClassroomStorage.shared.loadPersonalNotes()
+        if !noteIds.isEmpty {
+            self.personalNotes = storage.loadPersonalNotes()
             updatePersonalNotesCache()
         }
 
@@ -3465,7 +3456,6 @@ public struct ContentView: View {
             }
         }
 
-        ClassroomStorage.shared.saveCoursework(allCoursework)
         reminderService.updateReminderContent()
 
         showToast(
@@ -3478,13 +3468,12 @@ public struct ContentView: View {
     private func toggleCompletion(for item: Coursework) {
         triggerHapticFeedback()
 
-        if let index = allCoursework.firstIndex(where: { $0.id == item.id }) {
-            let wasCompleted = allCoursework[index].isCompleted
-            let newManuallyCompleted = !wasCompleted
-            allCoursework[index].isManuallyCompleted = newManuallyCompleted
-            allCoursework[index].status = newManuallyCompleted ? .turnedIn : .pending
-
-            let currentItem = allCoursework[index]
+        let storage = ClassroomStorage.shared
+        if let storedItem = storage.loadCoursework().first(where: { $0.id == item.id }) {
+            let newManuallyCompleted = !storedItem.isCompleted
+            storage.toggleCourseworkCompletion(id: item.id, completed: newManuallyCompleted)
+            allCoursework = storage.loadCoursework()
+            guard let currentItem = allCoursework.first(where: { $0.id == item.id }) else { return }
             let itemCourse = currentItem.courseName
             let itemTitle = currentItem.title
 
@@ -3495,7 +3484,6 @@ public struct ContentView: View {
                 }
             }
 
-            ClassroomStorage.shared.saveCoursework(allCoursework)
             reminderService.updateReminderContent()
 
             if newManuallyCompleted {

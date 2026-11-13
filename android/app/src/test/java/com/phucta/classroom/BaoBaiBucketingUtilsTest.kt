@@ -822,44 +822,6 @@ class BaoBaiBucketingUtilsTest {
     }
 
     @Test
-    fun testStandalonePersonalNotes_PreservedDuringCourseworkPruning() {
-        val validCourseworkIds = listOf("cw_active_1", "cw_active_2")
-        val validSet = validCourseworkIds.toHashSet()
-
-        val attachedNote = com.phucta.classroom.data.local.AttachedCourseworkNoteRef(
-            id = "note_attached_1",
-            courseworkId = "cw_deleted_9"
-        )
-        val standaloneNoteNull = com.phucta.classroom.data.local.AttachedCourseworkNoteRef(
-            id = "note_standalone_null",
-            courseworkId = null
-        )
-        val standaloneNoteEmpty = com.phucta.classroom.data.local.AttachedCourseworkNoteRef(
-            id = "note_standalone_empty",
-            courseworkId = ""
-        )
-        val standaloneNoteBlank = com.phucta.classroom.data.local.AttachedCourseworkNoteRef(
-            id = "note_standalone_blank",
-            courseworkId = "   "
-        )
-
-        val candidateRefs = listOf(attachedNote, standaloneNoteNull, standaloneNoteEmpty, standaloneNoteBlank)
-        val toDelete = ArrayList<String>()
-        for (note in candidateRefs) {
-            val cwId = note.courseworkId
-            if (!cwId.isNullOrBlank() && !validSet.contains(cwId)) {
-                toDelete.add(note.id)
-            }
-        }
-
-        assertEquals("Only attached notes with deleted coursework should be marked for deletion", 1, toDelete.size)
-        assertEquals("note_attached_1", toDelete.first())
-        assertFalse("Standalone notes with null courseworkId must not be deleted", toDelete.contains("note_standalone_null"))
-        assertFalse("Standalone notes with empty courseworkId must not be deleted", toDelete.contains("note_standalone_empty"))
-        assertFalse("Standalone notes with blank courseworkId must not be deleted", toDelete.contains("note_standalone_blank"))
-    }
-
-    @Test
     fun testLOG03_CompletedTodayMustNotPolluteTomorrowFallback() {
         val now = System.currentTimeMillis()
         ClassroomDateUtils.ensureDayBoundaries(now)

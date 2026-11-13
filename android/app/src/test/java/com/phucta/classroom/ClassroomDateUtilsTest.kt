@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
@@ -479,18 +480,22 @@ class ClassroomDateUtilsTest {
     fun testLOG08_TimeZoneChange_ResetsTomorrowAndDayAfterBoundaries() {
         val originalTz = TimeZone.getDefault()
         try {
-            TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"))
-            ClassroomDateUtils.ensureDayBoundaries()
-            val initialTomorrow = ClassroomDateUtils.startOfTomorrow
-            val initialDayAfter = ClassroomDateUtils.startOfDayAfter
+            for (zone in listOf("Asia/Ho_Chi_Minh", "UTC")) {
+                val timeZone = TimeZone.getTimeZone(zone)
+                TimeZone.setDefault(timeZone)
+                val zoneId = timeZone.toZoneId()
+                val before = LocalDate.now(zoneId)
+                val tomorrow = ClassroomDateUtils.startOfTomorrow
+                val dayAfter = ClassroomDateUtils.startOfDayAfter
+                val after = LocalDate.now(zoneId)
 
-            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
-            ClassroomDateUtils.ensureDayBoundaries()
-            val utcTomorrow = ClassroomDateUtils.startOfTomorrow
-            val utcDayAfter = ClassroomDateUtils.startOfDayAfter
+                fun expectedBoundaries(days: Long) = listOf(before, after).map {
+                    it.plusDays(days).atStartOfDay(zoneId).toInstant().toEpochMilli()
+                }
 
-            assertEquals(7 * 3600 * 1000L, utcTomorrow - initialTomorrow)
-            assertEquals(7 * 3600 * 1000L, utcDayAfter - initialDayAfter)
+                assertTrue("Incorrect tomorrow boundary for $zone", tomorrow in expectedBoundaries(1))
+                assertTrue("Incorrect day-after-tomorrow boundary for $zone", dayAfter in expectedBoundaries(2))
+            }
         } finally {
             TimeZone.setDefault(originalTz)
             ClassroomDateUtils.clearCaches()
