@@ -6,7 +6,6 @@ import com.phucta.classroom.data.model.Course
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.PersonalNote
 import com.phucta.classroom.data.model.SubmissionStatus
-import java.util.Calendar
 
 object BaoBaiBucketingUtils {
     @Immutable
@@ -47,31 +46,16 @@ object BaoBaiBucketingUtils {
     }
 
     val COURSEWORK_COMPARATOR = Comparator<Coursework> { first, second ->
-        val c1 = first.isCompleted
-        val c2 = second.isCompleted
-        if (c1 != c2) {
-            return@Comparator if (!c1) -1 else 1
-        }
-        val d1 = first.dueEpochMillis
-        val d2 = second.dueEpochMillis
-        if (d1 != null) {
-            if (d2 != null) {
-                val diff = d1.compareTo(d2)
-                if (diff != 0) return@Comparator diff
-            } else {
-                return@Comparator -1
-            }
-        } else if (d2 != null) {
-            return@Comparator 1
-        }
+        compareCoursework(first, second, System.currentTimeMillis())
+    }
 
-        val normTitleDiff = first.normalizedTitle.compareTo(second.normalizedTitle)
-        if (normTitleDiff != 0) {
-            normTitleDiff
-        } else {
-            val titleDiff = first.title.compareTo(second.title, ignoreCase = true)
-            if (titleDiff != 0) titleDiff else first.id.compareTo(second.id)
-        }
+    private fun courseworkComparatorAt(now: Long) = Comparator<Coursework> { first, second ->
+        compareCoursework(first, second, now)
+    }
+
+    private fun compareCoursework(first: Coursework, second: Coursework, now: Long): Int {
+        val completionOrder = first.isCompletedAt(now).compareTo(second.isCompletedAt(now))
+        return if (completionOrder != 0) completionOrder else SAME_STATUS_COURSEWORK_COMPARATOR.compare(first, second)
     }
 
     val SAME_STATUS_COURSEWORK_COMPARATOR = Comparator<Coursework> { first, second ->
@@ -103,7 +87,8 @@ object BaoBaiBucketingUtils {
         rawNormalizedQuery: String = ""
     ): List<Coursework> {
         val itemCount = items.size
-        if (itemCount == 0) return items
+        if (itemCount <= 1 && searchTokens.isEmpty()) return items
+        val comparator = courseworkComparatorAt(System.currentTimeMillis())
         if (searchTokens.isNotEmpty()) {
             val tokenCount = searchTokens.size
 
@@ -127,11 +112,11 @@ object BaoBaiBucketingUtils {
                     filteredItems.add(item)
                 }
             }
-            return sortPreFiltered(filteredItems, searchTokens, rawNormalizedQuery, COURSEWORK_COMPARATOR)
+            return sortPreFiltered(filteredItems, searchTokens, rawNormalizedQuery, comparator)
         }
         val copy = ArrayList<Coursework>(itemCount)
         copy.addAll(items)
-        copy.sortWith(COURSEWORK_COMPARATOR)
+        copy.sortWith(comparator)
         return copy
     }
 
@@ -237,14 +222,6 @@ object BaoBaiBucketingUtils {
         }
     }
 
-    private fun sortInternal(
-        items: ArrayList<Coursework>,
-        searchTokens: List<String>,
-        rawNormalizedQuery: String
-    ): List<Coursework> {
-        return sortPreFiltered(items, searchTokens, rawNormalizedQuery, COURSEWORK_COMPARATOR)
-    }
-
     private data class CourseFilterCache(
         val coursesRef: List<Course>,
         val hasUnselected: Boolean,
@@ -316,116 +293,82 @@ object BaoBaiBucketingUtils {
         return if (anyMatchesLoadedCourses) result else items
     }
 
+    private enum class PrepPriority {
+        TOMORROW, PENDING_TODAY, PENDING_LATER, PENDING_UNDATED,
+        COMPLETED_TODAY, COMPLETED_LATER, COMPLETED_UNDATED, NONE
+    }
+
     fun getTomorrowCoursework(
         items: List<Coursework>,
         courses: List<Course> = emptyList(),
         includeCompleted: Boolean = true,
         personalNotes: List<PersonalNote> = emptyList(),
         includeNotes: Boolean = true
+    ): List<Coursework> = getTomorrowCoursework(
+        filteredItems = filterByActiveCourses(items, courses),
+        courses = courses,
+        personalNotes = if (includeNotes) personalNotes else emptyList(),
+        includeCompleted = includeCompleted,
+        now = System.currentTimeMillis()
+    )
+
+    internal fun getTomorrowCoursework(
+        filteredItems: List<Coursework>,
+        courses: List<Course>,
+        personalNotes: List<PersonalNote>,
+        now: Long,
+        includeCompleted: Boolean = true
     ): List<Coursework> {
-        val relevant = filterByActiveCourses(items, courses)
-        val hasNotes = includeNotes && personalNotes.isNotEmpty()
-        if (relevant.isEmpty() && !hasNotes) return emptyList()
-        val now = System.currentTimeMillis()
-        val startOfTomorrow = ClassroomDateUtils.startOfTomorrow
-        val startOfDayAfter = ClassroomDateUtils.startOfDayAfter
-        val estCap = maxOf(4, relevant.size shr 2)
-        val tomorrowFiltered = ArrayList<Coursework>(estCap)
-        val count = relevant.size
+        if (filteredItems.isEmpty() && personalNotes.isEmpty()) return emptyList()
 
-        for (i in 0 until count) {
-            val item = relevant[i]
-            val isEligible = includeCompleted || !item.isCompleted
-            if (!isEligible) continue
+        val (today, tomorrow, dayAfter) = ClassroomDateUtils.dayBoundaries(now)
+        var best = PrepPriority.NONE
+        val result = ArrayList<Coursework>()
+        for (item in filteredItems) {
+            val completed = item.isCompletedAt(now)
+            if (completed && !includeCompleted) continue
             val due = item.dueEpochMillis
-            if (due != null && due in startOfTomorrow until startOfDayAfter) {
-                tomorrowFiltered.add(item)
+            val priority = when {
+                due == null -> if (completed) PrepPriority.COMPLETED_UNDATED else PrepPriority.PENDING_UNDATED
+                due < today -> continue
+                due < tomorrow -> if (completed) PrepPriority.COMPLETED_TODAY else PrepPriority.PENDING_TODAY
+                due < dayAfter -> PrepPriority.TOMORROW
+                else -> if (completed) PrepPriority.COMPLETED_LATER else PrepPriority.PENDING_LATER
             }
+            if (priority < best) {
+                best = priority
+                result.clear()
+            }
+            if (priority == best) result.add(item)
         }
 
-        if (hasNotes) {
-            val filter = if (courses.isNotEmpty()) getCourseFilter(courses) else null
-            val filterActive = filter != null && filter.hasUnselected
-            val noteCount = personalNotes.size
-            for (i in 0 until noteCount) {
-                val note = personalNotes[i]
-                if (note.courseworkId == null) {
-                    val isEligible = includeCompleted || !note.isCompleted
-                    if (isEligible && note.isDueTomorrow) {
-                        val matchesCourse = if (filterActive && note.courseId != null && filter.allCourseIds.contains(note.courseId)) {
-                            filter.activeCourseIds.contains(note.courseId)
-                        } else {
-                            true
-                        }
-                        if (matchesCourse) {
-                            val noteCoursework = Coursework(
-                                id = "note_${note.id}",
-                                courseId = note.courseId ?: "personal_note",
-                                courseName = note.courseName ?: "Ghi chú",
-                                title = note.title,
-                                description = note.content,
-                                dueEpochMillis = note.dueEpochMillis,
-                                status = if (note.isCompleted) SubmissionStatus.TURNED_IN else SubmissionStatus.PENDING,
-                                isManuallyCompleted = note.isCompleted
-                            )
-                            tomorrowFiltered.add(noteCoursework)
-                        }
-                    }
+        if (personalNotes.isNotEmpty()) {
+            val filter = getCourseFilter(courses)
+            for (note in personalNotes) {
+                val due = note.dueEpochMillis
+                if (note.courseworkId != null || (!includeCompleted && note.isCompleted) ||
+                    due == null || due < tomorrow || due >= dayAfter) continue
+                if (note.courseId in filter.allCourseIds && note.courseId !in filter.activeCourseIds) continue
+
+                if (best != PrepPriority.TOMORROW) {
+                    best = PrepPriority.TOMORROW
+                    result.clear()
                 }
+                result.add(Coursework(
+                    id = "note_${note.id}",
+                    courseId = note.courseId ?: "personal_note",
+                    courseName = note.courseName ?: "Ghi chú",
+                    title = note.title,
+                    description = note.content,
+                    dueEpochMillis = due,
+                    status = if (note.isCompleted) SubmissionStatus.TURNED_IN else SubmissionStatus.PENDING,
+                    isManuallyCompleted = note.isCompleted
+                ))
             }
         }
 
-        if (tomorrowFiltered.isNotEmpty()) return sortInternal(tomorrowFiltered, emptyList(), "")
-
-        val todayIncompleteFiltered = ArrayList<Coursework>(estCap)
-        for (i in 0 until count) {
-            val item = relevant[i]
-            if (item.isCompleted) continue
-            val due = item.dueEpochMillis
-            if (due != null && due in now until startOfTomorrow) {
-                todayIncompleteFiltered.add(item)
-            }
-        }
-        if (todayIncompleteFiltered.isNotEmpty()) return sortInternal(todayIncompleteFiltered, emptyList(), "")
-
-        val upcomingFiltered = ArrayList<Coursework>(estCap)
-        for (i in 0 until count) {
-            val item = relevant[i]
-            val isEligible = includeCompleted || !item.isCompleted
-            if (!isEligible) continue
-            val due = item.dueEpochMillis
-            if (due != null && due >= startOfDayAfter) {
-                upcomingFiltered.add(item)
-            }
-        }
-        if (upcomingFiltered.isNotEmpty()) return sortInternal(upcomingFiltered, emptyList(), "")
-
-        val undatedFiltered = ArrayList<Coursework>(estCap)
-        for (i in 0 until count) {
-            val item = relevant[i]
-            val isEligible = includeCompleted || !item.isCompleted
-            if (!isEligible) continue
-            if (item.dueEpochMillis == null) {
-                undatedFiltered.add(item)
-            }
-        }
-        if (undatedFiltered.isNotEmpty()) return sortInternal(undatedFiltered, emptyList(), "")
-
-        if (includeCompleted) {
-            val startOfToday = ClassroomDateUtils.startOfToday
-            val todayCompletedFiltered = ArrayList<Coursework>(estCap)
-            for (i in 0 until count) {
-                val item = relevant[i]
-                if (!item.isCompleted) continue
-                val due = item.dueEpochMillis
-                if (due != null && due in startOfToday until startOfTomorrow) {
-                    todayCompletedFiltered.add(item)
-                }
-            }
-            if (todayCompletedFiltered.isNotEmpty()) return sortInternal(todayCompletedFiltered, emptyList(), "")
-        }
-
-        return emptyList()
+        if (result.size > 1) result.sortWith(courseworkComparatorAt(now))
+        return result
     }
 
     fun computeBuckets(
@@ -452,8 +395,7 @@ object BaoBaiBucketingUtils {
         }
 
         val now = System.currentTimeMillis()
-        val startOfTomorrow = ClassroomDateUtils.startOfTomorrow
-        val startOfDayAfter = ClassroomDateUtils.startOfDayAfter
+        val (startOfToday, startOfTomorrow, startOfDayAfter) = ClassroomDateUtils.dayBoundaries(now)
         val estCapacity = maxOf(16, totalCount shr 2)
         val overdue = ArrayList<Coursework>(estCapacity)
         val today = ArrayList<Coursework>(estCapacity)
@@ -462,18 +404,11 @@ object BaoBaiBucketingUtils {
         val noDate = ArrayList<Coursework>(estCapacity)
         val completed = ArrayList<Coursework>(estCapacity)
         val completedTomorrow = ArrayList<Coursework>(estCapacity)
-        var anyMatchesLoadedCourses = false
         for (i in 0 until totalCount) {
             val item = items[i]
 
-            if (filterActive && allCourseIds != null && activeCourseIds != null) {
-                if (allCourseIds.contains(item.courseId)) {
-                    anyMatchesLoadedCourses = true
-                    if (!activeCourseIds.contains(item.courseId)) {
-                        continue
-                    }
-                }
-            }
+            if (allCourseIds != null && activeCourseIds != null &&
+                item.courseId in allCourseIds && item.courseId !in activeCourseIds) continue
             if (hasSearchTokens && tokenAlternatives != null) {
                 var matchesAll = true
                 val idx = item.searchIndex
@@ -489,7 +424,7 @@ object BaoBaiBucketingUtils {
                 }
                 if (!matchesAll) continue
             }
-            val isCompleted = item.isCompleted
+            val isCompleted = item.isCompletedAt(now)
             val due = item.dueEpochMillis
             if (isCompleted) {
                 completed.add(item)
@@ -500,15 +435,11 @@ object BaoBaiBucketingUtils {
                 when {
                     due == null -> noDate.add(item)
 
-                    due < now -> completed.add(item)
                     due < startOfTomorrow -> today.add(item)
                     due < startOfDayAfter -> tomorrow.add(item)
                     else -> later.add(item)
                 }
             }
-        }
-        if (filterActive && !anyMatchesLoadedCourses) {
-            return computeBuckets(items, emptyList(), searchTokens, rawNormalizedQuery)
         }
         val tomorrowCandidates: List<Coursework> = when {
             tomorrow.isNotEmpty() || completedTomorrow.isNotEmpty() -> {
@@ -530,7 +461,6 @@ object BaoBaiBucketingUtils {
                 var fallbackLater: ArrayList<Coursework>? = null
                 var fallbackNoDate: ArrayList<Coursework>? = null
                 val compCount = completed.size
-                val startOfToday = ClassroomDateUtils.startOfToday
                 for (cIdx in 0 until compCount) {
                     val cItem = completed[cIdx]
                     val cDue = cItem.dueEpochMillis
@@ -568,7 +498,7 @@ object BaoBaiBucketingUtils {
         } else if (tomorrowCandidates === noDate) {
             sortedNoDate
         } else {
-            sortPreFiltered(tomorrowCandidates, searchTokens, rawNormalizedQuery, COURSEWORK_COMPARATOR)
+            sortPreFiltered(tomorrowCandidates, searchTokens, rawNormalizedQuery, courseworkComparatorAt(now))
         }
         return CourseworkBuckets(
             overdue = sortedOverdue,

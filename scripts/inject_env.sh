@@ -5,13 +5,13 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ACTION="${1:-apply}"
 
 export SWIFT_FILE="$ROOT_DIR/Shared/Network/GoogleOAuthService.swift"
-export SWIFT_BAK="$ROOT_DIR/Shared/Network/GoogleOAuthService.swift.bak"
-
 export KT_MANAGER_FILE="$ROOT_DIR/android/app/src/main/java/com/phucta/classroom/data/remote/GoogleOAuthManager.kt"
-export KT_MANAGER_BAK="$ROOT_DIR/android/app/src/main/java/com/phucta/classroom/data/remote/GoogleOAuthManager.kt.bak"
-
 export KT_PREFS_FILE="$ROOT_DIR/android/app/src/main/java/com/phucta/classroom/data/local/ClassroomPreferences.kt"
-export KT_PREFS_BAK="$ROOT_DIR/android/app/src/main/java/com/phucta/classroom/data/local/ClassroomPreferences.kt.bak"
+export IOS_INFO_PLIST="$ROOT_DIR/ClassroomApp/Info-iOS.plist"
+export MAC_INFO_PLIST="$ROOT_DIR/ClassroomApp/Info.plist"
+export ANDROID_MANIFEST="$ROOT_DIR/android/app/src/main/AndroidManifest.xml"
+
+config_files=("$SWIFT_FILE" "$KT_MANAGER_FILE" "$KT_PREFS_FILE" "$IOS_INFO_PLIST" "$MAC_INFO_PLIST" "$ANDROID_MANIFEST")
 
 load_env() {
   ENV_SECRET=""
@@ -60,15 +60,12 @@ load_env() {
 }
 
 restore_files() {
-  if [ -f "$SWIFT_BAK" ]; then
-    mv -f "$SWIFT_BAK" "$SWIFT_FILE"
-  fi
-  if [ -f "$KT_MANAGER_BAK" ]; then
-    mv -f "$KT_MANAGER_BAK" "$KT_MANAGER_FILE"
-  fi
-  if [ -f "$KT_PREFS_BAK" ]; then
-    mv -f "$KT_PREFS_BAK" "$KT_PREFS_FILE"
-  fi
+  local file
+  for file in "${config_files[@]}"; do
+    if [ -f "$file.bak" ]; then
+      mv -f "$file.bak" "$file"
+    fi
+  done
 }
 
 apply_env() {
@@ -78,26 +75,62 @@ apply_env() {
     return 0
   fi
 
-  if [ -f "$SWIFT_FILE" ] && [ ! -f "$SWIFT_BAK" ]; then
-    cp "$SWIFT_FILE" "$SWIFT_BAK"
+  if [[ -n "$CLIENT_ID" && ! "$CLIENT_ID" =~ ^[a-z0-9-]+\.apps\.googleusercontent\.com$ ]]; then
+    echo "Invalid Google OAuth client ID." >&2
+    return 1
   fi
-  if [ -f "$KT_MANAGER_FILE" ] && [ ! -f "$KT_MANAGER_BAK" ]; then
-    cp "$KT_MANAGER_FILE" "$KT_MANAGER_BAK"
-  fi
-  if [ -f "$KT_PREFS_FILE" ] && [ ! -f "$KT_PREFS_BAK" ]; then
-    cp "$KT_PREFS_FILE" "$KT_PREFS_BAK"
-  fi
+  local file
+  for file in "${config_files[@]}"; do
+    if [ -f "$file" ] && [ ! -f "$file.bak" ]; then
+      cp "$file" "$file.bak"
+    fi
+  done
 
   export INJECT_CLIENT_SECRET="$CLIENT_SECRET"
   export INJECT_CLIENT_ID="$CLIENT_ID"
 
   python3 -c '
+from copy import deepcopy
+from pathlib import Path
 import os
+import plistlib
 import re
+import xml.etree.ElementTree as ET
 
 secret = os.environ.get("INJECT_CLIENT_SECRET", "")
 client_id = os.environ.get("INJECT_CLIENT_ID", "")
 mask = 0x5A
+
+if client_id:
+    scheme = ".".join(reversed(client_id.split(".")))
+    for key in ("IOS_INFO_PLIST", "MAC_INFO_PLIST"):
+        path = Path(os.environ[key])
+        if path.is_file():
+            info = plistlib.loads(path.read_bytes())
+            types = info.setdefault("CFBundleURLTypes", [])
+            if not any(scheme in entry.get("CFBundleURLSchemes", []) for entry in types):
+                types.append({"CFBundleURLName": scheme, "CFBundleURLSchemes": [scheme]})
+                path.write_bytes(plistlib.dumps(info, sort_keys=False))
+
+    manifest_path = Path(os.environ["ANDROID_MANIFEST"])
+    if manifest_path.is_file():
+        namespace = "http://schemas.android.com/apk/res/android"
+        ET.register_namespace("android", namespace)
+        attrs = "{" + namespace + "}"
+        parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+        manifest = ET.parse(manifest_path, parser=parser)
+        activity = next(node for node in manifest.findall("./application/activity")
+                        if node.get(attrs + "name") == ".ui.MainActivity")
+        schemes = activity.findall("./intent-filter/data")
+        if not any(node.get(attrs + "scheme") == scheme for node in schemes):
+            template = next(node for node in activity.findall("intent-filter")
+                            if any(data.get(attrs + "scheme", "").startswith("com.googleusercontent.apps.")
+                                   for data in node.findall("data")))
+            callback = deepcopy(template)
+            callback.find("data").set(attrs + "scheme", scheme)
+            activity.append(callback)
+            ET.indent(manifest, space="    ")
+            manifest.write(manifest_path, encoding="utf-8", xml_declaration=True)
 
 swift_path = os.environ.get("SWIFT_FILE", "")
 if swift_path and os.path.exists(swift_path):

@@ -73,7 +73,6 @@ public struct MediumWidgetView: View {
 
             if !isLoggedIn {
                 loggedOutMediumView
-                    .widgetURL(URL(string: "classroomwidget://login"))
             } else {
                 HStack(spacing: 10) {
                     VStack(spacing: 0) {
@@ -170,6 +169,7 @@ public struct MediumWidgetView: View {
                 }
             }
         }
+        .widgetURL(isLoggedIn ? nil : URL(string: "classroomwidget://login"))
         .unredacted()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

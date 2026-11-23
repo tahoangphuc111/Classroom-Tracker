@@ -8,12 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		00B75CE2BFF32A752C552E6E /* ClassroomApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D5202FF21D991CC0B9E2E0C /* ClassroomApp.swift */; };
-		00E5BD8166F74D4B2C9D65FC /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */; };
 		01D07892F24E0E6560C4CFCE /* WidgetVectorArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD22FBD16D58EFBCBCC5EBD /* WidgetVectorArt.swift */; };
 		02CF0AA3FEF95C009CBAF7CF /* PlusJakartaSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */; };
 		0470806FCD28782AC6912336 /* AppleLiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005BE5EB314FF6648A4EB470 /* AppleLiquidGlass.swift */; };
-		047645301B606D1C29B706C2 /* ember_stressed.png in Resources */ = {isa = PBXBuildFile; fileRef = 6D88CD5FE7B0D105A6966C30 /* ember_stressed.png */; };
-		052E717ECC344E5F26C8DA3A /* empty_state_all_caught_up.svg in Resources */ = {isa = PBXBuildFile; fileRef = 1613C9611D9BCAED16D12A3F /* empty_state_all_caught_up.svg */; };
 		05A0A63CF06C4C92EEB24720 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 3376E7CF9516009BB923727C /* AppIcon.icns */; };
 		05B8C3F2F03C51AA2477103E /* TomorrowProgressHeroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B4B62DDD2940D6764DC1475 /* TomorrowProgressHeroCard.swift */; };
 		07E4D11AEE60B5EF8C30CCD8 /* WidgetSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054A7230A61A968D3470F649 /* WidgetSharedViews.swift */; };
@@ -22,65 +19,48 @@
 		109F851082F1D2B04ADB003E /* CompactCourseFilterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B94E928D1AF46B3BBED613 /* CompactCourseFilterSheet.swift */; };
 		10FB3F241A66521AEDBAA163 /* PlusJakartaSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */; };
 		115BDFB416E98A55BCCEB6A6 /* ChunkyTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B343F9F03A47C6F9B03FAA4A /* ChunkyTheme.swift */; };
-		11A032A86D5153C839E010AD /* ember_normal.png in Resources */ = {isa = PBXBuildFile; fileRef = AED11BF4FA92675D20F6F001 /* ember_normal.png */; };
 		13829B8122AA52F65FF977AD /* Outfit.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2B5B470280F43B64B25B5B3B /* Outfit.ttf */; };
 		13F9F888D4073EB78BF3441B /* ClassroomWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C19BE580149DEE05DF2162F /* ClassroomWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		14D864085171FB8FAD063CFE /* BaoBaiShareHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B891B4913D6C4139F0811EFB /* BaoBaiShareHelper.swift */; };
 		14F37D8ACB579379078AEEAE /* ClassroomStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8187B2538BF1178DB6637F2 /* ClassroomStorage.swift */; };
 		17AAA7D52CC1135704F3B052 /* AssignmentListEmptyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 185B88A48EE05DB31FAC6BB0 /* AssignmentListEmptyView.swift */; };
 		17CCC4B43EED552571081077 /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
-		199C3135D8B58CD81615B53C /* empty_thumb.png in Resources */ = {isa = PBXBuildFile; fileRef = A1C07A754E28DEC6C075C853 /* empty_thumb.png */; };
 		1A04F5FA4134D9363DF3AFCB /* ChunkyTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B343F9F03A47C6F9B03FAA4A /* ChunkyTheme.swift */; };
 		1A8B32DFBE34F54FAFBC0B26 /* AppUpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74F6B7930F668D92B55266E8 /* AppUpdateService.swift */; };
 		1C5FE8D79B4A254B96E23B45 /* LoopbackOAuthServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61242B4F8CB258A7002DEBFD /* LoopbackOAuthServer.swift */; };
-		1D6B1A1750A2A0D62A777960 /* hero_bao_bai_modernist.svg in Resources */ = {isa = PBXBuildFile; fileRef = E953FD33CFB40871D4934FFB /* hero_bao_bai_modernist.svg */; };
 		1ED9F3207CD8350E182AE2F7 /* ClassroomWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067B66E7A83A695915BD2CF /* ClassroomWidget.swift */; };
 		20276564BFCC652AD4478085 /* BeVietnamPro-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */; };
 		221955AC320833CDCC19C27F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE51ED6CBB6D80D32FE576A /* ContentView.swift */; };
-		23A01720BA8634EFE30F2943 /* hero_bao_bai_modernist.svg in Resources */ = {isa = PBXBuildFile; fileRef = E953FD33CFB40871D4934FFB /* hero_bao_bai_modernist.svg */; };
-		2484CF1C7CEC6B1DB9012F05 /* hero_bao_bai_modernist.png in Resources */ = {isa = PBXBuildFile; fileRef = 0ADD3209B29A94C82F9B20E5 /* hero_bao_bai_modernist.png */; };
 		25499A6E32C4A03F9C07936E /* PersonalNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DED96C52D69984DF9155598 /* PersonalNote.swift */; };
 		2736130891BCB099470BAD25 /* CourseSelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F79A1C14FBCF2E5F061B8 /* CourseSelectionRow.swift */; };
-		2D52B634155AFCD7F53892EB /* ember_celebrating.png in Resources */ = {isa = PBXBuildFile; fileRef = 76225BEA399AD9D6988DA20A /* ember_celebrating.png */; };
-		2DD93070A44A2BADA23319EE /* empty_state_all_caught_up.png in Resources */ = {isa = PBXBuildFile; fileRef = C5154DC9BE53EB1D8066B230 /* empty_state_all_caught_up.png */; };
-		30D09F2015D9A5E912960AFD /* empty_gray.png in Resources */ = {isa = PBXBuildFile; fileRef = 6A24D37C1B8544FD08D7EEEF /* empty_gray.png */; };
 		31210A665DA2CE481AE12D07 /* PlatformUICompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF386037AC3117B38590B24 /* PlatformUICompat.swift */; };
-		32A9D6AB8CD67C5930DFA090 /* ember_celebrating.svg in Resources */ = {isa = PBXBuildFile; fileRef = 7DE543871FC2F140693C327E /* ember_celebrating.svg */; };
 		3501C0CC7F4105BA6F589923 /* ClassroomWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 268C4F8AF62E9B98477FE3D7 /* ClassroomWidgetBundle.swift */; };
-		3ED1A76AC56D493110556312 /* empty_gray.png in Resources */ = {isa = PBXBuildFile; fileRef = 6A24D37C1B8544FD08D7EEEF /* empty_gray.png */; };
 		401E9B5335AFFF8CB723C43F /* BeVietnamPro-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */; };
-		42BF0098D0056BC79695ACD6 /* hero_thumb.png in Resources */ = {isa = PBXBuildFile; fileRef = 7589E5C47EDB822547360463 /* hero_thumb.png */; };
 		465E27FD3D708A1BD1CE1565 /* PlusJakartaSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */; };
 		4B5EC507E4557E97831FB0F1 /* SmallWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72AA16D6CC38D1AB92759B4 /* SmallWidgetView.swift */; };
 		4C3044602C711FE33D56936C /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
 		4C3C71DD0CFCDBC5EA0C0EC2 /* CourseworkSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF593AAAD6A4E6C3767D82C /* CourseworkSearch.swift */; };
 		4CC145C83734FF135151DF09 /* CourseworkSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF593AAAD6A4E6C3767D82C /* CourseworkSearch.swift */; };
 		4E819390C60CB7F99A7CAE8F /* ClassroomTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8D3F55C61287C9E7E225FD /* ClassroomTimelineProvider.swift */; };
-		50F195E70EDBD2CE8A6E5ED9 /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
 		53B4DE26F1214441CB6CD47D /* AppleLiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005BE5EB314FF6648A4EB470 /* AppleLiquidGlass.swift */; };
 		564C7A526D4FACDC2789C218 /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
 		5651D16523E5B70943DC7C82 /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
 		56954DC1A0B76691F4AFCED0 /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
 		56AC118470E4BB4A13D4F133 /* SettingsSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EDBE7D2959EBE4F4B96FB0F /* SettingsSheetView.swift */; };
-		576CCB0796D2F531A4F1B0DA /* empty_state_all_caught_up.png in Resources */ = {isa = PBXBuildFile; fileRef = C5154DC9BE53EB1D8066B230 /* empty_state_all_caught_up.png */; };
 		5931377224C5F4D54FE058B7 /* AppleLiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005BE5EB314FF6648A4EB470 /* AppleLiquidGlass.swift */; };
-		59FD024F21660871C8B48AEF /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
 		5A8BDBC5102357F31F06BAA7 /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
 		5B00F034FE2B8F6DBBD0413E /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */; };
 		5B4CC845BDE5E8335CB1E521 /* CourseworkSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF593AAAD6A4E6C3767D82C /* CourseworkSearch.swift */; };
 		5C4423BBF792AD9417E76A07 /* WidgetVectorArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD22FBD16D58EFBCBCC5EBD /* WidgetVectorArt.swift */; };
 		5D1F4B06D5109641AAEFCDD6 /* EveningReminderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74DF3B3C4B88510916B56233 /* EveningReminderService.swift */; };
-		5DE1C108CDE60F0F8F590064 /* ember_stressed.png in Resources */ = {isa = PBXBuildFile; fileRef = 6D88CD5FE7B0D105A6966C30 /* ember_stressed.png */; };
 		5E0902C87676BBCA09DF661E /* ChunkyTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B343F9F03A47C6F9B03FAA4A /* ChunkyTheme.swift */; };
 		647B4D125CBFD0082422D82B /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
 		671D466371D14585CBE67293 /* Course.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4508EBDBFF6D0212A21C01 /* Course.swift */; };
 		6CF1ED97794083A88871588E /* PlusJakartaSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1D75408AE16DC4FA6A3ECE55 /* PlusJakartaSans.ttf */; };
 		6D71E9EB2F5E36496285F3CD /* TomorrowProgressHeroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B4B62DDD2940D6764DC1475 /* TomorrowProgressHeroCard.swift */; };
 		72E1408985CF7E5AFF83C25D /* ChunkyTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B343F9F03A47C6F9B03FAA4A /* ChunkyTheme.swift */; };
-		7308AC24FDBB6B285CCF2F66 /* ember_studying.png in Resources */ = {isa = PBXBuildFile; fileRef = F3F262700F392082660DE196 /* ember_studying.png */; };
 		73FD2A662BDEE2DF57710B2C /* ClassroomWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 268C4F8AF62E9B98477FE3D7 /* ClassroomWidgetBundle.swift */; };
 		7688B32D9ED237679EAD8055 /* ClassroomApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D5202FF21D991CC0B9E2E0C /* ClassroomApp.swift */; };
-		779E3EFC7475294CE7297979 /* ember_celebrating.svg in Resources */ = {isa = PBXBuildFile; fileRef = 7DE543871FC2F140693C327E /* ember_celebrating.svg */; };
 		77B982049D93BBDCAD1B7AC9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6630D04B4757AF2620FAC1B /* Assets.xcassets */; };
 		79411F264C4A7EE04F676B97 /* Coursework.swift in Sources */ = {isa = PBXBuildFile; fileRef = 577E534AFF94B7B61CD38E00 /* Coursework.swift */; };
 		7A06BD6E3891B315C2A80B20 /* Coursework.swift in Sources */ = {isa = PBXBuildFile; fileRef = 577E534AFF94B7B61CD38E00 /* Coursework.swift */; };
@@ -94,42 +74,29 @@
 		84041CD13F559A0982D16A79 /* Outfit.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2B5B470280F43B64B25B5B3B /* Outfit.ttf */; };
 		843474698FC0949AC025D89A /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */; };
 		87C21EB63DD150D04F0F80A0 /* CourseSelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F79A1C14FBCF2E5F061B8 /* CourseSelectionRow.swift */; };
-		8AAF3EC9B54314246DA39CC8 /* ember_normal.svg in Resources */ = {isa = PBXBuildFile; fileRef = 0E71BB535F5533E7E10B9C14 /* ember_normal.svg */; };
 		8D4882D433346278AEB9B581 /* HomeworkReaderPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B491BC20FE8F1329669C50 /* HomeworkReaderPane.swift */; };
 		8F42125ED7F9AAD9547E9947 /* AppUpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74F6B7930F668D92B55266E8 /* AppUpdateService.swift */; };
 		8FE49AF4C480914FF41344F4 /* WidgetSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054A7230A61A968D3470F649 /* WidgetSharedViews.swift */; };
-		90E3828D44E83C72AC8358D0 /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */; };
 		9145423574CB3BD2063A1EEC /* AssignmentListRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70976B2FACF6A9FABE3EECB /* AssignmentListRow.swift */; };
-		917AB39A41B2095AB5CAF14D /* ember_studying.svg in Resources */ = {isa = PBXBuildFile; fileRef = 3094877B5D40853849D75B99 /* ember_studying.svg */; };
 		923B8E7BD4DF5424E1524AB6 /* BaoBaiShareHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B891B4913D6C4139F0811EFB /* BaoBaiShareHelper.swift */; };
 		931457AFB0AB6F7F8E244578 /* PersonalNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DED96C52D69984DF9155598 /* PersonalNote.swift */; };
 		938A8D93DFB8D87251B0EC9E /* BeVietnamPro-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */; };
-		949CDA238E341F7C71E6632F /* ember_stressed.svg in Resources */ = {isa = PBXBuildFile; fileRef = 6DF031DF29F1D5BDA325C422 /* ember_stressed.svg */; };
-		984C78B045823741D26DB409 /* empty_thumb.png in Resources */ = {isa = PBXBuildFile; fileRef = A1C07A754E28DEC6C075C853 /* empty_thumb.png */; };
 		9D0307AD1FB3BB9FAADBC2D0 /* ClassroomAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76246EB4C2B91BE0D7817282 /* ClassroomAPIService.swift */; };
 		9D9F458241DD55C2F682A7BF /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
-		9E00929454B277410C09A1BF /* hero_thumb.png in Resources */ = {isa = PBXBuildFile; fileRef = 7589E5C47EDB822547360463 /* hero_thumb.png */; };
 		A3048C4BC894E94862000751 /* WidgetSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054A7230A61A968D3470F649 /* WidgetSharedViews.swift */; };
 		A387480E11C4AFA7D4D074AD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE51ED6CBB6D80D32FE576A /* ContentView.swift */; };
-		A617E14E128FB40D90E35AD9 /* hero_gray.png in Resources */ = {isa = PBXBuildFile; fileRef = 465C485ADE179EE967BB7843 /* hero_gray.png */; };
 		A7395D60908C5BBBFE75E740 /* Coursework.swift in Sources */ = {isa = PBXBuildFile; fileRef = 577E534AFF94B7B61CD38E00 /* Coursework.swift */; };
 		A9246BD6E508F90B70753773 /* PlatformUICompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF386037AC3117B38590B24 /* PlatformUICompat.swift */; };
-		ADC75E78930175ED1CF6A219 /* ember_sleeping.svg in Resources */ = {isa = PBXBuildFile; fileRef = B539744053714389C757D947 /* ember_sleeping.svg */; };
 		B0D3E9BC239FC8AE303DB424 /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9705C931546E3D8D472D7C2 /* LargeWidgetView.swift */; };
 		B295FC218F9F9B1C797F30DC /* BaoBaiShareHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B891B4913D6C4139F0811EFB /* BaoBaiShareHelper.swift */; };
 		B2C84037AA5318BA266BBB45 /* LoopbackOAuthServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61242B4F8CB258A7002DEBFD /* LoopbackOAuthServer.swift */; };
 		B4E9C81406020332120C7D31 /* PersonalNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 323B489348E8FA84074C1E9A /* PersonalNotesView.swift */; };
-		B5B4EEA297B7633B00313171 /* ember_studying.png in Resources */ = {isa = PBXBuildFile; fileRef = F3F262700F392082660DE196 /* ember_studying.png */; };
-		B66C454110C15165187A2FB5 /* SmallWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72AA16D6CC38D1AB92759B4 /* SmallWidgetView.swift */; };
 		B88D489152047C28BAD8325F /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
-		B9F258D5821A36600A6ED3A8 /* ember_celebrating.png in Resources */ = {isa = PBXBuildFile; fileRef = 76225BEA399AD9D6988DA20A /* ember_celebrating.png */; };
 		BD2954CB77952D08AFCD0A47 /* AppleLiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005BE5EB314FF6648A4EB470 /* AppleLiquidGlass.swift */; };
 		C18DD5AFCE61166A6C7ECE6C /* ClassroomAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76246EB4C2B91BE0D7817282 /* ClassroomAPIService.swift */; };
-		C3A2ED4138C78EB4FD5C8211 /* ember_stressed.svg in Resources */ = {isa = PBXBuildFile; fileRef = 6DF031DF29F1D5BDA325C422 /* ember_stressed.svg */; };
 		C3FC8B1D14E643648DFCDFEB /* MascotAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5D16A05E654131D1D668583D /* MascotAssets.xcassets */; };
 		C5780DD843B9DCABA721A7CE /* MascotAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5D16A05E654131D1D668583D /* MascotAssets.xcassets */; };
 		C677921261CA4C30652CEEBF /* ChunkyEmberCharacterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A709199D7B0F2DB307C2C7E5 /* ChunkyEmberCharacterView.swift */; };
-		C6E731B59470CBAE352E89E9 /* hero_gray.png in Resources */ = {isa = PBXBuildFile; fileRef = 465C485ADE179EE967BB7843 /* hero_gray.png */; };
 		C768A49C57F6329018704CFD /* Outfit.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2B5B470280F43B64B25B5B3B /* Outfit.ttf */; };
 		C8A7644A05A0EC9B89276B58 /* BeVietnamPro-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */; };
 		C97F83B9986E0EC73DC666E4 /* PlatformUICompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF386037AC3117B38590B24 /* PlatformUICompat.swift */; };
@@ -139,21 +106,15 @@
 		CF45944CC712DDA5F3D0A7D4 /* CourseworkSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF593AAAD6A4E6C3767D82C /* CourseworkSearch.swift */; };
 		CFFD98A3CE699E345D3F36BF /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
 		D13D21E5F66F6BFFFA509A06 /* BeVietnamPro-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */; };
-		D14BCF37E58AB8E37A787F4A /* ember_normal.svg in Resources */ = {isa = PBXBuildFile; fileRef = 0E71BB535F5533E7E10B9C14 /* ember_normal.svg */; };
-		D1B88A2A29D1C96C8A6334D6 /* ember_studying.svg in Resources */ = {isa = PBXBuildFile; fileRef = 3094877B5D40853849D75B99 /* ember_studying.svg */; };
-		D3E19AC3C68994D3B3F3DC88 /* SmallWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72AA16D6CC38D1AB92759B4 /* SmallWidgetView.swift */; };
 		D505E440E6AE41142C0D62DB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6630D04B4757AF2620FAC1B /* Assets.xcassets */; };
 		D53A21ED4518F5686F93E7EF /* SettingsSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EDBE7D2959EBE4F4B96FB0F /* SettingsSheetView.swift */; };
-		D5B0983E6940F82E74956255 /* hero_bao_bai_modernist.png in Resources */ = {isa = PBXBuildFile; fileRef = 0ADD3209B29A94C82F9B20E5 /* hero_bao_bai_modernist.png */; };
 		D6416DFF7CC7772D778904B8 /* ClassroomTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8D3F55C61287C9E7E225FD /* ClassroomTimelineProvider.swift */; };
-		D6CCA2E5C9CA63F50F084D39 /* empty_state_all_caught_up.svg in Resources */ = {isa = PBXBuildFile; fileRef = 1613C9611D9BCAED16D12A3F /* empty_state_all_caught_up.svg */; };
 		D750CB748227403E3F7FCA33 /* GoogleOAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2322F2CE750E768C3F773D /* GoogleOAuthService.swift */; };
 		D91EC36EA55B8FD59587A65D /* ClassroomStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8187B2538BF1178DB6637F2 /* ClassroomStorage.swift */; };
 		DA384E556B37E0B3BA7231BF /* Course.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4508EBDBFF6D0212A21C01 /* Course.swift */; };
 		DAE455BC9269BDE173BD9E9F /* MascotAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5D16A05E654131D1D668583D /* MascotAssets.xcassets */; };
 		DB417AF148401D0ABD648051 /* ChunkyEmberCharacterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A709199D7B0F2DB307C2C7E5 /* ChunkyEmberCharacterView.swift */; };
 		DDC951AF5D643A2025715103 /* FloatingToastHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = F751CE375F56822B42FC0BC6 /* FloatingToastHUD.swift */; };
-		DF32C9A934B4935FE703D905 /* ember_sleeping.png in Resources */ = {isa = PBXBuildFile; fileRef = E9434A194F94C0CFB4F694A9 /* ember_sleeping.png */; };
 		DFFE053BC293DC233B2235A9 /* ClassroomWidget-iOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 42570ADA07C6609BD0AD4EFB /* ClassroomWidget-iOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		E0DA3413AFA4C2AAFEDC2B7E /* PlatformUICompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF386037AC3117B38590B24 /* PlatformUICompat.swift */; };
 		E3386CB5A5834CD0523BEAAD /* Course.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C4508EBDBFF6D0212A21C01 /* Course.swift */; };
@@ -164,15 +125,12 @@
 		E94EC24BF2C0C534287A631B /* BeVietnamPro-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */; };
 		EB97DE9788357CDBA9604D3E /* FloatingToastHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = F751CE375F56822B42FC0BC6 /* FloatingToastHUD.swift */; };
 		EE433BAD28689B83729C10D9 /* ClassroomWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067B66E7A83A695915BD2CF /* ClassroomWidget.swift */; };
-		F58C51854C853B817A562456 /* ember_normal.png in Resources */ = {isa = PBXBuildFile; fileRef = AED11BF4FA92675D20F6F001 /* ember_normal.png */; };
 		F596400001EB58E5B9955656 /* BaoBaiShareHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B891B4913D6C4139F0811EFB /* BaoBaiShareHelper.swift */; };
 		F74437AB2464011B3A24039E /* AssignmentListEmptyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 185B88A48EE05DB31FAC6BB0 /* AssignmentListEmptyView.swift */; };
 		F87245CE2B73EA5B72FE055A /* CompactCourseFilterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B94E928D1AF46B3BBED613 /* CompactCourseFilterSheet.swift */; };
-		F88B8589A64C05EC2AAEA51D /* ember_sleeping.svg in Resources */ = {isa = PBXBuildFile; fileRef = B539744053714389C757D947 /* ember_sleeping.svg */; };
 		F97AC4CD49F0EC1A19375DCF /* GoogleOAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2322F2CE750E768C3F773D /* GoogleOAuthService.swift */; };
 		FB0EA900724C821046861313 /* ChunkyEmberCharacterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A709199D7B0F2DB307C2C7E5 /* ChunkyEmberCharacterView.swift */; };
 		FB3DAD5704E94D8A7710CAE2 /* ClassroomStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8187B2538BF1178DB6637F2 /* ClassroomStorage.swift */; };
-		FCCA41C3D8F34B4888FD7E4A /* ember_sleeping.png in Resources */ = {isa = PBXBuildFile; fileRef = E9434A194F94C0CFB4F694A9 /* ember_sleeping.png */; };
 		FEE672E73F026D8FEEBB5A58 /* Outfit.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2B5B470280F43B64B25B5B3B /* Outfit.ttf */; };
 /* End PBXBuildFile section */
 
@@ -221,13 +179,10 @@
 /* Begin PBXFileReference section */
 		005BE5EB314FF6648A4EB470 /* AppleLiquidGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleLiquidGlass.swift; sourceTree = "<group>"; };
 		054A7230A61A968D3470F649 /* WidgetSharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSharedViews.swift; sourceTree = "<group>"; };
-		0ADD3209B29A94C82F9B20E5 /* hero_bao_bai_modernist.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = hero_bao_bai_modernist.png; sourceTree = "<group>"; };
 		0C19BE580149DEE05DF2162F /* ClassroomWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ClassroomWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		0DF593AAAD6A4E6C3767D82C /* CourseworkSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseworkSearch.swift; sourceTree = "<group>"; };
-		0E71BB535F5533E7E10B9C14 /* ember_normal.svg */ = {isa = PBXFileReference; path = ember_normal.svg; sourceTree = "<group>"; };
 		0EDBE7D2959EBE4F4B96FB0F /* SettingsSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheetView.swift; sourceTree = "<group>"; };
 		10264E7130B2DE16D373CB26 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		1613C9611D9BCAED16D12A3F /* empty_state_all_caught_up.svg */ = {isa = PBXFileReference; path = empty_state_all_caught_up.svg; sourceTree = "<group>"; };
 		185B88A48EE05DB31FAC6BB0 /* AssignmentListEmptyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssignmentListEmptyView.swift; sourceTree = "<group>"; };
 		1A0F79A1C14FBCF2E5F061B8 /* CourseSelectionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseSelectionRow.swift; sourceTree = "<group>"; };
 		1C4508EBDBFF6D0212A21C01 /* Course.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Course.swift; sourceTree = "<group>"; };
@@ -239,12 +194,10 @@
 		2D5202FF21D991CC0B9E2E0C /* ClassroomApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomApp.swift; sourceTree = "<group>"; };
 		2DD22FBD16D58EFBCBCC5EBD /* WidgetVectorArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetVectorArt.swift; sourceTree = "<group>"; };
 		2FE51ED6CBB6D80D32FE576A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		3094877B5D40853849D75B99 /* ember_studying.svg */ = {isa = PBXFileReference; path = ember_studying.svg; sourceTree = "<group>"; };
 		323B489348E8FA84074C1E9A /* PersonalNotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalNotesView.swift; sourceTree = "<group>"; };
 		3376E7CF9516009BB923727C /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		3431777B869BAB240E94D902 /* ClassroomWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClassroomWidget.entitlements; sourceTree = "<group>"; };
 		42570ADA07C6609BD0AD4EFB /* ClassroomWidget-iOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "ClassroomWidget-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
-		465C485ADE179EE967BB7843 /* hero_gray.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = hero_gray.png; sourceTree = "<group>"; };
 		4A8D3F55C61287C9E7E225FD /* ClassroomTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomTimelineProvider.swift; sourceTree = "<group>"; };
 		4DF386037AC3117B38590B24 /* PlatformUICompat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformUICompat.swift; sourceTree = "<group>"; };
 		577E534AFF94B7B61CD38E00 /* Coursework.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Coursework.swift; sourceTree = "<group>"; };
@@ -252,42 +205,29 @@
 		5DE285C784A6CABD1653F979 /* MediumWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumWidgetView.swift; sourceTree = "<group>"; };
 		61242B4F8CB258A7002DEBFD /* LoopbackOAuthServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopbackOAuthServer.swift; sourceTree = "<group>"; };
 		68B94E928D1AF46B3BBED613 /* CompactCourseFilterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactCourseFilterSheet.swift; sourceTree = "<group>"; };
-		6A24D37C1B8544FD08D7EEEF /* empty_gray.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = empty_gray.png; sourceTree = "<group>"; };
-		6D88CD5FE7B0D105A6966C30 /* ember_stressed.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ember_stressed.png; sourceTree = "<group>"; };
-		6DF031DF29F1D5BDA325C422 /* ember_stressed.svg */ = {isa = PBXFileReference; path = ember_stressed.svg; sourceTree = "<group>"; };
 		7067B66E7A83A695915BD2CF /* ClassroomWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomWidget.swift; sourceTree = "<group>"; };
 		728308768D8137EEB133B3EF /* BeVietnamPro-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BeVietnamPro-Bold.ttf"; sourceTree = "<group>"; };
 		74DF3B3C4B88510916B56233 /* EveningReminderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EveningReminderService.swift; sourceTree = "<group>"; };
 		74F6B7930F668D92B55266E8 /* AppUpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdateService.swift; sourceTree = "<group>"; };
-		7589E5C47EDB822547360463 /* hero_thumb.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = hero_thumb.png; sourceTree = "<group>"; };
-		76225BEA399AD9D6988DA20A /* ember_celebrating.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ember_celebrating.png; sourceTree = "<group>"; };
 		76246EB4C2B91BE0D7817282 /* ClassroomAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomAPIService.swift; sourceTree = "<group>"; };
 		774B98B225F64BFEC26FED0C /* BeVietnamPro-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BeVietnamPro-ExtraBold.ttf"; sourceTree = "<group>"; };
-		7DE543871FC2F140693C327E /* ember_celebrating.svg */ = {isa = PBXFileReference; path = ember_celebrating.svg; sourceTree = "<group>"; };
 		868849B7A0025D50233A9F1D /* ClassroomWidget.iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClassroomWidget.iOS.entitlements; sourceTree = "<group>"; };
 		8DED96C52D69984DF9155598 /* PersonalNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalNote.swift; sourceTree = "<group>"; };
 		93274F7E3D636D61BD56BBE2 /* ClassroomApp.iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClassroomApp.iOS.entitlements; sourceTree = "<group>"; };
 		9B4B62DDD2940D6764DC1475 /* TomorrowProgressHeroCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TomorrowProgressHeroCard.swift; sourceTree = "<group>"; };
-		A1C07A754E28DEC6C075C853 /* empty_thumb.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = empty_thumb.png; sourceTree = "<group>"; };
 		A709199D7B0F2DB307C2C7E5 /* ChunkyEmberCharacterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChunkyEmberCharacterView.swift; sourceTree = "<group>"; };
-		AED11BF4FA92675D20F6F001 /* ember_normal.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ember_normal.png; sourceTree = "<group>"; };
 		B1B491BC20FE8F1329669C50 /* HomeworkReaderPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeworkReaderPane.swift; sourceTree = "<group>"; };
 		B343F9F03A47C6F9B03FAA4A /* ChunkyTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChunkyTheme.swift; sourceTree = "<group>"; };
-		B539744053714389C757D947 /* ember_sleeping.svg */ = {isa = PBXFileReference; path = ember_sleeping.svg; sourceTree = "<group>"; };
 		B891B4913D6C4139F0811EFB /* BaoBaiShareHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaoBaiShareHelper.swift; sourceTree = "<group>"; };
 		BB8383A70D6044F00AACBD0F /* BeVietnamPro-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BeVietnamPro-SemiBold.ttf"; sourceTree = "<group>"; };
-		C5154DC9BE53EB1D8066B230 /* empty_state_all_caught_up.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = empty_state_all_caught_up.png; sourceTree = "<group>"; };
 		D1F316B5AF2C143DEF693CC7 /* ClassroomApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClassroomApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D6630D04B4757AF2620FAC1B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D70976B2FACF6A9FABE3EECB /* AssignmentListRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssignmentListRow.swift; sourceTree = "<group>"; };
 		D893419B1310DBEA79D5EC55 /* BeVietnamPro-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BeVietnamPro-Medium.ttf"; sourceTree = "<group>"; };
 		E3BCFF79FEC7F39C97CB3CD0 /* ClassroomApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClassroomApp.entitlements; sourceTree = "<group>"; };
 		E72AA16D6CC38D1AB92759B4 /* SmallWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmallWidgetView.swift; sourceTree = "<group>"; };
-		E9434A194F94C0CFB4F694A9 /* ember_sleeping.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ember_sleeping.png; sourceTree = "<group>"; };
-		E953FD33CFB40871D4934FFB /* hero_bao_bai_modernist.svg */ = {isa = PBXFileReference; path = hero_bao_bai_modernist.svg; sourceTree = "<group>"; };
 		EB62635BFF32DA52DE014199 /* Info-iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Info-iOS.plist"; sourceTree = "<group>"; };
 		F045E4BD8C2C0E91C526F067 /* Info-iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Info-iOS.plist"; sourceTree = "<group>"; };
-		F3F262700F392082660DE196 /* ember_studying.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ember_studying.png; sourceTree = "<group>"; };
 		F5C5F371F9A48AE2A712F368 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F751CE375F56822B42FC0BC6 /* FloatingToastHUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingToastHUD.swift; sourceTree = "<group>"; };
 		F8187B2538BF1178DB6637F2 /* ClassroomStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomStorage.swift; sourceTree = "<group>"; };
@@ -334,21 +274,6 @@
 				8DED96C52D69984DF9155598 /* PersonalNote.swift */,
 			);
 			path = Models;
-			sourceTree = "<group>";
-		};
-		66F3AB7961DA0D8A368B713E /* Editorial */ = {
-			isa = PBXGroup;
-			children = (
-				6A24D37C1B8544FD08D7EEEF /* empty_gray.png */,
-				C5154DC9BE53EB1D8066B230 /* empty_state_all_caught_up.png */,
-				1613C9611D9BCAED16D12A3F /* empty_state_all_caught_up.svg */,
-				A1C07A754E28DEC6C075C853 /* empty_thumb.png */,
-				0ADD3209B29A94C82F9B20E5 /* hero_bao_bai_modernist.png */,
-				E953FD33CFB40871D4934FFB /* hero_bao_bai_modernist.svg */,
-				465C485ADE179EE967BB7843 /* hero_gray.png */,
-				7589E5C47EDB822547360463 /* hero_thumb.png */,
-			);
-			path = Editorial;
 			sourceTree = "<group>";
 		};
 		6CB00585FCBCF2BDAB75A11C /* Views */ = {
@@ -414,8 +339,6 @@
 			isa = PBXGroup;
 			children = (
 				5D16A05E654131D1D668583D /* MascotAssets.xcassets */,
-				66F3AB7961DA0D8A368B713E /* Editorial */,
-				E1FF12A6D199CA32B53B2913 /* Mascot */,
 			);
 			path = Assets;
 			sourceTree = "<group>";
@@ -443,23 +366,6 @@
 				3F886A7FA7446B999B9FAB35 /* WidgetViews */,
 			);
 			path = Shared;
-			sourceTree = "<group>";
-		};
-		E1FF12A6D199CA32B53B2913 /* Mascot */ = {
-			isa = PBXGroup;
-			children = (
-				76225BEA399AD9D6988DA20A /* ember_celebrating.png */,
-				7DE543871FC2F140693C327E /* ember_celebrating.svg */,
-				AED11BF4FA92675D20F6F001 /* ember_normal.png */,
-				0E71BB535F5533E7E10B9C14 /* ember_normal.svg */,
-				E9434A194F94C0CFB4F694A9 /* ember_sleeping.png */,
-				B539744053714389C757D947 /* ember_sleeping.svg */,
-				6D88CD5FE7B0D105A6966C30 /* ember_stressed.png */,
-				6DF031DF29F1D5BDA325C422 /* ember_stressed.svg */,
-				F3F262700F392082660DE196 /* ember_studying.png */,
-				3094877B5D40853849D75B99 /* ember_studying.svg */,
-			);
-			path = Mascot;
 			sourceTree = "<group>";
 		};
 		E57DAD4DA83C74F333A2F04E /* Network */ = {
@@ -642,24 +548,6 @@
 				DAE455BC9269BDE173BD9E9F /* MascotAssets.xcassets in Resources */,
 				84041CD13F559A0982D16A79 /* Outfit.ttf in Resources */,
 				02CF0AA3FEF95C009CBAF7CF /* PlusJakartaSans.ttf in Resources */,
-				B9F258D5821A36600A6ED3A8 /* ember_celebrating.png in Resources */,
-				32A9D6AB8CD67C5930DFA090 /* ember_celebrating.svg in Resources */,
-				F58C51854C853B817A562456 /* ember_normal.png in Resources */,
-				8AAF3EC9B54314246DA39CC8 /* ember_normal.svg in Resources */,
-				DF32C9A934B4935FE703D905 /* ember_sleeping.png in Resources */,
-				F88B8589A64C05EC2AAEA51D /* ember_sleeping.svg in Resources */,
-				047645301B606D1C29B706C2 /* ember_stressed.png in Resources */,
-				949CDA238E341F7C71E6632F /* ember_stressed.svg in Resources */,
-				B5B4EEA297B7633B00313171 /* ember_studying.png in Resources */,
-				D1B88A2A29D1C96C8A6334D6 /* ember_studying.svg in Resources */,
-				30D09F2015D9A5E912960AFD /* empty_gray.png in Resources */,
-				2DD93070A44A2BADA23319EE /* empty_state_all_caught_up.png in Resources */,
-				052E717ECC344E5F26C8DA3A /* empty_state_all_caught_up.svg in Resources */,
-				984C78B045823741D26DB409 /* empty_thumb.png in Resources */,
-				2484CF1C7CEC6B1DB9012F05 /* hero_bao_bai_modernist.png in Resources */,
-				1D6B1A1750A2A0D62A777960 /* hero_bao_bai_modernist.svg in Resources */,
-				A617E14E128FB40D90E35AD9 /* hero_gray.png in Resources */,
-				9E00929454B277410C09A1BF /* hero_thumb.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -675,24 +563,6 @@
 				C5780DD843B9DCABA721A7CE /* MascotAssets.xcassets in Resources */,
 				13829B8122AA52F65FF977AD /* Outfit.ttf in Resources */,
 				10FB3F241A66521AEDBAA163 /* PlusJakartaSans.ttf in Resources */,
-				2D52B634155AFCD7F53892EB /* ember_celebrating.png in Resources */,
-				779E3EFC7475294CE7297979 /* ember_celebrating.svg in Resources */,
-				11A032A86D5153C839E010AD /* ember_normal.png in Resources */,
-				D14BCF37E58AB8E37A787F4A /* ember_normal.svg in Resources */,
-				FCCA41C3D8F34B4888FD7E4A /* ember_sleeping.png in Resources */,
-				ADC75E78930175ED1CF6A219 /* ember_sleeping.svg in Resources */,
-				5DE1C108CDE60F0F8F590064 /* ember_stressed.png in Resources */,
-				C3A2ED4138C78EB4FD5C8211 /* ember_stressed.svg in Resources */,
-				7308AC24FDBB6B285CCF2F66 /* ember_studying.png in Resources */,
-				917AB39A41B2095AB5CAF14D /* ember_studying.svg in Resources */,
-				3ED1A76AC56D493110556312 /* empty_gray.png in Resources */,
-				576CCB0796D2F531A4F1B0DA /* empty_state_all_caught_up.png in Resources */,
-				D6CCA2E5C9CA63F50F084D39 /* empty_state_all_caught_up.svg in Resources */,
-				199C3135D8B58CD81615B53C /* empty_thumb.png in Resources */,
-				D5B0983E6940F82E74956255 /* hero_bao_bai_modernist.png in Resources */,
-				23A01720BA8634EFE30F2943 /* hero_bao_bai_modernist.svg in Resources */,
-				C6E731B59470CBAE352E89E9 /* hero_gray.png in Resources */,
-				42BF0098D0056BC79695ACD6 /* hero_thumb.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -737,14 +607,11 @@
 				DDC951AF5D643A2025715103 /* FloatingToastHUD.swift in Sources */,
 				D750CB748227403E3F7FCA33 /* GoogleOAuthService.swift in Sources */,
 				E42D0C0E23B7A5014B391BB8 /* HomeworkReaderPane.swift in Sources */,
-				90E3828D44E83C72AC8358D0 /* LargeWidgetView.swift in Sources */,
 				B2C84037AA5318BA266BBB45 /* LoopbackOAuthServer.swift in Sources */,
-				59FD024F21660871C8B48AEF /* MediumWidgetView.swift in Sources */,
 				834A2E9D2629CCA9CB4990EB /* PersonalNote.swift in Sources */,
 				B4E9C81406020332120C7D31 /* PersonalNotesView.swift in Sources */,
 				A9246BD6E508F90B70753773 /* PlatformUICompat.swift in Sources */,
 				56AC118470E4BB4A13D4F133 /* SettingsSheetView.swift in Sources */,
-				D3E19AC3C68994D3B3F3DC88 /* SmallWidgetView.swift in Sources */,
 				05B8C3F2F03C51AA2477103E /* TomorrowProgressHeroCard.swift in Sources */,
 				A3048C4BC894E94862000751 /* WidgetSharedViews.swift in Sources */,
 				821D63C6B16A746D570A2EEA /* WidgetVectorArt.swift in Sources */,
@@ -800,14 +667,11 @@
 				EB97DE9788357CDBA9604D3E /* FloatingToastHUD.swift in Sources */,
 				F97AC4CD49F0EC1A19375DCF /* GoogleOAuthService.swift in Sources */,
 				8D4882D433346278AEB9B581 /* HomeworkReaderPane.swift in Sources */,
-				00E5BD8166F74D4B2C9D65FC /* LargeWidgetView.swift in Sources */,
 				1C5FE8D79B4A254B96E23B45 /* LoopbackOAuthServer.swift in Sources */,
-				50F195E70EDBD2CE8A6E5ED9 /* MediumWidgetView.swift in Sources */,
 				0AA2BBB7882B94989EE2A1B3 /* PersonalNote.swift in Sources */,
 				E7C291FB404DBE5DF491A222 /* PersonalNotesView.swift in Sources */,
 				E0DA3413AFA4C2AAFEDC2B7E /* PlatformUICompat.swift in Sources */,
 				D53A21ED4518F5686F93E7EF /* SettingsSheetView.swift in Sources */,
-				B66C454110C15165187A2FB5 /* SmallWidgetView.swift in Sources */,
 				6D71E9EB2F5E36496285F3CD /* TomorrowProgressHeroCard.swift in Sources */,
 				07E4D11AEE60B5EF8C30CCD8 /* WidgetSharedViews.swift in Sources */,
 				E3A34E0AB00CF89D9352A0A5 /* WidgetVectorArt.swift in Sources */,

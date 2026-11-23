@@ -34,7 +34,7 @@ permissions:
 jobs:
   build-macos:
     name: Build macOS 27 (.pkg)
-    runs-on: macos-latest
+    runs-on: xcode-27
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -43,6 +43,15 @@ jobs:
         run: |
           xcodebuild -version
           xcodebuild -showsdks
+
+      - name: Run Apple logic tests
+        run: |
+          for suite in AppleCoreLogicTests AppleSyncLogicTests; do
+            swiftc -D CLASSROOM_TESTING "Tests/$suite.swift" Shared/Models/*.swift \
+              Shared/Storage/*.swift Shared/PlatformUICompat.swift Shared/WidgetViews/*.swift \
+              Shared/Network/*.swift -o "$RUNNER_TEMP/$suite"
+            "$RUNNER_TEMP/$suite"
+          done
 
       - name: Build macOS 27 app & package PKG
         env:
@@ -61,7 +70,7 @@ jobs:
 
   build-ios:
     name: Build iOS (17 -> 27) (.ipa)
-    runs-on: macos-latest
+    runs-on: xcode-27
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -105,19 +114,29 @@ jobs:
           chmod +x android/gradlew
           chmod +x scripts/build_apk.sh
 
-      - name: Configure Keystore (Optional)
+      - name: Configure APK signing
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          PUBLISH_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.create_release) }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
+            : "${KEYSTORE_PASSWORD:?Missing Android keystore password}"
+            : "${KEY_ALIAS:?Missing Android key alias}"
+            : "${KEY_PASSWORD:?Missing Android key password}"
             echo "Release keystore detected from secrets, decoding..."
-            echo "$KEYSTORE_BASE64" | base64 -d > android/release.keystore
+            printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/release.keystore
             echo "KEYSTORE_FILE=$GITHUB_WORKSPACE/android/release.keystore" >> $GITHUB_ENV
-            echo "KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
-            echo "KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> $GITHUB_ENV
+            echo "KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
+          elif [ "$PUBLISH_RELEASE" = true ]; then
+            echo "::error::Configure the existing Android release keystore before publishing an upgrade."
+            exit 1
           else
-            echo "No custom keystore provided. Generating self-signed keystore for testing/distribution..."
+            echo "Generating a temporary keystore for CI testing..."
             keytool -genkeypair -v \
               -keystore "$GITHUB_WORKSPACE/android/debug.keystore" \
               -alias androiddebugkey \
@@ -188,24 +207,36 @@ jobs:
 
       - name: Determine Release Tag
         id: tag_info
+        env:
+          REQUESTED_TAG: ${{ inputs.release_tag }}
+          REQUESTED_PRERELEASE: ${{ inputs.prerelease || github.event.release.prerelease || false }}
         run: |
-          if [ -n "${{ github.event.inputs.release_tag }}" ]; then
-            echo "tag=${{ github.event.inputs.release_tag }}" >> $GITHUB_OUTPUT
+          if [ -n "$REQUESTED_TAG" ]; then
+            tag="$REQUESTED_TAG"
           elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            tag="${GITHUB_REF#refs/tags/}"
           else
-            echo "tag=v$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_OUTPUT
+            tag="v$(date +'%Y.%m.%d-%H%M')"
           fi
+          git check-ref-format "refs/tags/$tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          prerelease="$REQUESTED_PRERELEASE"
+          if [[ "$tag" == v0.5.0 || "$tag" =~ -(alpha|beta|rc|preview) ]]; then
+            prerelease=true
+          fi
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
 
       - name: Publish Assets to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag_info.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: |
             dist/ClassroomTracker.pkg
             dist/ClassroomTracker.ipa
             dist/ClassroomTracker.apk
           draft: false
-          prerelease: ${{ github.event.inputs.prerelease || false }}
+          prerelease: ${{ steps.tag_info.outputs.prerelease == 'true' }}
+          body_path: ${{ steps.tag_info.outputs.tag == 'v0.5.0' && 'docs/releases/v0.5.0.md' || '' }}
           generate_release_notes: true
 

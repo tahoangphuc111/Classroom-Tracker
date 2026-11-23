@@ -14,8 +14,8 @@ android {
         applicationId = "com.phucta.classroom"
         minSdk = 26
         targetSdk = 34
-        versionCode = 5
-        versionName = "0.5-beta"
+        versionCode = 6
+        versionName = "0.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["appAuthRedirectScheme"] = "com.phucta.classroom"

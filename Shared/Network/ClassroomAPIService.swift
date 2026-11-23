@@ -26,6 +26,7 @@ public final class ClassroomAPIService: ObservableObject {
 
     private let session: URLSession
     private var syncingSessionID: UUID?
+    private var syncWaiters: [UUID: [CheckedContinuation<Void, Never>]] = [:]
 
     init(session: URLSession = .shared) {
         self.session = session
@@ -40,7 +41,12 @@ public final class ClassroomAPIService: ObservableObject {
     }
 
     func syncAll(sessionID: UUID, getAccessToken: () async throws -> String, isSessionActive: () -> Bool) async {
-        guard syncingSessionID != sessionID else { return }
+        if syncingSessionID == sessionID {
+            await withCheckedContinuation { continuation in
+                syncWaiters[sessionID, default: []].append(continuation)
+            }
+            return
+        }
         guard isSessionActive() else {
             syncErrorMessage = "Chưa kết nối Google."
             return
@@ -54,6 +60,9 @@ public final class ClassroomAPIService: ObservableObject {
             if syncingSessionID == sessionID {
                 syncingSessionID = nil
                 isSyncing = false
+            }
+            for waiter in syncWaiters.removeValue(forKey: sessionID) ?? [] {
+                waiter.resume()
             }
         }
 

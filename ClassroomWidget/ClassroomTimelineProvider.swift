@@ -1,102 +1,73 @@
 import WidgetKit
 import SwiftUI
-import os
 
-public struct ClassroomEntry: TimelineEntry {
-    public let date: Date
-    public let courseworkList: [Coursework]
-    public let isLoggedIn: Bool
-
-    public init(date: Date, courseworkList: [Coursework], isLoggedIn: Bool = true) {
-        self.date = date
-        self.courseworkList = courseworkList
-        self.isLoggedIn = isLoggedIn
+struct ClassroomEntry: TimelineEntry {
+    enum State {
+        case signedOut, needsSync, storageUnavailable, ready
     }
 
-    public var hasUrgentTask: Bool {
-        courseworkList.contains { !$0.isCompleted && $0.isUrgent }
-    }
+    let date: Date
+    var courseworkList: [Coursework] = []
+    let state: State
 }
 
-public struct ClassroomTimelineProvider: TimelineProvider {
-    public init() {}
-
-    public func placeholder(in context: Context) -> ClassroomEntry {
-        ClassroomStorage.shared.invalidateMemoryCache()
-        let isLoggedIn = ClassroomStorage.shared.hasUserLoggedIn
-        guard isLoggedIn else {
-            return ClassroomEntry(date: Date(), courseworkList: [], isLoggedIn: false)
-        }
-        let real = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
-        return ClassroomEntry(date: Date(), courseworkList: real, isLoggedIn: true)
+struct ClassroomTimelineProvider: TimelineProvider {
+    func placeholder(in context: Context) -> ClassroomEntry {
+        ClassroomEntry(date: Date(), state: .needsSync)
     }
 
-    public func getSnapshot(in context: Context, completion: @escaping (ClassroomEntry) -> Void) {
-        ClassroomStorage.shared.invalidateMemoryCache()
-        let widgetLogger = Logger(subsystem: "com.phucta.ClassroomTracker.widget", category: "timeline")
-        let isLoggedIn = ClassroomStorage.shared.hasUserLoggedIn
-        widgetLogger.notice("getSnapshot: isPreview=\(context.isPreview), isLoggedIn=\(isLoggedIn)")
-
-        guard isLoggedIn else {
-            completion(ClassroomEntry(date: Date(), courseworkList: [], isLoggedIn: false))
-            return
-        }
-
-        let real = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
-        if !real.isEmpty {
-            completion(ClassroomEntry(date: Date(), courseworkList: real, isLoggedIn: true))
-            return
-        }
-
-        if context.isPreview {
-            let mock = ClassroomStorage.mockCoursework
-            let tomorrow = mock.filter { $0.isDueTomorrow }
-            let items = tomorrow.isEmpty ? mock : tomorrow
-            completion(ClassroomEntry(date: Date(), courseworkList: items, isLoggedIn: true))
-            return
-        }
-
-        completion(ClassroomEntry(date: Date(), courseworkList: [], isLoggedIn: true))
+    func getSnapshot(in context: Context, completion: @escaping (ClassroomEntry) -> Void) {
+        completion(loadEntry(at: Date()))
     }
 
-    public func getTimeline(in context: Context, completion: @escaping (Timeline<ClassroomEntry>) -> Void) {
-        ClassroomStorage.shared.invalidateMemoryCache()
-        let widgetLogger = Logger(subsystem: "com.phucta.ClassroomTracker.widget", category: "timeline")
-        let isLoggedIn = ClassroomStorage.shared.hasUserLoggedIn
-        let real = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
-        let displayItems: [Coursework] = isLoggedIn ? real : []
-        widgetLogger.notice("getTimeline: \(displayItems.count) items, IDs: \(displayItems.map(\.id).joined(separator: ","), privacy: .public)")
-
+    func getTimeline(in context: Context, completion: @escaping (Timeline<ClassroomEntry>) -> Void) {
         let currentDate = Date()
-        let currentEntry = ClassroomEntry(date: currentDate, courseworkList: displayItems, isLoggedIn: isLoggedIn)
-
-        let calendar = Calendar.autoupdatingCurrent
-
-        guard isLoggedIn else {
-            let nextRefresh = currentDate.addingTimeInterval(900)
-            completion(Timeline(entries: [currentEntry], policy: .after(nextRefresh)))
+        let entry = loadEntry(at: currentDate)
+        let minimumRefreshDate = currentDate.addingTimeInterval(15 * 60)
+        guard entry.state == .ready else {
+            completion(Timeline(entries: [entry], policy: .after(minimumRefreshDate)))
             return
         }
 
-        var nextRefresh = calendar.date(byAdding: .minute, value: 45, to: currentDate) ?? currentDate.addingTimeInterval(2700)
-
+        let calendar = ClassroomDateFormatters.gregorianCalendar
+        var nextRefresh = currentDate.addingTimeInterval(45 * 60)
         let startOfToday = calendar.startOfDay(for: currentDate)
-        if let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
-           startOfTomorrow > currentDate, startOfTomorrow < nextRefresh {
-            nextRefresh = startOfTomorrow.addingTimeInterval(1)
+        if let midnight = calendar.date(byAdding: .day, value: 1, to: startOfToday), midnight < nextRefresh {
+            nextRefresh = midnight.addingTimeInterval(1)
+        }
+        if let nextDueDate = entry.courseworkList.compactMap(\.dueDate).filter({ $0 > currentDate }).min(), nextDueDate < nextRefresh {
+            nextRefresh = nextDueDate.addingTimeInterval(1)
         }
 
-        if let earliestDueDate = displayItems.compactMap(\.dueDate).filter({ $0 > currentDate }).min(),
-           earliestDueDate < nextRefresh {
-            nextRefresh = earliestDueDate.addingTimeInterval(1)
-        }
+        completion(Timeline(entries: [entry], policy: .after(max(minimumRefreshDate, nextRefresh))))
+    }
 
-        let minimumRefreshDate = currentDate.addingTimeInterval(900)
-        if nextRefresh < minimumRefreshDate {
-            nextRefresh = minimumRefreshDate
+    func loadEntry(at date: Date) -> ClassroomEntry {
+        let storage = ClassroomStorage.shared
+        #if os(iOS) || CLASSROOM_TESTING
+        guard !ClassroomStorage.appGroupDirectories.isEmpty else {
+            return ClassroomEntry(date: date, state: .storageUnavailable)
         }
-
-        let timeline = Timeline(entries: [currentEntry], policy: .after(nextRefresh))
-        completion(timeline)
+        guard let snapshot = storage.loadWidgetSnapshot() else {
+            return ClassroomEntry(date: date, state: .needsSync)
+        }
+        guard snapshot.isSignedIn else {
+            return ClassroomEntry(date: date, state: .signedOut)
+        }
+        let items = storage.getTomorrowCoursework(
+            filteredItems: snapshot.coursework,
+            courses: snapshot.courses,
+            personalNotes: snapshot.notes,
+            now: date
+        )
+        let state: ClassroomEntry.State = snapshot.hasSynced || !items.isEmpty ? .ready : .needsSync
+        return ClassroomEntry(date: date, courseworkList: items, state: state)
+        #else
+        storage.invalidateMemoryCache()
+        guard storage.hasUserLoggedIn else {
+            return ClassroomEntry(date: date, state: .signedOut)
+        }
+        return ClassroomEntry(date: date, courseworkList: storage.getTomorrowCoursework(), state: .ready)
+        #endif
     }
 }

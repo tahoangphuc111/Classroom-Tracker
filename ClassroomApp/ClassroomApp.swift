@@ -89,20 +89,18 @@ struct ClassroomApp: App {
                 .preferredColorScheme(.light)
                 #if os(macOS)
                 .frame(minWidth: 840, minHeight: 580)
-                #endif
                 .onOpenURL { url in
-                    #if os(macOS)
                     NSApplication.shared.activate(ignoringOtherApps: true)
                     for window in NSApplication.shared.windows {
                         if window.canBecomeKey {
                             window.makeKeyAndOrderFront(nil)
                         }
                     }
-                    #endif
                     Task { @MainActor in
                         _ = await GoogleOAuthService.shared.handleIncomingURL(url)
                     }
                 }
+                #endif
         }
         #if os(macOS)
         .defaultSize(width: 980, height: 680)

@@ -897,4 +897,23 @@ class BaoBaiBucketingUtilsTest {
         assertEquals(1, buckets.widgetItems.size)
         assertEquals("today_done_only", buckets.widgetItems.first().id)
     }
+
+    @Test
+    fun unfinishedUndatedWorkWinsOverCompletedWorkAndMatchesWidgetBucket() {
+        val completedToday = Coursework(
+            id = "today-done", courseId = "c1", courseName = "Toán", title = "Bài hôm nay",
+            dueEpochMillis = ClassroomDateUtils.startOfToday + 3_600_000L,
+            status = SubmissionStatus.TURNED_IN
+        )
+        val completedLater = completedToday.copy(
+            id = "later-done", dueEpochMillis = ClassroomDateUtils.startOfDayAfter + 3_600_000L
+        )
+        val undated = completedToday.copy(id = "undated", dueEpochMillis = null, status = SubmissionStatus.PENDING)
+        val items = listOf(completedLater, completedToday, undated)
+        assertEquals(listOf(undated), BaoBaiBucketingUtils.getTomorrowCoursework(items))
+        assertEquals(listOf(completedToday), BaoBaiBucketingUtils.getTomorrowCoursework(items.take(2)))
+        assertEquals(listOf(completedLater), BaoBaiBucketingUtils.getTomorrowCoursework(listOf(completedLater)))
+        assertEquals(emptyList<Coursework>(), BaoBaiBucketingUtils.getTomorrowCoursework(items.take(2), includeCompleted = false))
+        assertEquals(BaoBaiBucketingUtils.computeBuckets(items).widgetItems, BaoBaiBucketingUtils.getTomorrowCoursework(items))
+    }
 }

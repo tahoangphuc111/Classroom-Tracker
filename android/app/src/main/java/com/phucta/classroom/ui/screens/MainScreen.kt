@@ -2,22 +2,12 @@ package com.phucta.classroom.ui.screens
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
@@ -108,19 +98,18 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.semantics.Role
 import com.phucta.classroom.ClassroomApplication
 import com.phucta.classroom.data.model.Course
 import com.phucta.classroom.data.model.Coursework
 import com.phucta.classroom.data.model.PersonalNote
 import com.phucta.classroom.domain.BaoBaiBucketingUtils
-import com.phucta.classroom.ui.components.EmberEmotion
 import com.phucta.classroom.ui.components.EmberFlameCanvas
 import com.phucta.classroom.ui.components.HomeworkDetailBottomSheet
 import com.phucta.classroom.ui.components.SubjectBadgePill
 import com.phucta.classroom.ui.theme.ChunkyColor
 import androidx.compose.runtime.Immutable
-import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.launch
 
 @Immutable
@@ -129,17 +118,6 @@ private data class MainScreenCourseworkState(
     val completedItems: List<Coursework> = emptyList(),
     val upcomingIncompleteCount: Int = 0
 )
-
-private val TabSlideSpec = spring<IntOffset>(dampingRatio = 0.82f, stiffness = 420f)
-private val TabFadeInSpec = tween<Float>(200)
-private val TabFadeOutSpec = tween<Float>(160)
-
-private val TabSlideRightIn = slideInHorizontally(animationSpec = TabSlideSpec) { width -> (width * 0.15f).toInt() } + fadeIn(animationSpec = TabFadeInSpec)
-private val TabSlideLeftOut = slideOutHorizontally(animationSpec = TabSlideSpec) { width -> -(width * 0.15f).toInt() } + fadeOut(animationSpec = TabFadeOutSpec)
-private val TabSlideLeftIn = slideInHorizontally(animationSpec = TabSlideSpec) { width -> -(width * 0.15f).toInt() } + fadeIn(animationSpec = TabFadeInSpec)
-private val TabSlideRightOut = slideOutHorizontally(animationSpec = TabSlideSpec) { width -> (width * 0.15f).toInt() } + fadeOut(animationSpec = TabFadeOutSpec)
-private val TabForwardTransition = TabSlideRightIn.togetherWith(TabSlideLeftOut)
-private val TabBackwardTransition = TabSlideLeftIn.togetherWith(TabSlideRightOut)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -155,6 +133,7 @@ fun MainScreen() {
     val snackbarHostState = remember { SnackbarHostState() }
 
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    val tabStates = rememberSaveableStateHolder()
     var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var selectedCourseworkId by rememberSaveable { mutableStateOf<String?>(null) }
     var noteToEditFromExternal by remember { mutableStateOf<PersonalNote?>(null) }
@@ -204,14 +183,16 @@ fun MainScreen() {
         MainScreenCourseworkState(), allCoursework, courses, personalNotes, currentDayEpoch
     ) {
         value = withContext(Dispatchers.Default) {
+            val now = System.currentTimeMillis()
             val active = BaoBaiBucketingUtils.filterByActiveCourses(allCoursework, courses)
 
             val tomorrow = BaoBaiBucketingUtils.getTomorrowCoursework(
-                items = active,
+                filteredItems = active,
                 courses = courses,
-                personalNotes = personalNotes
+                personalNotes = personalNotes,
+                now = now
             )
-            val completed = active.filter { it.isCompleted }.sortedWith { first, second ->
+            val completed = active.filter { it.isCompletedAt(now) }.sortedWith { first, second ->
                 when {
                     first.dueEpochMillis != null && second.dueEpochMillis != null -> {
                         val dueDiff = second.dueEpochMillis.compareTo(first.dueEpochMillis)
@@ -225,11 +206,10 @@ fun MainScreen() {
                     }
                 }
             }
-            val upcomingCount = active.count { !it.isCompleted }
             MainScreenCourseworkState(
                 tomorrowItems = tomorrow,
                 completedItems = completed,
-                upcomingIncompleteCount = upcomingCount
+                upcomingIncompleteCount = active.size - completed.size
             )
         }
     }
@@ -492,15 +472,8 @@ fun MainScreen() {
                         )
                     }
                 ) {
-                    AnimatedContent(
-                        targetState = selectedTabIndex,
-                        transitionSpec = {
-                            if (targetState > initialState) TabForwardTransition else TabBackwardTransition
-                        },
-                        label = "tabTransition",
-                        modifier = Modifier.fillMaxSize()
-                    ) { tabIndex ->
-                        when (tabIndex) {
+                    tabStates.SaveableStateProvider(selectedTabIndex) {
+                        when (selectedTabIndex) {
                             0 -> TomorrowHomeworkScreen(
                                 tomorrowItems = tomorrowItems,
                                 courseworkIdsWithNotes = courseworkIdsWithNotes,
@@ -906,58 +879,6 @@ private fun MainTopAppBar(
 }
 
 @Composable
-private fun BouncingNavIcon(
-    isSelected: Boolean,
-    bounceTrigger: Int,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
-    val scale = remember { Animatable(1f) }
-    val offsetY = remember { Animatable(0f) }
-
-    LaunchedEffect(isSelected, bounceTrigger) {
-        if (isSelected) {
-            scale.snapTo(1.18f)
-            offsetY.snapTo(-3.2f)
-            kotlinx.coroutines.coroutineScope {
-                launch {
-                    scale.animateTo(
-                        targetValue = 1f,
-                        animationSpec = spring(
-                            dampingRatio = 0.52f,
-                            stiffness = 380f
-                        )
-                    )
-                }
-                launch {
-                    offsetY.animateTo(
-                        targetValue = 0f,
-                        animationSpec = spring(
-                            dampingRatio = 0.52f,
-                            stiffness = 380f
-                        )
-                    )
-                }
-            }
-        } else {
-            scale.animateTo(1f, tween(150))
-            offsetY.animateTo(0f, tween(150))
-        }
-    }
-
-    Box(
-        modifier = modifier.graphicsLayer {
-            scaleX = scale.value
-            scaleY = scale.value
-            translationY = offsetY.value * density
-        },
-        contentAlignment = Alignment.Center
-    ) {
-        content()
-    }
-}
-
-@Composable
 private fun MainBottomNavigationBar(
     selectedTabIndex: Int,
     tomorrowIncompleteCount: Int,
@@ -966,38 +887,10 @@ private fun MainBottomNavigationBar(
     onTabSelected: (Int) -> Unit
 ) {
     val view = androidx.compose.ui.platform.LocalView.current
-    var lastHapticTimestamp by remember { mutableLongStateOf(0L) }
-    var lastActiveTabTapTimestamp by remember { mutableLongStateOf(0L) }
-    var bounceTrigger0 by remember { mutableIntStateOf(0) }
-    var bounceTrigger1 by remember { mutableIntStateOf(0) }
-    var bounceTrigger2 by remember { mutableIntStateOf(0) }
-    var bounceTrigger3 by remember { mutableIntStateOf(0) }
-
     val handleTabClick = { index: Int ->
-        val now = android.os.SystemClock.uptimeMillis()
         if (selectedTabIndex != index) {
-            if (now - lastHapticTimestamp >= 160L) {
-                lastHapticTimestamp = now
-                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-            }
-            when (index) {
-                0 -> bounceTrigger0++
-                1 -> bounceTrigger1++
-                2 -> bounceTrigger2++
-                3 -> bounceTrigger3++
-            }
+            view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
             onTabSelected(index)
-        } else {
-            if (now - lastActiveTabTapTimestamp >= 350L) {
-                lastActiveTabTapTimestamp = now
-                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-            }
-            when (index) {
-                0 -> bounceTrigger0++
-                1 -> bounceTrigger1++
-                2 -> bounceTrigger2++
-                3 -> bounceTrigger3++
-            }
         }
     }
 
@@ -1024,26 +917,24 @@ private fun MainBottomNavigationBar(
             selected = selectedTabIndex == 0,
             onClick = { handleTabClick(0) },
             icon = {
-                BouncingNavIcon(isSelected = selectedTabIndex == 0, bounceTrigger = bounceTrigger0) {
-                    BadgedBox(
-                        badge = {
-                            if (tomorrowIncompleteCount > 0) {
-                                Badge(
-                                    containerColor = Color(0xFFEF4444),
-                                    contentColor = Color.White
-                                ) {
-                                    Text(
-                                        text = if (tomorrowIncompleteCount > 99) "99+" else "$tomorrowIncompleteCount",
-                                        fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp
-                                    )
-                                }
+                BadgedBox(
+                    badge = {
+                        if (tomorrowIncompleteCount > 0) {
+                            Badge(
+                                containerColor = Color(0xFFEF4444),
+                                contentColor = Color.White
+                            ) {
+                                Text(
+                                    text = if (tomorrowIncompleteCount > 99) "99+" else "$tomorrowIncompleteCount",
+                                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                )
                             }
                         }
-                    ) {
-                        Icon(Icons.Default.CalendarToday, contentDescription = "Báo bài")
                     }
+                ) {
+                    Icon(Icons.Default.CalendarToday, contentDescription = "Báo bài")
                 }
             },
             label = {
@@ -1062,26 +953,24 @@ private fun MainBottomNavigationBar(
             selected = selectedTabIndex == 1,
             onClick = { handleTabClick(1) },
             icon = {
-                BouncingNavIcon(isSelected = selectedTabIndex == 1, bounceTrigger = bounceTrigger1) {
-                    BadgedBox(
-                        badge = {
-                            if (upcomingIncompleteCount > 0) {
-                                Badge(
-                                    containerColor = Color(0xFFEF4444),
-                                    contentColor = Color.White
-                                ) {
-                                    Text(
-                                        text = if (upcomingIncompleteCount > 99) "99+" else "$upcomingIncompleteCount",
-                                        fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp
-                                    )
-                                }
+                BadgedBox(
+                    badge = {
+                        if (upcomingIncompleteCount > 0) {
+                            Badge(
+                                containerColor = Color(0xFFEF4444),
+                                contentColor = Color.White
+                            ) {
+                                Text(
+                                    text = if (upcomingIncompleteCount > 99) "99+" else "$upcomingIncompleteCount",
+                                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                )
                             }
                         }
-                    ) {
-                        Icon(Icons.Default.Upcoming, contentDescription = "Sắp tới")
                     }
+                ) {
+                    Icon(Icons.Default.Upcoming, contentDescription = "Sắp tới")
                 }
             },
             label = {
@@ -1100,9 +989,7 @@ private fun MainBottomNavigationBar(
             selected = selectedTabIndex == 2,
             onClick = { handleTabClick(2) },
             icon = {
-                BouncingNavIcon(isSelected = selectedTabIndex == 2, bounceTrigger = bounceTrigger2) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = "Đã xong")
-                }
+                Icon(Icons.Default.CheckCircle, contentDescription = "Đã xong")
             },
             label = {
                 Text(
@@ -1120,26 +1007,24 @@ private fun MainBottomNavigationBar(
             selected = selectedTabIndex == 3,
             onClick = { handleTabClick(3) },
             icon = {
-                BouncingNavIcon(isSelected = selectedTabIndex == 3, bounceTrigger = bounceTrigger3) {
-                    BadgedBox(
-                        badge = {
-                            if (incompleteNotesCount > 0) {
-                                Badge(
-                                    containerColor = Color(0xFFF59E0B),
-                                    contentColor = Color.White
-                                ) {
-                                    Text(
-                                        text = if (incompleteNotesCount > 99) "99+" else "$incompleteNotesCount",
-                                        fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp
-                                    )
-                                }
+                BadgedBox(
+                    badge = {
+                        if (incompleteNotesCount > 0) {
+                            Badge(
+                                containerColor = Color(0xFFF59E0B),
+                                contentColor = Color.White
+                            ) {
+                                Text(
+                                    text = if (incompleteNotesCount > 99) "99+" else "$incompleteNotesCount",
+                                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                )
                             }
                         }
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.StickyNote2, contentDescription = "Ghi chú")
                     }
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.StickyNote2, contentDescription = "Ghi chú")
                 }
             },
             label = {
@@ -1193,7 +1078,7 @@ private fun WelcomeLoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            FloatingWelcomeEmber()
+            EmberFlameCanvas(size = 80.dp)
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -1241,32 +1126,6 @@ private fun WelcomeLoginScreen(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun FloatingWelcomeEmber() {
-    val infiniteTransition = rememberInfiniteTransition(label = "welcomeFloating")
-    val floatOffset = infiniteTransition.animateFloat(
-        initialValue = -6f,
-        targetValue = 6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "welcomeFloat"
-    )
-
-    Box(
-        modifier = Modifier
-            .graphicsLayer { translationY = floatOffset.value }
-            .size(96.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        EmberFlameCanvas(
-            size = 96.dp,
-            emotion = EmberEmotion.NORMAL
-        )
     }
 }
 

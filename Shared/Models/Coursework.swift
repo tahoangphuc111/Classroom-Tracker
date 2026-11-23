@@ -135,13 +135,11 @@ public struct Coursework: Identifiable, Codable, Hashable, Sendable {
     }
 
     public var isCompleted: Bool {
-        if status == .turnedIn || status == .returned || isManuallyCompleted {
-            return true
-        }
-        if let dueDate, dueDate.timeIntervalSinceReferenceDate < Date.timeIntervalSinceReferenceDate {
-            return true
-        }
-        return false
+        isCompleted(at: Date())
+    }
+
+    func isCompleted(at now: Date) -> Bool {
+        status == .turnedIn || status == .returned || isManuallyCompleted || (dueDate.map { $0 < now } ?? false)
     }
 
     public var destinationURL: URL {
@@ -968,8 +966,14 @@ public extension Coursework {
 
 extension Coursework: Comparable {
     public static func < (first: Coursework, second: Coursework) -> Bool {
-        if first.isCompleted != second.isCompleted {
-            return !first.isCompleted
+        isOrderedBefore(first, second, at: Date())
+    }
+
+    static func isOrderedBefore(_ first: Coursework, _ second: Coursework, at now: Date) -> Bool {
+        let firstCompleted = first.isCompleted(at: now)
+        let secondCompleted = second.isCompleted(at: now)
+        if firstCompleted != secondCompleted {
+            return !firstCompleted
         }
         switch (first.dueDate, second.dueDate) {
         case let (d1?, d2?):

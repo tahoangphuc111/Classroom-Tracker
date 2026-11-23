@@ -234,79 +234,78 @@ class ClassroomRepository(
         content: String
     ) = withContext(Dispatchers.IO) {
         val trimmed = content.trim()
-        val existing = personalNoteDao.getNoteForCoursework(courseworkId)
-        if (existing != null) {
-            val existingDomain = existing.toDomain()
-            if (trimmed.isEmpty() && existingDomain.checklist.isEmpty()) {
-                personalNoteDao.deleteNoteById(existing.id)
-            } else {
-                val updated = existing.copy(
-                    content = trimmed,
-                    courseId = courseId ?: existing.courseId,
-                    courseName = courseName ?: existing.courseName,
-                    updatedAt = System.currentTimeMillis(),
-                    searchIndex = PersonalNote.buildSearchIndex(
-                        existing.title,
-                        trimmed,
-                        courseName ?: existing.courseName,
-                        existingDomain.checklist
+        database.withTransaction {
+            val existing = personalNoteDao.getNoteForCoursework(courseworkId)
+            if (existing != null) {
+                val existingDomain = existing.toDomain()
+                if (trimmed.isEmpty() && existingDomain.checklist.isEmpty()) {
+                    personalNoteDao.deleteNoteById(existing.id)
+                } else {
+                    val updated = existing.copy(
+                        content = trimmed,
+                        courseId = courseId ?: existing.courseId,
+                        courseName = courseName ?: existing.courseName,
+                        updatedAt = System.currentTimeMillis(),
+                        searchIndex = PersonalNote.buildSearchIndex(
+                            existing.title,
+                            trimmed,
+                            courseName ?: existing.courseName,
+                            existingDomain.checklist
+                        )
                     )
+                    personalNoteDao.upsertNote(updated)
+                }
+            } else if (trimmed.isNotEmpty()) {
+                val newNote = PersonalNote(
+                    courseworkId = courseworkId,
+                    courseId = courseId,
+                    courseName = courseName,
+                    title = title,
+                    content = trimmed
                 )
-                personalNoteDao.upsertNote(updated)
+                personalNoteDao.upsertNote(PersonalNoteEntity.fromDomain(newNote))
             }
-        } else if (trimmed.isNotEmpty()) {
-            val newNote = PersonalNote(
-                courseworkId = courseworkId,
-                courseId = courseId,
-                courseName = courseName,
-                title = title,
-                content = trimmed
-            )
-            personalNoteDao.upsertNote(PersonalNoteEntity.fromDomain(newNote))
         }
         notifyWidgetReload()
     }
     suspend fun togglePersonalNoteCompletion(id: String, isCompleted: Boolean) = withContext(Dispatchers.IO) {
-        val existing = personalNoteDao.getNoteById(id)
-        if (existing != null) {
-            val domain = existing.toDomain()
-            if (domain.checklist.isNotEmpty()) {
-                val updatedChecklist = domain.checklist.map { it.copy(isCompleted = isCompleted) }
-                val updatedNote = domain.copy(
+        val changed = database.withTransaction {
+            val note = personalNoteDao.getNoteById(id)?.toDomain() ?: return@withTransaction false
+            if (note.checklist.isEmpty()) {
+                personalNoteDao.updateCompletionStatus(id, isCompleted)
+            } else {
+                val updated = note.copy(
                     isCompleted = isCompleted,
-                    checklist = updatedChecklist,
+                    checklist = note.checklist.map { it.copy(isCompleted = isCompleted) },
                     updatedAt = System.currentTimeMillis()
                 )
-                personalNoteDao.upsertNote(PersonalNoteEntity.fromDomain(updatedNote))
-            } else {
-                personalNoteDao.updateCompletionStatus(id, isCompleted)
+                personalNoteDao.upsertNote(PersonalNoteEntity.fromDomain(updated))
             }
-        } else {
-            personalNoteDao.updateCompletionStatus(id, isCompleted)
+            true
         }
-        notifyWidgetReload()
+        if (changed) notifyWidgetReload()
     }
+
     suspend fun toggleChecklistItem(noteId: String, itemId: String) = withContext(Dispatchers.IO) {
-        val entity = personalNoteDao.getNoteById(noteId) ?: return@withContext
-        val note = entity.toDomain()
-        val updatedChecklist = note.checklist.map { item ->
-            if (item.id == itemId) item.copy(isCompleted = !item.isCompleted) else item
+        val changed = database.withTransaction {
+            val note = personalNoteDao.getNoteById(noteId)?.toDomain() ?: return@withTransaction false
+            val index = note.checklist.indexOfFirst { it.id == itemId }
+            if (index < 0) return@withTransaction false
+
+            val updatedChecklist = note.checklist.toMutableList()
+            val item = updatedChecklist[index]
+            updatedChecklist[index] = item.copy(isCompleted = !item.isCompleted)
+            val updated = note.copy(
+                checklist = updatedChecklist,
+                isCompleted = updatedChecklist.all { it.isCompleted },
+                updatedAt = System.currentTimeMillis()
+            )
+            personalNoteDao.upsertNote(PersonalNoteEntity.fromDomain(updated))
+            true
         }
-        val allDone = updatedChecklist.isNotEmpty() && updatedChecklist.all { it.isCompleted }
-        val anyPending = updatedChecklist.any { !it.isCompleted }
-        val newNoteCompleted = when {
-            allDone -> true
-            anyPending && note.isCompleted -> false
-            else -> note.isCompleted
-        }
-        val updatedNote = note.copy(
-            checklist = updatedChecklist,
-            isCompleted = newNoteCompleted,
-            updatedAt = System.currentTimeMillis()
-        )
-        personalNoteDao.upsertNote(PersonalNoteEntity.fromDomain(updatedNote))
-        notifyWidgetReload()
+        if (changed) notifyWidgetReload()
     }
+
     suspend fun deletePersonalNote(id: String) = withContext(Dispatchers.IO) {
         personalNoteDao.deleteNoteById(id)
         notifyWidgetReload()

@@ -33,8 +33,9 @@ public final class ClassroomStorage: @unchecked Sendable {
         // Some re-signers append the team ID to both the app bundle ID and the App Group.
         let bundlePrefix = "com.phucta.ClassroomTracker."
         if let bundleIdentifier, bundleIdentifier.hasPrefix(bundlePrefix),
-           let teamID = bundleIdentifier.dropFirst(bundlePrefix.count).split(separator: ".").first,
-           teamID.range(of: "^[A-Z0-9]{10}$", options: .regularExpression) != nil {
+           let teamID = bundleIdentifier.dropFirst(bundlePrefix.count).split(separator: ".").first(where: {
+               $0.range(of: "^[A-Z0-9]{10}$", options: .regularExpression) != nil
+           }) {
             groups.append(groupPrefix + teamID)
         }
 
@@ -51,7 +52,6 @@ public final class ClassroomStorage: @unchecked Sendable {
     public let allUserDefaults: [UserDefaults]
 
     public static let tokenUserDefaultsKey = "secure_oauth_tokens_cache"
-    private let userDefaults: UserDefaults
     private let userLoggedInKey = "cached_classroom_user_logged_in"
     private let coursesKey = "cached_classroom_courses"
     private let courseworkKey = "cached_classroom_coursework"
@@ -77,8 +77,23 @@ public final class ClassroomStorage: @unchecked Sendable {
     private let ioQueue = DispatchQueue(label: "com.phucta.classroom.storage.io", qos: .utility)
     private static let ioQueueKey = DispatchSpecificKey<Void>()
     private let storageInitializedKey = "cached_classroom_storage_initialized"
+    #if os(iOS) || CLASSROOM_TESTING
+    static let widgetKind = "ClassroomWidget"
+    private static let widgetSnapshotFile = "cached_classroom_widget_snapshot.json"
+    private var widgetAuthentication: Bool?
+    private var widgetPublishPending = false
+
+    struct WidgetSnapshot: Codable {
+        let isSignedIn: Bool
+        var hasSynced = false
+        var courses: [Course] = []
+        var coursework: [Coursework] = []
+        var notes: [PersonalNote] = []
+    }
+    #else
     private var lastWidgetReloadTime: TimeInterval = 0
     private var pendingWidgetReloadWorkItem: DispatchWorkItem?
+    #endif
 
     public struct ClassroomSharedMetadata: Codable {
         public var userEmail: String?
@@ -92,7 +107,7 @@ public final class ClassroomStorage: @unchecked Sendable {
         }
     }
 
-    public static let sharedStorageDirectories: [URL] = {
+    static let appGroupDirectories: [URL] = {
         #if CLASSROOM_TESTING
         return [FileManager.default.temporaryDirectory.appendingPathComponent("classroom-tests-\(UUID().uuidString)", isDirectory: true)]
         #else
@@ -104,6 +119,13 @@ public final class ClassroomStorage: @unchecked Sendable {
                 }
             }
         }
+        return dirs
+        #endif
+    }()
+
+    public static let sharedStorageDirectories: [URL] = {
+        var dirs = appGroupDirectories
+        #if !CLASSROOM_TESTING
         if let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
             let appSupportDir = appSupport.appendingPathComponent("ClassroomTracker", isDirectory: true)
             if !dirs.contains(appSupportDir) {
@@ -113,8 +135,8 @@ public final class ClassroomStorage: @unchecked Sendable {
                 dirs.append(appSupport)
             }
         }
-        return dirs
         #endif
+        return dirs
     }()
 
     private static var inaccessibleDirectoryPaths: Set<String> = []
@@ -180,13 +202,19 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public static func isMockCourses(_ courses: [Course]) -> Bool {
-        guard !courses.isEmpty else { return false }
-        return courses.allSatisfy { $0.id.hasPrefix("c") && Int($0.id.dropFirst(1)) != nil }
+        !courses.isEmpty && courses.allSatisfy { isMockCourseID($0.id) }
     }
 
     public static func isMockCoursework(_ items: [Coursework]) -> Bool {
-        guard !items.isEmpty else { return false }
-        return items.allSatisfy { $0.id.hasPrefix("cw") && Int($0.id.dropFirst(2)) != nil }
+        !items.isEmpty && items.allSatisfy { isMockCourseworkID($0.id) }
+    }
+
+    private static func isMockCourseID(_ id: String) -> Bool {
+        id.hasPrefix("c") && Int(id.dropFirst(1)) != nil
+    }
+
+    private static func isMockCourseworkID(_ id: String) -> Bool {
+        id.hasPrefix("cw") && Int(id.dropFirst(2)) != nil
     }
 
     public func isMockCoursesData(_ data: Data) -> Bool {
@@ -295,6 +323,10 @@ public final class ClassroomStorage: @unchecked Sendable {
     public func flushIOQueue() {
         if DispatchQueue.getSpecific(key: Self.ioQueueKey) == nil {
             ioQueue.sync { }
+            #if os(iOS) || CLASSROOM_TESTING
+            // A storage write can queue the widget publication behind the first barrier.
+            ioQueue.sync { }
+            #endif
         }
     }
 
@@ -435,6 +467,9 @@ public final class ClassroomStorage: @unchecked Sendable {
 
     public func saveUserLoggedIn(_ loggedIn: Bool) {
         lock.lock()
+        #if os(iOS) || CLASSROOM_TESTING
+        widgetAuthentication = loggedIn
+        #endif
         cachedHasUserLoggedIn = loggedIn
         var metadata = cachedMetadata ?? ClassroomSharedMetadata()
         metadata.hasUserLoggedIn = loggedIn
@@ -461,18 +496,17 @@ public final class ClassroomStorage: @unchecked Sendable {
     private init() {
         var list: [UserDefaults] = []
         for id in ClassroomStorage.appGroupCandidates {
+            #if os(iOS) && !CLASSROOM_TESTING
+            guard FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id) != nil else { continue }
+            #endif
             if let ud = UserDefaults(suiteName: id) {
                 list.append(ud)
             }
         }
+        #if !CLASSROOM_TESTING
         list.append(.standard)
+        #endif
         self.allUserDefaults = list
-
-        if let candidate = ClassroomStorage.appGroupCandidates.compactMap({ UserDefaults(suiteName: $0) }).first {
-            self.userDefaults = candidate
-        } else {
-            self.userDefaults = .standard
-        }
 
         self.ioQueue.setSpecific(key: Self.ioQueueKey, value: ())
 
@@ -826,36 +860,8 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public func sortCoursework(_ items: [Coursework]) -> [Coursework] {
-        items.sorted { (first, second) -> Bool in
-            if first.isCompleted != second.isCompleted {
-                return !first.isCompleted
-            }
-            switch (first.dueDate, second.dueDate) {
-            case let (d1?, d2?):
-                if d1 != d2 { return d1 < d2 }
-                if first.normalizedTitle != second.normalizedTitle {
-                    return first.normalizedTitle < second.normalizedTitle
-                }
-                let titleOrder = first.title.localizedStandardCompare(second.title)
-                if titleOrder != .orderedSame {
-                    return titleOrder == .orderedAscending
-                }
-                return first.id < second.id
-            case (_?, nil):
-                return true
-            case (nil, _?):
-                return false
-            case (nil, nil):
-                if first.normalizedTitle != second.normalizedTitle {
-                    return first.normalizedTitle < second.normalizedTitle
-                }
-                let titleOrder = first.title.localizedStandardCompare(second.title)
-                if titleOrder != .orderedSame {
-                    return titleOrder == .orderedAscending
-                }
-                return first.id < second.id
-            }
-        }
+        let now = Date()
+        return items.sorted { Coursework.isOrderedBefore($0, $1, at: now) }
     }
 
     public func getPendingCoursework() -> [Coursework] {
@@ -908,103 +914,85 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public func getTomorrowCoursework(items: [Coursework]? = nil, courses: [Course]? = nil, includeCompleted: Bool = true, includeNotes: Bool = true) -> [Coursework] {
-        let allItems = items ?? loadCoursework()
-        let relevant = filterItemsByActiveCourses(allItems, courses: courses)
-        let nowTimestamp = Date.timeIntervalSinceReferenceDate
-        ClassroomDateFormatters.ensureDayBoundaries(nowTimestamp: nowTimestamp)
-        let startOfTodayTimestamp = ClassroomDateFormatters.startOfTodayTimestamp
-        let startOfTomorrowTimestamp = ClassroomDateFormatters.startOfTomorrowTimestamp
-        let startOfDayAfterTimestamp = ClassroomDateFormatters.startOfDayAfterTimestamp
+        let courseList = courses ?? loadCourses()
+        return getTomorrowCoursework(
+            filteredItems: filterItemsByActiveCourses(items ?? loadCoursework(), courses: courseList),
+            courses: courseList,
+            personalNotes: includeNotes ? loadPersonalNotes() : [],
+            includeCompleted: includeCompleted,
+            now: Date()
+        )
+    }
 
-        var tomorrowFiltered: [Coursework] = []
+    func getTomorrowCoursework(
+        filteredItems: [Coursework],
+        courses: [Course],
+        personalNotes: [PersonalNote],
+        includeCompleted: Bool = true,
+        now: Date
+    ) -> [Coursework] {
+        let calendar = ClassroomDateFormatters.gregorianCalendar
+        let today = calendar.startOfDay(for: now)
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today),
+              let dayAfter = calendar.date(byAdding: .day, value: 2, to: today) else { return [] }
 
-        for item in relevant {
-            let isEligible = includeCompleted ? true : !item.isCompleted
-            guard isEligible, let dueDate = item.dueDate else { continue }
-            let dueTimestamp = dueDate.timeIntervalSinceReferenceDate
-            if dueTimestamp >= startOfTomorrowTimestamp && dueTimestamp < startOfDayAfterTimestamp {
-                tomorrowFiltered.append(item)
-            }
+        enum Priority: Int {
+            case tomorrow, pendingToday, pendingLater, pendingUndated
+            case completedToday, completedLater, completedUndated, none
         }
 
-        if includeNotes {
-            let tomorrowNotes = getTomorrowPersonalNotes(includeCompleted: includeCompleted)
-            let courseList = courses ?? loadCourses()
-            let activeCourseIds = Set(courseList.filter(\.isSelectedForWidget).map(\.id))
-            let allCourseIds = Set(courseList.map(\.id))
-            let isFilterActive = activeCourseIds.count < allCourseIds.count
+        var best = Priority.none
+        var result: [Coursework] = []
+        for item in filteredItems {
+            let completed = item.isCompleted(at: now)
+            if completed && !includeCompleted { continue }
 
-            for note in tomorrowNotes {
-                if note.courseworkId == nil {
-                    if isFilterActive, let cid = note.courseId, allCourseIds.contains(cid), !activeCourseIds.contains(cid) {
-                        continue
-                    }
-                    let noteCoursework = Coursework(
-                        id: "note_\(note.id)",
-                        courseId: note.courseId ?? "personal_note",
-                        courseName: note.courseName ?? "Ghi chú",
-                        title: note.title,
-                        description: note.content,
-                        dueDate: note.dueDate,
-                        status: note.isCompleted ? .turnedIn : .pending,
-                        isManuallyCompleted: note.isCompleted
-                    )
-                    tomorrowFiltered.append(noteCoursework)
+            let priority: Priority
+            if let due = item.dueDate {
+                if due < today { continue }
+                if due < tomorrow {
+                    priority = completed ? .completedToday : .pendingToday
+                } else if due < dayAfter {
+                    priority = .tomorrow
+                } else {
+                    priority = completed ? .completedLater : .pendingLater
                 }
+            } else {
+                priority = completed ? .completedUndated : .pendingUndated
             }
+
+            if priority.rawValue < best.rawValue {
+                best = priority
+                result.removeAll(keepingCapacity: true)
+            }
+            if priority == best { result.append(item) }
         }
 
-        if !tomorrowFiltered.isEmpty { return sortCoursework(tomorrowFiltered) }
+        if !personalNotes.isEmpty {
+            let hiddenCourseIds = Set(courses.lazy.filter { !$0.isSelectedForWidget }.map(\.id))
+            for note in personalNotes {
+                guard note.courseworkId == nil, includeCompleted || !note.isCompleted,
+                      let due = note.dueDate, due >= tomorrow, due < dayAfter else { continue }
+                if let courseId = note.courseId, hiddenCourseIds.contains(courseId) { continue }
 
-        // Fallback Tier 2: Incomplete tasks due today
-        var todayIncompleteFiltered: [Coursework] = []
-        for item in relevant {
-            if item.isCompleted { continue }
-            guard let dueDate = item.dueDate else { continue }
-            let dueTimestamp = dueDate.timeIntervalSinceReferenceDate
-            if dueTimestamp >= startOfTodayTimestamp && dueTimestamp < startOfTomorrowTimestamp && dueTimestamp >= nowTimestamp {
-                todayIncompleteFiltered.append(item)
-            }
-        }
-        if !todayIncompleteFiltered.isEmpty { return sortCoursework(todayIncompleteFiltered) }
-
-        // Fallback Tier 3: Nearest upcoming tasks
-        var laterUpcoming: [Coursework] = []
-        for item in relevant {
-            let isEligible = includeCompleted ? true : !item.isCompleted
-            guard isEligible, let dueDate = item.dueDate else { continue }
-            let dueTimestamp = dueDate.timeIntervalSinceReferenceDate
-            if dueTimestamp >= startOfDayAfterTimestamp {
-                laterUpcoming.append(item)
-            }
-        }
-        if !laterUpcoming.isEmpty { return sortCoursework(laterUpcoming) }
-
-        // Fallback Tier 4: Undated tasks
-        var undated: [Coursework] = []
-        for item in relevant {
-            let isEligible = includeCompleted ? true : !item.isCompleted
-            if isEligible && item.dueDate == nil {
-                undated.append(item)
-            }
-        }
-        if !undated.isEmpty { return sortCoursework(undated) }
-
-        // Fallback Tier 5: Completed today tasks
-        if includeCompleted {
-            var todayCompletedFiltered: [Coursework] = []
-            for item in relevant {
-                if !item.isCompleted { continue }
-                guard let dueDate = item.dueDate else { continue }
-                let dueTimestamp = dueDate.timeIntervalSinceReferenceDate
-                if dueTimestamp >= startOfTodayTimestamp && dueTimestamp < startOfTomorrowTimestamp {
-                    todayCompletedFiltered.append(item)
+                if best != .tomorrow {
+                    best = .tomorrow
+                    result.removeAll(keepingCapacity: true)
                 }
+                result.append(Coursework(
+                    id: "note_\(note.id)",
+                    courseId: note.courseId ?? "personal_note",
+                    courseName: note.courseName ?? "Ghi chú",
+                    title: note.title,
+                    description: note.content,
+                    dueDate: due,
+                    status: note.isCompleted ? .turnedIn : .pending,
+                    isManuallyCompleted: note.isCompleted
+                ))
             }
-            if !todayCompletedFiltered.isEmpty { return sortCoursework(todayCompletedFiltered) }
         }
 
-        return []
+        return result.sorted { Coursework.isOrderedBefore($0, $1, at: now) }
     }
 
     public func clearAllData(includePersonalNotes: Bool = true) {
@@ -1017,6 +1005,9 @@ public final class ClassroomStorage: @unchecked Sendable {
             cachedPersonalNotes = nil
             cachedPersonalNotesTimestamp = 0
         }
+        #if os(iOS) || CLASSROOM_TESTING
+        widgetAuthentication = false
+        #endif
         cachedHasUserLoggedIn = false
         cachedMetadata = ClassroomSharedMetadata(hasUserLoggedIn: false)
         lock.unlock()
@@ -1056,7 +1047,11 @@ public final class ClassroomStorage: @unchecked Sendable {
                 ud.synchronize()
             }
 
+            #if os(iOS) || CLASSROOM_TESTING
+            self.publishWidgetSnapshot()
+            #else
             self.notifyWidgetReload()
+            #endif
         }
 
         if DispatchQueue.getSpecific(key: Self.ioQueueKey) != nil {
@@ -1177,6 +1172,9 @@ public final class ClassroomStorage: @unchecked Sendable {
             if let data = try? Self.jsonEncoder.encode(metadata) {
                 self.writeDataToAllDirectories(data, fileName: "cached_classroom_metadata.json")
             }
+            #if os(iOS) || CLASSROOM_TESTING
+            self.notifyWidgetReload()
+            #endif
         }
     }
 
@@ -1194,19 +1192,15 @@ public final class ClassroomStorage: @unchecked Sendable {
     }
 
     public func saveUserEmail(_ email: String?) {
-        let isPresent = !(email?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
         lock.lock()
-        cachedHasUserLoggedIn = isPresent
         var metadata = cachedMetadata ?? ClassroomSharedMetadata()
         metadata.userEmail = email
-        metadata.hasUserLoggedIn = isPresent
         cachedMetadata = metadata
         lock.unlock()
 
         for ud in allUserDefaults {
             if let email {
                 ud.set(email, forKey: userEmailKey)
-                ud.set(true, forKey: userLoggedInKey)
             } else {
                 ud.removeObject(forKey: userEmailKey)
             }
@@ -1235,10 +1229,21 @@ public final class ClassroomStorage: @unchecked Sendable {
 
     public func notifyWidgetReload() {
         #if canImport(WidgetKit)
-        let isAppExtension = Bundle.main.bundleURL.pathExtension == "appex"
-            || (Bundle.main.bundleIdentifier?.contains("widget") == true)
         guard !isAppExtension else { return }
 
+        #if os(iOS) || CLASSROOM_TESTING
+        lock.lock()
+        defer { lock.unlock() }
+        guard !widgetPublishPending else { return }
+        widgetPublishPending = true
+        ioQueue.async { [weak self] in
+            guard let self else { return }
+            self.lock.lock()
+            self.widgetPublishPending = false
+            self.lock.unlock()
+            self.publishWidgetSnapshot()
+        }
+        #else
         lock.lock()
         pendingWidgetReloadWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
@@ -1273,7 +1278,68 @@ public final class ClassroomStorage: @unchecked Sendable {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
         }
         #endif
+        #endif
     }
+
+    #if os(iOS) || CLASSROOM_TESTING
+    func loadWidgetSnapshot() -> WidgetSnapshot? {
+        var latest: WidgetSnapshot?
+        var latestDate = Date.distantPast
+        for directory in Self.appGroupDirectories {
+            let file = directory.appendingPathComponent(Self.widgetSnapshotFile)
+            guard let date = (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate,
+                  date > latestDate,
+                  let data = try? Data(contentsOf: file),
+                  let snapshot = try? Self.jsonDecoder.decode(WidgetSnapshot.self, from: data) else { continue }
+            latest = snapshot
+            latestDate = date
+        }
+        return latest
+    }
+
+    private func makeWidgetSnapshot() -> WidgetSnapshot? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let isSignedIn = widgetAuthentication else { return nil }
+        guard isSignedIn else { return WidgetSnapshot(isSignedIn: false) }
+
+        let courses = loadCourses().filter { !Self.isMockCourseID($0.id) }
+        let coursework = loadCoursework().filter { !Self.isMockCourseworkID($0.id) }
+        return WidgetSnapshot(
+            isSignedIn: true,
+            hasSynced: loadLastSyncTime() != nil || !coursework.isEmpty,
+            courses: courses,
+            coursework: filterItemsByActiveCourses(coursework, courses: courses),
+            notes: loadPersonalNotes().filter { $0.courseworkId == nil && $0.dueDate != nil }
+        )
+    }
+
+    private func publishWidgetSnapshot() {
+        guard !Self.appGroupDirectories.isEmpty, let snapshot = makeWidgetSnapshot() else { return }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        guard let data = try? encoder.encode(snapshot) else { return }
+
+        let logger = Logger(subsystem: "com.phucta.ClassroomTracker", category: "widget-storage")
+        var didWrite = false
+        for directory in Self.appGroupDirectories {
+            let file = directory.appendingPathComponent(Self.widgetSnapshotFile)
+            if (try? Data(contentsOf: file)) == data { continue }
+            do {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                try data.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+                didWrite = true
+            } catch {
+                logger.error("Could not save widget snapshot: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        if didWrite {
+            #if !CLASSROOM_TESTING
+            WidgetCenter.shared.reloadTimelines(ofKind: Self.widgetKind)
+            #endif
+        }
+    }
+    #endif
 
     private func ensureInitialData() {
     }

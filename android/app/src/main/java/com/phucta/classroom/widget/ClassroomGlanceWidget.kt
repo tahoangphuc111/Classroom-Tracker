@@ -98,14 +98,6 @@ open class ClassroomGlanceWidget(private val sizeOverride: WidgetSizeOverride = 
                     emptyList()
                 }
 
-                val activeCount = items.count { !it.isCompleted }
-                val hasCompleted = items.any { it.isCompleted }
-                val hasUrgent = items.any { it.isUrgent }
-                listOf(56, 88, 96).forEach { sizeDp ->
-                    val emotion = getCharacterEmotion(activeCount, hasCompleted, hasUrgent = hasUrgent, isSmall = sizeDp <= 56)
-                    EmberWidgetBitmapHelper.getEmberBitmap(context, sizeDp, if (authed) emotion else EmberEmotion.NORMAL)
-                }
-
                 Pair(authed, items)
             } catch (e: Exception) {
                 Pair(false, emptyList())

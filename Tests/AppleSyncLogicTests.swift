@@ -118,7 +118,17 @@ struct AppleSyncLogicTests {
             }
             return (200, "{}")
         }
-        await api.syncAll(sessionID: UUID(), getAccessToken: { "test" }, isSessionActive: { true })
+        let syncSession = UUID()
+        let firstSync = Task {
+            await api.syncAll(sessionID: syncSession, getAccessToken: { "test" }, isSessionActive: { true })
+        }
+        while !api.isSyncing { await Task.yield() }
+        await api.syncAll(sessionID: syncSession, getAccessToken: {
+            check(false, "Overlapping sync calls must share the same request")
+            return "unexpected-second-token"
+        }, isSessionActive: { true })
+        check(!api.isSyncing, "Overlapping sync calls must wait for the in-flight sync to finish")
+        await firstSync.value
         check(storage.loadCoursework().isEmpty, "A successful empty coursework response clears stale assignments")
         check(storage.getNoteForCoursework(courseworkId: "missing")?.content == "My notes", "Sync must preserve notes for missing assignments")
 

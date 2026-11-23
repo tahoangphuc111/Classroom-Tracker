@@ -73,7 +73,6 @@ public struct LargeWidgetView: View {
 
             if !isLoggedIn {
                 loggedOutLargeView
-                    .widgetURL(URL(string: "classroomwidget://login"))
             } else {
                 VStack(spacing: 5) {
                     HStack(alignment: .center, spacing: 14) {
@@ -242,6 +241,7 @@ public struct LargeWidgetView: View {
                 }
             }
         }
+        .widgetURL(isLoggedIn ? nil : URL(string: "classroomwidget://login"))
         .unredacted()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

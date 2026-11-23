@@ -185,7 +185,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         if let tokens = loadTokensFromKeychain(), !tokens.accessToken.isEmpty {
             self.isAuthenticated = true
             ClassroomStorage.shared.saveUserLoggedIn(true)
-            ClassroomStorage.shared.notifyWidgetReload()
             self.currentUserEmail = ClassroomStorage.shared.loadUserEmail()
             if self.currentUserEmail == nil {
                 Task { [weak self] in
@@ -194,6 +193,9 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             }
         } else {
             self.isAuthenticated = false
+            #if os(iOS)
+            ClassroomStorage.shared.saveUserLoggedIn(false)
+            #endif
         }
     }
 
@@ -333,7 +335,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
                 self.lastRedeemedAuthCode = code
                 self.pendingRedirectUri = nil
                 clearPendingVerifier()
-                self.isAuthenticated = true
                 await fetchUserInfo()
                 await ClassroomAPIService.shared.syncAll()
                 ClassroomStorage.shared.notifyWidgetReload()
@@ -475,7 +476,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         self.lastRedeemedAuthCode = code
         self.pendingRedirectUri = nil
         clearPendingVerifier()
-        self.isAuthenticated = true
         await fetchUserInfo()
         await ClassroomAPIService.shared.syncAll()
         ClassroomStorage.shared.notifyWidgetReload()
@@ -521,7 +521,6 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
         self.lastRedeemedAuthCode = code
         self.pendingRedirectUri = nil
         clearPendingVerifier()
-        self.isAuthenticated = true
         await fetchUserInfo()
         await ClassroomAPIService.shared.syncAll()
         ClassroomStorage.shared.notifyWidgetReload()
@@ -603,6 +602,12 @@ public final class GoogleOAuthService: NSObject, ObservableObject {
             expiresAt: Date().addingTimeInterval(Double(tokenResponse.expiresIn))
         )
 
+        #if os(iOS)
+        if !isAuthenticated {
+            // A new account may follow a lost Keychain session or a demo session.
+            ClassroomStorage.shared.clearAllData(includePersonalNotes: false)
+        }
+        #endif
         self.sessionID = UUID()
         saveTokensToKeychain(tokens: tokens)
         self.isAuthenticated = true

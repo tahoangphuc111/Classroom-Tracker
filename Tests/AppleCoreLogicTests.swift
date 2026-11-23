@@ -23,7 +23,7 @@ struct TestRunner {
                 ClassroomStorage.iOSAppGroupCandidates(bundleIdentifier: appID, signerGroups: []) == [originalGroup],
                 "The original iOS app must keep its existing storage group"
             )
-            for bundleID in ["\(appID).ABCDE12345", "\(appID).ABCDE12345.widget"] {
+            for bundleID in ["\(appID).ABCDE12345", "\(appID).ABCDE12345.widget", "\(widgetID).ABCDE12345"] {
                 assertCondition(
                     ClassroomStorage.iOSAppGroupCandidates(bundleIdentifier: bundleID, signerGroups: []) == [resignedGroup, originalGroup],
                     "The re-signed iOS app and widget must resolve the same App Group"
@@ -401,17 +401,47 @@ struct TestRunner {
         }
 
         do {
-            func widgetDisplayItems(isLoggedIn: Bool, items: [Coursework]) -> [Coursework] {
-                isLoggedIn ? items : []
-            }
-            let rawRealCoursework: [Coursework] = [
-                Coursework(id: "cw_secret", courseId: "c1", courseName: "Math", title: "Secret HW", status: .pending)
-            ]
-            let loggedOutDisplay = widgetDisplayItems(isLoggedIn: false, items: rawRealCoursework)
-            assertCondition(loggedOutDisplay.isEmpty, "Logged-out widget must have empty coursework list")
+            let storage = ClassroomStorage.shared
+            storage.clearAllData()
+            storage.saveUserLoggedIn(true)
+            storage.saveUserEmail(nil)
+            storage.flushIOQueue()
+            let beforeSync = storage.loadWidgetSnapshot()
+            assertCondition(beforeSync?.isSignedIn == true, "Widget login must work before the account email arrives")
+            assertCondition(beforeSync?.hasSynced == false, "The widget must distinguish waiting for sync from an empty successful sync")
 
-            let loggedInDisplay = widgetDisplayItems(isLoggedIn: true, items: rawRealCoursework)
-            assertCondition(!loggedInDisplay.isEmpty, "Logged-in widget must display coursework list")
+            let course = Course(id: "100", name: "Toán", isSelectedForWidget: true)
+            let item = Coursework(id: "200", courseId: course.id, courseName: course.name, title: "Bài tập")
+            storage.saveSyncResult(courses: [course], coursework: [item], fetchedCourseIds: [course.id])
+            storage.saveLastSyncTime(Date())
+            storage.flushIOQueue()
+            let afterSync = storage.loadWidgetSnapshot()
+            assertCondition(afterSync?.hasSynced == true && afterSync?.coursework.map(\.id) == [item.id],
+                            "Widget snapshot must contain the completed sync and its coursework")
+
+            storage.updateCourseSelection(courseId: course.id, isSelected: false)
+            storage.flushIOQueue()
+            assertCondition(storage.loadWidgetSnapshot()?.coursework.isEmpty == true, "Hiding a course must update the widget snapshot")
+
+            storage.updateCourseSelection(courseId: course.id, isSelected: true)
+            storage.saveSyncResult(courses: [course], coursework: [], fetchedCourseIds: [course.id])
+            storage.flushIOQueue()
+            let emptySync = storage.loadWidgetSnapshot()
+            assertCondition(emptySync?.hasSynced == true && emptySync?.coursework.isEmpty == true,
+                            "An authoritative empty sync must remove assignments from the widget")
+
+            storage.saveCoursework([item])
+            storage.savePersonalNotes([PersonalNote(id: "widget_note", title: "Chuẩn bị", dueDate: Date())])
+            storage.clearAllData(includePersonalNotes: false)
+            let afterLogout = storage.loadWidgetSnapshot()
+            assertCondition(afterLogout?.isSignedIn == false && afterLogout?.coursework.isEmpty == true && afterLogout?.notes.isEmpty == true,
+                            "Signing out must immediately replace the widget cache even with pending writes")
+            assertCondition(storage.loadPersonalNotes().first?.id == "widget_note", "Signing out must retain notes inside the app")
+
+            storage.populateMockDataManually()
+            storage.flushIOQueue()
+            assertCondition(storage.loadWidgetSnapshot()?.isSignedIn == false, "Demo data must not sign the widget in")
+            storage.clearAllData()
         }
 
         do {
@@ -553,6 +583,19 @@ struct TestRunner {
             )
             assertCondition(lastResortResult.count == 1, "Fallback when only completed today task exists must contain 1 item")
             assertCondition(lastResortResult.first?.id == "cw_today_finished", "Completed today task must be returned as last resort fallback")
+
+            var completedLaterTask = upcomingTask
+            completedLaterTask.status = .turnedIn
+            let undatedTask = Coursework(id: "cw_no_due_date", courseId: "c_1", courseName: "Toán", title: "Bài đọc thêm")
+            let pendingFallback = ClassroomStorage.shared.getTomorrowCoursework(
+                items: [completedTodayTask, completedLaterTask, undatedTask], courses: [], includeNotes: false
+            )
+            assertCondition(pendingFallback.map(\.id) == [undatedTask.id], "Completed work must not hide unfinished work without a deadline")
+
+            let completedFallback = ClassroomStorage.shared.getTomorrowCoursework(
+                items: [completedTodayTask, completedLaterTask], courses: [], includeNotes: false
+            )
+            assertCondition(completedFallback.map(\.id) == [completedTodayTask.id], "Completed work due today takes priority over completed work due later")
         }
 
         do {

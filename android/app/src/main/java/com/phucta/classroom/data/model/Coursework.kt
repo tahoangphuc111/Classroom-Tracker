@@ -25,10 +25,11 @@ data class Coursework(
 ) {
 
     val isCompleted: Boolean
-        get() = status == SubmissionStatus.TURNED_IN ||
-                status == SubmissionStatus.RETURNED ||
-                isManuallyCompleted ||
-                (dueEpochMillis != null && dueEpochMillis < System.currentTimeMillis())
+        get() = isCompletedAt(System.currentTimeMillis())
+
+    internal fun isCompletedAt(now: Long): Boolean = status == SubmissionStatus.TURNED_IN ||
+            status == SubmissionStatus.RETURNED || isManuallyCompleted ||
+            (dueEpochMillis != null && dueEpochMillis < now)
     val destinationURL: String
         get() {
             val link = alternateLink

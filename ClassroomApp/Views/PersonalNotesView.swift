@@ -17,9 +17,9 @@ public struct PersonalNotesView: View {
     @State private var activeSheet: ActiveNoteSheet? = nil
     @State private var emptyAppeared: Bool = false
 
-    @State private var quickTodoTitle: String = ""
-    @State private var quickTodoDue: DueDateMode = .none
-    @State private var quickTodoCourseId: String? = nil
+    @SceneStorage("notes.quickTodoTitle") private var quickTodoTitle = ""
+    @SceneStorage("notes.quickTodoDue") private var quickTodoDue: DueDateMode = .none
+    @SceneStorage("notes.quickTodoCourseId") private var quickTodoCourseId: String?
 
     public enum DueDateMode: String, CaseIterable, Identifiable {
         case none = "Không hạn"

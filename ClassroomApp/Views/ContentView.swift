@@ -1,5 +1,4 @@
 import SwiftUI
-import WidgetKit
 import Combine
 #if os(macOS)
 import AppKit
@@ -27,36 +26,10 @@ public struct SpringPressButtonStyle: ButtonStyle {
     }
 }
 
-public struct SpringPressCardModifier: ViewModifier {
-    public var scale: CGFloat
-    public var isPressed: Bool
-
-    public init(scale: CGFloat = 0.98, isPressed: Bool) {
-        self.scale = scale
-        self.isPressed = isPressed
-    }
-
-    public func body(content: Content) -> some View {
-        content
-            .scaleEffect(isPressed ? scale : 1.0)
-            .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isPressed)
-    }
-}
-
-public extension View {
-    func springPressCard(isPressed: Bool, scale: CGFloat = 0.98) -> some View {
-        modifier(SpringPressCardModifier(scale: scale, isPressed: isPressed))
-    }
-}
-
 public struct AppLogoView: View {
     public var size: CGFloat
-    public var floats: Bool
-    @State private var isFloating: Bool = false
-
-    public init(size: CGFloat = 84, floats: Bool = false) {
+    public init(size: CGFloat = 84) {
         self.size = size
-        self.floats = floats
     }
 
     public var body: some View {
@@ -86,14 +59,6 @@ public struct AppLogoView: View {
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.223, style: .continuous))
         .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 6)
-        .offset(y: floats && isFloating ? -4 : 0)
-        .scaleEffect(floats && isFloating ? 1.02 : 1.0)
-        .animation(floats ? .easeInOut(duration: 2.6).repeatForever(autoreverses: true) : nil, value: isFloating)
-        .onAppear {
-            if floats {
-                isFloating = true
-            }
-        }
     }
 
     private var fallbackIcon: some View {
@@ -102,30 +67,6 @@ public struct AppLogoView: View {
             ChunkyEmberCharacterView(emotion: .normal, size: size * 0.72)
         }
         .frame(width: size, height: size)
-    }
-}
-
-public struct FloatingEmberView: View {
-    public let emotion: EmberEmotion
-    public var size: CGFloat
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isFloating: Bool = false
-
-    public init(emotion: EmberEmotion, size: CGFloat = 52) {
-        self.emotion = emotion
-        self.size = size
-    }
-
-    public var body: some View {
-        ChunkyEmberCharacterView(emotion: emotion, size: size)
-            .offset(y: reduceMotion ? 0 : (isFloating ? -4 : 4))
-            .scaleEffect(reduceMotion ? 1.0 : (isFloating ? 1.025 : 0.975))
-            .animation(reduceMotion ? nil : .easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: isFloating)
-            .onAppear {
-                if !reduceMotion {
-                    isFloating = true
-                }
-            }
     }
 }
 
@@ -308,8 +249,6 @@ public struct ContentView: View {
     @State private var selectedSubjectFilter: String = "Tất cả"
     @State private var selectedCourseworkIds: Set<String> = []
     @State private var selectedCoursework: Coursework? = nil
-    @State private var selectedPreviewFamily: WidgetPreviewFamily = .medium
-    @State private var useSampleDataForPreview: Bool = false
     @State private var showSettingsModal: Bool = false
     @State private var showLogoutConfirmation: Bool = false
     @State private var clientIdInput: String = ""
@@ -326,23 +265,11 @@ public struct ContentView: View {
     @State private var toastDismissTask: Task<Void, Never>? = nil
     @State private var hasInitialLoadHappened: Bool = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
     @State private var showCompactCourseFilterSheet: Bool = false
     @State private var showMobileDetailSheet: Bool = false
     @State private var noteToEditFromReader: PersonalNote? = nil
-    private enum TabTransitionDirection: Sendable {
-        case forward
-        case backward
-    }
-    @State private var tabTransitionDirection: TabTransitionDirection = .forward
-    #if os(iOS)
-    @State private var tabBounceTrigger: [AppFilterCategory: Int] = [:]
-    @State private var lastTabHapticTime: TimeInterval = 0
-    @State private var lastActiveTabTapTime: TimeInterval = 0
-    @State private var dragSwitchedTabInCurrentGesture: Bool = false
-    #endif
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -355,33 +282,20 @@ public struct ContentView: View {
 
     public enum AppFilterCategory: String, CaseIterable, Identifiable {
         case tomorrow = "Báo bài Ngày mai"
-        case todayAndTomorrow = "Hôm nay & Ngày mai"
         case allUpcoming = "Tất cả sắp tới"
-        case past = "Đã quá hạn"
         case completed = "Đã hoàn thành"
         case notes = "Ghi chú cá nhân"
-        case widgetPreview = "Xem trước Widget"
 
         public var id: String { rawValue }
 
         public var icon: String {
             switch self {
             case .tomorrow: return "calendar.badge.clock"
-            case .todayAndTomorrow: return "clock"
             case .allUpcoming: return "tray"
-            case .past: return "clock.badge.exclamationmark"
             case .completed: return "checkmark.seal"
             case .notes: return "square.and.pencil"
-            case .widgetPreview: return "macwindow"
             }
         }
-    }
-
-    public enum WidgetPreviewFamily: String, CaseIterable, Identifiable {
-        case small = "Nhỏ"
-        case medium = "Vừa"
-        case large = "Lớn"
-        public var id: String { rawValue }
     }
 
     public struct CourseworkBuckets {
@@ -389,18 +303,15 @@ public struct ContentView: View {
         public var tomorrowStrict: [Coursework]
         public var today: [Coursework]
         public var laterUpcoming: [Coursework]
-        public var past: [Coursework]
         public var noDueDate: [Coursework]
         public var completed: [Coursework]
 
-        public let todayAndTomorrow: [Coursework]
         public let allUpcoming: [Coursework]
-        public var widgetItems: [Coursework] { tomorrow }
+        var baoBaiHasTomorrowTasks: Bool { tomorrow.first?.isDueTomorrow == true }
+        var baoBaiHasTodayTasks: Bool { tomorrow.first?.isDueToday == true }
 
         public let tomorrowPendingCount: Int
-        public let todayAndTomorrowPendingCount: Int
         public let allUpcomingPendingCount: Int
-        public let pastPendingCount: Int
         public let completedCount: Int
 
         public init(
@@ -408,7 +319,6 @@ public struct ContentView: View {
             tomorrowStrict: [Coursework] = [],
             today: [Coursework] = [],
             laterUpcoming: [Coursework] = [],
-            past: [Coursework] = [],
             noDueDate: [Coursework] = [],
             completed: [Coursework] = []
         ) {
@@ -416,51 +326,25 @@ public struct ContentView: View {
             self.tomorrowStrict = tomorrowStrict
             self.today = today
             self.laterUpcoming = laterUpcoming
-            self.past = past
             self.noDueDate = noDueDate
             self.completed = completed
-            self.todayAndTomorrow = today + tomorrowStrict
             self.allUpcoming = today + tomorrowStrict + laterUpcoming + noDueDate
 
-            let tomorrowPending = tomorrow.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
-            let tomorrowStrictPending = tomorrowStrict.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
-            let todayPending = today.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
-            let laterPending = laterUpcoming.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
-            let noDuePending = noDueDate.reduce(0) { $0 + ($1.isCompleted ? 0 : 1) }
-
-            self.tomorrowPendingCount = tomorrowPending
-            self.todayAndTomorrowPendingCount = todayPending + tomorrowStrictPending
-            self.allUpcomingPendingCount = todayPending + tomorrowStrictPending + laterPending + noDuePending
-            self.pastPendingCount = past.count
+            self.tomorrowPendingCount = tomorrow.count { !$0.isCompleted }
+            self.allUpcomingPendingCount = allUpcoming.count
             self.completedCount = completed.count
         }
     }
 
-    public init() {
-        #if os(iOS)
-        let tabBarAppearance = UITabBarAppearance()
-        tabBarAppearance.configureWithDefaultBackground()
-        tabBarAppearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
-
-        let itemAppearance = UITabBarItemAppearance()
-        tabBarAppearance.stackedLayoutAppearance = itemAppearance
-        tabBarAppearance.inlineLayoutAppearance = itemAppearance
-        tabBarAppearance.compactInlineLayoutAppearance = itemAppearance
-
-        UITabBar.appearance().standardAppearance = tabBarAppearance
-        UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
-        #endif
-    }
+    public init() {}
 
     private func recomputeBuckets() {
-        let activeCourseIds = Set(courses.filter(\.isSelectedForWidget).map(\.id))
-        let allCourseIds = Set(courses.map(\.id))
-        let itemsMatchCourses = allCoursework.contains { allCourseIds.contains($0.courseId) }
+        let storage = ClassroomStorage.shared
+        let activeItems = storage.filterItemsByActiveCourses(allCoursework, courses: courses)
 
         var tomorrowsStrict: [Coursework] = []
         var todays: [Coursework] = []
         var laters: [Coursework] = []
-        var pasts: [Coursework] = []
         var noDates: [Coursework] = []
         var comp: [Coursework] = []
 
@@ -472,12 +356,8 @@ public struct ContentView: View {
             return
         }
 
-        for item in allCoursework {
-            if itemsMatchCourses && !courses.isEmpty && !activeCourseIds.contains(item.courseId) {
-                continue
-            }
-
-            if item.isCompleted {
+        for item in activeItems {
+            if item.isCompleted(at: now) {
                 comp.append(item)
                 continue
             }
@@ -487,9 +367,7 @@ public struct ContentView: View {
                 continue
             }
 
-            if dueDate < now {
-                pasts.append(item)
-            } else if dueDate < startOfTomorrow {
+            if dueDate < startOfTomorrow {
                 todays.append(item)
             } else if dueDate < startOfDayAfter {
                 tomorrowsStrict.append(item)
@@ -501,26 +379,27 @@ public struct ContentView: View {
         tomorrowsStrict.sort(by: Coursework.compareByDueDateAscending)
         todays.sort(by: Coursework.compareByDueDateAscending)
         laters.sort(by: Coursework.compareByDueDateAscending)
-        pasts.sort(by: Coursework.compareByDueDateAscending)
         comp.sort(by: Coursework.compareByDueDateDescending)
         noDates.sort(by: Coursework.compareByDueDateAscending)
 
-        let baoBaiItems = ClassroomStorage.shared.getTomorrowCoursework(items: allCoursework, courses: courses, includeCompleted: true)
+        let baoBaiItems = storage.getTomorrowCoursework(
+            filteredItems: activeItems, courses: courses, personalNotes: personalNotes, now: now
+        )
 
         self.buckets = CourseworkBuckets(
             tomorrow: baoBaiItems,
             tomorrowStrict: tomorrowsStrict,
             today: todays,
             laterUpcoming: laters,
-            past: pasts,
             noDueDate: noDates,
             completed: comp
         )
 
         self.cachedBaoBaiShareText = BaoBaiShareHelper.formatBaoBaiText(
             items: self.buckets.tomorrow,
-            hasTomorrowTasks: !self.buckets.tomorrowStrict.isEmpty,
-            hasTodayTasks: !self.buckets.today.isEmpty
+            hasTomorrowTasks: self.buckets.baoBaiHasTomorrowTasks,
+            hasTodayTasks: self.buckets.baoBaiHasTodayTasks,
+            now: now
         )
 
         self.courseworkVersion &+= 1
@@ -538,35 +417,15 @@ public struct ContentView: View {
         }
     }
 
-    private var itemsForPreview: [Coursework] {
-        if useSampleDataForPreview {
-            return RisoMockData.fourTasks
-        }
-        let realItems = ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true)
-        if !realItems.isEmpty {
-            return realItems
-        }
-        if ClassroomStorage.shared.hasUserLoggedIn {
-            return []
-        }
-        return RisoMockData.fourTasks
-    }
-
     private func baseFilteredList(for category: AppFilterCategory) -> [Coursework] {
         switch category {
         case .tomorrow:
             return buckets.tomorrow
-        case .todayAndTomorrow:
-            return buckets.todayAndTomorrow
         case .allUpcoming:
             return buckets.allUpcoming
-        case .past:
-            return buckets.past
         case .completed:
             return buckets.completed
         case .notes:
-            return []
-        case .widgetPreview:
             return []
         }
     }
@@ -593,18 +452,12 @@ public struct ContentView: View {
         switch category {
         case .tomorrow:
             return buckets.tomorrowPendingCount
-        case .todayAndTomorrow:
-            return buckets.todayAndTomorrowPendingCount
         case .allUpcoming:
             return buckets.allUpcomingPendingCount
-        case .past:
-            return buckets.pastPendingCount
         case .completed:
             return buckets.completedCount
         case .notes:
             return pendingNotesCount
-        case .widgetPreview:
-            return 0
         }
     }
 
@@ -628,11 +481,9 @@ public struct ContentView: View {
         }
         switch category {
         case .tomorrow: return !buckets.tomorrow.isEmpty
-        case .todayAndTomorrow: return !buckets.todayAndTomorrow.isEmpty
         case .allUpcoming: return !buckets.allUpcoming.isEmpty
-        case .past: return !buckets.past.isEmpty
         case .completed: return !buckets.completed.isEmpty
-        case .notes, .widgetPreview: return false
+        case .notes: return false
         }
     }
 
@@ -688,28 +539,26 @@ public struct ContentView: View {
         currentFilteredList(for: selectedFilter)
     }
 
-    private func categorizedSections(for list: [Coursework], category: AppFilterCategory? = nil) -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
-        let targetCategory = category ?? selectedFilter
-        return listCache.categorizedSections(
+    private func upcomingSections(for list: [Coursework]) -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
+        listCache.categorizedSections(
             list: list,
-            category: targetCategory,
+            category: .allUpcoming,
             searchText: searchText,
             subjectFilter: selectedSubjectFilter,
             courseworkVersion: courseworkVersion
         ) {
-            computeCategorizedSections(for: list, category: targetCategory)
+            computeUpcomingSections(for: list)
         }
     }
 
-    private func computeCategorizedSections(for list: [Coursework], category: AppFilterCategory) -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
-        let targetCategory = category
-        let isDefaultFilter = searchText.trimmingCharacters(in: .whitespaces).isEmpty && (targetCategory != .allUpcoming || selectedSubjectFilter == "Tất cả")
+    private func computeUpcomingSections(for list: [Coursework]) -> (todays: [Coursework], tomorrows: [Coursework], laters: [Coursework], noDueDates: [Coursework]) {
+        let isDefaultFilter = searchText.trimmingCharacters(in: .whitespaces).isEmpty && selectedSubjectFilter == "Tất cả"
         if isDefaultFilter {
             return (
                 todays: buckets.today,
                 tomorrows: buckets.tomorrowStrict,
-                laters: targetCategory == .allUpcoming ? buckets.laterUpcoming : [],
-                noDueDates: targetCategory == .allUpcoming ? buckets.noDueDate : []
+                laters: buckets.laterUpcoming,
+                noDueDates: buckets.noDueDate
             )
         } else {
             let calendar = ClassroomDateFormatters.gregorianCalendar
@@ -727,14 +576,14 @@ public struct ContentView: View {
 
             for item in list {
                 guard let dueDate = item.dueDate else {
-                    if targetCategory == .allUpcoming { noDueDates.append(item) }
+                    noDueDates.append(item)
                     continue
                 }
                 if dueDate < startOfTomorrow {
                     todays.append(item)
                 } else if dueDate < startOfDayAfter {
                     tomorrows.append(item)
-                } else if targetCategory == .allUpcoming {
+                } else {
                     laters.append(item)
                 }
             }
@@ -796,8 +645,6 @@ public struct ContentView: View {
             hasInitialLoadHappened = true
 
             if authService.isAuthenticated {
-                ClassroomStorage.shared.saveUserLoggedIn(true)
-                ClassroomStorage.shared.notifyWidgetReload()
                 Task {
                     await Task.yield()
                     await apiService.syncAll()
@@ -816,12 +663,25 @@ public struct ContentView: View {
                 reminderService.updateReminderContent()
             }
         }
-        .onChange(of: selectedFilter) { oldValue, newValue in
-            let oldIdx = categoryOrder(oldValue)
-            let newIdx = categoryOrder(newValue)
-            if oldIdx != newIdx {
-                tabTransitionDirection = newIdx > oldIdx ? .forward : .backward
+        #if os(iOS)
+        .onOpenURL { url in
+            Task { @MainActor in
+                if url.scheme?.lowercased() == "classroomwidget", url.query == nil,
+                   url.host == "login" || url.host == "sync" {
+                    if authService.isAuthenticated {
+                        ClassroomStorage.shared.notifyWidgetReload()
+                        await syncCourseworkWithFeedback()
+                    } else {
+                        isDemoMode = false
+                        showSettingsModal = false
+                    }
+                    return
+                }
+                _ = await authService.handleIncomingURL(url)
             }
+        }
+        #endif
+        .onChange(of: selectedFilter) {
             selectedSubjectFilter = "Tất cả"
             updateAvailableSubjectPills()
             completedDisplayLimit = 30
@@ -858,7 +718,6 @@ public struct ContentView: View {
             guard hasInitialLoadHappened, scenePhase == .active else { return }
             refreshData()
             if authService.isAuthenticated {
-                ClassroomStorage.shared.saveUserLoggedIn(true)
                 ClassroomStorage.shared.notifyWidgetReload()
                 let shouldSync: Bool
                 if let lastSync = ClassroomStorage.shared.loadLastSyncTime() {
@@ -903,20 +762,15 @@ public struct ContentView: View {
             }
         }
         .onChange(of: authService.isAuthenticated) {
-            if authService.isAuthenticated {
-                ClassroomStorage.shared.saveUserLoggedIn(true)
-                ClassroomStorage.shared.notifyWidgetReload()
-                Task { @MainActor in
-                    await apiService.syncAll()
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                        refreshData()
-                    }
+            isDemoMode = false
+            refreshData()
+            autoSelectFirstItem()
+        }
+        .onChange(of: apiService.isSyncing) {
+            if !apiService.isSyncing {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                    refreshData()
                 }
-            } else {
-                ClassroomStorage.shared.saveUserLoggedIn(false)
-                ClassroomStorage.shared.notifyWidgetReload()
-                refreshData()
-                autoSelectFirstItem()
             }
         }
         .sheet(isPresented: $showSettingsModal) {
@@ -956,7 +810,7 @@ public struct ContentView: View {
             VStack(spacing: 24) {
                 Spacer()
 
-                AppLogoView(size: 88, floats: true)
+                AppLogoView(size: 88)
                     .opacity(welcomeAppeared ? 1 : 0)
                     .scaleEffect(welcomeAppeared ? 1 : 0.85)
 
@@ -1131,92 +985,30 @@ public struct ContentView: View {
         .notes
     ]
 
-    private var activeCompactTab: AppFilterCategory {
-        if selectedFilter == .todayAndTomorrow || selectedFilter == .past {
-            return .allUpcoming
-        }
-        return selectedFilter
-    }
-
-    private func compactTabIndex(_ category: AppFilterCategory) -> Int {
-        compactTabCategories.firstIndex(of: category) ?? 0
-    }
-
-    private func triggerTabSelectionHaptic() {
-        let now = ProcessInfo.processInfo.systemUptime
-
-        guard now - lastTabHapticTime >= 0.16 else { return }
-        lastTabHapticTime = now
-        PlatformHaptics.trigger(.selection)
-    }
-
-    private func triggerActiveTabReTapHaptic() {
-        let now = ProcessInfo.processInfo.systemUptime
-
-        guard now - lastActiveTabTapTime >= 0.35 else { return }
-        lastActiveTabTapTime = now
-        PlatformHaptics.trigger(.light)
-    }
-
     private func switchCompactTab(to category: AppFilterCategory) {
-        let oldCategory = activeCompactTab
-        if oldCategory != category {
-            triggerTabSelectionHaptic()
-            let oldIndex = compactTabIndex(oldCategory)
-            let newIndex = compactTabIndex(category)
-            tabTransitionDirection = newIndex > oldIndex ? .forward : .backward
-            if !searchText.isEmpty {
-                searchText = ""
-            }
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.76)) {
-                selectedFilter = category
-            }
-            tabBounceTrigger[category, default: 0] += 1
-        } else {
-            triggerActiveTabReTapHaptic()
-            tabBounceTrigger[category, default: 0] += 1
-        }
+        guard selectedFilter != category else { return }
+        PlatformHaptics.trigger(.selection)
+        searchText = ""
+        selectedFilter = category
     }
 
     private var compactTabContentView: some View {
-        GeometryReader { geometry in
-            let width = geometry.size.width
-            let currentIdx = compactTabIndex(activeCompactTab)
-            let slideDistance = min(width * 0.65, 260)
-
-            ZStack {
-                ForEach(compactTabCategories) { tab in
-                    let tabIdx = compactTabIndex(tab)
-                    let offset: CGFloat = tabIdx == currentIdx ? 0 : (tabIdx < currentIdx ? -slideDistance : slideDistance)
-
-                    NavigationStack {
-                        detailMasterView(isCompact: true, tabCategory: tab)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .offset(x: offset)
-                    .opacity(tabIdx == currentIdx ? 1.0 : 0.0)
-                    .allowsHitTesting(tabIdx == currentIdx)
-                }
-            }
-            .animation(.spring(response: 0.32, dampingFraction: 0.80), value: activeCompactTab)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 25)
-                    .onEnded { value in
-                        let horiz = value.translation.width
-                        let vert = value.translation.height
-                        guard abs(horiz) > abs(vert) * 1.5, abs(horiz) > 40 else { return }
-                        if horiz < 0 {
-                            if currentIdx < compactTabCategories.count - 1 {
-                                switchCompactTab(to: compactTabCategories[currentIdx + 1])
-                            }
-                        } else {
-                            if currentIdx > 0 {
-                                switchCompactTab(to: compactTabCategories[currentIdx - 1])
-                            }
-                        }
-                    }
-            )
+        NavigationStack {
+            detailMasterView(isCompact: true)
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 25)
+                .onEnded { value in
+                    let horizontal = value.translation.width
+                    guard abs(horizontal) > abs(value.translation.height) * 1.5,
+                          abs(horizontal) > 40,
+                          let current = compactTabCategories.firstIndex(of: selectedFilter) else { return }
+                    let next = current + (horizontal < 0 ? 1 : -1)
+                    if compactTabCategories.indices.contains(next) {
+                        switchCompactTab(to: compactTabCategories[next])
+                    }
+                }
+        )
     }
 
     private func compactTabTitle(for category: AppFilterCategory) -> String {
@@ -1225,7 +1017,6 @@ public struct ContentView: View {
         case .allUpcoming: return "Sắp tới"
         case .completed: return "Đã xong"
         case .notes: return "Ghi chú"
-        default: return category.rawValue
         }
     }
 
@@ -1235,191 +1026,63 @@ public struct ContentView: View {
         case .allUpcoming: return "tray.fill"
         case .completed: return "checkmark.seal.fill"
         case .notes: return "square.and.pencil"
-        default: return "circle"
         }
     }
 
-    private func compactTabBadgeCount(for category: AppFilterCategory, upcomingBadge: Int) -> Int {
+    private func compactTabBadgeCount(for category: AppFilterCategory) -> Int {
         switch category {
         case .tomorrow: return buckets.tomorrowPendingCount
-        case .allUpcoming: return upcomingBadge
+        case .allUpcoming: return buckets.allUpcomingPendingCount
         case .completed: return 0
         case .notes: return pendingNotesCount
-        default: return 0
         }
     }
 
-    private var compactCustomTabBar: some View {
-        let upcomingBadge = buckets.allUpcomingPendingCount + buckets.pastPendingCount
-        let barHeight: CGFloat = isLandscapePhone ? 40 : 52
-        let trackHeight: CGFloat = isLandscapePhone ? 34 : 46
-        let trackCornerRadius: CGFloat = isLandscapePhone ? 13 : 15
-        let trackPadding: CGFloat = 2.5
-        let thumbHeight = trackHeight - trackPadding * 2
-        let thumbCornerRadius: CGFloat = isLandscapePhone ? 10.5 : 12.5
-        let currentIdx = compactTabIndex(activeCompactTab)
-        let tabCount = compactTabCategories.count
-
-        return VStack(spacing: 0) {
-            Divider()
-                .opacity(0.35)
-
-            GeometryReader { proxy in
-                let availableWidth = proxy.size.width
-                let horizontalInset: CGFloat = isLandscapePhone ? 16 : 10
-                let trackWidth = max(0, availableWidth - horizontalInset * 2)
-                let innerTrackWidth = max(0, trackWidth - trackPadding * 2)
-                let tabWidth = tabCount > 0 ? innerTrackWidth / CGFloat(tabCount) : 0
-
-                ZStack(alignment: .leading) {
-
-                    RoundedRectangle(cornerRadius: trackCornerRadius, style: .continuous)
-                        .fill(Color.platformSubtleFill.opacity(colorScheme == .dark ? 0.38 : 0.22))
-
-                    RoundedRectangle(cornerRadius: thumbCornerRadius, style: .continuous)
-                        .fill(Color.platformControlBackground)
-                        .shadow(
-                            color: Color.black.opacity(colorScheme == .dark ? 0.30 : 0.08),
-                            radius: 3.5,
-                            x: 0,
-                            y: 1.5
-                        )
-                        .frame(width: tabWidth, height: thumbHeight)
-                        .offset(x: trackPadding + CGFloat(currentIdx) * tabWidth)
-                        .animation(.spring(response: 0.32, dampingFraction: 0.74), value: currentIdx)
-
-                    HStack(spacing: 0) {
-                        ForEach(compactTabCategories) { tab in
-                            let isSelected = (activeCompactTab == tab)
-                            CompactTabBarSliderItem(
-                                category: tab,
-                                title: compactTabTitle(for: tab),
-                                icon: compactTabIcon(for: tab),
-                                badgeCount: compactTabBadgeCount(for: tab, upcomingBadge: upcomingBadge),
-                                isSelected: isSelected,
-                                bounce: tabBounceTrigger[tab, default: 0],
-                                isLandscapePhone: isLandscapePhone,
-                                iconColor: isSelected ? categoryIconColor(tab) : Color.platformTextSecondary,
-                                textColor: isSelected ? Color.platformTextPrimary : Color.platformTextSecondary
-                            )
-                            .frame(width: tabWidth, height: thumbHeight)
-                        }
-                    }
-                    .padding(trackPadding)
-                }
-                .frame(width: trackWidth, height: trackHeight)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { gesture in
-                            let relativeX = gesture.location.x - horizontalInset - trackPadding
-                            guard tabWidth > 0 else { return }
-                            let rawIdx = Int(relativeX / tabWidth)
-                            let clampedIdx = min(max(rawIdx, 0), tabCount - 1)
-                            let target = compactTabCategories[clampedIdx]
-                            if target != activeCompactTab {
-                                dragSwitchedTabInCurrentGesture = true
-                                switchCompactTab(to: target)
-                            }
-                        }
-                        .onEnded { gesture in
-                            let relativeX = gesture.location.x - horizontalInset - trackPadding
-                            guard tabWidth > 0 else { return }
-                            let rawIdx = Int(relativeX / tabWidth)
-                            let clampedIdx = min(max(rawIdx, 0), tabCount - 1)
-                            let target = compactTabCategories[clampedIdx]
-                            if !dragSwitchedTabInCurrentGesture {
-                                if target == activeCompactTab && abs(gesture.translation.width) < 8 {
-                                    triggerActiveTabReTapHaptic()
-                                    tabBounceTrigger[target, default: 0] += 1
+    private var compactTabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(compactTabCategories) { tab in
+                let isSelected = selectedFilter == tab
+                let count = compactTabBadgeCount(for: tab)
+                Button {
+                    switchCompactTab(to: tab)
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: compactTabIcon(for: tab))
+                            .font(.system(size: isLandscapePhone ? 15 : 18, weight: .semibold))
+                            .overlay(alignment: .topTrailing) {
+                                if count > 0 {
+                                    Text(count > 99 ? "99+" : "\(count)")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 4)
+                                        .background(categoryIconColor(tab), in: Capsule())
+                                        .offset(x: 12, y: -5)
                                 }
                             }
-                            dragSwitchedTabInCurrentGesture = false
-                        }
-                )
-            }
-            .frame(height: barHeight)
-            .padding(.top, isLandscapePhone ? 1 : 3)
-            .padding(.bottom, isLandscapePhone ? 1 : 3)
-        }
-        .background {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea(edges: .bottom)
-        }
-    }
-
-    private struct CompactTabBarSliderItem: View {
-        let category: AppFilterCategory
-        let title: String
-        let icon: String
-        let badgeCount: Int
-        let isSelected: Bool
-        let bounce: Int
-        let isLandscapePhone: Bool
-        let iconColor: Color
-        let textColor: Color
-
-        @State private var bounceScale: CGFloat = 1.0
-        @State private var bounceOffset: CGFloat = 0.0
-
-        var body: some View {
-            let iconSize: CGFloat = isLandscapePhone ? 15 : 18
-            let textSize: CGFloat = isLandscapePhone ? 9.5 : 10.5
-
-            VStack(spacing: isLandscapePhone ? 1 : 2) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: icon)
-                        .font(.system(size: iconSize, weight: isSelected ? .bold : .semibold))
-                        .foregroundStyle(iconColor)
-                        .symbolEffect(.bounce.up.byLayer, options: .speed(1.2), value: bounce)
-                        .scaleEffect(bounceScale * (isSelected ? 1.06 : 1.0))
-                        .offset(y: bounceOffset)
-                        .frame(width: 28, height: isLandscapePhone ? 16 : 20)
-                        .onChange(of: bounce) { _, _ in
-                            withAnimation(.spring(response: 0.16, dampingFraction: 0.42)) {
-                                bounceScale = 1.18
-                                bounceOffset = -3.2
-                            }
-                            withAnimation(.spring(response: 0.34, dampingFraction: 0.58).delay(0.10)) {
-                                bounceScale = 1.0
-                                bounceOffset = 0.0
-                            }
-                        }
-
-                    if badgeCount > 0 {
-                        Text(badgeCount > 99 ? "99+" : "\(badgeCount)")
-                            .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(
-                                Capsule().fill(iconColor)
-                            )
-                            .offset(x: 9, y: -4)
-                            .contentTransition(.numericText())
+                        Text(compactTabTitle(for: tab))
+                            .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
+                            .lineLimit(1)
                     }
+                    .foregroundStyle(isSelected ? categoryIconColor(tab) : Color.platformTextSecondary)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-
-                Text(title)
-                    .font(.system(size: textSize, weight: isSelected ? .bold : .medium, design: .rounded))
-                    .foregroundStyle(textColor)
-                    .lineLimit(1)
+                .buttonStyle(.plain)
+                .accessibilityLabel(compactTabTitle(for: tab))
+                .accessibilityValue(count > 0 ? "\(count) mục" : "")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
-            .padding(.horizontal, 2)
-            .padding(.vertical, 2)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
-            .animation(.spring(response: 0.28, dampingFraction: 0.78), value: isSelected)
         }
+        .padding(.horizontal, 10)
+        .background(Color.platformWindowBackground.ignoresSafeArea(edges: .bottom))
+        .overlay(alignment: .top) { Divider() }
     }
 
     @ViewBuilder
     private var compactAppView: some View {
         compactTabContentView
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                compactCustomTabBar
+                compactTabBar
             }
             .sheet(isPresented: $showCompactCourseFilterSheet) {
                 compactCourseFilterSheetView
@@ -1493,14 +1156,7 @@ public struct ContentView: View {
             get: { selectedFilter },
             set: {
                 if let val = $0 {
-                    let oldIdx = categoryOrder(selectedFilter)
-                    let newIdx = categoryOrder(val)
-                    if oldIdx != newIdx {
-                        tabTransitionDirection = newIdx > oldIdx ? .forward : .backward
-                    }
-                    withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
-                        selectedFilter = val
-                    }
+                    selectedFilter = val
                     #if os(iOS)
                     preferredCompactColumn = .detail
                     if isLandscapePhone {
@@ -1545,17 +1201,9 @@ public struct ContentView: View {
 
             Section("Danh mục báo bài") {
                 sidebarCategoryRow(for: .tomorrow, count: buckets.tomorrowPendingCount)
-                sidebarCategoryRow(for: .todayAndTomorrow, count: buckets.todayAndTomorrowPendingCount)
                 sidebarCategoryRow(for: .allUpcoming, count: buckets.allUpcomingPendingCount)
-                if buckets.past.count > 0 {
-                    sidebarCategoryRow(for: .past, count: buckets.past.count)
-                }
                 sidebarCategoryRow(for: .completed, count: buckets.completed.count)
                 sidebarCategoryRow(for: .notes, count: pendingNotesCount > 0 ? pendingNotesCount : nil)
-            }
-
-            Section("Cấu hình Widget") {
-                sidebarCategoryRow(for: .widgetPreview, count: nil)
             }
 
             Section {
@@ -1604,14 +1252,7 @@ public struct ContentView: View {
         sidebarCategoryRowContent(for: category, count: count, isSelected: isSelected)
             .contentShape(Rectangle())
             .onTapGesture {
-                let oldIdx = categoryOrder(selectedFilter)
-                let newIdx = categoryOrder(category)
-                if oldIdx != newIdx {
-                    tabTransitionDirection = newIdx > oldIdx ? .forward : .backward
-                }
-                withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
-                    selectedFilter = category
-                }
+                selectedFilter = category
                 #if os(iOS)
                 preferredCompactColumn = .detail
                 if isLandscapePhone {
@@ -1677,36 +1318,12 @@ public struct ContentView: View {
         .animation(.spring(response: 0.30, dampingFraction: 0.75), value: isSelected)
     }
 
-    private func categoryOrder(_ category: AppFilterCategory) -> Int {
-        switch category {
-        case .tomorrow: return 0
-        case .todayAndTomorrow: return 1
-        case .allUpcoming: return 2
-        case .past: return 3
-        case .completed: return 4
-        case .notes: return 5
-        case .widgetPreview: return 6
-        }
-    }
-
-    private var macOSTabTransition: AnyTransition {
-        let offset: CGFloat = 16
-        let moveX = tabTransitionDirection == .forward ? offset : -offset
-        return .asymmetric(
-            insertion: .opacity.combined(with: .offset(x: moveX)),
-            removal: .opacity.combined(with: .offset(x: -moveX))
-        )
-    }
-
     private func categoryIconColor(_ category: AppFilterCategory) -> Color {
         switch category {
         case .tomorrow: return Color(red: 0.12, green: 0.52, blue: 0.95)
-        case .todayAndTomorrow: return Color(red: 0.88, green: 0.48, blue: 0.06)
         case .allUpcoming: return Color(red: 0.38, green: 0.42, blue: 0.82)
-        case .past: return Color(red: 0.86, green: 0.24, blue: 0.26)
         case .completed: return Color(red: 0.12, green: 0.62, blue: 0.35)
         case .notes: return Color(red: 0.95, green: 0.55, blue: 0.10)
-        case .widgetPreview: return Color(red: 0.55, green: 0.35, blue: 0.85)
         }
     }
 
@@ -1719,8 +1336,8 @@ public struct ContentView: View {
     }
 
     @ViewBuilder
-    private func detailMasterView(isCompact: Bool, tabCategory: AppFilterCategory? = nil) -> some View {
-        let activeCategory = tabCategory ?? selectedFilter
+    private func detailMasterView(isCompact: Bool) -> some View {
+        let activeCategory = selectedFilter
         VStack(spacing: 0) {
             headerBarView(category: activeCategory)
 
@@ -1730,14 +1347,14 @@ public struct ContentView: View {
 
             Divider()
 
-            detailBodyContent(for: activeCategory, isCompact: isCompact)
+            detailCategoryView(for: activeCategory, isCompact: isCompact)
         }
         .navigationTitle(activeCategory.rawValue)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .background {
-            if !showSettingsModal && activeCategory != .notes && activeCategory != .widgetPreview && courseworkNoteToEditCourseworkId == nil {
+            if !showSettingsModal && activeCategory != .notes && courseworkNoteToEditCourseworkId == nil {
                 Group {
                     if !isSearchFocused {
                         Button("") { selectNextItem() }
@@ -1822,25 +1439,7 @@ public struct ContentView: View {
                 Button {
                     Task { @MainActor in
                         triggerHapticFeedback()
-                        await apiService.syncAll()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            refreshData()
-                        }
-                        if let error = apiService.syncErrorMessage {
-                            showToast(
-                                title: "Đồng bộ thất bại",
-                                subtitle: error,
-                                icon: "exclamationmark.triangle.fill",
-                                tint: .red
-                            )
-                        } else {
-                            showToast(
-                                title: "Đồng bộ hoàn tất!",
-                                subtitle: "Đã cập nhật dữ liệu mới nhất từ Classroom",
-                                icon: "arrow.triangle.2.circlepath",
-                                tint: .blue
-                            )
-                        }
+                        await syncCourseworkWithFeedback()
                     }
                 } label: {
                     #if os(iOS)
@@ -1863,13 +1462,6 @@ public struct ContentView: View {
                     }
                     #endif
                 }
-                .onChange(of: apiService.isSyncing) {
-                    if !apiService.isSyncing {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                            refreshData()
-                        }
-                    }
-                }
                 .keyboardShortcut("r", modifiers: [.command])
                 .disabled(apiService.isSyncing || !authService.isAuthenticated)
                 .help("Đồng bộ bài tập từ Google Classroom (⌘R)")
@@ -1888,44 +1480,8 @@ public struct ContentView: View {
     }
 
     @ViewBuilder
-    private func detailBodyContent(for activeCategory: AppFilterCategory, isCompact: Bool) -> some View {
-        #if os(macOS)
-        ZStack {
-            detailCategoryView(for: activeCategory, isCompact: isCompact)
-                .id(activeCategory)
-                .transition(macOSTabTransition)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipped()
-        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: activeCategory)
-        #else
-        if isCompact {
-            detailCategoryView(for: activeCategory, isCompact: isCompact)
-        } else {
-            ZStack {
-                detailCategoryView(for: activeCategory, isCompact: isCompact)
-                    .id(activeCategory)
-                    .transition(macOSTabTransition)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
-            .animation(.spring(response: 0.28, dampingFraction: 0.82), value: activeCategory)
-        }
-        #endif
-    }
-
-    @ViewBuilder
     private func detailCategoryView(for activeCategory: AppFilterCategory, isCompact: Bool) -> some View {
-        if activeCategory == .widgetPreview {
-            ScrollView {
-                widgetPreviewSection
-                    #if os(iOS)
-                    .padding(horizontalSizeClass == .compact ? 12 : 24)
-                    #else
-                    .padding(24)
-                    #endif
-            }
-        } else if activeCategory == .notes {
+        if activeCategory == .notes {
             PersonalNotesView(
                 notes: personalNotes,
                 courses: courses,
@@ -2152,22 +1708,7 @@ public struct ContentView: View {
                     .buttonStyle(SpringPressButtonStyle(scale: 0.94, pressedOpacity: 0.88))
                     .fixedSize()
 
-                    if category == .widgetPreview {
-                        HStack(spacing: 4) {
-                            Image(systemName: "macwindow.on.rectangle")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text("Xem trước")
-                                .font(.system(size: 13.5, weight: .medium))
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(.purple)
-                        .padding(.horizontal, 9.5)
-                        .padding(.vertical, 5)
-                        .background(
-                            Capsule().fill(Color.purple.opacity(0.10))
-                        )
-                        .fixedSize()
-                    } else if category == .notes {
+                    if category == .notes {
                         if pendingNotesCount == 0 && totalIndependentNotesCount > 0 {
                             HStack(spacing: 5) {
                                 Image(systemName: "checkmark.circle.fill")
@@ -2281,22 +1822,7 @@ public struct ContentView: View {
             Spacer()
 
             HStack(spacing: 8) {
-                if category == .widgetPreview {
-                    HStack(spacing: 6) {
-                        Image(systemName: "macwindow.on.rectangle")
-                            .font(.system(size: 12.5, weight: .semibold))
-                        Text("Cấu hình & Xem trước Widget")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.purple)
-                            .lineLimit(1)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(
-                        Capsule().fill(Color.purple.opacity(0.10))
-                    )
-                    .fixedSize()
-                } else if category == .notes {
+                if category == .notes {
                     if pendingNotesCount == 0 && totalIndependentNotesCount > 0 {
                         HStack(spacing: 5) {
                             Image(systemName: "checkmark.circle.fill")
@@ -2666,13 +2192,11 @@ public struct ContentView: View {
 
             Divider()
 
-            let hasOverdueToDisplay = activeCategory == .allUpcoming && !buckets.past.isEmpty && searchText.isEmpty && selectedSubjectFilter == "Tất cả"
             let isCategoryFiltering = (activeCategory == .allUpcoming || activeCategory == .completed) && selectedSubjectFilter != "Tất cả"
-            if list.isEmpty && !hasOverdueToDisplay {
+            if list.isEmpty {
                 AssignmentListEmptyView(
                     filter: activeCategory,
                     isSearching: !searchText.trimmingCharacters(in: .whitespaces).isEmpty || isCategoryFiltering,
-                    searchText: searchText.isEmpty ? (selectedSubjectFilter != "Tất cả" ? "Môn \(selectedSubjectFilter)" : "") : searchText,
                     onClearSearch: {
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
                             searchText = ""
@@ -2690,12 +2214,11 @@ public struct ContentView: View {
                     LazyVStack(alignment: .leading, spacing: 8) {
                         if activeCategory == .tomorrow {
                             if !list.isEmpty && searchText.isEmpty {
-                                TomorrowHeroBanner()
                                 TomorrowProgressHeroCard(
                                     totalCount: buckets.tomorrow.count,
                                     completedCount: max(0, buckets.tomorrow.count - buckets.tomorrowPendingCount),
-                                    hasTomorrowTasks: !buckets.tomorrowStrict.isEmpty,
-                                    hasTodayTasks: !buckets.today.isEmpty,
+                                    hasTomorrowTasks: buckets.baoBaiHasTomorrowTasks,
+                                    hasTodayTasks: buckets.baoBaiHasTodayTasks,
                                     shareText: formattedBaoBaiShareText
                                 )
                             }
@@ -2719,15 +2242,8 @@ public struct ContentView: View {
                                     assignmentItemRow(item: item, isWide: isWide)
                                 }
                             }
-                        } else if activeCategory == .todayAndTomorrow || activeCategory == .allUpcoming {
-                            let sections = categorizedSections(for: list, category: activeCategory)
-
-                            if hasOverdueToDisplay {
-                                SectionHeaderPill(title: "QUÁ HẠN", count: buckets.past.count, icon: "clock.badge.exclamationmark.fill", color: Color(red: 0.86, green: 0.24, blue: 0.26))
-                                ForEach(buckets.past) { item in
-                                    assignmentItemRow(item: item, isWide: isWide)
-                                }
-                            }
+                        } else if activeCategory == .allUpcoming {
+                            let sections = upcomingSections(for: list)
 
                             if !sections.todays.isEmpty {
                                 SectionHeaderPill(title: "HÔM NAY", count: sections.todays.count, icon: "clock.fill", color: Color(red: 0.95, green: 0.55, blue: 0.10))
@@ -2853,8 +2369,8 @@ public struct ContentView: View {
         }
         return BaoBaiShareHelper.formatBaoBaiText(
             items: buckets.tomorrow,
-            hasTomorrowTasks: !buckets.tomorrowStrict.isEmpty,
-            hasTodayTasks: !buckets.today.isEmpty
+            hasTomorrowTasks: buckets.baoBaiHasTomorrowTasks,
+            hasTodayTasks: buckets.baoBaiHasTodayTasks
         )
     }
 
@@ -2918,185 +2434,6 @@ public struct ContentView: View {
                 savePersonalNoteItem(updated)
             }
         )
-    }
-
-    private var widgetPreviewSection: some View {
-        VStack(spacing: 24) {
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Xem trước Widget trên màn hình")
-                        .font(.headline)
-                    Text("Widget sẽ hiển thị tương tự khi bạn thêm vào màn hình chính.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                #if os(iOS)
-                if horizontalSizeClass == .compact {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Picker("Kích thước", selection: $selectedPreviewFamily) {
-                            ForEach(WidgetPreviewFamily.allCases) { family in
-                                Text(family.rawValue).tag(family)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-
-                        Toggle("Dùng dữ liệu mẫu", isOn: $useSampleDataForPreview)
-                            .toggleStyle(.switch)
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                } else {
-                    regularPreviewControls
-                }
-                #else
-                regularPreviewControls
-                #endif
-
-                if !useSampleDataForPreview && !ClassroomStorage.shared.hasUserLoggedIn && ClassroomStorage.shared.getTomorrowCoursework(includeCompleted: true).isEmpty {
-                    HStack(spacing: 4) {
-                        Image(systemName: "info.circle")
-                        Text("Chưa đăng nhập (đang tự động dùng dữ liệu mẫu cho xem trước)")
-                    }
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                }
-
-                GeometryReader { cardGeometry in
-                    let availableWidth = max(0, cardGeometry.size.width - 32)
-                    let widgetWidth: CGFloat = selectedPreviewFamily == .small ? 155 : 325
-                    let widgetHeight: CGFloat = selectedPreviewFamily == .large ? 325 : 155
-                    let previewScale = min(1, availableWidth / widgetWidth)
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 0.88, green: 0.92, blue: 0.98),
-                                        Color(red: 0.92, green: 0.88, blue: 0.96),
-                                        Color(red: 0.86, green: 0.90, blue: 0.97)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                            )
-
-                        Group {
-                            switch selectedPreviewFamily {
-                            case .small:
-                                SmallWidgetView(courseworkList: itemsForPreview)
-                            case .medium:
-                                MediumWidgetView(courseworkList: itemsForPreview)
-                            case .large:
-                                LargeWidgetView(courseworkList: itemsForPreview)
-                            }
-                        }
-                        .frame(width: widgetWidth, height: widgetHeight)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .shadow(color: .black.opacity(0.12), radius: 14, x: 0, y: 6)
-                        .scaleEffect(previewScale)
-                        .frame(width: widgetWidth * previewScale, height: widgetHeight * previewScale)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                .frame(height: selectedPreviewFamily == .large ? 390 : 220)
-                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedPreviewFamily)
-            }
-            #if os(iOS)
-            .padding(horizontalSizeClass == .compact ? 14 : 20)
-            #else
-            .padding(20)
-            #endif
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.platformControlBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.platformCardBorder, lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.02), radius: 4, x: 0, y: 1)
-
-            desktopGuideCard
-        }
-    }
-
-    private var regularPreviewControls: some View {
-        HStack(spacing: 24) {
-            HStack(spacing: 8) {
-                Text("Kích thước:")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .fixedSize()
-
-                Picker("", selection: $selectedPreviewFamily) {
-                    ForEach(WidgetPreviewFamily.allCases) { family in
-                        Text(family.rawValue).tag(family)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-                .fixedSize()
-            }
-
-            Spacer(minLength: 12)
-
-            Toggle("Dữ liệu mẫu", isOn: $useSampleDataForPreview)
-                .toggleStyle(.switch)
-                .font(.system(size: 12))
-                .lineLimit(1)
-                .fixedSize()
-        }
-    }
-
-    private var desktopGuideCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            #if os(iOS)
-            HStack(spacing: 8) {
-                Image(systemName: "apps.iphone")
-                    .font(.title3)
-                    .foregroundStyle(.blue)
-                Text("Hướng dẫn đưa Widget ra Màn hình chính (iOS)")
-                    .font(.headline)
-            }
-
-            VStack(alignment: .leading, spacing: 9) {
-                GuideStepRow(step: "1", text: "Chạm và giữ vào một vùng trống trên Màn hình chính cho đến khi các ứng dụng rung rinh.")
-                GuideStepRow(step: "2", text: "Nhấn vào nút '+' ở góc trên cùng bên trái màn hình.")
-                GuideStepRow(step: "3", text: "Tìm kiếm 'Classroom' trong danh sách tiện ích.")
-                GuideStepRow(step: "4", text: "Chọn kích thước widget mong muốn (Nhỏ, Vừa, Lớn) và nhấn 'Thêm tiện ích'!")
-            }
-            #else
-            HStack(spacing: 8) {
-                Image(systemName: "macbook.and.iphone")
-                    .font(.title3)
-                    .foregroundStyle(.blue)
-                Text("Hướng dẫn đưa Widget ra màn hình Desktop (macOS)")
-                    .font(.headline)
-            }
-
-            VStack(alignment: .leading, spacing: 9) {
-                GuideStepRow(step: "1", text: "Click chuột phải vào bất kỳ vị trí trống nào trên màn hình Desktop của bạn.")
-                GuideStepRow(step: "2", text: "Chọn 'Chỉnh sửa tiện ích...' (Edit Widgets...).")
-                GuideStepRow(step: "3", text: "Tìm kiếm 'Báo bài Ngày mai' trong danh sách tiện ích bên dưới.")
-                GuideStepRow(step: "4", text: "Kéo thả widget với kích thước mong muốn (Nhỏ, Vừa, Lớn) ra màn hình chính!")
-            }
-            #endif
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.platformControlBackground)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.platformCardBorder, lineWidth: 1)
-        )
-        .shadow(color: Color.black.opacity(0.02), radius: 4, x: 0, y: 1)
     }
 
     private var settingsSheetView: some View {
@@ -3282,15 +2619,7 @@ public struct ContentView: View {
         updatePersonalNotesCache()
         recomputeBuckets()
 
-        if let current = selectedCoursework, currentFilteredList.contains(where: { $0.id == current.id }) {
-            if let updated = currentFilteredList.first(where: { $0.id == current.id }) {
-                self.selectedCoursework = updated
-            } else if let updated = allCoursework.first(where: { $0.id == current.id }) {
-                self.selectedCoursework = updated
-            }
-        } else {
-            autoSelectFirstItem()
-        }
+        reconcileSelectionWithVisibleItems()
     }
 
     private func saveCourseworkNote(for item: Coursework, content: String) {
@@ -3342,13 +2671,17 @@ public struct ContentView: View {
 
     private func reconcileSelectionAfterFilterChange() {
         completedDisplayLimit = 30
+        reconcileSelectionWithVisibleItems()
+    }
+
+    private func reconcileSelectionWithVisibleItems() {
         let list = currentFilteredList
-        if let current = selectedCoursework, list.contains(where: { $0.id == current.id }) {
-            let availableIds = Set(list.map(\.id))
-            selectedCourseworkIds.formIntersection(availableIds)
-            if selectedCourseworkIds.isEmpty {
-                selectedCourseworkIds = [current.id]
+        if let id = selectedCoursework?.id, let current = list.first(where: { $0.id == id }) {
+            selectedCoursework = current
+            if selectedCourseworkIds.count > 1 {
+                selectedCourseworkIds.formIntersection(list.lazy.map(\.id))
             }
+            selectedCourseworkIds.insert(id)
         } else if let first = list.first {
             selectedCoursework = first
             selectedCourseworkIds = [first.id]
@@ -3560,13 +2893,37 @@ public struct ContentView: View {
         }
     }
 
+    @MainActor
+    private func syncCourseworkWithFeedback() async {
+        let session = authService.sessionID
+        await apiService.syncAll()
+        guard authService.isAuthenticated, authService.sessionID == session else { return }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            refreshData()
+        }
+        if let error = apiService.syncErrorMessage {
+            showToast(
+                title: "Đồng bộ thất bại",
+                subtitle: error,
+                icon: "exclamationmark.triangle.fill",
+                tint: .red
+            )
+        } else {
+            showToast(
+                title: "Đồng bộ hoàn tất!",
+                subtitle: "Đã cập nhật dữ liệu mới nhất từ Classroom",
+                icon: "arrow.triangle.2.circlepath",
+                tint: .blue
+            )
+        }
+    }
+
     private func startGoogleLogin() {
         isSigningIn = true
         errorMessage = nil
         Task { @MainActor in
             do {
                 try await authService.startSignIn()
-                await apiService.syncAll()
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
                     refreshData()
                 }

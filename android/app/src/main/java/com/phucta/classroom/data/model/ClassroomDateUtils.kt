@@ -1,6 +1,7 @@
 package com.phucta.classroom.data.model
 
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -25,14 +26,14 @@ object ClassroomDateUtils {
         }
     }
 
+    internal data class DayBoundaries(
+        val today: Long,
+        val tomorrow: Long,
+        val dayAfter: Long
+    )
+
     @Volatile
-    private var cachedStartOfToday: Long = 0L
-    @Volatile
-    private var cachedStartOfTomorrow: Long = 0L
-    @Volatile
-    private var cachedStartOfDayAfter: Long = 0L
-    @Volatile
-    private var cacheExpirationTime: Long = 0L
+    private var cachedDayBoundaries: DayBoundaries? = null
     @Volatile
     private var cachedTimeZone: TimeZone? = null
     @Volatile
@@ -105,10 +106,7 @@ object ClassroomDateUtils {
                         conciseDueDateCache.clear()
                         shortDateCache.clear()
                         dayAndDateCache.clear()
-                        cachedStartOfToday = 0L
-                        cachedStartOfTomorrow = 0L
-                        cachedStartOfDayAfter = 0L
-                        cacheExpirationTime = 0L
+                        cachedDayBoundaries = null
                         cacheGeneration++
                     }
                 }
@@ -125,10 +123,7 @@ object ClassroomDateUtils {
             conciseDueDateCache.clear()
             shortDateCache.clear()
             dayAndDateCache.clear()
-            cachedStartOfToday = 0L
-            cachedStartOfTomorrow = 0L
-            cachedStartOfDayAfter = 0L
-            cacheExpirationTime = 0L
+            cachedDayBoundaries = null
             cachedTimeZone = null
             cachedTimeZoneId = ""
             cacheGeneration++
@@ -136,50 +131,29 @@ object ClassroomDateUtils {
     }
 
     fun ensureDayBoundaries(now: Long = System.currentTimeMillis()) {
-        checkTimeZone()
-        if (now < cachedStartOfToday || now >= cacheExpirationTime || cachedStartOfToday == 0L) {
-            synchronized(this) {
-                if (now < cachedStartOfToday || now >= cacheExpirationTime || cachedStartOfToday == 0L) {
-                    val cal = (calendarPool.get() ?: Calendar.getInstance(TimeZone.getDefault(), Locale.US)).apply {
-                        timeZone = TimeZone.getDefault()
-                        timeInMillis = now
-                        set(Calendar.HOUR_OF_DAY, 0)
-                        set(Calendar.MINUTE, 0)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }
-                    val today = cal.timeInMillis
-                    cal.add(Calendar.DAY_OF_YEAR, 1)
-                    val tomorrow = cal.timeInMillis
-                    cal.add(Calendar.DAY_OF_YEAR, 1)
-                    val dayAfter = cal.timeInMillis
+        dayBoundaries(now)
+    }
 
-                    cachedStartOfToday = today
-                    cachedStartOfTomorrow = tomorrow
-                    cachedStartOfDayAfter = dayAfter
-                    cacheExpirationTime = minOf(tomorrow, now + 60_000L)
-                }
-            }
+    internal fun dayBoundaries(now: Long = System.currentTimeMillis()): DayBoundaries {
+        checkTimeZone()
+        cachedDayBoundaries?.let { if (now in it.today until it.tomorrow) return it }
+
+        return synchronized(this) {
+            cachedDayBoundaries?.let { if (now in it.today until it.tomorrow) return@synchronized it }
+
+            val zone = TimeZone.getDefault().toZoneId()
+            val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+            DayBoundaries(
+                today = today.atStartOfDay(zone).toInstant().toEpochMilli(),
+                tomorrow = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli(),
+                dayAfter = today.plusDays(2).atStartOfDay(zone).toInstant().toEpochMilli()
+            ).also { cachedDayBoundaries = it }
         }
     }
 
-    val startOfToday: Long
-        get() {
-            ensureDayBoundaries()
-            return cachedStartOfToday
-        }
-
-    val startOfTomorrow: Long
-        get() {
-            ensureDayBoundaries()
-            return cachedStartOfTomorrow
-        }
-
-    val startOfDayAfter: Long
-        get() {
-            ensureDayBoundaries()
-            return cachedStartOfDayAfter
-        }
+    val startOfToday: Long get() = dayBoundaries().today
+    val startOfTomorrow: Long get() = dayBoundaries().tomorrow
+    val startOfDayAfter: Long get() = dayBoundaries().dayAfter
 
     private inline fun cachedOrFormat(
         cache: FastLongStringCache,
@@ -292,14 +266,14 @@ object ClassroomDateUtils {
 
     fun isDueToday(dueEpochMillis: Long?): Boolean {
         if (dueEpochMillis == null) return false
-        ensureDayBoundaries()
-        return dueEpochMillis in cachedStartOfToday until cachedStartOfTomorrow
+        val (today, tomorrow) = dayBoundaries()
+        return dueEpochMillis in today until tomorrow
     }
 
     fun isDueTomorrow(dueEpochMillis: Long?): Boolean {
         if (dueEpochMillis == null) return false
-        ensureDayBoundaries()
-        return dueEpochMillis in cachedStartOfTomorrow until cachedStartOfDayAfter
+        val (_, tomorrow, dayAfter) = dayBoundaries()
+        return dueEpochMillis in tomorrow until dayAfter
     }
 
     fun isOverdue(dueEpochMillis: Long?, isCompleted: Boolean): Boolean {
@@ -309,16 +283,12 @@ object ClassroomDateUtils {
 
     fun isPast(dueEpochMillis: Long?): Boolean {
         if (dueEpochMillis == null) return false
-        ensureDayBoundaries()
-        return dueEpochMillis < cachedStartOfToday
+        return dueEpochMillis < dayBoundaries().today
     }
 
     fun friendlyDueString(dueEpochMillis: Long?, isCompleted: Boolean): String {
         if (dueEpochMillis == null) return "Không có hạn"
-        ensureDayBoundaries()
-        val startToday = cachedStartOfToday
-        val startTomorrow = cachedStartOfTomorrow
-        val startDayAfter = cachedStartOfDayAfter
+        val (startToday, startTomorrow, startDayAfter) = dayBoundaries()
 
         val time = buildTimeOnlyString(dueEpochMillis)
         val isEndOfDay = (time == "Cuối ngày")
@@ -377,10 +347,7 @@ object ClassroomDateUtils {
     ): String {
         if (dueEpochMillis == null) return "Không hạn"
         if (isCompleted) return "Đã xong"
-        ensureDayBoundaries()
-        val startToday = cachedStartOfToday
-        val startTomorrow = cachedStartOfTomorrow
-        val startDayAfter = cachedStartOfDayAfter
+        val (startToday, startTomorrow, startDayAfter) = dayBoundaries()
 
         val time = precomputedTimeOnly ?: buildTimeOnlyString(dueEpochMillis)
         val isEndOfDay = (time == "Cuối ngày")

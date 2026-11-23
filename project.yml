@@ -23,6 +23,12 @@ targets:
           - "Info-iOS.plist"
           - "ClassroomApp.iOS.entitlements"
       - path: Shared
+        excludes:
+          - "Assets/Editorial"
+          - "Assets/Mascot"
+          - "WidgetViews/SmallWidgetView.swift"
+          - "WidgetViews/MediumWidgetView.swift"
+          - "WidgetViews/LargeWidgetView.swift"
     settings:
       base:
         PRODUCT_NAME: "Classroom Tracker"
@@ -72,6 +78,12 @@ targets:
           - "ClassroomApp.entitlements"
           - "AppIcon.icns"
       - path: Shared
+        excludes:
+          - "Assets/Editorial"
+          - "Assets/Mascot"
+          - "WidgetViews/SmallWidgetView.swift"
+          - "WidgetViews/MediumWidgetView.swift"
+          - "WidgetViews/LargeWidgetView.swift"
     settings:
       base:
         PRODUCT_NAME: "Classroom Tracker"

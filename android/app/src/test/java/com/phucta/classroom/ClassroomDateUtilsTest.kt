@@ -15,6 +15,24 @@ class ClassroomDateUtilsTest {
         Calendar.getInstance(timeZone, Locale.US)
 
     @Test
+    fun dayBoundariesUseEachDaysOwnMidnightAfterClockChange() {
+        val originalZone = TimeZone.getDefault()
+        val zone = TimeZone.getTimeZone("America/Sao_Paulo")
+        try {
+            TimeZone.setDefault(zone)
+            val date = LocalDate.of(2018, 11, 4)
+            val today = date.atStartOfDay(zone.toZoneId()).toInstant().toEpochMilli()
+            val boundaries = ClassroomDateUtils.dayBoundaries(today)
+            assertEquals(today, boundaries.today)
+            assertEquals(today + 23 * 3_600_000L, boundaries.tomorrow)
+            assertEquals(today + 47 * 3_600_000L, boundaries.dayAfter)
+        } finally {
+            TimeZone.setDefault(originalZone)
+            ClassroomDateUtils.clearCaches()
+        }
+    }
+
+    @Test
     fun testEndOfDayFormatting() {
         val cal = gregorianCalendar().apply {
             set(Calendar.HOUR_OF_DAY, 23)
