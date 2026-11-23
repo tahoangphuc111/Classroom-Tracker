@@ -453,10 +453,11 @@ struct TestRunner {
             comp.minute = 45
             comp.second = 0
             var gregorianCal = Calendar(identifier: .gregorian)
-            gregorianCal.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh")!
+            // Coursework displays deadlines in the device's local time zone.
+            gregorianCal.timeZone = .current
             if let date = gregorianCal.date(from: comp) {
                 let item = Coursework(id: "cw_greg", courseId: "c1", courseName: "Math", title: "Test Greg", dueDate: date, status: .pending)
-                assertCondition(item.timeOnlyString == "15:45", "Coursework timeOnlyString must match expected Gregorian time '15:45'")
+                assertCondition(item.timeOnlyString == "15:45", "Coursework timeOnlyString must match local Gregorian time '15:45' (got: \(item.timeOnlyString), zone: \(gregorianCal.timeZone.identifier))")
                 assertCondition(item.formattedFullDueDate.contains("2026"), "Coursework formattedFullDueDate must use Gregorian year 2026")
                 assertCondition(item.conciseDueString.contains("15:45 • T3, 20/10"), "Coursework conciseDueString must format as '15:45 • T3, 20/10' (got: \(item.conciseDueString))")
 
