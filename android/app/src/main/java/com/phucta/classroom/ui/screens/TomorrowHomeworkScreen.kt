@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -25,11 +27,14 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Upcoming
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -68,11 +73,13 @@ fun TomorrowHomeworkScreen(
     val hasTomorrowTasks = remember(tomorrowItems, currentDayEpoch) { tomorrowItems.firstOrNull()?.isDueTomorrow == true }
     val hasTodayTasks = remember(tomorrowItems, currentDayEpoch) { tomorrowItems.firstOrNull()?.isDueToday == true }
 
+    val colorScheme = MaterialTheme.colorScheme
+
     LazyColumn(
         state = rememberLazyListState(),
         modifier = modifier
             .fillMaxSize()
-            .background(ChunkyColor.WindowBackground),
+            .background(colorScheme.surface),
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -83,7 +90,7 @@ fun TomorrowHomeworkScreen(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.titleMedium,
-                    color = ChunkyColor.TextPrimary
+                    color = colorScheme.onSurface
                 )
             }
         } else {
@@ -211,47 +218,69 @@ private fun TomorrowSummaryCard(
         BaoBaiShareHelper.formatBaoBaiText(tomorrowItems, date, dayLabel)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(ChunkyColor.SurfaceWhite, RoundedCornerShape(12.dp))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = ChunkyColor.TextPrimary)
-                Text(
-                    "Đã xong $completedCount/${tomorrowItems.size} mục",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ChunkyColor.TextMuted
-                )
-            }
-            IconButton(onClick = {
-                val copied = BaoBaiShareHelper.copyToClipboard(context, shareText())
-                if (!copied || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                    val message = if (copied) "Đã sao chép báo bài" else "Không thể sao chép báo bài"
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                }
-            }) {
-                Icon(Icons.Default.ContentCopy, contentDescription = "Sao chép báo bài", tint = ChunkyColor.ActionBlue)
-            }
-            IconButton(onClick = {
-                val intent = BaoBaiShareHelper.createShareIntent(shareText(), title)
-                try {
-                    context.startActivity(Intent.createChooser(intent, null))
-                } catch (_: ActivityNotFoundException) {
-                    Toast.makeText(context, "Không thể chia sẻ báo bài", Toast.LENGTH_SHORT).show()
-                }
-            }) {
-                Icon(Icons.Default.Share, contentDescription = "Chia sẻ báo bài", tint = ChunkyColor.ActionBlue)
-            }
-        }
+    val colorScheme = MaterialTheme.colorScheme
 
-        LinearProgressIndicator(
-            progress = { completedCount.toFloat() / tomorrowItems.size },
-            modifier = Modifier.fillMaxWidth(),
-            color = ChunkyColor.ActionBlue
-        )
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = colorScheme.surfaceContainerLowest
+        ),
+        border = BorderStroke(1.dp, colorScheme.outlineVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Đã xong $completedCount/${tomorrowItems.size} mục",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        val copied = BaoBaiShareHelper.copyToClipboard(context, shareText())
+                        if (!copied || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                            val message = if (copied) "Đã sao chép báo bài" else "Không thể sao chép báo bài"
+                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = "Sao chép báo bài", tint = colorScheme.primary)
+                }
+                IconButton(
+                    onClick = {
+                        val intent = BaoBaiShareHelper.createShareIntent(shareText(), title)
+                        try {
+                            context.startActivity(Intent.createChooser(intent, null))
+                        } catch (_: ActivityNotFoundException) {
+                            Toast.makeText(context, "Không thể chia sẻ báo bài", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = "Chia sẻ báo bài", tint = colorScheme.primary)
+                }
+            }
+
+            LinearProgressIndicator(
+                progress = { completedCount.toFloat() / tomorrowItems.size },
+                modifier = Modifier.fillMaxWidth(),
+                color = colorScheme.primary,
+                trackColor = colorScheme.primaryContainer,
+                strokeCap = StrokeCap.Round
+            )
+        }
     }
 }

@@ -17,12 +17,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,6 +33,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -53,11 +57,16 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -67,6 +76,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.produceState
@@ -365,146 +376,182 @@ fun MainScreen() {
             selectedTabIndex = 0
         }
 
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                ModalDrawerSheet(
-                    drawerContainerColor = ChunkyColor.SurfaceWhite,
-                    modifier = Modifier.width(310.dp)
-                ) {
-                    CourseFilterDrawerContent(
-                        courses = courses,
-                        displayedCourses = displayedCoursesInDrawer,
-                        searchQuery = drawerSearchQuery,
-                        onSearchQueryChange = { drawerSearchQuery = it },
-                        onToggleCourse = { course ->
-                            scope.launch {
-                                try {
-                                    repository.updateCourseWidgetSelection(
-                                        course.id,
-                                        !course.isSelectedForWidget
-                                    )
-                                } catch (e: Exception) {
-                                    snackbarHostState.showSnackbar("Không thể cập nhật môn học: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
-                                }
-                            }
-                        },
-                        onToggleAllCourses = { selectAll ->
-                            scope.launch {
-                                try {
-                                    repository.updateAllCoursesWidgetSelection(selectAll)
-                                } catch (e: Exception) {
-                                    snackbarHostState.showSnackbar("Không thể cập nhật danh sách lớp: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
-                                }
-                            }
-                        }
-                    )
-                }
-            }
-        ) {
-            Scaffold(
-                snackbarHost = { SnackbarHost(snackbarHostState) },
-                topBar = {
-                    MainTopAppBar(
-                        currentDayEpoch = currentDayEpoch,
-                        isAnyCourseFiltered = isAnyCourseFiltered,
-                        isSyncing = isSyncing,
-                        userAvatar = userAvatar,
-                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                        onSyncClick = {
-                            scope.launch {
-                                try {
-                                    val result = repository.syncAll()
-                                    if (result.isSuccess) {
-                                        snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
-                                    } else {
-                                        result.exceptionOrNull()?.let { e ->
-                                            snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
-                                        }
+        val colorScheme = MaterialTheme.colorScheme
+        val topAppBarScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val useNavigationRail = maxWidth >= 600.dp
+
+            ModalNavigationDrawer(
+                drawerState = drawerState,
+                drawerContent = {
+                    ModalDrawerSheet(
+                        drawerContainerColor = colorScheme.surfaceContainerLow,
+                        modifier = Modifier.width(310.dp)
+                    ) {
+                        CourseFilterDrawerContent(
+                            courses = courses,
+                            displayedCourses = displayedCoursesInDrawer,
+                            searchQuery = drawerSearchQuery,
+                            onSearchQueryChange = { drawerSearchQuery = it },
+                            onToggleCourse = { course ->
+                                scope.launch {
+                                    try {
+                                        repository.updateCourseWidgetSelection(
+                                            course.id,
+                                            !course.isSelectedForWidget
+                                        )
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar("Không thể cập nhật môn học: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
                                     }
-                                } catch (e: Exception) {
-                                    snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
+                                }
+                            },
+                            onToggleAllCourses = { selectAll ->
+                                scope.launch {
+                                    try {
+                                        repository.updateAllCoursesWidgetSelection(selectAll)
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar("Không thể cập nhật danh sách lớp: ${e.localizedMessage ?: "Đã xảy ra lỗi"}")
+                                    }
                                 }
                             }
-                        },
-                        onOpenSettings = { showSettingsDialog = true }
-                    )
-                },
-                bottomBar = {
-                    MainBottomNavigationBar(
-                        selectedTabIndex = selectedTabIndex,
-                        tomorrowIncompleteCount = tomorrowIncompleteCount,
-                        upcomingIncompleteCount = upcomingIncompleteCount,
-                        incompleteNotesCount = incompleteNotesCount,
-                        onTabSelected = { selectedTabIndex = it }
-                    )
+                        )
+                    }
                 }
-            ) { paddingValues ->
-                PullToRefreshBox(
-                    isRefreshing = isSyncing,
-                    onRefresh = {
-                        scope.launch {
-                            try {
-                                val result = repository.syncAll()
-                                if (result.isSuccess) {
-                                    snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
-                                } else {
-                                    result.exceptionOrNull()?.let { e ->
+            ) {
+                Scaffold(
+                    modifier = Modifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
+                    containerColor = colorScheme.surface,
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                    topBar = {
+                        MainTopAppBar(
+                            currentDayEpoch = currentDayEpoch,
+                            isAnyCourseFiltered = isAnyCourseFiltered,
+                            isSyncing = isSyncing,
+                            userAvatar = userAvatar,
+                            scrollBehavior = topAppBarScrollBehavior,
+                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onSyncClick = {
+                                scope.launch {
+                                    try {
+                                        val result = repository.syncAll()
+                                        if (result.isSuccess) {
+                                            snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+                                        } else {
+                                            result.exceptionOrNull()?.let { e ->
+                                                snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
+                                            }
+                                        }
+                                    } catch (e: Exception) {
                                         snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
                                     }
                                 }
-                            } catch (e: Exception) {
-                                snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
-                            }
-                        }
-                    },
-                    state = pullToRefreshState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    indicator = {
-                        PullToRefreshDefaults.Indicator(
-                            state = pullToRefreshState,
-                            isRefreshing = isSyncing,
-                            modifier = Modifier.align(Alignment.TopCenter),
-                            containerColor = ChunkyColor.SurfaceWhite,
-                            color = ChunkyColor.SkyBottom
+                            },
+                            onOpenSettings = { showSettingsDialog = true }
                         )
+                    },
+                    bottomBar = {
+                        if (!useNavigationRail) {
+                            MainBottomNavigationBar(
+                                selectedTabIndex = selectedTabIndex,
+                                tomorrowIncompleteCount = tomorrowIncompleteCount,
+                                upcomingIncompleteCount = upcomingIncompleteCount,
+                                incompleteNotesCount = incompleteNotesCount,
+                                onTabSelected = { selectedTabIndex = it }
+                            )
+                        }
                     }
-                ) {
-                    tabStates.SaveableStateProvider(selectedTabIndex) {
-                        when (selectedTabIndex) {
-                            0 -> TomorrowHomeworkScreen(
-                                tomorrowItems = tomorrowItems,
-                                courseworkIdsWithNotes = courseworkIdsWithNotes,
-                                currentDayEpoch = currentDayEpoch,
-                                onToggleCompletion = onToggleAssignmentCompletion,
-                                onSelectAssignment = onSelectAssignment
+                ) { paddingValues ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                    ) {
+                        if (useNavigationRail) {
+                            MainNavigationRail(
+                                selectedTabIndex = selectedTabIndex,
+                                tomorrowIncompleteCount = tomorrowIncompleteCount,
+                                upcomingIncompleteCount = upcomingIncompleteCount,
+                                incompleteNotesCount = incompleteNotesCount,
+                                onTabSelected = { selectedTabIndex = it }
                             )
-                            1 -> AllUpcomingScreen(
-                                allCoursework = allCoursework,
-                                courses = courses,
-                                courseworkIdsWithNotes = courseworkIdsWithNotes,
-                                currentDayEpoch = currentDayEpoch,
-                                onToggleCompletion = onToggleAssignmentCompletion,
-                                onSelectAssignment = onSelectAssignment
-                            )
-                            2 -> CompletedHomeworkScreen(
-                                completedItems = completedItems,
-                                courseworkIdsWithNotes = courseworkIdsWithNotes,
-                                onToggleCompletion = onToggleAssignmentCompletion,
-                                onSelectAssignment = onSelectAssignment
-                            )
-                            3 -> PersonalNotesScreen(
-                                notes = personalNotes,
-                                courses = courses,
-                                onToggleCompletion = onTogglePersonalNoteCompletion,
-                                onToggleChecklistItem = onToggleChecklistItem,
-                                onSaveNote = onSavePersonalNote,
-                                onDeleteNote = onDeletePersonalNote,
-                                initialNoteToEdit = noteToEditFromExternal,
-                                onClearInitialNoteToEdit = { noteToEditFromExternal = null }
-                            )
+                            VerticalDivider(color = colorScheme.outlineVariant)
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+                            PullToRefreshBox(
+                                isRefreshing = isSyncing,
+                                onRefresh = {
+                                    scope.launch {
+                                        try {
+                                            val result = repository.syncAll()
+                                            if (result.isSuccess) {
+                                                snackbarHostState.showSnackbar("Đã cập nhật bài tập mới nhất!")
+                                            } else {
+                                                result.exceptionOrNull()?.let { e ->
+                                                    snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
+                                                }
+                                            }
+                                        } catch (e: Exception) {
+                                            snackbarHostState.showSnackbar("Đồng bộ không thành công: ${e.localizedMessage ?: "Vui lòng thử lại"}")
+                                        }
+                                    }
+                                },
+                                state = pullToRefreshState,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .widthIn(max = 840.dp),
+                                indicator = {
+                                    PullToRefreshDefaults.Indicator(
+                                        state = pullToRefreshState,
+                                        isRefreshing = isSyncing,
+                                        modifier = Modifier.align(Alignment.TopCenter),
+                                        containerColor = colorScheme.surfaceContainerLowest,
+                                        color = colorScheme.primary
+                                    )
+                                }
+                            ) {
+                                tabStates.SaveableStateProvider(selectedTabIndex) {
+                                    when (selectedTabIndex) {
+                                        0 -> TomorrowHomeworkScreen(
+                                            tomorrowItems = tomorrowItems,
+                                            courseworkIdsWithNotes = courseworkIdsWithNotes,
+                                            currentDayEpoch = currentDayEpoch,
+                                            onToggleCompletion = onToggleAssignmentCompletion,
+                                            onSelectAssignment = onSelectAssignment
+                                        )
+                                        1 -> AllUpcomingScreen(
+                                            allCoursework = allCoursework,
+                                            courses = courses,
+                                            courseworkIdsWithNotes = courseworkIdsWithNotes,
+                                            currentDayEpoch = currentDayEpoch,
+                                            onToggleCompletion = onToggleAssignmentCompletion,
+                                            onSelectAssignment = onSelectAssignment
+                                        )
+                                        2 -> CompletedHomeworkScreen(
+                                            completedItems = completedItems,
+                                            courseworkIdsWithNotes = courseworkIdsWithNotes,
+                                            onToggleCompletion = onToggleAssignmentCompletion,
+                                            onSelectAssignment = onSelectAssignment
+                                        )
+                                        3 -> PersonalNotesScreen(
+                                            notes = personalNotes,
+                                            courses = courses,
+                                            onToggleCompletion = onTogglePersonalNoteCompletion,
+                                            onToggleChecklistItem = onToggleChecklistItem,
+                                            onSaveNote = onSavePersonalNote,
+                                            onDeleteNote = onDeletePersonalNote,
+                                            initialNoteToEdit = noteToEditFromExternal,
+                                            onClearInitialNoteToEdit = { noteToEditFromExternal = null }
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -647,21 +694,22 @@ private fun CourseFilterDrawerContent(
     onToggleCourse: (Course) -> Unit,
     onToggleAllCourses: (Boolean) -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Column(modifier = Modifier.padding(20.dp)) {
         Text(
             text = "Lọc môn học",
-            fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
-            color = ChunkyColor.TextPrimary
+            style = MaterialTheme.typography.titleLarge,
+            color = colorScheme.onSurface
         )
         Text(
             text = "Chọn các môn tham gia Báo bài & hiển thị trên Widget",
-            fontSize = 13.5.sp,
-            color = ChunkyColor.TextMuted,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
         )
 
-        HorizontalDivider(color = ChunkyColor.Hairline)
+        HorizontalDivider(color = colorScheme.outlineVariant)
 
         if (courses.isNotEmpty()) {
             val allSelected = courses.all { it.isSelectedForWidget }
@@ -675,19 +723,17 @@ private fun CourseFilterDrawerContent(
             ) {
                 Text(
                     text = "Lớp hiển thị ($selectedCount/${courses.size})",
-                    fontSize = 13.5.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ChunkyColor.TextMuted
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colorScheme.onSurfaceVariant
                 )
                 TextButton(
                     onClick = { onToggleAllCourses(!allSelected) },
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = if (allSelected) "Bỏ chọn hết" else "Tất cả",
-                        fontSize = 13.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ChunkyColor.SkyBottom
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colorScheme.primary
                     )
                 }
             }
@@ -697,41 +743,38 @@ private fun CourseFilterDrawerContent(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = onSearchQueryChange,
-                    placeholder = { Text("Tìm tên môn học...", fontSize = 14.sp) },
+                    placeholder = { Text("Tìm tên môn học...", style = MaterialTheme.typography.bodyMedium) },
                     leadingIcon = {
                         Icon(
                             Icons.Default.Search,
                             contentDescription = null,
-                            tint = ChunkyColor.TextMuted,
-                            modifier = Modifier.size(16.dp)
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
                         )
                     },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
-                            IconButton(
-                                onClick = { onSearchQueryChange("") },
-                                modifier = Modifier.size(24.dp)
-                            ) {
+                            IconButton(onClick = { onSearchQueryChange("") }) {
                                 Icon(
                                     Icons.Default.Clear,
-                                    contentDescription = "Clear",
-                                    tint = ChunkyColor.TextMuted,
-                                    modifier = Modifier.size(14.dp)
+                                    contentDescription = "Xóa tìm kiếm",
+                                    tint = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(28.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = ChunkyColor.WindowBackground,
-                        unfocusedContainerColor = ChunkyColor.WindowBackground,
-                        focusedBorderColor = ChunkyColor.SkyBottom,
-                        unfocusedBorderColor = ChunkyColor.CardBorder
+                        focusedContainerColor = colorScheme.surfaceContainerLowest,
+                        unfocusedContainerColor = colorScheme.surfaceContainerLowest,
+                        focusedBorderColor = colorScheme.primary,
+                        unfocusedBorderColor = colorScheme.outlineVariant
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 40.dp)
+                        .heightIn(min = 48.dp)
                 )
             }
         }
@@ -746,8 +789,8 @@ private fun CourseFilterDrawerContent(
         ) {
             Text(
                 text = "Chưa có môn học nào được đồng bộ.",
-                fontSize = 14.5.sp,
-                color = ChunkyColor.TextMuted,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
         }
@@ -765,19 +808,19 @@ private fun CourseFilterDrawerContent(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = 48.dp)
                         .clickable(
-                            role = androidx.compose.ui.semantics.Role.Checkbox,
+                            role = Role.Checkbox,
                             onClick = { onToggleCourse(course) }
                         )
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .padding(horizontal = 20.dp, vertical = 10.dp)
                 ) {
                     SubjectBadgePill(courseName = course.name)
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = course.name,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.5.sp,
-                        color = ChunkyColor.TextPrimary,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
@@ -785,7 +828,7 @@ private fun CourseFilterDrawerContent(
                     Checkbox(
                         checked = course.isSelectedForWidget,
                         onCheckedChange = null,
-                        colors = CheckboxDefaults.colors(checkedColor = ChunkyColor.SkyBottom)
+                        colors = CheckboxDefaults.colors(checkedColor = colorScheme.primary)
                     )
                 }
             }
@@ -800,48 +843,51 @@ private fun MainTopAppBar(
     isAnyCourseFiltered: Boolean,
     isSyncing: Boolean,
     userAvatar: String? = null,
+    scrollBehavior: TopAppBarScrollBehavior,
     onOpenDrawer: () -> Unit,
     onSyncClick: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     TopAppBar(
+        scrollBehavior = scrollBehavior,
         title = {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = "Classroom Tracker",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 19.5.sp,
+                    style = MaterialTheme.typography.titleLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = ChunkyColor.TextPrimary
+                    color = colorScheme.onSurface
                 )
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(ChunkyColor.TomorrowBackground)
-                        .border(1.dp, ChunkyColor.TomorrowBorder, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 6.dp, vertical = 1.dp)
+                        .background(colorScheme.primaryContainer)
+                        .padding(horizontal = 7.dp, vertical = 1.dp)
                 ) {
                     Text(
                         text = com.phucta.classroom.data.model.ClassroomDateUtils.formatDayAndDate(currentDayEpoch),
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                        color = ChunkyColor.TomorrowText
+                        color = colorScheme.onPrimaryContainer
                     )
                 }
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = ChunkyColor.SurfaceWhite),
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = colorScheme.surfaceContainerLowest,
+            scrolledContainerColor = colorScheme.surfaceContainer
+        ),
         navigationIcon = {
             IconButton(onClick = onOpenDrawer) {
                 BadgedBox(
                     badge = {
                         if (isAnyCourseFiltered) {
                             Badge(
-                                containerColor = ChunkyColor.SkyBottom,
+                                containerColor = colorScheme.primary,
                                 modifier = Modifier.size(6.dp)
                             )
                         }
@@ -849,8 +895,8 @@ private fun MainTopAppBar(
                 ) {
                     Icon(
                         Icons.Default.FilterList,
-                        contentDescription = "Filter Courses",
-                        tint = if (isAnyCourseFiltered) ChunkyColor.SkyBottom else ChunkyColor.TextPrimary
+                        contentDescription = "Lọc môn học",
+                        tint = if (isAnyCourseFiltered) colorScheme.primary else colorScheme.onSurface
                     )
                 }
             }
@@ -864,18 +910,36 @@ private fun MainTopAppBar(
                 if (!userAvatar.isNullOrBlank()) {
                     AsyncImage(
                         model = userAvatar,
-                        contentDescription = "Settings",
+                        contentDescription = "Cài đặt",
                         modifier = Modifier
                             .size(28.dp)
                             .clip(CircleShape)
-                            .border(1.dp, ChunkyColor.CardBorder, CircleShape)
+                            .border(1.dp, colorScheme.outlineVariant, CircleShape)
                     )
                 } else {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = ChunkyColor.TextPrimary)
+                    Icon(Icons.Default.Settings, contentDescription = "Cài đặt", tint = colorScheme.onSurface)
                 }
             }
         }
     )
+}
+
+@Composable
+private fun NavDestinationBadge(
+    count: Int,
+    isUrgent: Boolean
+) {
+    if (count <= 0) return
+    val colorScheme = MaterialTheme.colorScheme
+    Badge(
+        containerColor = if (isUrgent) colorScheme.error else colorScheme.tertiaryContainer,
+        contentColor = if (isUrgent) colorScheme.onError else colorScheme.onTertiaryContainer
+    ) {
+        Text(
+            text = if (count > 99) "99+" else "$count",
+            style = MaterialTheme.typography.labelSmall
+        )
+    }
 }
 
 @Composable
@@ -886,7 +950,8 @@ private fun MainBottomNavigationBar(
     incompleteNotesCount: Int,
     onTabSelected: (Int) -> Unit
 ) {
-    val view = androidx.compose.ui.platform.LocalView.current
+    val view = LocalView.current
+    val colorScheme = MaterialTheme.colorScheme
     val handleTabClick = { index: Int ->
         if (selectedTabIndex != index) {
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
@@ -895,18 +960,18 @@ private fun MainBottomNavigationBar(
     }
 
     val standardNavColors = NavigationBarItemDefaults.colors(
-        selectedIconColor = ChunkyColor.ActionBlue,
-        selectedTextColor = ChunkyColor.ActionBlue,
-        indicatorColor = Color.Transparent,
-        unselectedIconColor = ChunkyColor.TextMuted,
-        unselectedTextColor = ChunkyColor.TextMuted
+        selectedIconColor = colorScheme.onPrimaryContainer,
+        selectedTextColor = colorScheme.primary,
+        indicatorColor = colorScheme.primaryContainer,
+        unselectedIconColor = colorScheme.onSurfaceVariant,
+        unselectedTextColor = colorScheme.onSurfaceVariant
     )
     NavigationBar(
-        containerColor = ChunkyColor.SurfaceWhite,
+        containerColor = colorScheme.surfaceContainerLowest,
         tonalElevation = 0.dp,
         modifier = Modifier.drawBehind {
             drawLine(
-                color = ChunkyColor.CardBorder,
+                color = colorScheme.outlineVariant,
                 start = Offset(0f, 0f),
                 end = Offset(size.width, 0f),
                 strokeWidth = 1.dp.toPx()
@@ -917,32 +982,15 @@ private fun MainBottomNavigationBar(
             selected = selectedTabIndex == 0,
             onClick = { handleTabClick(0) },
             icon = {
-                BadgedBox(
-                    badge = {
-                        if (tomorrowIncompleteCount > 0) {
-                            Badge(
-                                containerColor = Color(0xFFEF4444),
-                                contentColor = Color.White
-                            ) {
-                                Text(
-                                    text = if (tomorrowIncompleteCount > 99) "99+" else "$tomorrowIncompleteCount",
-                                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
-                ) {
+                BadgedBox(badge = { NavDestinationBadge(tomorrowIncompleteCount, isUrgent = true) }) {
                     Icon(Icons.Default.CalendarToday, contentDescription = "Báo bài")
                 }
             },
             label = {
                 Text(
                     text = "Báo bài",
-                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                    fontWeight = if (selectedTabIndex == 0) FontWeight.Bold else FontWeight.SemiBold,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selectedTabIndex == 0) FontWeight.Bold else FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -953,32 +1001,15 @@ private fun MainBottomNavigationBar(
             selected = selectedTabIndex == 1,
             onClick = { handleTabClick(1) },
             icon = {
-                BadgedBox(
-                    badge = {
-                        if (upcomingIncompleteCount > 0) {
-                            Badge(
-                                containerColor = Color(0xFFEF4444),
-                                contentColor = Color.White
-                            ) {
-                                Text(
-                                    text = if (upcomingIncompleteCount > 99) "99+" else "$upcomingIncompleteCount",
-                                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
-                ) {
+                BadgedBox(badge = { NavDestinationBadge(upcomingIncompleteCount, isUrgent = true) }) {
                     Icon(Icons.Default.Upcoming, contentDescription = "Sắp tới")
                 }
             },
             label = {
                 Text(
                     text = "Sắp tới",
-                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                    fontWeight = if (selectedTabIndex == 1) FontWeight.Bold else FontWeight.SemiBold,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selectedTabIndex == 1) FontWeight.Bold else FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -994,9 +1025,8 @@ private fun MainBottomNavigationBar(
             label = {
                 Text(
                     text = "Đã xong",
-                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                    fontWeight = if (selectedTabIndex == 2) FontWeight.Bold else FontWeight.SemiBold,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selectedTabIndex == 2) FontWeight.Bold else FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1007,37 +1037,92 @@ private fun MainBottomNavigationBar(
             selected = selectedTabIndex == 3,
             onClick = { handleTabClick(3) },
             icon = {
-                BadgedBox(
-                    badge = {
-                        if (incompleteNotesCount > 0) {
-                            Badge(
-                                containerColor = Color(0xFFF59E0B),
-                                contentColor = Color.White
-                            ) {
-                                Text(
-                                    text = if (incompleteNotesCount > 99) "99+" else "$incompleteNotesCount",
-                                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
-                ) {
+                BadgedBox(badge = { NavDestinationBadge(incompleteNotesCount, isUrgent = false) }) {
                     Icon(Icons.AutoMirrored.Filled.StickyNote2, contentDescription = "Ghi chú")
                 }
             },
             label = {
                 Text(
                     text = "Ghi chú",
-                    fontFamily = com.phucta.classroom.ui.theme.BeVietnamProFontFamily,
-                    fontWeight = if (selectedTabIndex == 3) FontWeight.Bold else FontWeight.SemiBold,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selectedTabIndex == 3) FontWeight.Bold else FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             },
             colors = standardNavColors
+        )
+    }
+}
+
+@Composable
+private fun MainNavigationRail(
+    selectedTabIndex: Int,
+    tomorrowIncompleteCount: Int,
+    upcomingIncompleteCount: Int,
+    incompleteNotesCount: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    val view = LocalView.current
+    val colorScheme = MaterialTheme.colorScheme
+    val handleTabClick = { index: Int ->
+        if (selectedTabIndex != index) {
+            view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+            onTabSelected(index)
+        }
+    }
+
+    val railColors = NavigationRailItemDefaults.colors(
+        selectedIconColor = colorScheme.onPrimaryContainer,
+        selectedTextColor = colorScheme.primary,
+        indicatorColor = colorScheme.primaryContainer,
+        unselectedIconColor = colorScheme.onSurfaceVariant,
+        unselectedTextColor = colorScheme.onSurfaceVariant
+    )
+
+    NavigationRail(
+        containerColor = colorScheme.surfaceContainerLowest
+    ) {
+        Spacer(modifier = Modifier.height(12.dp))
+        NavigationRailItem(
+            selected = selectedTabIndex == 0,
+            onClick = { handleTabClick(0) },
+            icon = {
+                BadgedBox(badge = { NavDestinationBadge(tomorrowIncompleteCount, isUrgent = true) }) {
+                    Icon(Icons.Default.CalendarToday, contentDescription = "Báo bài")
+                }
+            },
+            label = { Text("Báo bài", maxLines = 1) },
+            colors = railColors
+        )
+        NavigationRailItem(
+            selected = selectedTabIndex == 1,
+            onClick = { handleTabClick(1) },
+            icon = {
+                BadgedBox(badge = { NavDestinationBadge(upcomingIncompleteCount, isUrgent = true) }) {
+                    Icon(Icons.Default.Upcoming, contentDescription = "Sắp tới")
+                }
+            },
+            label = { Text("Sắp tới", maxLines = 1) },
+            colors = railColors
+        )
+        NavigationRailItem(
+            selected = selectedTabIndex == 2,
+            onClick = { handleTabClick(2) },
+            icon = { Icon(Icons.Default.CheckCircle, contentDescription = "Đã xong") },
+            label = { Text("Đã xong", maxLines = 1) },
+            colors = railColors
+        )
+        NavigationRailItem(
+            selected = selectedTabIndex == 3,
+            onClick = { handleTabClick(3) },
+            icon = {
+                BadgedBox(badge = { NavDestinationBadge(incompleteNotesCount, isUrgent = false) }) {
+                    Icon(Icons.AutoMirrored.Filled.StickyNote2, contentDescription = "Ghi chú")
+                }
+            },
+            label = { Text("Ghi chú", maxLines = 1) },
+            colors = railColors
         )
     }
 }
@@ -1050,8 +1135,10 @@ private fun WelcomeLoginScreen(
     onDemoMode: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Scaffold(
-        containerColor = ChunkyColor.WindowBackground,
+        containerColor = colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -1061,69 +1148,80 @@ private fun WelcomeLoginScreen(
                         Icon(
                             Icons.Default.Settings,
                             contentDescription = "Cài đặt",
-                            tint = ChunkyColor.TextMuted
+                            tint = colorScheme.onSurfaceVariant
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 28.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(padding),
+            contentAlignment = Alignment.Center
         ) {
-            EmberFlameCanvas(size = 80.dp)
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = "Classroom Tracker",
-                fontWeight = FontWeight.Bold,
-                fontSize = 26.sp,
-                color = ChunkyColor.TextPrimary
-            )
-
-            Text(
-                text = "Theo dõi bài tập Google Classroom",
-                fontSize = 15.5.sp,
-                color = ChunkyColor.TextMuted,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 6.dp, bottom = 32.dp)
-            )
-
-            androidx.compose.material3.Button(
-                onClick = onSignIn,
+            Column(
                 modifier = Modifier
+                    .widthIn(max = 420.dp)
                     .fillMaxWidth()
-                    .height(54.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                    containerColor = ChunkyColor.SkyBottom
-                )
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 28.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = "Đăng nhập bằng Google",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = androidx.compose.ui.graphics.Color.White
-                )
-            }
+                EmberFlameCanvas(size = 80.dp)
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            androidx.compose.material3.TextButton(onClick = onDemoMode) {
                 Text(
-                    text = "Xem thử dữ liệu mẫu",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ChunkyColor.TextMuted
+                    text = "Classroom Tracker",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = colorScheme.onSurface
                 )
+
+                Text(
+                    text = "Theo dõi bài tập Google Classroom",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 32.dp)
+                )
+
+                androidx.compose.material3.Button(
+                    onClick = onSignIn,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.primary,
+                        contentColor = colorScheme.onPrimary
+                    )
+                ) {
+                    Text(
+                        text = "Đăng nhập bằng Google",
+                        style = MaterialTheme.typography.titleSmall.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = onDemoMode,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.outlineVariant)
+                ) {
+                    Text(
+                        text = "Xem thử dữ liệu mẫu",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -1134,6 +1232,7 @@ private fun SyncActionButton(
     isSyncing: Boolean,
     onSyncClick: () -> Unit
 ) {
+    val syncTint = MaterialTheme.colorScheme.primary
     if (isSyncing) {
         val infiniteTransition = rememberInfiniteTransition(label = "syncSpin")
         val spinningRotation = infiniteTransition.animateFloat(
@@ -1152,8 +1251,8 @@ private fun SyncActionButton(
         ) {
             Icon(
                 imageVector = Icons.Default.Refresh,
-                contentDescription = "Sync",
-                tint = ChunkyColor.SkyBottom,
+                contentDescription = "Đang đồng bộ",
+                tint = syncTint,
                 modifier = Modifier.graphicsLayer {
                     rotationZ = spinningRotation.value
                 }
@@ -1166,8 +1265,8 @@ private fun SyncActionButton(
         ) {
             Icon(
                 imageVector = Icons.Default.Refresh,
-                contentDescription = "Sync",
-                tint = ChunkyColor.SkyBottom
+                contentDescription = "Đồng bộ bài tập",
+                tint = syncTint
             )
         }
     }

@@ -277,17 +277,19 @@ fun PersonalNotesScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    Column(modifier = modifier.fillMaxSize().background(colorScheme.surface)) {
         Column(modifier = Modifier.weight(1f)) {
             val activeTabColor = when (selectedStatusTab) {
                 1 -> ChunkyColor.HeaderToday
                 2 -> ChunkyColor.HeaderCompleted
-                else -> ChunkyColor.ActionBlue
+                else -> colorScheme.primary
             }
 
             TabRow(
                 selectedTabIndex = selectedStatusTab,
-                containerColor = ChunkyColor.SurfaceWhite,
+                containerColor = colorScheme.surfaceContainerLowest,
                 contentColor = activeTabColor,
                 indicator = { tabPositions ->
                     TabRowDefaults.SecondaryIndicator(
@@ -302,9 +304,9 @@ fun PersonalNotesScreen(
                     text = {
                         Text(
                             text = "Tất cả",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            color = if (selectedStatusTab == 0) ChunkyColor.ActionBlue else ChunkyColor.TextMuted
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = if (selectedStatusTab == 0) FontWeight.Bold else FontWeight.Medium,
+                            color = if (selectedStatusTab == 0) colorScheme.primary else colorScheme.onSurfaceVariant
                         )
                     }
                 )
@@ -314,9 +316,9 @@ fun PersonalNotesScreen(
                     text = {
                         Text(
                             text = "Đang làm",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            color = if (selectedStatusTab == 1) ChunkyColor.HeaderToday else ChunkyColor.TextMuted
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = if (selectedStatusTab == 1) FontWeight.Bold else FontWeight.Medium,
+                            color = if (selectedStatusTab == 1) ChunkyColor.HeaderToday else colorScheme.onSurfaceVariant
                         )
                     }
                 )
@@ -326,9 +328,9 @@ fun PersonalNotesScreen(
                     text = {
                         Text(
                             text = "Đã xong",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            color = if (selectedStatusTab == 2) ChunkyColor.HeaderCompleted else ChunkyColor.TextMuted
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = if (selectedStatusTab == 2) FontWeight.Bold else FontWeight.Medium,
+                            color = if (selectedStatusTab == 2) ChunkyColor.HeaderCompleted else colorScheme.onSurfaceVariant
                         )
                     }
                 )
@@ -337,24 +339,24 @@ fun PersonalNotesScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Tìm ghi chú...", fontSize = 15.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = ChunkyColor.TextMuted) },
+                placeholder = { Text("Tìm ghi chú...", style = MaterialTheme.typography.bodyLarge) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colorScheme.onSurfaceVariant) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = ChunkyColor.TextMuted)
+                            Icon(Icons.Default.Clear, contentDescription = "Xóa tìm kiếm", tint = colorScheme.onSurfaceVariant)
                         }
                     }
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(28.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = ChunkyColor.SurfaceWhite,
-                    unfocusedContainerColor = ChunkyColor.SurfaceWhite,
-                    focusedBorderColor = ChunkyColor.SkyBottom,
-                    unfocusedBorderColor = ChunkyColor.CardBorder
+                    focusedContainerColor = colorScheme.surfaceContainerLowest,
+                    unfocusedContainerColor = colorScheme.surfaceContainerLowest,
+                    focusedBorderColor = colorScheme.primary,
+                    unfocusedBorderColor = colorScheme.outlineVariant
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -398,15 +400,14 @@ fun PersonalNotesScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = emptyTitle,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 19.sp,
-                            color = ChunkyColor.TextPrimary
+                            style = MaterialTheme.typography.titleLarge,
+                            color = colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = emptySubtitle,
-                            fontSize = 15.sp,
-                            color = ChunkyColor.TextMuted,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -631,6 +632,10 @@ private fun PersonalNoteCard(
         note.courseName?.takeIf { it.isNotBlank() }?.let { SubjectArtHelper.theme(it) }
     }
 
+    val colorScheme = MaterialTheme.colorScheme
+    val uncheckedBorderColor = colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    val strikethroughColor = colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -640,7 +645,7 @@ private fun PersonalNoteCard(
                 scaleY = 1.0f - scale
             }
             .clip(RoundedCornerShape(16.dp))
-            .background(ChunkyColor.SurfaceWhite)
+            .background(colorScheme.surfaceContainerLowest)
             .then(
                 if (subjectTheme != null) {
                     Modifier.drawBehind {
@@ -654,7 +659,7 @@ private fun PersonalNoteCard(
                     }
                 } else Modifier
             )
-            .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp)),
+            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(16.dp)),
         verticalAlignment = Alignment.Top
     ) {
         Box(
@@ -750,10 +755,11 @@ private fun PersonalNoteCard(
                     ) {
                         Text(
                             text = note.title,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.5.sp,
-                            lineHeight = 24.sp,
-                            color = ChunkyColor.TextPrimary,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 17.sp,
+                                lineHeight = 23.sp
+                            ),
+                            color = colorScheme.onSurface,
                             onTextLayout = onTitleTextLayout,
                             modifier = Modifier
                                 .weight(1f)
@@ -773,7 +779,7 @@ private fun PersonalNoteCard(
                                                     val line = lines[i]
                                                     val endX = line.left + (line.right - line.left) * progress
                                                     drawLine(
-                                                        color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
+                                                        color = strikethroughColor,
                                                         start = Offset(line.left, line.y),
                                                         end = Offset(endX, line.y),
                                                         strokeWidth = strokeWidthPx,
@@ -784,7 +790,7 @@ private fun PersonalNoteCard(
                                                 val y = size.height / 2f
                                                 val endX = size.width * progress
                                                 drawLine(
-                                                    color = ChunkyColor.TextMuted.copy(alpha = 0.85f),
+                                                    color = strikethroughColor,
                                                     start = Offset(0f, y),
                                                     end = Offset(endX, y),
                                                     strokeWidth = strokeWidthPx,
@@ -950,12 +956,12 @@ private fun PersonalNoteCard(
         ) {
             IconButton(
                 onClick = { showMenu = true },
-                modifier = Modifier.size(44.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = "Tùy chọn",
-                    tint = ChunkyColor.TextMuted,
+                    tint = colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -963,21 +969,21 @@ private fun PersonalNoteCard(
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false },
-                containerColor = ChunkyColor.SurfaceWhite,
+                containerColor = colorScheme.surfaceContainerHigh,
                 shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, ChunkyColor.CardBorder)
+                border = BorderStroke(1.dp, colorScheme.outlineVariant)
             ) {
                 DropdownMenuItem(
-                    text = { Text("Chỉnh sửa", fontWeight = FontWeight.SemiBold, fontSize = 14.sp) },
-                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = ChunkyColor.TextLink, modifier = Modifier.size(18.dp)) },
+                    text = { Text("Chỉnh sửa", style = MaterialTheme.typography.labelLarge) },
+                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = colorScheme.primary, modifier = Modifier.size(18.dp)) },
                     onClick = {
                         showMenu = false
                         onEdit()
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Xoá ghi chú", color = ChunkyColor.UrgentAccent, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) },
-                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = ChunkyColor.UrgentAccent, modifier = Modifier.size(18.dp)) },
+                    text = { Text("Xóa ghi chú", color = colorScheme.error, style = MaterialTheme.typography.labelLarge) },
+                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = colorScheme.error, modifier = Modifier.size(18.dp)) },
                     onClick = {
                         showMenu = false
                         onDelete()
@@ -1435,16 +1441,17 @@ private fun CreateOrEditNoteDialog(
             TextButton(
                 onClick = onDismiss,
                 interactionSource = dismissInteractionSource,
-                modifier = Modifier.graphicsLayer {
-                    scaleX = dismissScale
-                    scaleY = dismissScale
-                }
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .graphicsLayer {
+                        scaleX = dismissScale
+                        scaleY = dismissScale
+                    }
             ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Huỷ",
-                    tint = ChunkyColor.TextMuted,
-                    modifier = Modifier.size(20.dp)
+                Text(
+                    text = "Hủy",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelLarge
                 )
             }
         }
@@ -1516,13 +1523,16 @@ private fun BottomQuickCaptureBar(
         }
     }
 
+    val colorScheme = MaterialTheme.colorScheme
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .border(BorderStroke(1.dp, ChunkyColor.CardBorder), RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)),
-        shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
-        color = Color.White.copy(alpha = 0.96f),
-        shadowElevation = 8.dp
+            .border(BorderStroke(1.dp, colorScheme.outlineVariant), RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        color = colorScheme.surfaceContainerLow,
+        tonalElevation = 3.dp,
+        shadowElevation = 6.dp
     ) {
         Column(
             modifier = Modifier
@@ -1539,22 +1549,22 @@ private fun BottomQuickCaptureBar(
                     placeholder = {
                         Text(
                             text = "Thêm việc cần làm nhanh...",
-                            fontSize = 14.5.sp,
-                            color = ChunkyColor.TextMuted
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.onSurfaceVariant
                         )
                     },
                     singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, color = ChunkyColor.TextPrimary),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = colorScheme.onSurface),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
                         submitQuickNote()
                     }),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = ChunkyColor.SkyBottom,
-                        unfocusedBorderColor = ChunkyColor.CardBorder,
-                        focusedContainerColor = ChunkyColor.WindowBackground,
-                        unfocusedContainerColor = ChunkyColor.WindowBackground
+                        focusedBorderColor = colorScheme.primary,
+                        unfocusedBorderColor = colorScheme.outlineVariant,
+                        focusedContainerColor = colorScheme.surfaceContainerLowest,
+                        unfocusedContainerColor = colorScheme.surfaceContainerLowest
                     ),
                     modifier = Modifier.weight(1f)
                 )
@@ -1571,15 +1581,14 @@ private fun BottomQuickCaptureBar(
                         }
                     },
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
-                        .background(if (title.trim().isNotEmpty()) ChunkyColor.SuccessGreen else ChunkyColor.WindowBackground)
-                        .border(1.dp, if (title.trim().isNotEmpty()) ChunkyColor.SuccessGreen else ChunkyColor.CardBorder, CircleShape)
+                        .background(if (title.trim().isNotEmpty()) ChunkyColor.SuccessGreen else colorScheme.primaryContainer)
                 ) {
                     Icon(
                         imageVector = if (title.trim().isNotEmpty()) Icons.Default.Check else Icons.Default.Add,
-                        contentDescription = "Lưu hoặc mở rộng",
-                        tint = if (title.trim().isNotEmpty()) Color.White else ChunkyColor.TextPrimary,
+                        contentDescription = if (title.trim().isNotEmpty()) "Lưu ghi chú nhanh" else "Tạo ghi chú chi tiết",
+                        tint = if (title.trim().isNotEmpty()) Color.White else colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -1590,7 +1599,7 @@ private fun BottomQuickCaptureBar(
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 QuickDeadlinePill(
                     label = "Mai",
@@ -1614,28 +1623,23 @@ private fun BottomQuickCaptureBar(
                         val courseLabel = selectedCourse?.name ?: "Môn"
                         val isCourseSelected = selectedCourseId != null
 
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isCourseSelected) ChunkyColor.SkyBottom.copy(alpha = 0.12f) else Color.Transparent)
-                                .border(
-                                    1.dp,
-                                    if (isCourseSelected) ChunkyColor.SkyBottom.copy(alpha = 0.5f) else ChunkyColor.CardBorder,
-                                    RoundedCornerShape(8.dp)
+                        FilterChip(
+                            selected = isCourseSelected,
+                            onClick = { showCourseMenu = true },
+                            label = {
+                                Text(
+                                    text = courseLabel,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.widthIn(max = 110.dp)
                                 )
-                                .clickable { showCourseMenu = true }
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = courseLabel,
-                                fontSize = 13.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                fontWeight = if (isCourseSelected) FontWeight.Bold else FontWeight.SemiBold,
-                                color = if (isCourseSelected) ChunkyColor.SkyBottom else ChunkyColor.TextMuted,
-                                modifier = Modifier.widthIn(max = 110.dp)
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = colorScheme.primaryContainer,
+                                selectedLabelColor = colorScheme.onPrimaryContainer
                             )
-                        }
+                        )
 
                         DropdownMenu(
                             expanded = showCourseMenu,
@@ -1661,17 +1665,18 @@ private fun BottomQuickCaptureBar(
                     }
                 }
 
-                Text(
-                    text = "Mở rộng",
-                    maxLines = 1,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ChunkyColor.TextLink,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickable(onClick = openDialogWithDraft)
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                )
+                TextButton(
+                    onClick = openDialogWithDraft,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "Mở rộng",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorScheme.primary
+                    )
+                }
             }
         }
     }
@@ -1683,23 +1688,19 @@ private fun QuickDeadlinePill(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val bg = if (selected) ChunkyColor.TomorrowBackground else Color.Transparent
-    val border = if (selected) ChunkyColor.TomorrowBorder else ChunkyColor.CardBorder
-    val textCol = if (selected) ChunkyColor.TomorrowText else ChunkyColor.TextMuted
-
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(bg)
-            .border(1.dp, border, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-    ) {
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-            color = textCol
+    val colorScheme = MaterialTheme.colorScheme
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium
+            )
+        },
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = colorScheme.primaryContainer,
+            selectedLabelColor = colorScheme.onPrimaryContainer
         )
-    }
+    )
 }

@@ -25,10 +25,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,6 +78,8 @@ fun SettingsDialog(
     var credentialsMessage by remember { mutableStateOf<String?>(null) }
     var showLogoutConfirmation by remember { mutableStateOf(false) }
 
+    val colorScheme = MaterialTheme.colorScheme
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -83,8 +87,9 @@ fun SettingsDialog(
         )
     ) {
         Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = ChunkyColor.SurfaceWhite,
+            shape = MaterialTheme.shapes.extraLarge,
+            color = colorScheme.surfaceContainerHigh,
+            tonalElevation = 6.dp,
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .heightIn(max = 620.dp)
@@ -93,7 +98,7 @@ fun SettingsDialog(
         ) {
             Column(
                 modifier = Modifier
-                    .padding(20.dp)
+                    .padding(24.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 Row(
@@ -102,13 +107,12 @@ fun SettingsDialog(
                 ) {
                     Text(
                         text = "Cài đặt & Tài khoản",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        color = ChunkyColor.TextPrimary,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = ChunkyColor.TextMuted)
+                        Icon(Icons.Default.Close, contentDescription = "Đóng", tint = colorScheme.onSurfaceVariant)
                     }
                 }
 
@@ -117,19 +121,20 @@ fun SettingsDialog(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(ChunkyColor.WindowBackground)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(colorScheme.surfaceContainerLowest)
+                        .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(14.dp))
                         .padding(16.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (isAuthenticated && !userAvatar.isNullOrBlank()) {
                             AsyncImage(
                                 model = userAvatar,
-                                contentDescription = "User Avatar",
+                                contentDescription = "Ảnh đại diện tài khoản",
                                 modifier = Modifier
                                     .size(48.dp)
                                     .clip(CircleShape)
-                                    .border(1.5.dp, ChunkyColor.CardBorder, CircleShape)
+                                    .border(1.5.dp, colorScheme.outlineVariant, CircleShape)
                             )
                         } else {
                             EmberFlameCanvas(
@@ -144,51 +149,54 @@ fun SettingsDialog(
                             if (isAuthenticated && !userEmail.isNullOrBlank()) {
                                 Text(
                                     text = userName ?: "Google Classroom User",
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 15.5.sp,
-                                    color = ChunkyColor.TextPrimary
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = colorScheme.onSurface
                                 )
                                 Text(
                                     text = userEmail,
-                                    fontSize = 13.5.sp,
-                                    color = ChunkyColor.TextMuted
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colorScheme.onSurfaceVariant
                                 )
                             } else {
                                 Text(
                                     text = "Chưa kết nối tài khoản",
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 15.5.sp,
-                                    color = ChunkyColor.TextPrimary
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = colorScheme.onSurface
                                 )
                                 Text(
                                     text = "Đang xem dữ liệu mẫu",
-                                    fontSize = 13.5.sp,
-                                    color = ChunkyColor.TextMuted
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colorScheme.onSurfaceVariant
                                 )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 if (isAuthenticated) {
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Button(
                             onClick = onSyncNow,
                             enabled = !isSyncing,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.ActionBlue),
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colorScheme.primary,
+                                contentColor = colorScheme.onPrimary
+                            ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             if (isSyncing) {
                                 CircularProgressIndicator(
-                                    color = Color.White,
+                                    color = colorScheme.onPrimary,
                                     strokeWidth = 2.dp,
                                     modifier = Modifier.size(16.dp)
                                 )
                             } else {
-                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(17.dp))
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Đồng bộ ngay", fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
                             }
@@ -198,16 +206,23 @@ fun SettingsDialog(
 
                         OutlinedButton(
                             onClick = { showLogoutConfirmation = true },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.error.copy(alpha = 0.5f)),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Đăng xuất", color = ChunkyColor.UrgentAccent, fontSize = 14.5.sp)
+                            Text("Đăng xuất", color = colorScheme.error, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 } else {
                     Button(
                         onClick = onSignIn,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.ActionBlue),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.primary,
+                            contentColor = colorScheme.onPrimary
+                        ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text("Đăng nhập bằng Google", fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -215,16 +230,15 @@ fun SettingsDialog(
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
-                HorizontalDivider(color = ChunkyColor.Hairline)
+                HorizontalDivider(color = colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(16.dp))
-
-
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(ChunkyColor.WindowBackground)
+                        .background(colorScheme.surfaceContainerLowest)
+                        .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                         .clickable { isAdvancedExpanded = !isAdvancedExpanded }
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
@@ -235,27 +249,26 @@ fun SettingsDialog(
                         Icon(
                             imageVector = Icons.Default.Tune,
                             contentDescription = null,
-                            tint = ChunkyColor.TextMuted,
+                            tint = colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Tùy chọn nâng cao",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 15.sp,
-                                color = ChunkyColor.TextPrimary
+                                style = MaterialTheme.typography.titleSmall,
+                                color = colorScheme.onSurface
                             )
                             Text(
                                 text = "Cấu hình Google Client ID riêng",
-                                fontSize = 13.sp,
-                                color = ChunkyColor.TextMuted
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurfaceVariant
                             )
                         }
                         Icon(
                             imageVector = if (isAdvancedExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = null,
-                            tint = ChunkyColor.TextMuted,
+                            contentDescription = if (isAdvancedExpanded) "Thu gọn" else "Mở rộng",
+                            tint = colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -267,14 +280,14 @@ fun SettingsDialog(
                             .fillMaxWidth()
                             .padding(top = 8.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(ChunkyColor.WindowBackground.copy(alpha = 0.5f))
+                            .background(colorScheme.surfaceContainerLowest)
+                            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                             .padding(16.dp)
                     ) {
                         Text(
                             text = "Ứng dụng đã có sẵn Google Client ID mặc định. Bạn chỉ cần cấu hình nếu muốn dùng Client ID riêng từ Google Cloud Console.",
-                            fontSize = 12.sp,
-                            color = ChunkyColor.TextMuted,
-                            lineHeight = 16.sp
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -289,9 +302,9 @@ fun SettingsDialog(
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = ChunkyColor.SkyBottom,
-                                unfocusedBorderColor = ChunkyColor.CardBorder,
-                                focusedLabelColor = ChunkyColor.SkyBottom
+                                focusedBorderColor = colorScheme.primary,
+                                unfocusedBorderColor = colorScheme.outlineVariant,
+                                focusedLabelColor = colorScheme.primary
                             ),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -300,9 +313,8 @@ fun SettingsDialog(
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = msg,
-                                color = ChunkyColor.TextLink,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
+                                color = colorScheme.primary,
+                                style = MaterialTheme.typography.labelMedium
                             )
                         }
 
@@ -319,7 +331,9 @@ fun SettingsDialog(
                                     credentialsMessage = "Đã khôi phục Client ID mặc định"
                                 },
                                 shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 48.dp)
                             ) {
                                 Text("Mặc định", fontSize = 13.sp)
                             }
@@ -331,8 +345,13 @@ fun SettingsDialog(
                                     onSaveCustomCredentials(customClientId.ifBlank { null })
                                     credentialsMessage = "Đã lưu cấu hình Client ID"
                                 },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = ChunkyColor.ActionBlue),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 48.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = colorScheme.primary,
+                                    contentColor = colorScheme.onPrimary
+                                ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Text("Lưu Client ID", fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -344,8 +363,8 @@ fun SettingsDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Classroom Tracker v1.0.0 • Native Android",
-                    fontSize = 11.sp,
-                    color = ChunkyColor.TextTertiary,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
             }
@@ -358,42 +377,37 @@ fun SettingsDialog(
             title = {
                 Text(
                     text = "Đăng xuất tài khoản?",
-                    fontWeight = FontWeight.Bold,
-                    color = ChunkyColor.TextPrimary
+                    style = MaterialTheme.typography.titleLarge,
+                    color = colorScheme.onSurface
                 )
             },
             text = {
                 Text(
                     text = "Toàn bộ dữ liệu bài tập đã lưu trên thiết bị sẽ được xoá. Bạn có thể đăng nhập lại bất kỳ lúc nào.",
-                    color = ChunkyColor.TextMuted,
-                    fontSize = 14.sp
+                    color = colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
                 )
             },
             confirmButton = {
-                androidx.compose.material3.TextButton(
+                TextButton(
                     onClick = {
                         showLogoutConfirmation = false
                         onSignOut()
                         onDismiss()
                     }
                 ) {
-                    Text("Đăng xuất", color = ChunkyColor.UrgentAccent, fontWeight = FontWeight.Bold)
+                    Text("Đăng xuất", color = colorScheme.error, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(
+                TextButton(
                     onClick = { showLogoutConfirmation = false }
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Huỷ",
-                        tint = ChunkyColor.TextPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Text("Hủy", color = colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                 }
             },
-            containerColor = ChunkyColor.SurfaceWhite,
-            shape = RoundedCornerShape(16.dp)
+            containerColor = colorScheme.surfaceContainerHigh,
+            shape = MaterialTheme.shapes.extraLarge
         )
     }
 }

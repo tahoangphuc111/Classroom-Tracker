@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -51,6 +52,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -216,6 +220,10 @@ fun AssignmentCard(
         SubjectArtHelper.theme(coursework.courseName, coursework.title)
     }
 
+    val colorScheme = MaterialTheme.colorScheme
+    val uncheckedBorderColor = colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    val strikethroughLineColor = colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -228,14 +236,18 @@ fun AssignmentCard(
                 shape = CardShape
                 clip = true
             }
-            .background(ChunkyColor.SurfaceWhite)
-            .border(1.dp, ChunkyColor.CardBorder, CardShape),
+            .background(colorScheme.surfaceContainerLowest)
+            .border(1.dp, colorScheme.outlineVariant, CardShape),
         verticalAlignment = Alignment.Top
     ) {
         Box(
             modifier = Modifier
                 .padding(start = 4.dp, top = 4.dp)
                 .size(48.dp)
+                .semantics {
+                    contentDescription = "Đánh dấu hoàn thành ${coursework.title}"
+                    stateDescription = if (isCompleted) "Đã hoàn thành" else "Chưa hoàn thành"
+                }
                 .clickable(
                     interactionSource = checkInteractionSource,
                     indication = ripple(bounded = false, radius = 22.dp),
@@ -261,7 +273,7 @@ fun AssignmentCard(
                             val progress = completionProgress.value
                             val factor = (progress / 0.769f).coerceIn(0f, 1f)
                             val bgColor = lerp(Color.Transparent, ChunkyColor.SuccessGreen, factor)
-                            val borderColor = lerp(UncheckedBorderColor, ChunkyColor.SuccessGreen, factor)
+                            val borderColor = lerp(uncheckedBorderColor, ChunkyColor.SuccessGreen, factor)
                             drawCircle(color = bgColor)
                             drawCircle(
                                 color = borderColor,
@@ -274,7 +286,7 @@ fun AssignmentCard(
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Completed",
+                    contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier
                         .size(17.dp)
@@ -307,11 +319,11 @@ fun AssignmentCard(
             ) {
                 Text(
                     text = coursework.title,
-                    color = ChunkyColor.TextPrimary,
-                    fontFamily = BeVietnamProFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.5.sp,
-                    lineHeight = 24.sp,
+                    color = colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 17.sp,
+                        lineHeight = 23.sp
+                    ),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     onTextLayout = onTextLayout,
@@ -332,7 +344,7 @@ fun AssignmentCard(
                                             val line = lines[i]
                                             val endX = line.left + (line.right - line.left) * progress
                                             drawLine(
-                                                color = StrikethroughLineColor,
+                                                color = strikethroughLineColor,
                                                 start = Offset(line.left, line.y),
                                                 end = Offset(endX, line.y),
                                                 strokeWidth = strokeWidthPx,
@@ -343,7 +355,7 @@ fun AssignmentCard(
                                         val y = size.height / 2f
                                         val endX = size.width * progress
                                         drawLine(
-                                            color = StrikethroughLineColor,
+                                            color = strikethroughLineColor,
                                             start = Offset(0f, y),
                                             end = Offset(endX, y),
                                             strokeWidth = strokeWidthPx,
@@ -364,13 +376,10 @@ fun AssignmentCard(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = coursework.courseName,
-                        color = ChunkyColor.TextMuted,
-                        fontFamily = BeVietnamProFontFamily,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
+                        color = colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     if (hasNote) {
@@ -378,7 +387,7 @@ fun AssignmentCard(
                         Icon(
                             imageVector = Icons.Default.EditNote,
                             contentDescription = "Có ghi chú",
-                            tint = ChunkyColor.TextLink,
+                            tint = colorScheme.primary,
                             modifier = Modifier.size(17.dp)
                         )
                     }

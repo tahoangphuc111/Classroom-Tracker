@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 object ChunkyColor {
     val SkyTop = Color(0xFF61C7FF)
     val SkyBottom = Color(0xFF249EFA)
-    val ActionBlue = Color(0xFF0284C7)
+    val ActionBlue = Color(0xFF0265CD)
     val TextLink = Color(0xFF0369A1)
 
     val EmberTop = Color(0xFFFF7A38)

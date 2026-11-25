@@ -44,6 +44,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -135,32 +136,34 @@ fun AllUpcomingScreen(
     val matchingCount = buckets.overdue.size + buckets.today.size + buckets.tomorrow.size +
         buckets.laterUpcoming.size + buckets.noDueDate.size + buckets.completed.size
 
+    val colorScheme = MaterialTheme.colorScheme
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ChunkyColor.WindowBackground)
+            .background(colorScheme.surface)
     ) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Tìm bài tập...", fontSize = 15.sp) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = ChunkyColor.TextMuted) },
+            placeholder = { Text("Tìm bài tập...", style = MaterialTheme.typography.bodyLarge) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colorScheme.onSurfaceVariant) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { searchQuery = "" }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear", tint = ChunkyColor.TextMuted)
+                        Icon(Icons.Default.Clear, contentDescription = "Xóa tìm kiếm", tint = colorScheme.onSurfaceVariant)
                     }
                 }
             },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = ChunkyColor.SurfaceWhite,
-                unfocusedContainerColor = ChunkyColor.SurfaceWhite,
-                focusedBorderColor = ChunkyColor.SkyBottom,
-                unfocusedBorderColor = ChunkyColor.CardBorder
+                focusedContainerColor = colorScheme.surfaceContainerLowest,
+                unfocusedContainerColor = colorScheme.surfaceContainerLowest,
+                focusedBorderColor = colorScheme.primary,
+                unfocusedBorderColor = colorScheme.outlineVariant
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -177,19 +180,17 @@ fun AllUpcomingScreen(
             ) {
                 Text(
                     text = "Tìm thấy ${matchingCount} bài tập",
-                    fontSize = 13.5.sp,
-                    color = ChunkyColor.TextMuted,
-                    fontWeight = FontWeight.SemiBold
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colorScheme.onSurfaceVariant
                 )
                 androidx.compose.material3.TextButton(
                     onClick = { searchQuery = "" },
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                 ) {
                     Text(
                         text = "Xóa tìm kiếm",
-                        fontSize = 13.5.sp,
-                        color = ChunkyColor.TextLink,
-                        fontWeight = FontWeight.SemiBold
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorScheme.primary
                     )
                 }
             }
@@ -216,19 +217,20 @@ fun AllUpcomingScreen(
                 buckets.overdue.isNotEmpty() || upcomingIncompleteCount >= 5 -> EmberEmotion.STRESSED
                 else -> EmberEmotion.STUDYING
             }
+            val isStressed = upcomingEmotion == EmberEmotion.STRESSED
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(
-                        if (upcomingEmotion == EmberEmotion.STRESSED) Color(0xFFFEF2F2)
-                        else ChunkyColor.SurfaceWhite
+                        if (isStressed) colorScheme.errorContainer
+                        else colorScheme.surfaceContainerLowest
                     )
                     .border(
                         1.dp,
-                        if (upcomingEmotion == EmberEmotion.STRESSED) Color(0xFFFECACA)
-                        else ChunkyColor.CardBorder,
+                        if (isStressed) colorScheme.error.copy(alpha = 0.3f)
+                        else colorScheme.outlineVariant,
                         RoundedCornerShape(14.dp)
                     )
                     .padding(horizontal = 16.dp, vertical = 12.dp)
@@ -243,25 +245,23 @@ fun AllUpcomingScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (upcomingEmotion == EmberEmotion.STRESSED) {
+                            text = if (isStressed) {
                                 "$upcomingIncompleteCount bài cần chú ý"
                             } else {
                                 "Đang có $upcomingIncompleteCount bài sắp tới"
                             },
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.5.sp,
-                            color = ChunkyColor.TextPrimary
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (isStressed) colorScheme.onErrorContainer else colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = if (upcomingEmotion == EmberEmotion.STRESSED) {
+                            text = if (isStressed) {
                                 "Có bài quá hạn hoặc sắp đến hạn nộp rồi."
                             } else {
                                 "Xếp theo thời gian nộp từ gần đến xa để dễ theo dõi."
                             },
-                            fontSize = 13.5.sp,
-                            color = ChunkyColor.TextMuted,
-                            lineHeight = 18.sp
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isStressed) colorScheme.onErrorContainer.copy(alpha = 0.85f) else colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -279,8 +279,8 @@ fun AllUpcomingScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(ChunkyColor.SurfaceWhite)
-                        .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
+                        .background(colorScheme.surfaceContainerLowest)
+                        .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(16.dp))
                         .padding(horizontal = 20.dp, vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -292,9 +292,8 @@ fun AllUpcomingScreen(
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
                             text = if (searchQuery.isNotBlank()) "Không tìm thấy bài tập" else "Chưa có bài tập nào",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = ChunkyColor.TextPrimary
+                            style = MaterialTheme.typography.titleLarge,
+                            color = colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -303,10 +302,9 @@ fun AllUpcomingScreen(
                             } else {
                                 "Danh sách bài tập sắp tới hiện đang trống."
                             },
-                            fontSize = 14.5.sp,
-                            color = ChunkyColor.TextMuted,
-                            textAlign = TextAlign.Center,
-                            lineHeight = 20.sp
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
@@ -322,8 +320,8 @@ fun AllUpcomingScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(ChunkyColor.SurfaceWhite)
-                        .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
+                        .background(colorScheme.surfaceContainerLowest)
+                        .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(16.dp))
                         .padding(horizontal = 20.dp, vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -335,18 +333,16 @@ fun AllUpcomingScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = "Hết bài cần nộp rồi",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = ChunkyColor.TextPrimary,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Tất cả bài tập trong danh sách đều đã xong.",
-                            fontSize = 14.5.sp,
-                            color = ChunkyColor.TextMuted,
-                            textAlign = TextAlign.Center,
-                            lineHeight = 20.sp
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }

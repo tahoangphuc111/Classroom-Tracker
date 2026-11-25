@@ -35,6 +35,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -132,11 +133,13 @@ fun CompletedHomeworkScreen(
         searchQuery = ""
     }
 
+    val colorScheme = MaterialTheme.colorScheme
+
     if (completedItems.isEmpty()) {
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(ChunkyColor.WindowBackground)
+                .background(colorScheme.surface)
                 .padding(horizontal = 16.dp, vertical = 20.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -144,8 +147,8 @@ fun CompletedHomeworkScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(ChunkyColor.SurfaceWhite)
-                    .border(1.dp, ChunkyColor.CardBorder, RoundedCornerShape(16.dp))
+                    .background(colorScheme.surfaceContainerLowest)
+                    .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(16.dp))
                     .padding(horizontal = 20.dp, vertical = 32.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -157,17 +160,15 @@ fun CompletedHomeworkScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Chưa có bài nào xong",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 19.sp,
-                        color = ChunkyColor.TextPrimary
+                        style = MaterialTheme.typography.titleLarge,
+                        color = colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Các bài bạn đánh dấu hoàn thành sẽ nằm ở đây.",
-                        fontSize = 15.sp,
-                        color = ChunkyColor.TextMuted,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 20.sp
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
                     )
                 }
             }
@@ -176,7 +177,7 @@ fun CompletedHomeworkScreen(
         Column(
             modifier = modifier
                 .fillMaxSize()
-                .background(ChunkyColor.WindowBackground)
+                .background(colorScheme.surface)
         ) {
             Box(
                 modifier = Modifier
@@ -198,15 +199,14 @@ fun CompletedHomeworkScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Đã làm xong ${completedItems.size} bài tập",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.5.sp,
+                            style = MaterialTheme.typography.titleMedium,
                             color = ChunkyColor.CompletedBadgeText
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Tất cả các bài bạn đã nộp hoặc đánh dấu xong.",
-                            fontSize = 13.5.sp,
-                            color = ChunkyColor.TextMuted
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = ChunkyColor.CompletedBadgeText.copy(alpha = 0.85f)
                         )
                     }
                 }
@@ -218,27 +218,27 @@ fun CompletedHomeworkScreen(
                     searchQuery = it
                     displayLimit = 30
                 },
-                placeholder = { Text("Tìm bài tập đã hoàn thành...", fontSize = 15.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = ChunkyColor.TextMuted) },
+                placeholder = { Text("Tìm bài tập đã hoàn thành...", style = MaterialTheme.typography.bodyLarge) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colorScheme.onSurfaceVariant) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = {
                             searchQuery = ""
                             displayLimit = 30
                         }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = ChunkyColor.TextMuted)
+                            Icon(Icons.Default.Clear, contentDescription = "Xóa tìm kiếm", tint = colorScheme.onSurfaceVariant)
                         }
                     }
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(28.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = ChunkyColor.SurfaceWhite,
-                    unfocusedContainerColor = ChunkyColor.SurfaceWhite,
-                    focusedBorderColor = ChunkyColor.SkyBottom,
-                    unfocusedBorderColor = ChunkyColor.CardBorder
+                    focusedContainerColor = colorScheme.surfaceContainerLowest,
+                    unfocusedContainerColor = colorScheme.surfaceContainerLowest,
+                    focusedBorderColor = colorScheme.primary,
+                    unfocusedBorderColor = colorScheme.outlineVariant
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -255,22 +255,20 @@ fun CompletedHomeworkScreen(
                 ) {
                     Text(
                         text = "Tìm thấy ${filteredItems.size} bài tập đã xong",
-                        fontSize = 13.5.sp,
-                        color = ChunkyColor.TextMuted,
-                        fontWeight = FontWeight.SemiBold
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorScheme.onSurfaceVariant
                     )
                     TextButton(
                         onClick = {
                             searchQuery = ""
                             displayLimit = 30
                         },
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                     ) {
                         Text(
                             text = "Xóa tìm kiếm",
-                            fontSize = 13.5.sp,
-                            color = ChunkyColor.TextLink,
-                            fontWeight = FontWeight.SemiBold
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colorScheme.primary
                         )
                     }
                 }
@@ -280,7 +278,7 @@ fun CompletedHomeworkScreen(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(ChunkyColor.WindowBackground),
+                    .background(colorScheme.surface),
                 contentPadding = PaddingValues(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -316,13 +314,13 @@ fun CompletedHomeworkScreen(
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text(
                                     text = if (searchQuery.isNotEmpty()) "Không tìm thấy bài tập" else "Chưa có bài tập hoàn thành",
-                                    fontSize = 14.sp,
-                                    color = ChunkyColor.TextMuted
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colorScheme.onSurfaceVariant
                                 )
                                 if (searchQuery.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(8.dp))
                                     TextButton(onClick = { searchQuery = "" }) {
-                                        Text("Xoá tìm kiếm", color = ChunkyColor.TextLink, fontWeight = FontWeight.Bold)
+                                        Text("Xóa tìm kiếm", color = colorScheme.primary, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -363,9 +361,8 @@ fun CompletedHomeworkScreen(
                             ) {
                                 Text(
                                     text = "Đang hiển thị ${displayedItems.size}/${filteredItems.size} bài đã hoàn thành",
-                                    fontSize = 12.sp,
-                                    color = ChunkyColor.TextMuted,
-                                    fontWeight = FontWeight.SemiBold
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(
@@ -388,7 +385,7 @@ fun CompletedHomeworkScreen(
                                         TextButton(
                                             onClick = { displayLimit = filteredItems.size }
                                         ) {
-                                            Text("Xem tất cả", fontSize = 12.5.sp, color = ChunkyColor.TextLink)
+                                            Text("Xem tất cả", fontSize = 12.5.sp, color = colorScheme.primary)
                                         }
                                     }
                                 }

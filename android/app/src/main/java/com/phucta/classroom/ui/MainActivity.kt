@@ -5,22 +5,16 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
 import androidx.lifecycle.lifecycleScope
 import com.phucta.classroom.ClassroomApplication
 import com.phucta.classroom.data.model.ClassroomDateUtils
 import com.phucta.classroom.ui.screens.MainScreen
-import com.phucta.classroom.ui.theme.BeVietnamProFontFamily
-import com.phucta.classroom.ui.theme.ChunkyColor
-import com.phucta.classroom.ui.theme.ClassroomTypography
-import androidx.activity.enableEdgeToEdge
+import com.phucta.classroom.ui.theme.ClassroomTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -35,33 +29,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            MaterialTheme(
-                colorScheme = lightColorScheme(
-                    primary = ChunkyColor.SkyBottom,
-                    background = ChunkyColor.WindowBackground,
-                    surface = ChunkyColor.SurfaceWhite,
-                    onPrimary = ChunkyColor.SurfaceWhite,
-                    onBackground = ChunkyColor.TextPrimary,
-                    onSurface = ChunkyColor.TextPrimary,
-                    outline = ChunkyColor.CardBorder,
-                    surfaceVariant = ChunkyColor.WindowBackground,
-                    onSurfaceVariant = ChunkyColor.TextMuted
-                ),
-                typography = ClassroomTypography
-            ) {
-                ProvideTextStyle(
-                    value = TextStyle(
-                        fontFamily = BeVietnamProFontFamily,
-                        color = ChunkyColor.TextPrimary
-                    )
+            ClassroomTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.surface
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(ChunkyColor.WindowBackground)
-                    ) {
-                        MainScreen()
-                    }
+                    MainScreen()
                 }
             }
         }
