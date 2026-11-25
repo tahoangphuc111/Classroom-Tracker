@@ -1,16 +1,30 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en"
+      data-title-vi="Điều khoản Dịch vụ - Classroom Tracker"
+      data-title-en="Terms of Service - Classroom Tracker"
+      data-desc-vi="Điều khoản dịch vụ khi sử dụng ứng dụng Classroom Tracker trên macOS, iOS và Android."
+      data-desc-en="Terms of Service governing the use of the Classroom Tracker application on macOS, iOS, iPadOS, and Android.">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Điều khoản Dịch vụ - Classroom Tracker</title>
-  <meta name="description" content="Điều khoản sử dụng ứng dụng Classroom Tracker trên macOS, iOS và Android.">
+  <title>Terms of Service - Classroom Tracker</title>
+  <meta name="description" content="Terms of Service governing the use of the Classroom Tracker application on macOS, iOS, iPadOS, and Android.">
   <link rel="icon" type="image/svg+xml" href="app-icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="style.css">
+  <script>
+    (function () {
+      try {
+        var q = new URLSearchParams(window.location.search).get('lang');
+        var l = (q === 'vi' || q === 'en') ? q : (localStorage.getItem('ct_lang') || ((navigator.language || '').toLowerCase().indexOf('vi') === 0 ? 'vi' : 'en'));
+        document.documentElement.classList.add('lang-' + l);
+        document.documentElement.lang = l;
+      } catch (_) {}
+    })();
+  </script>
 </head>
 <body>
   <header class="site-header">
@@ -19,44 +33,195 @@
         <img src="app-icon.svg" alt="Classroom Tracker" class="brand-icon">
         <span>Classroom Tracker</span>
       </a>
-      <a href="index.html" class="nav-link">
-        <i class="fa-solid fa-arrow-left"></i> Về trang chủ
-      </a>
+      <div class="header-actions">
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="index.html" class="nav-link">
+            <span data-lang="vi">Trang chủ</span>
+            <span data-lang="en">Home</span>
+          </a>
+          <a href="privacy.html" class="nav-link">
+            <span data-lang="vi">Quyền riêng tư</span>
+            <span data-lang="en">Privacy Policy</span>
+          </a>
+          <a href="terms.html" class="nav-link is-active" aria-current="page">
+            <span data-lang="vi">Điều khoản</span>
+            <span data-lang="en">Terms of Service</span>
+          </a>
+          <a href="https://github.com/tahoangphuc111/Classroom-Tracker" class="nav-link" target="_blank" rel="noopener">
+            <i class="fa-brands fa-github" aria-hidden="true"></i> GitHub
+          </a>
+        </nav>
+        <div class="lang-switcher" role="group" aria-label="Language switcher">
+          <button type="button" class="lang-btn" data-set-lang="vi" aria-pressed="false">VI</button>
+          <button type="button" class="lang-btn" data-set-lang="en" aria-pressed="true">EN</button>
+        </div>
+      </div>
     </div>
   </header>
 
   <main class="page-wrapper">
-    <article class="document-shell">
+    <!-- ENGLISH VERSION -->
+    <article class="document-shell" data-lang="en">
       <header class="document-header">
-        <h1 class="document-title">Điều khoản Dịch vụ</h1>
-        <p class="document-meta">Ngày áp dụng: 21 tháng 10, 2026</p>
+        <h1 class="document-title">Terms of Service</h1>
+        <div class="document-meta-row">
+          <span><strong>Application:</strong> Classroom Tracker (macOS, iOS, iPadOS, Android)</span>
+          <span><strong>Effective Date:</strong> November 25, 2026</span>
+          <span><strong>Developer:</strong> Tạ Hoàng Phúc</span>
+        </div>
       </header>
 
+      <nav class="doc-toc" aria-label="Table of Contents">
+        <div class="doc-toc-title">Contents</div>
+        <ol>
+          <li><a href="#en-acceptance">Acceptance of Terms</a></li>
+          <li><a href="#en-service-scope">Description &amp; Independence</a></li>
+          <li><a href="#en-user-responsibilities">User Responsibilities</a></li>
+          <li><a href="#en-local-content">Local Data &amp; Read-Only Nature</a></li>
+          <li><a href="#en-ip-license">Open Source &amp; Trademarks</a></li>
+          <li><a href="#en-warranty">Disclaimer of Warranties</a></li>
+          <li><a href="#en-liability">Limitation of Liability</a></li>
+          <li><a href="#en-termination">Termination &amp; Contact</a></li>
+        </ol>
+      </nav>
+
       <div class="document-body">
-        <p>Bằng việc cài đặt hoặc sử dụng ứng dụng Classroom Tracker trên thiết bị, bạn đồng ý với các điều khoản dưới đây.</p>
+        <p>
+          By downloading, installing, or using <strong>Classroom Tracker</strong> on macOS, iOS, iPadOS, or Android, you agree to be bound by these Terms of Service and our <a href="privacy.html">Privacy Policy</a>. If you do not agree to these terms, please discontinue use and uninstall the application.
+        </p>
 
-        <h2>1. Mục đích ứng dụng</h2>
-        <p>Classroom Tracker là công cụ hỗ trợ học tập cá nhân, phục vụ việc xem và quản lý bài tập từ tài khoản Google Classroom của người dùng. Ứng dụng là dự án độc lập, không trực thuộc Google LLC.</p>
+        <h2 id="en-acceptance">1. Acceptance of Terms</h2>
+        <p>
+          These Terms govern your access to and use of Classroom Tracker, a personal study companion application developed and maintained by Tạ Hoàng Phúc.
+        </p>
 
-        <h2>2. Trách nhiệm người dùng</h2>
+        <h2 id="en-service-scope">2. Description &amp; Independence from Google</h2>
         <ul>
-          <li>Người dùng tự chịu trách nhiệm bảo quản thiết bị cá nhân đã đăng nhập ứng dụng.</li>
-          <li>Sử dụng ứng dụng đúng mục đích theo dõi bài tập cá nhân, tuân thủ nội quy trường học và điều khoản của Google.</li>
-          <li>Chủ động kiểm tra các hạn nộp bài trực tiếp trên Google Classroom khi chuẩn bị cho các bài thi hoặc hạn nộp quan trọng.</li>
+          <li>Classroom Tracker helps students view enrolled Google Classroom courses, organize upcoming assignments and deadlines, display home screen or desktop widgets, and manage personal study notes locally on their devices.</li>
+          <li>Classroom Tracker is an <strong>independent open-source project</strong> and is not affiliated with, sponsored by, endorsed by, or officially connected to Google LLC or any educational institution.</li>
         </ul>
 
-        <h2>3. Miễn trừ trách nhiệm</h2>
-        <p>Ứng dụng được cung cấp miễn phí dưới dạng mã nguồn mở. Nhà phát triển nỗ lực đảm bảo dữ liệu hiển thị chính xác nhưng không chịu trách nhiệm trong các tình huống phát sinh do lỗi kết nối mạng, gián đoạn thiết bị hoặc sự cố kỹ thuật từ dịch vụ bên thứ ba.</p>
+        <h2 id="en-user-responsibilities">3. User Responsibilities</h2>
+        <ul>
+          <li><strong>Account Security:</strong> You are responsible for maintaining the security of the personal devices on which you sign in to Classroom Tracker and for any activity performed under your Google Account.</li>
+          <li><strong>Lawful &amp; Authorized Use:</strong> You agree to use Classroom Tracker solely for personal educational organization and in compliance with applicable laws, your school's academic policies, and <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Google's Terms of Service</a>.</li>
+          <li><strong>Verification of Critical Deadlines:</strong> Classroom Tracker caches coursework data locally and relies on periodic background sync. You remain responsible for verifying critical assignment instructions, submission requirements, and exam deadlines directly on the official Google Classroom website or app.</li>
+        </ul>
 
-        <h2>4. Chấm dứt sử dụng</h2>
-        <p>Bạn có thể ngừng sử dụng ứng dụng bất cứ lúc nào bằng cách gỡ ứng dụng khỏi máy hoặc ngắt quyền truy cập trong phần bảo mật của tài khoản Google.</p>
+        <h2 id="en-local-content">4. Read-Only Sync &amp; Local User Data</h2>
+        <ul>
+          <li>All permissions requested from Google Classroom are strictly read-only. Marking an assignment as completed or adding checklists and personal notes inside Classroom Tracker affects only your local device storage and does <strong>not</strong> submit files or update submission status on Google Classroom.</li>
+          <li>You are solely responsible for backing up or keeping your local personal notes if you uninstall the app or reset your device.</li>
+        </ul>
 
-        <h2>5. Liên hệ</h2>
-        <p>Mọi thắc mắc về điều khoản dịch vụ, vui lòng liên hệ:</p>
+        <h2 id="en-ip-license">5. Open Source &amp; Trademarks</h2>
         <p>
-          Tạ Hoàng Phúc<br>
+          Classroom Tracker is distributed free of charge as an open-source project at <a href="https://github.com/tahoangphuc111/Classroom-Tracker" target="_blank" rel="noopener">github.com/tahoangphuc111/Classroom-Tracker</a>. "Google" and "Google Classroom" are trademarks of Google LLC.
+        </p>
+
+        <h2 id="en-warranty">6. Disclaimer of Warranties</h2>
+        <p>
+          Classroom Tracker is provided on an <strong>"AS IS"</strong> and <strong>"AS AVAILABLE"</strong> basis, without warranties of any kind, whether express or implied, including but not limited to accuracy, reliability, uninterrupted availability, or fitness for a particular purpose. Synchronization depends on network connectivity, operating system background scheduling, and availability or rate limits of Google APIs.
+        </p>
+
+        <h2 id="en-liability">7. Limitation of Liability</h2>
+        <p>
+          To the maximum extent permitted by applicable law, the developer shall not be liable for any indirect, incidental, special, consequential, or academic damages—including missed deadlines, missed submissions, or loss of locally stored notes—arising out of or in connection with your use of or inability to use Classroom Tracker.
+        </p>
+
+        <h2 id="en-termination">8. Termination, Updates &amp; Contact</h2>
+        <p>
+          You may stop using Classroom Tracker at any time by signing out in Settings, uninstalling the application, or revoking access from your <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Google Account Permissions</a>. We may update these Terms from time to time by posting a revised version on this page.
+        </p>
+        <p>
+          For questions regarding these Terms of Service, please contact:<br>
+          <strong>Tạ Hoàng Phúc</strong><br>
           Email: <a href="mailto:tahoangphuc111@gmail.com">tahoangphuc111@gmail.com</a><br>
-          Mã nguồn dự án: <a href="https://github.com/tahoangphuc111/Classroom-Tracker" target="_blank" rel="noopener">GitHub Classroom-Tracker</a>
+          Repository: <a href="https://github.com/tahoangphuc111/Classroom-Tracker" target="_blank" rel="noopener">github.com/tahoangphuc111/Classroom-Tracker</a>
+        </p>
+      </div>
+    </article>
+
+    <hr class="bilingual-divider" aria-hidden="true">
+
+    <!-- VIETNAMESE VERSION -->
+    <article class="document-shell" data-lang="vi">
+      <header class="document-header">
+        <h1 class="document-title">Điều khoản Dịch vụ</h1>
+        <div class="document-meta-row">
+          <span><strong>Ứng dụng:</strong> Classroom Tracker (macOS, iOS, iPadOS, Android)</span>
+          <span><strong>Ngày áp dụng:</strong> 25 tháng 11, 2026</span>
+          <span><strong>Nhà phát triển:</strong> Tạ Hoàng Phúc</span>
+        </div>
+      </header>
+
+      <nav class="doc-toc" aria-label="Mục lục">
+        <div class="doc-toc-title">Mục lục</div>
+        <ol>
+          <li><a href="#vi-acceptance">Chấp nhận điều khoản</a></li>
+          <li><a href="#vi-service-scope">Mục đích &amp; Tính độc lập</a></li>
+          <li><a href="#vi-user-responsibilities">Trách nhiệm người dùng</a></li>
+          <li><a href="#vi-local-content">Quyền đọc &amp; Dữ liệu cục bộ</a></li>
+          <li><a href="#vi-ip-license">Mã nguồn mở &amp; Thương hiệu</a></li>
+          <li><a href="#vi-warranty">Miễn trừ bảo đảm</a></li>
+          <li><a href="#vi-liability">Giới hạn trách nhiệm</a></li>
+          <li><a href="#vi-termination">Chấm dứt &amp; Liên hệ</a></li>
+        </ol>
+      </nav>
+
+      <div class="document-body">
+        <p>
+          Khi tải về, cài đặt hoặc sử dụng ứng dụng <strong>Classroom Tracker</strong> trên macOS, iOS, iPadOS hoặc Android, bạn đồng ý tuân thủ các Điều khoản Dịch vụ này và <a href="privacy.html">Chính sách Quyền riêng tư</a> của ứng dụng. Nếu không đồng ý, vui lòng ngừng sử dụng và gỡ cài đặt ứng dụng.
+        </p>
+
+        <h2 id="vi-acceptance">1. Chấp nhận điều khoản</h2>
+        <p>
+          Các điều khoản này điều chỉnh việc bạn cài đặt và sử dụng Classroom Tracker — công cụ hỗ trợ học tập cá nhân do Tạ Hoàng Phúc phát triển và duy trì.
+        </p>
+
+        <h2 id="vi-service-scope">2. Mục đích ứng dụng &amp; Tính độc lập</h2>
+        <ul>
+          <li>Classroom Tracker hỗ trợ học sinh xem danh sách lớp học Google Classroom, theo dõi bài tập và hạn nộp (ưu tiên báo bài ngày mai), hiển thị widget trên màn hình chính/desktop và lưu ghi chú cá nhân trên thiết bị.</li>
+          <li>Ứng dụng là <strong>dự án mã nguồn mở độc lập</strong>, không trực thuộc, không được tài trợ hay chứng thực bởi Google LLC hoặc bất kỳ cơ sở giáo dục nào.</li>
+        </ul>
+
+        <h2 id="vi-user-responsibilities">3. Trách nhiệm của người dùng</h2>
+        <ul>
+          <li><strong>Bảo mật thiết bị:</strong> Bạn tự chịu trách nhiệm bảo vệ thiết bị cá nhân đã đăng nhập tài khoản Google trong ứng dụng.</li>
+          <li><strong>Sử dụng đúng mục đích:</strong> Sử dụng ứng dụng phục vụ học tập cá nhân, tuân thủ pháp luật, nội quy nhà trường và <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Điều khoản dịch vụ của Google</a>.</li>
+          <li><strong>Kiểm tra hạn nộp quan trọng:</strong> Ứng dụng lưu bộ nhớ đệm cục bộ và đồng bộ định kỳ. Với các bài thi, bài kiểm tra hoặc hạn nộp quan trọng, bạn có trách nhiệm đối chiếu trực tiếp trên trang web hoặc ứng dụng chính thức của Google Classroom.</li>
+        </ul>
+
+        <h2 id="vi-local-content">4. Cơ chế chỉ đọc &amp; Dữ liệu cục bộ</h2>
+        <ul>
+          <li>Toàn bộ quyền truy cập Google Classroom của ứng dụng là chỉ đọc (read-only). Việc đánh dấu hoàn thành bài tập, tạo checklist hay ghi chú cá nhân trong Classroom Tracker chỉ lưu trên thiết bị của bạn và <strong>không</strong> nộp bài hay thay đổi trạng thái bài nộp trên Google Classroom.</li>
+          <li>Bạn tự chịu trách nhiệm lưu giữ thông tin ghi chú cá nhân trước khi gỡ cài đặt ứng dụng hoặc đặt lại thiết bị.</li>
+        </ul>
+
+        <h2 id="vi-ip-license">5. Mã nguồn mở &amp; Quyền sở hữu trí tuệ</h2>
+        <p>
+          Classroom Tracker được cung cấp miễn phí dưới dạng dự án mã nguồn mở tại <a href="https://github.com/tahoangphuc111/Classroom-Tracker" target="_blank" rel="noopener">github.com/tahoangphuc111/Classroom-Tracker</a>. Tên gọi "Google" và "Google Classroom" là nhãn hiệu thuộc quyền sở hữu của Google LLC.
+        </p>
+
+        <h2 id="vi-warranty">6. Miễn trừ bảo đảm</h2>
+        <p>
+          Ứng dụng được cung cấp theo nguyên trạng (<strong>"AS IS"</strong> và <strong>"AS AVAILABLE"</strong>), không kèm theo bất kỳ bảo đảm rõ ràng hay ngụ ý nào về tính liên tục, độ chính xác tuyệt đối hoặc sự phù hợp cho một mục đích cụ thể. Quá trình đồng bộ phụ thuộc vào kết nối mạng, cơ chế chạy nền của hệ điều hành và giới hạn truy cập từ Google APIs.
+        </p>
+
+        <h2 id="vi-liability">7. Giới hạn trách nhiệm</h2>
+        <p>
+          Trong phạm vi tối đa mà pháp luật cho phép, nhà phát triển không chịu trách nhiệm đối với bất kỳ thiệt hại gián tiếp, ngẫu nhiên hoặc hệ quả nào — bao gồm việc trễ hạn nộp bài, thiếu sót bài nộp hoặc mất dữ liệu ghi chú cục bộ — phát sinh từ việc sử dụng hoặc không thể sử dụng ứng dụng.
+        </p>
+
+        <h2 id="vi-termination">8. Chấm dứt sử dụng, cập nhật &amp; Liên hệ</h2>
+        <p>
+          Bạn có thể ngừng sử dụng ứng dụng bất kỳ lúc nào bằng cách đăng xuất trong Cài đặt, gỡ cài đặt ứng dụng hoặc thu hồi quyền truy cập tại <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Trang quyền tài khoản Google</a>. Các điều khoản này có thể được cập nhật theo thời gian và công bố trực tiếp tại trang này.
+        </p>
+        <p>
+          Mọi thắc mắc về Điều khoản Dịch vụ, vui lòng liên hệ:<br>
+          <strong>Tạ Hoàng Phúc</strong><br>
+          Email: <a href="mailto:tahoangphuc111@gmail.com">tahoangphuc111@gmail.com</a><br>
+          Mã nguồn dự án: <a href="https://github.com/tahoangphuc111/Classroom-Tracker" target="_blank" rel="noopener">github.com/tahoangphuc111/Classroom-Tracker</a>
         </p>
       </div>
     </article>
@@ -64,13 +229,25 @@
 
   <footer class="site-footer">
     <div class="footer-inner">
-      <nav class="footer-nav">
-        <a href="index.html" class="footer-link">Trang chủ</a>
-        <a href="privacy.html" class="footer-link">Quyền riêng tư</a>
-        <a href="terms.html" class="footer-link">Điều khoản sử dụng</a>
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="index.html" class="footer-link">
+          <span data-lang="vi">Trang chủ</span>
+          <span data-lang="en">Home</span>
+        </a>
+        <a href="privacy.html" class="footer-link">
+          <span data-lang="vi">Quyền riêng tư</span>
+          <span data-lang="en">Privacy Policy</span>
+        </a>
+        <a href="terms.html" class="footer-link">
+          <span data-lang="vi">Điều khoản dịch vụ</span>
+          <span data-lang="en">Terms of Service</span>
+        </a>
+        <a href="https://github.com/tahoangphuc111/Classroom-Tracker" class="footer-link" target="_blank" rel="noopener">GitHub</a>
       </nav>
       <p class="footer-copy">© 2026 Classroom Tracker</p>
     </div>
   </footer>
+
+  <script src="lang.js" defer></script>
 </body>
 </html>

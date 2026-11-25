@@ -1,16 +1,30 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en"
+      data-title-vi="Chính sách Quyền riêng tư - Classroom Tracker"
+      data-title-en="Privacy Policy - Classroom Tracker"
+      data-desc-vi="Chính sách quyền riêng tư, phạm vi truy cập Google API và bảo vệ dữ liệu người dùng của ứng dụng Classroom Tracker."
+      data-desc-en="Privacy Policy, Google API data usage, Limited Use disclosure, and local-only data protection for Classroom Tracker.">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chính sách Quyền riêng tư - Classroom Tracker</title>
-  <meta name="description" content="Chính sách quyền riêng tư và bảo vệ dữ liệu người dùng của ứng dụng Classroom Tracker.">
+  <title>Privacy Policy - Classroom Tracker</title>
+  <meta name="description" content="Privacy Policy, Google API data usage, Limited Use disclosure, and local-only data protection for Classroom Tracker.">
   <link rel="icon" type="image/svg+xml" href="app-icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="style.css">
+  <script>
+    (function () {
+      try {
+        var q = new URLSearchParams(window.location.search).get('lang');
+        var l = (q === 'vi' || q === 'en') ? q : (localStorage.getItem('ct_lang') || ((navigator.language || '').toLowerCase().indexOf('vi') === 0 ? 'vi' : 'en'));
+        document.documentElement.classList.add('lang-' + l);
+        document.documentElement.lang = l;
+      } catch (_) {}
+    })();
+  </script>
 </head>
 <body>
   <header class="site-header">
@@ -19,63 +33,299 @@
         <img src="app-icon.svg" alt="Classroom Tracker" class="brand-icon">
         <span>Classroom Tracker</span>
       </a>
-      <a href="index.html" class="nav-link">
-        <i class="fa-solid fa-arrow-left"></i> Về trang chủ
-      </a>
+      <div class="header-actions">
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="index.html" class="nav-link">
+            <span data-lang="vi">Trang chủ</span>
+            <span data-lang="en">Home</span>
+          </a>
+          <a href="privacy.html" class="nav-link is-active" aria-current="page">
+            <span data-lang="vi">Quyền riêng tư</span>
+            <span data-lang="en">Privacy Policy</span>
+          </a>
+          <a href="terms.html" class="nav-link">
+            <span data-lang="vi">Điều khoản</span>
+            <span data-lang="en">Terms of Service</span>
+          </a>
+          <a href="https://github.com/tahoangphuc111/Classroom-Tracker" class="nav-link" target="_blank" rel="noopener">
+            <i class="fa-brands fa-github" aria-hidden="true"></i> GitHub
+          </a>
+        </nav>
+        <div class="lang-switcher" role="group" aria-label="Language switcher">
+          <button type="button" class="lang-btn" data-set-lang="vi" aria-pressed="false">VI</button>
+          <button type="button" class="lang-btn" data-set-lang="en" aria-pressed="true">EN</button>
+        </div>
+      </div>
     </div>
   </header>
 
   <main class="page-wrapper">
-    <article class="document-shell">
+    <!-- ENGLISH VERSION (Primary for Google OAuth Verification & International Users) -->
+    <article class="document-shell" data-lang="en">
       <header class="document-header">
-        <h1 class="document-title">Chính sách Quyền riêng tư</h1>
-        <p class="document-meta">Ngày áp dụng: 21 tháng 10, 2026</p>
+        <h1 class="document-title">Privacy Policy</h1>
+        <div class="document-meta-row">
+          <span><strong>Application:</strong> Classroom Tracker (macOS, iOS, iPadOS, Android)</span>
+          <span><strong>Effective Date:</strong> November 25, 2026</span>
+          <span><strong>Developer:</strong> Tạ Hoàng Phúc</span>
+        </div>
       </header>
 
+      <nav class="doc-toc" aria-label="Table of Contents">
+        <div class="doc-toc-title">Contents</div>
+        <ol>
+          <li><a href="#en-data-accessed">Google User Data Accessed</a></li>
+          <li><a href="#en-data-usage">How Data Is Used</a></li>
+          <li><a href="#en-limited-use">Google API Limited Use</a></li>
+          <li><a href="#en-storage-security">Storage, Sharing &amp; Security</a></li>
+          <li><a href="#en-retention-deletion">Retention &amp; Deletion</a></li>
+          <li><a href="#en-children">Students &amp; Minors</a></li>
+          <li><a href="#en-changes">Policy Changes</a></li>
+          <li><a href="#en-contact">Contact Information</a></li>
+        </ol>
+      </nav>
+
       <div class="document-body">
-        <p>Tài liệu này giải thích cách ứng dụng Classroom Tracker xử lý dữ liệu khi người dùng kết nối với tài khoản Google Classroom.</p>
+        <p>
+          This Privacy Policy explains how <strong>Classroom Tracker</strong> accesses, uses, stores, and protects user data when you sign in with your Google Account across our macOS, iOS, iPadOS, and Android applications. Classroom Tracker is an independent, open-source companion app and is not affiliated with Google LLC.
+        </p>
 
-        <h2>1. Dữ liệu ứng dụng truy cập</h2>
-        <p>Ứng dụng chỉ yêu cầu quyền đọc dữ liệu, không chỉnh sửa hay thay đổi nội dung trên tài khoản Google của bạn:</p>
-        <ul>
-          <li><strong>Hồ sơ cơ bản:</strong> Địa chỉ email, tên hiển thị và ảnh đại diện (thông qua quyền <code>userinfo.email</code> và <code>userinfo.profile</code>) để nhận diện tài khoản đang đăng nhập trên thiết bị.</li>
-          <li><strong>Danh sách lớp học:</strong> Tên môn học, phòng học và mã lớp (thông qua quyền <code>classroom.courses.readonly</code>).</li>
-          <li><strong>Danh sách bài tập:</strong> Tiêu đề bài tập, nội dung hướng dẫn, thời hạn nộp bài và liên kết bài nộp (thông qua quyền <code>classroom.coursework.me.readonly</code>).</li>
-          <li><strong>Trạng thái nộp bài:</strong> Tình trạng bài đã nộp, chưa nộp hoặc đã trả lời (thông qua quyền <code>classroom.student-submissions.me.readonly</code>).</li>
-        </ul>
+        <h2 id="en-data-accessed">1. Google User Data Accessed</h2>
+        <p>
+          Classroom Tracker connects to Google APIs using OAuth 2.0 with PKCE (Proof Key for Code Exchange). All Google Classroom permissions requested by the application are <strong>strictly read-only</strong>. Classroom Tracker never creates, edits, submits, or deletes any courses, assignments, grades, or submissions in your Google Classroom account.
+        </p>
 
-        <h2>2. Mục đích sử dụng</h2>
-        <p>Dữ liệu đọc từ Google Classroom chỉ dùng cho các mục đích sau:</p>
-        <ul>
-          <li>Hiển thị và sắp xếp danh sách bài tập theo thời hạn nộp.</li>
-          <li>Hiển thị thông tin bài tập trên tiện ích ở màn hình chính.</li>
-          <li>Lưu trạng thái đánh dấu hoàn thành bài tập của học sinh trên thiết bị.</li>
-        </ul>
-
-        <div class="notice-divider">
-          <strong>Cam kết theo quy định của Google:</strong>
-          Classroom Tracker's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.
+        <div class="table-scroll">
+          <table class="scope-table">
+            <thead>
+              <tr>
+                <th>OAuth Scope</th>
+                <th>Data Accessed</th>
+                <th>Purpose in App</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <code>openid</code><br>
+                  <code>email</code> / <code>userinfo.email</code><br>
+                  <code>profile</code> / <code>userinfo.profile</code>
+                </td>
+                <td>Google Account email address, display name, and profile picture URL.</td>
+                <td>Identify the currently signed-in account inside Settings and display your account badge on-device.</td>
+              </tr>
+              <tr>
+                <td><code>https://www.googleapis.com/auth/classroom.courses.readonly</code></td>
+                <td>Enrolled Google Classroom courses (course ID, name, section, room, and course state).</td>
+                <td>Group assignments by subject/course and let you choose which courses appear in widgets.</td>
+              </tr>
+              <tr>
+                <td><code>https://www.googleapis.com/auth/classroom.coursework.me.readonly</code></td>
+                <td>Coursework items (assignment title, instructions/description, due date and time, and Classroom link).</td>
+                <td>Display upcoming assignments, prioritize tomorrow's homework prep, and power local on-device search.</td>
+              </tr>
+              <tr>
+                <td><code>https://www.googleapis.com/auth/classroom.student-submissions.me.readonly</code></td>
+                <td>Your personal submission state for each assignment (e.g., pending, turned in, returned).</td>
+                <td>Display accurate completion status and reconcile with your local completion checkmarks.</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <h2>3. Lưu trữ và bảo mật dữ liệu</h2>
+        <h2 id="en-data-usage">2. How Google User Data Is Used</h2>
+        <p>Information retrieved from Google APIs is processed exclusively on your device to provide core user-facing features:</p>
         <ul>
-          <li><strong>Lưu trữ cục bộ:</strong> Ứng dụng không sử dụng máy chủ trung gian. Toàn bộ thông tin bài tập được lưu trực tiếp trên bộ nhớ máy của bạn (Room SQLite trên Android, App Group trên macOS và iOS).</li>
-          <li><strong>Không chia sẻ cho bên thứ ba:</strong> Dữ liệu không được gửi ra ngoài thiết bị và không được chia sẻ hay thương mại hóa dưới bất kỳ hình thức nào.</li>
-          <li><strong>Bảo mật token xác thực:</strong> Token đăng nhập được lưu trữ an toàn trong Android KeyStore (chuẩn AES-256-GCM) và Apple Keychain.</li>
+          <li>Organize assignments by due date (prioritizing homework due tomorrow and upcoming deadlines).</li>
+          <li>Render coursework summaries on macOS, iOS, and Android home screen or desktop widgets.</li>
+          <li>Maintain an on-device search index (including Vietnamese diacritic normalization) so you can search assignments offline.</li>
+          <li>Reconcile remote Google Classroom submission status with optional local completion checkmarks and personal study notes.</li>
         </ul>
-
-        <h2>4. Quản lý và xóa dữ liệu</h2>
-        <ul>
-          <li><strong>Đăng xuất trong ứng dụng:</strong> Khi chọn Đăng xuất trong Cài đặt, toàn bộ dữ liệu bài tập và mã token lưu trên thiết bị sẽ được xóa hoàn toàn.</li>
-          <li><strong>Hủy quyền từ tài khoản Google:</strong> Bạn có thể thu hồi quyền truy cập của ứng dụng bất cứ lúc nào tại <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Trang bảo mật tài khoản Google</a>.</li>
-        </ul>
-
-        <h2>5. Liên hệ</h2>
-        <p>Mọi câu hỏi về quyền riêng tư và bảo mật dữ liệu, vui lòng liên hệ:</p>
         <p>
-          Tạ Hoàng Phúc<br>
+          Classroom Tracker does <strong>not</strong> use Google user data for advertising, marketing, behavioral profiling, third-party analytics, or training artificial intelligence / machine learning models. No human developer reads or has access to your Google Classroom data.
+        </p>
+
+        <h2 id="en-limited-use">3. Google API Services User Data Policy (Limited Use)</h2>
+        <div class="notice-callout">
+          <strong>Google API Limited Use Disclosure</strong>
+          <p>
+            Classroom Tracker's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.
+          </p>
+        </div>
+
+        <h2 id="en-storage-security">4. Data Storage, Zero Third-Party Sharing &amp; Security</h2>
+        <ul>
+          <li><strong>No Developer or Intermediary Servers:</strong> Classroom Tracker has no backend server. Your device communicates directly over HTTPS with official Google endpoints (<code>oauth2.googleapis.com</code>, <code>www.googleapis.com</code>, <code>openidconnect.googleapis.com</code>, and <code>classroom.googleapis.com</code>).</li>
+          <li><strong>Zero Third-Party Sharing or Sale:</strong> We never sell, rent, disclose, or transfer your Google user data or personal notes to any third parties, advertisers, or analytics providers.</li>
+          <li><strong>Local Device Storage:</strong>
+            <ul>
+              <li><em>macOS &amp; iOS:</em> Cached courses, coursework, widget snapshots, and personal notes are stored locally in the app's sandboxed App Group container (<code>group.com.phucta.classroom</code>). OAuth access and refresh tokens are stored in the <strong>Apple Keychain</strong>.</li>
+              <li><em>Android:</em> Cached courses, coursework, and personal notes are stored locally in an app-private Room SQLite database and Jetpack DataStore. OAuth tokens are encrypted using <code>EncryptedSharedPreferences</code> backed by the <strong>Android KeyStore</strong> (AES-256-GCM / AES-256-SIV).</li>
+            </ul>
+          </li>
+          <li><strong>Authentication Safeguards:</strong> Sign-in uses OAuth 2.0 PKCE with a per-session cryptographic <code>state</code> parameter to prevent CSRF attacks.</li>
+        </ul>
+
+        <h2 id="en-retention-deletion">5. Data Retention &amp; Deletion</h2>
+        <ul>
+          <li><strong>Retention Period:</strong> Cached Google Classroom data and OAuth tokens remain only on your local device for as long as you stay signed in.</li>
+          <li><strong>Sign Out in App:</strong> Selecting <em>Sign Out</em> in Settings immediately deletes your OAuth tokens, user profile information, and all cached Google Classroom courses, coursework, submission statuses, and widget snapshots from the device.</li>
+          <li><strong>Personal Notes:</strong> Personal study notes and checklists you create directly inside the app belong solely to you and are never uploaded to Google or any server. By default, signing out of Google preserves your local personal notes so your study notes are not accidentally lost; you can delete individual notes at any time, clear app storage in OS settings, or uninstall the app to erase all local data permanently.</li>
+          <li><strong>Revoke Google Access:</strong> You may revoke Classroom Tracker's access to your Google Account at any time via <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Google Account Security Permissions</a>.</li>
+        </ul>
+
+        <h2 id="en-children">6. Students &amp; Minors</h2>
+        <p>
+          Classroom Tracker is designed for students using Google Classroom. Because the app runs strictly on-device with no central server, no account registration with the developer, and no tracking or analytics, we do not collect, store, or transmit personal information from children or any users on external servers.
+        </p>
+
+        <h2 id="en-changes">7. Changes to This Policy</h2>
+        <p>
+          We may update this Privacy Policy if app permissions or platform storage mechanisms change. Any updates will be published on this page with an updated Effective Date and reflected in the open-source repository.
+        </p>
+
+        <h2 id="en-contact">8. Contact Information</h2>
+        <p>If you have questions or requests regarding this Privacy Policy or data protection, please contact:</p>
+        <p>
+          <strong>Tạ Hoàng Phúc</strong><br>
           Email: <a href="mailto:tahoangphuc111@gmail.com">tahoangphuc111@gmail.com</a><br>
-          Dự án mã nguồn mở: <a href="https://github.com/tahoangphuc111/Classroom-Tracker" target="_blank" rel="noopener">GitHub Classroom-Tracker</a>
+          Source Repository: <a href="https://github.com/tahoangphuc111/Classroom-Tracker" target="_blank" rel="noopener">github.com/tahoangphuc111/Classroom-Tracker</a>
+        </p>
+      </div>
+    </article>
+
+    <hr class="bilingual-divider" aria-hidden="true">
+
+    <!-- VIETNAMESE VERSION -->
+    <article class="document-shell" data-lang="vi">
+      <header class="document-header">
+        <h1 class="document-title">Chính sách Quyền riêng tư</h1>
+        <div class="document-meta-row">
+          <span><strong>Ứng dụng:</strong> Classroom Tracker (macOS, iOS, iPadOS, Android)</span>
+          <span><strong>Ngày áp dụng:</strong> 25 tháng 11, 2026</span>
+          <span><strong>Nhà phát triển:</strong> Tạ Hoàng Phúc</span>
+        </div>
+      </header>
+
+      <nav class="doc-toc" aria-label="Mục lục">
+        <div class="doc-toc-title">Mục lục</div>
+        <ol>
+          <li><a href="#vi-data-accessed">Dữ liệu Google được truy cập</a></li>
+          <li><a href="#vi-data-usage">Mục đích sử dụng dữ liệu</a></li>
+          <li><a href="#vi-limited-use">Cam kết Google API Limited Use</a></li>
+          <li><a href="#vi-storage-security">Lưu trữ, chia sẻ &amp; bảo mật</a></li>
+          <li><a href="#vi-retention-deletion">Thời gian lưu &amp; xóa dữ liệu</a></li>
+          <li><a href="#vi-children">Quyền riêng tư học sinh</a></li>
+          <li><a href="#vi-changes">Thay đổi chính sách</a></li>
+          <li><a href="#vi-contact">Thông tin liên hệ</a></li>
+        </ol>
+      </nav>
+
+      <div class="document-body">
+        <p>
+          Chính sách Quyền riêng tư này giải thích cách ứng dụng <strong>Classroom Tracker</strong> truy cập, sử dụng, lưu trữ và bảo vệ dữ liệu khi bạn đăng nhập bằng tài khoản Google trên các phiên bản macOS, iOS, iPadOS và Android. Classroom Tracker là dự án mã nguồn mở độc lập, không trực thuộc Google LLC.
+        </p>
+
+        <h2 id="vi-data-accessed">1. Dữ liệu Google ứng dụng truy cập</h2>
+        <p>
+          Classroom Tracker kết nối với Google APIs thông qua giao thức OAuth 2.0 PKCE. Toàn bộ quyền liên quan đến Google Classroom đều là <strong>quyền chỉ đọc (read-only)</strong>. Ứng dụng không bao giờ tạo, sửa, nộp bài hay xóa bất kỳ lớp học, bài tập, điểm số hoặc bài nộp nào trên tài khoản Google Classroom của bạn.
+        </p>
+
+        <div class="table-scroll">
+          <table class="scope-table">
+            <thead>
+              <tr>
+                <th>Phạm vi quyền (OAuth Scope)</th>
+                <th>Dữ liệu được truy cập</th>
+                <th>Mục đích trong ứng dụng</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <code>openid</code><br>
+                  <code>email</code> / <code>userinfo.email</code><br>
+                  <code>profile</code> / <code>userinfo.profile</code>
+                </td>
+                <td>Địa chỉ email, tên hiển thị và ảnh đại diện tài khoản Google.</td>
+                <td>Nhận diện và hiển thị thông tin tài khoản đang đăng nhập trong phần Cài đặt trên thiết bị.</td>
+              </tr>
+              <tr>
+                <td><code>https://www.googleapis.com/auth/classroom.courses.readonly</code></td>
+                <td>Danh sách lớp học đang tham gia (mã lớp, tên môn học, phòng học, trạng thái lớp).</td>
+                <td>Phân nhóm bài tập theo môn học và cho phép chọn lớp hiển thị trên widget.</td>
+              </tr>
+              <tr>
+                <td><code>https://www.googleapis.com/auth/classroom.coursework.me.readonly</code></td>
+                <td>Danh sách bài tập (tiêu đề, nội dung hướng dẫn, hạn nộp và đường dẫn bài tập).</td>
+                <td>Sắp xếp bài tập theo hạn nộp (ưu tiên báo bài ngày mai) và phục vụ tìm kiếm cục bộ trên máy.</td>
+              </tr>
+              <tr>
+                <td><code>https://www.googleapis.com/auth/classroom.student-submissions.me.readonly</code></td>
+                <td>Trạng thái nộp bài của chính bạn (chưa nộp, đã nộp, đã trả bài).</td>
+                <td>Hiển thị tiến độ làm bài chính xác và đồng bộ với trạng thái đánh dấu hoàn thành cục bộ.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="vi-data-usage">2. Mục đích sử dụng dữ liệu</h2>
+        <p>Dữ liệu đọc từ Google APIs chỉ được xử lý trực tiếp trên thiết bị của bạn nhằm cung cấp các tính năng cốt lõi:</p>
+        <ul>
+          <li>Hiển thị và sắp xếp danh sách bài tập theo hạn nộp (ưu tiên bài cần chuẩn bị cho ngày mai).</li>
+          <li>Hiển thị thông tin tóm tắt bài tập trên tiện ích (widget) ở màn hình chính hoặc desktop.</li>
+          <li>Lập chỉ mục tìm kiếm cục bộ trên máy (hỗ trợ tiếng Việt có dấu và không dấu).</li>
+          <li>Đối chiếu trạng thái nộp bài từ Google Classroom với đánh dấu hoàn thành thủ công và ghi chú học tập cá nhân.</li>
+        </ul>
+        <p>
+          Classroom Tracker <strong>không</strong> sử dụng dữ liệu người dùng Google cho quảng cáo, tiếp thị, phân tích hành vi, công cụ theo dõi bên thứ ba hoặc huấn luyện mô hình AI/ML. Nhà phát triển không thể xem hay truy cập dữ liệu Google Classroom của bạn.
+        </p>
+
+        <h2 id="vi-limited-use">3. Tuân thủ Chính sách Dữ liệu Người dùng của Google API</h2>
+        <div class="notice-callout">
+          <strong>Cam kết theo quy định Limited Use của Google:</strong>
+          <p>
+            Classroom Tracker's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.
+          </p>
+        </div>
+
+        <h2 id="vi-storage-security">4. Lưu trữ, không chia sẻ bên thứ ba &amp; bảo mật</h2>
+        <ul>
+          <li><strong>Không có máy chủ trung gian:</strong> Ứng dụng không vận hành máy chủ riêng. Thiết bị giao tiếp trực tiếp qua HTTPS với các máy chủ chính thức của Google (<code>oauth2.googleapis.com</code>, <code>www.googleapis.com</code>, <code>openidconnect.googleapis.com</code>, <code>classroom.googleapis.com</code>).</li>
+          <li><strong>Không chia sẻ hay thương mại hóa:</strong> Dữ liệu của bạn không bao giờ được bán, cho thuê, gửi đi hay chia sẻ cho bất kỳ bên thứ ba nào.</li>
+          <li><strong>Lưu trữ cục bộ an toàn trên thiết bị:</strong>
+            <ul>
+              <li><em>macOS &amp; iOS:</em> Danh sách lớp, bài tập, dữ liệu widget và ghi chú cá nhân lưu trong vùng chứa App Group (<code>group.com.phucta.classroom</code>). Mã token xác thực lưu an toàn trong <strong>Apple Keychain</strong>.</li>
+              <li><em>Android:</em> Danh sách lớp, bài tập và ghi chú cá nhân lưu trong cơ sở dữ liệu Room SQLite và Jetpack DataStore riêng của ứng dụng. Mã token được mã hóa bằng <code>EncryptedSharedPreferences</code> dựa trên <strong>Android KeyStore</strong> (chuẩn AES-256-GCM / AES-256-SIV).</li>
+            </ul>
+          </li>
+          <li><strong>Bảo vệ phiên đăng nhập:</strong> Quy trình OAuth 2.0 PKCE tạo mã kiểm tra <code>state</code> ngẫu nhiên cho từng phiên nhằm chống tấn công CSRF.</li>
+        </ul>
+
+        <h2 id="vi-retention-deletion">5. Thời gian lưu trữ &amp; xóa dữ liệu</h2>
+        <ul>
+          <li><strong>Thời gian lưu trữ:</strong> Dữ liệu Google Classroom và token đăng nhập chỉ được lưu cục bộ trên máy trong thời gian bạn duy trì đăng nhập.</li>
+          <li><strong>Đăng xuất trong ứng dụng:</strong> Khi bạn chọn <em>Đăng xuất</em> trong Cài đặt, toàn bộ token xác thực, thông tin hồ sơ Google, dữ liệu lớp học, bài tập, trạng thái nộp bài và bộ nhớ đệm widget sẽ bị xóa ngay lập tức khỏi thiết bị.</li>
+          <li><strong>Ghi chú cá nhân:</strong> Ghi chú học tập và checklist do bạn tự tạo hoàn toàn thuộc về bạn và chỉ lưu trên thiết bị. Mặc định khi đăng xuất tài khoản Google, ứng dụng giữ lại ghi chú cá nhân để tránh mất dữ liệu học tập của bạn; bạn có thể xóa từng ghi chú bất kỳ lúc nào, xóa dữ liệu ứng dụng trong cài đặt hệ điều hành hoặc gỡ ứng dụng để xóa sạch toàn bộ dữ liệu.</li>
+          <li><strong>Thu hồi quyền trên tài khoản Google:</strong> Bạn có thể hủy quyền truy cập của ứng dụng bất cứ lúc nào tại <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Trang quản lý quyền tài khoản Google</a>.</li>
+        </ul>
+
+        <h2 id="vi-children">6. Quyền riêng tư dành cho học sinh</h2>
+        <p>
+          Ứng dụng được thiết kế cho học sinh sử dụng Google Classroom. Do mọi thao tác xử lý và lưu trữ đều diễn ra hoàn toàn cục bộ trên thiết bị, không có máy chủ thu thập hay theo dõi hành vi, chúng tôi không thu thập dữ liệu cá nhân của trẻ em hay bất kỳ người dùng nào ra bên ngoài thiết bị.
+        </p>
+
+        <h2 id="vi-changes">7. Thay đổi chính sách</h2>
+        <p>
+          Nếu có thay đổi về phạm vi quyền truy cập hoặc cơ chế lưu trữ, chính sách này sẽ được cập nhật công khai tại trang này cùng ngày áp dụng mới và ghi nhận trong mã nguồn dự án.
+        </p>
+
+        <h2 id="vi-contact">8. Thông tin liên hệ</h2>
+        <p>Mọi thắc mắc về quyền riêng tư và bảo vệ dữ liệu, vui lòng liên hệ:</p>
+        <p>
+          <strong>Tạ Hoàng Phúc</strong><br>
+          Email: <a href="mailto:tahoangphuc111@gmail.com">tahoangphuc111@gmail.com</a><br>
+          Mã nguồn dự án: <a href="https://github.com/tahoangphuc111/Classroom-Tracker" target="_blank" rel="noopener">github.com/tahoangphuc111/Classroom-Tracker</a>
         </p>
       </div>
     </article>
@@ -83,13 +333,25 @@
 
   <footer class="site-footer">
     <div class="footer-inner">
-      <nav class="footer-nav">
-        <a href="index.html" class="footer-link">Trang chủ</a>
-        <a href="privacy.html" class="footer-link">Quyền riêng tư</a>
-        <a href="terms.html" class="footer-link">Điều khoản sử dụng</a>
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="index.html" class="footer-link">
+          <span data-lang="vi">Trang chủ</span>
+          <span data-lang="en">Home</span>
+        </a>
+        <a href="privacy.html" class="footer-link">
+          <span data-lang="vi">Quyền riêng tư</span>
+          <span data-lang="en">Privacy Policy</span>
+        </a>
+        <a href="terms.html" class="footer-link">
+          <span data-lang="vi">Điều khoản dịch vụ</span>
+          <span data-lang="en">Terms of Service</span>
+        </a>
+        <a href="https://github.com/tahoangphuc111/Classroom-Tracker" class="footer-link" target="_blank" rel="noopener">GitHub</a>
       </nav>
       <p class="footer-copy">© 2026 Classroom Tracker</p>
     </div>
   </footer>
+
+  <script src="lang.js" defer></script>
 </body>
 </html>

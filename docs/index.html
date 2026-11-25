@@ -1,16 +1,30 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en"
+      data-title-vi="Classroom Tracker - Báo bài Google Classroom cho ngày mai"
+      data-title-en="Classroom Tracker - Google Classroom Homework Prep"
+      data-desc-vi="Ứng dụng mã nguồn mở đưa bài tập Google Classroom cần chuẩn bị cho ngày mai lên màn hình chính trên macOS, iOS và Android."
+      data-desc-en="Open-source companion app that puts tomorrow's Google Classroom homework front and center on macOS, iOS, and Android.">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Classroom Tracker - Quản lý bài tập Google Classroom</title>
-  <meta name="description" content="Ứng dụng theo dõi bài tập và hạn nộp Google Classroom trên macOS, iOS và Android.">
+  <title>Classroom Tracker - Google Classroom Homework Prep</title>
+  <meta name="description" content="Open-source companion app that puts tomorrow's Google Classroom homework front and center on macOS, iOS, and Android.">
   <link rel="icon" type="image/svg+xml" href="app-icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="style.css">
+  <script>
+    (function () {
+      try {
+        var q = new URLSearchParams(window.location.search).get('lang');
+        var l = (q === 'vi' || q === 'en') ? q : (localStorage.getItem('ct_lang') || ((navigator.language || '').toLowerCase().indexOf('vi') === 0 ? 'vi' : 'en'));
+        document.documentElement.classList.add('lang-' + l);
+        document.documentElement.lang = l;
+      } catch (_) {}
+    })();
+  </script>
 </head>
 <body>
   <header class="site-header">
@@ -19,82 +33,158 @@
         <img src="app-icon.svg" alt="Classroom Tracker" class="brand-icon">
         <span>Classroom Tracker</span>
       </a>
-      <nav class="nav-links">
-        <a href="#tinh-nang" class="nav-link">Tính năng</a>
-        <a href="privacy.html" class="nav-link">Quyền riêng tư</a>
-        <a href="terms.html" class="nav-link">Điều khoản</a>
-        <a href="https://github.com/tahoangphuc111/Classroom-Tracker" class="nav-link" target="_blank" rel="noopener">
-          <i class="fa-brands fa-github"></i> GitHub
-        </a>
-      </nav>
-      <a href="https://github.com/tahoangphuc111/Classroom-Tracker/releases" class="btn btn-primary">
-        <i class="fa-solid fa-download"></i> Tải ứng dụng
-      </a>
+      <div class="header-actions">
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="index.html" class="nav-link is-active" aria-current="page">
+            <span data-lang="vi">Trang chủ</span>
+            <span data-lang="en">Home</span>
+          </a>
+          <a href="privacy.html" class="nav-link">
+            <span data-lang="vi">Quyền riêng tư</span>
+            <span data-lang="en">Privacy Policy</span>
+          </a>
+          <a href="terms.html" class="nav-link">
+            <span data-lang="vi">Điều khoản</span>
+            <span data-lang="en">Terms of Service</span>
+          </a>
+          <a href="https://github.com/tahoangphuc111/Classroom-Tracker" class="nav-link" target="_blank" rel="noopener">
+            <i class="fa-brands fa-github" aria-hidden="true"></i> GitHub
+          </a>
+        </nav>
+        <div class="lang-switcher" role="group" aria-label="Language switcher">
+          <button type="button" class="lang-btn" data-set-lang="vi" aria-pressed="false">VI</button>
+          <button type="button" class="lang-btn" data-set-lang="en" aria-pressed="true">EN</button>
+        </div>
+      </div>
     </div>
   </header>
 
   <main class="page-wrapper">
     <section class="hero">
-      <h1 class="hero-title">Theo dõi bài tập Google Classroom</h1>
-      <p class="hero-lead">Ứng dụng hỗ trợ học sinh xem danh sách bài tập, theo dõi thời hạn nộp bài và tích hợp tiện ích trên macOS, iOS và Android.</p>
+      <div class="hero-badge">
+        <i class="fa-solid fa-laptop-code" aria-hidden="true"></i>
+        <span data-lang="vi">macOS • iOS • Android • Mã nguồn mở</span>
+        <span data-lang="en">macOS • iOS • Android • Open Source</span>
+      </div>
+
+      <h1 class="hero-title" data-lang="vi">Soạn báo bài cho ngày mai, không còn bỏ sót hạn nộp.</h1>
+      <h1 class="hero-title" data-lang="en">Focus on Tomorrow's Google Classroom Homework.</h1>
+
+      <p class="hero-lead" data-lang="vi">
+        Classroom Tracker đưa đúng những bài tập cần chuẩn bị cho ngày mai lên đầu danh sách và màn hình chính trên macOS, iOS và Android — thay cho một danh sách dài đầy bài cũ.
+      </p>
+      <p class="hero-lead" data-lang="en">
+        Classroom Tracker puts tomorrow's Google Classroom assignments front and center across macOS, iOS, and Android — built around evening study prep instead of a noisy backlog.
+      </p>
+
       <div class="hero-buttons">
-        <a href="https://github.com/tahoangphuc111/Classroom-Tracker/releases" class="btn btn-primary">
-          <i class="fa-solid fa-download"></i> Tải bản cài đặt
+        <a href="https://github.com/tahoangphuc111/Classroom-Tracker/releases" class="btn btn-primary" target="_blank" rel="noopener">
+          <i class="fa-solid fa-download" aria-hidden="true"></i>
+          <span data-lang="vi">Tải bản cài đặt</span>
+          <span data-lang="en">Download Releases</span>
         </a>
         <a href="privacy.html" class="btn btn-secondary">
-          <i class="fa-solid fa-shield-halved"></i> Chính sách bảo mật
+          <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+          <span data-lang="vi">Chính sách bảo mật</span>
+          <span data-lang="en">Privacy Policy</span>
+        </a>
+        <a href="terms.html" class="btn btn-secondary">
+          <i class="fa-solid fa-file-contract" aria-hidden="true"></i>
+          <span data-lang="vi">Điều khoản dịch vụ</span>
+          <span data-lang="en">Terms of Service</span>
         </a>
       </div>
     </section>
 
-    <section id="tinh-nang" class="feature-section">
+    <section id="features" class="feature-section">
+      <article class="spotlight-card">
+        <h2 class="spotlight-title" data-lang="vi">Báo bài Ngày mai</h2>
+        <h2 class="spotlight-title" data-lang="en">Built for Tomorrow's Classes</h2>
+
+        <p class="spotlight-desc" data-lang="vi">
+          Buổi tối mở app là để soạn bài cho ngày mai. Classroom Tracker mặc định hiển thị ngay các bài có hạn nộp vào ngày mai, tự động bỏ qua các hạn cũ đã trôi qua để danh sách luôn gọn và đúng việc cần làm.
+        </p>
+        <p class="spotlight-desc" data-lang="en">
+          When you sit down to study in the evening, what matters is tomorrow's classes. Classroom Tracker opens directly to coursework due tomorrow and filters out stale past-due clutter.
+        </p>
+
+        <ul class="spotlight-points" data-lang="vi">
+          <li>
+            <strong>Mở lên là thấy Ngày mai</strong>
+            Cả ứng dụng chính lẫn widget đều ưu tiên nhóm bài có hạn trong ngày mai.
+          </li>
+          <li>
+            <strong>Chuyển tiếp thông minh</strong>
+            Khi ngày mai không có bài, tự động hiện bài còn lại trong hôm nay hoặc hạn gần nhất tiếp theo.
+          </li>
+          <li>
+            <strong>Không kẹt bài quá hạn cũ</strong>
+            Bài đã qua hạn được xem như đã khép lại để không che mất bài cần soạn tối nay.
+          </li>
+        </ul>
+
+        <ul class="spotlight-points" data-lang="en">
+          <li>
+            <strong>Tomorrow by Default</strong>
+            Both the main app and widgets anchor directly to assignments due tomorrow.
+          </li>
+          <li>
+            <strong>Smart Fallback Queue</strong>
+            When tomorrow is clear, it surfaces remaining tasks due today or the nearest upcoming deadlines.
+          </li>
+          <li>
+            <strong>Zero Past-Due Clutter</strong>
+            Expired deadlines automatically step aside so old coursework never blocks tonight's prep.
+          </li>
+        </ul>
+      </article>
+
       <div class="feature-grid">
         <div class="feature-item">
-          <div class="feature-icon">
-            <i class="fa-regular fa-calendar-check"></i>
-          </div>
-          <h2 class="feature-title">Theo dõi thời hạn</h2>
-          <p class="feature-desc">Tổng hợp bài tập theo thời hạn nộp rõ ràng, giúp học sinh chủ động sắp xếp thời gian làm bài phù hợp.</p>
+          <div class="feature-icon"><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i></div>
+          <h3 class="feature-title" data-lang="vi">Widget trên macOS, iOS &amp; Android</h3>
+          <h3 class="feature-title" data-lang="en">Native Widgets Everywhere</h3>
+          <p class="feature-desc" data-lang="vi">Xem nhanh báo bài ngày mai ngay trên màn hình chính và desktop qua WidgetKit và Jetpack Glance mà không cần mở app.</p>
+          <p class="feature-desc" data-lang="en">See tomorrow's homework right on your Home Screen or desktop via WidgetKit and Jetpack Glance.</p>
         </div>
 
         <div class="feature-item">
-          <div class="feature-icon">
-            <i class="fa-solid fa-check"></i>
-          </div>
-          <h2 class="feature-title">Đánh dấu hoàn thành</h2>
-          <p class="feature-desc">Cho phép đánh dấu các bài đã hoàn thành trực tiếp trên thiết bị để theo dõi tiến độ cá nhân.</p>
+          <div class="feature-icon"><i class="fa-solid fa-check" aria-hidden="true"></i></div>
+          <h3 class="feature-title" data-lang="vi">Đánh dấu xong &amp; Ghi chú cá nhân</h3>
+          <h3 class="feature-title" data-lang="en">Local Completion &amp; Notes</h3>
+          <p class="feature-desc" data-lang="vi">Đánh dấu bài làm trên giấy hoặc tạo checklist ghi chú riêng trên máy; đồng bộ nền không ghi đè tiến độ của bạn.</p>
+          <p class="feature-desc" data-lang="en">Check off physical worksheets locally and attach study checklists without background sync reverting your progress.</p>
         </div>
 
         <div class="feature-item">
-          <div class="feature-icon">
-            <i class="fa-solid fa-table-cells-large"></i>
-          </div>
-          <h2 class="feature-title">Hỗ trợ tiện ích</h2>
-          <p class="feature-desc">Hiển thị danh sách bài tập nhanh trên màn hình chính của macOS, iOS và Android mà không cần mở app.</p>
+          <div class="feature-icon"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i></div>
+          <h3 class="feature-title" data-lang="vi">Chỉ đọc &amp; Lưu trữ cục bộ</h3>
+          <h3 class="feature-title" data-lang="en">Read-Only &amp; On-Device</h3>
+          <p class="feature-desc" data-lang="vi">Chỉ dùng quyền đọc từ Google Classroom API. Toàn bộ dữ liệu nằm trên thiết bị, không qua máy chủ trung gian.</p>
+          <p class="feature-desc" data-lang="en">Requests strictly read-only Classroom scopes. All data stays locally on your device with no developer servers.</p>
         </div>
+      </div>
+    </section>
 
-        <div class="feature-item">
-          <div class="feature-icon">
-            <i class="fa-solid fa-shield-halved"></i>
-          </div>
-          <h2 class="feature-title">Lưu trữ cục bộ</h2>
-          <p class="feature-desc">Dữ liệu lớp học và bài tập được lưu trực tiếp trên bộ nhớ máy, không lưu qua máy chủ trung gian.</p>
+    <section class="trust-section" aria-label="Privacy and Terms Summary">
+      <div data-lang="vi">
+        <h2>Minh bạch dữ liệu &amp; Quyền riêng tư</h2>
+        <p>
+          Classroom Tracker kết nối trực tiếp với tài khoản Google của bạn qua các quyền chỉ đọc (<code>classroom.courses.readonly</code>, <code>classroom.coursework.me.readonly</code>, <code>classroom.student-submissions.me.readonly</code>) và hồ sơ cơ bản. Không thu thập, chia sẻ hay lưu dữ liệu học tập trên máy chủ bên ngoài.
+        </p>
+        <div class="trust-links">
+          <a href="privacy.html">Đọc Chính sách Quyền riêng tư →</a>
+          <a href="terms.html">Đọc Điều khoản Dịch vụ →</a>
         </div>
-
-        <div class="feature-item">
-          <div class="feature-icon">
-            <i class="fa-solid fa-magnifying-glass"></i>
-          </div>
-          <h2 class="feature-title">Tìm kiếm thuận tiện</h2>
-          <p class="feature-desc">Tìm kiếm nhanh bài tập và môn học theo từ khóa tiếng Việt có dấu hoặc không dấu.</p>
-        </div>
-
-        <div class="feature-item">
-          <div class="feature-icon">
-            <i class="fa-solid fa-arrows-rotate"></i>
-          </div>
-          <h2 class="feature-title">Đồng bộ tự động</h2>
-          <p class="feature-desc">Cập nhật dữ liệu bài tập định kỳ từ Google Classroom, hoạt động ổn định và tiết kiệm tài nguyên thiết bị.</p>
+      </div>
+      <div data-lang="en">
+        <h2>Data Transparency &amp; Google API Compliance</h2>
+        <p>
+          Classroom Tracker connects directly to your Google account using strictly read-only Classroom scopes (<code>classroom.courses.readonly</code>, <code>classroom.coursework.me.readonly</code>, <code>classroom.student-submissions.me.readonly</code>) and basic profile info. No user data is collected, shared, or stored on external servers.
+        </p>
+        <div class="trust-links">
+          <a href="privacy.html">Read Privacy Policy →</a>
+          <a href="terms.html">Read Terms of Service →</a>
         </div>
       </div>
     </section>
@@ -102,14 +192,26 @@
 
   <footer class="site-footer">
     <div class="footer-inner">
-      <nav class="footer-nav">
-        <a href="index.html" class="footer-link">Trang chủ</a>
-        <a href="privacy.html" class="footer-link">Quyền riêng tư</a>
-        <a href="terms.html" class="footer-link">Điều khoản sử dụng</a>
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="index.html" class="footer-link">
+          <span data-lang="vi">Trang chủ</span>
+          <span data-lang="en">Home</span>
+        </a>
+        <a href="privacy.html" class="footer-link">
+          <span data-lang="vi">Quyền riêng tư</span>
+          <span data-lang="en">Privacy Policy</span>
+        </a>
+        <a href="terms.html" class="footer-link">
+          <span data-lang="vi">Điều khoản dịch vụ</span>
+          <span data-lang="en">Terms of Service</span>
+        </a>
         <a href="https://github.com/tahoangphuc111/Classroom-Tracker" class="footer-link" target="_blank" rel="noopener">GitHub</a>
       </nav>
-      <p class="footer-copy">Classroom Tracker là dự án mã nguồn mở phục vụ học tập, không trực thuộc Google LLC.</p>
+      <p class="footer-copy" data-lang="vi">Classroom Tracker là dự án mã nguồn mở độc lập, không trực thuộc Google LLC.</p>
+      <p class="footer-copy" data-lang="en">Classroom Tracker is an independent open-source project and is not affiliated with Google LLC.</p>
     </div>
   </footer>
+
+  <script src="lang.js" defer></script>
 </body>
 </html>
